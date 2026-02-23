@@ -137,6 +137,12 @@ class FlorisImeService : LifecycleInputMethodService() {
             return ims.switchToVoiceInputMethod()
         }
 
+        fun handleVoiceInputAction(): Boolean {
+            val ims = FlorisImeServiceReference.get() ?: return false
+            ims.handleVoiceInputAction()
+            return true
+        }
+
         fun showImePicker(): Boolean {
             val ims = FlorisImeServiceReference.get() ?: return false
             return InputMethodUtils.showImePicker(ims)
@@ -255,12 +261,17 @@ class FlorisImeService : LifecycleInputMethodService() {
         return false
     }
 
+    fun handleVoiceInputAction() {
+        voxtralDictationManager.onVoiceInputKeyPressed()
+    }
+
     private val prefs by FlorisPreferenceStore
     val editorInstance by editorInstance()
     private val keyboardManager by keyboardManager()
     private val nlpManager by nlpManager()
     private val subtypeManager by subtypeManager()
     private val themeManager by themeManager()
+    private val voxtralDictationManager by voxtralDictationManager()
 
     val windowController = ImeWindowController(prefs, lifecycleScope)
 
