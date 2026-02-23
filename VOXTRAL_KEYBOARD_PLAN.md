@@ -14,6 +14,10 @@ This repo is forked from FlorisBoard (open-source, Android keyboard, Kotlin code
 - Replace "open external voice IME" flow with built-in dictation flow.
 - Tap microphone key -> record audio -> transcribe via Voxtral Mini -> insert text at cursor.
 - Add punctuation and formatting post-processing options.
+- Match a dark, high-contrast keyboard style with a utility toolbar above the keys.
+- Prioritize requested features: clipboard (+ sync), NL/EN streaming ASR with punctuation, spellcheck + dictionary.
+
+See also: `VOXTRAL_FEATURE_SCOPE.md` for the concrete v0.2 scope and acceptance criteria.
 
 ## Architecture (recommended)
 
