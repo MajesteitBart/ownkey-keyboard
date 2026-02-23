@@ -11,11 +11,12 @@
 ### 1) Clipboard (+ sync)
 - Integrate with Android clipboard APIs as primary source.
 - Keep local clipboard history in keyboard app (respecting Android privacy rules).
-- Add explicit sync mode toggle:
+- If user already has **Link to Windows / Phone Link** clipboard sync enabled, current clipboard copy/paste between phone and Windows should work automatically (because we use system clipboard).
+- Add explicit sync mode toggle for **keyboard-owned history/pinned clips**:
   - Off (default, local only)
   - Relay sync (encrypted sync via backend)
 
-**Note:** Android does not provide a generic cross-device clipboard sync API for third-party keyboards. Cross-device sync needs our own relay.
+**Note:** Android does not expose a generic API to sync full keyboard-managed clipboard history across devices. OS-level Phone Link helps with system clipboard, but not full custom history sync.
 
 ### 2) ASR with punctuation, streaming (NL + EN)
 - Streaming dictation path via Voxtral Mini.
