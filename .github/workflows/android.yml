@@ -25,7 +25,7 @@ on:
       build_type:
         description: "APK build type"
         required: false
-        default: "release"
+        default: "beta"
         type: choice
         options:
           - debug
