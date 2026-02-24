@@ -1,4 +1,4 @@
-<img align="left" width="80" height="80" src=".github/repo_icon.png" alt="Ownkey app icon">
+<img align="left" width="80" height="80" src=".github/repo_icon_ownkey_v2.png" alt="Ownkey app icon">
 
 # Ownkey Keyboard (Android)
 
