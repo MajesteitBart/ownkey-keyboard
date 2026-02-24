@@ -11,6 +11,8 @@
     <string name="florisboard__internal_key_codes_url" translatable="false">https://github.com/florisboard/florisboard/blob/main/app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/key/KeyCode.kt</string>
     <string name="florisboard__character_key_codes_url" translatable="false">https://unicode-table.com/en</string>
 
+    <string name="voxtral__mistral_signup_url" translatable="false">https://console.mistral.ai/</string>
+
     <string name="general__system_string_placeholder" translatable="false">%s</string>
     <string name="general__empty_string" translatable="false"/>
     <string name="general__invalid_fatal" translatable="false">!! invalid !!</string>

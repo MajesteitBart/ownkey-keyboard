@@ -41,6 +41,7 @@ import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
+import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.window.ImeWindowMode
 import dev.patrickgold.jetpref.datastore.ui.ListPreferenceEntry
@@ -686,6 +687,26 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
             entry(
                 key = SwipeAction.DELETE_WORD,
                 label = stringRes(R.string.enum__swipe_action__delete_word),
+            )
+        }
+    },
+    ThemeKeyRadius::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = ThemeKeyRadius.NONE,
+                label = stringRes(R.string.enum__theme_key_radius__none),
+            )
+            entry(
+                key = ThemeKeyRadius.SMALL,
+                label = stringRes(R.string.enum__theme_key_radius__small),
+            )
+            entry(
+                key = ThemeKeyRadius.MEDIUM,
+                label = stringRes(R.string.enum__theme_key_radius__medium),
+            )
+            entry(
+                key = ThemeKeyRadius.LARGE,
+                label = stringRes(R.string.enum__theme_key_radius__large),
             )
         }
     },

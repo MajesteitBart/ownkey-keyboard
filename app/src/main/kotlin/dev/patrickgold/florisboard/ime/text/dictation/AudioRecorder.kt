@@ -16,11 +16,13 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import android.content.Context
+import android.media.MediaRecorder
+import android.os.Build
+import java.io.File
+
 /**
  * Minimal abstraction around microphone recording for dictation.
- *
- * TODO(voxtral): Replace [NoOpAudioRecorder] with a real recorder implementation
- * (MediaRecorder/AudioRecord) once runtime permission UX and format choices are finalized.
  */
 interface AudioRecorder {
     /**
@@ -46,13 +48,12 @@ data class AudioRecording(
     val sampleRateHz: Int,
     val channelCount: Int,
     val durationMs: Long,
+    val mimeType: String,
+    val fileName: String,
 )
 
 /**
  * Recorder used in MVP mock mode.
- *
- * It intentionally captures no microphone audio to keep this MVP safe and testable
- * without RECORD_AUDIO permission.
  */
 class NoOpAudioRecorder(
     private val nowMs: () -> Long = { System.currentTimeMillis() },
@@ -77,11 +78,125 @@ class NoOpAudioRecorder(
                 sampleRateHz = 16_000,
                 channelCount = 1,
                 durationMs = durationMs,
+                mimeType = "audio/wav",
+                fileName = "recording.wav",
             ),
         )
     }
 
     override fun cancel() {
         startedAtMs = null
+    }
+}
+
+/**
+ * Basic recorder implementation for real Voxtral requests.
+ *
+ * Records AAC audio into a temporary M4A file and returns file bytes after stop.
+ */
+class MediaRecorderAudioRecorder(
+    private val context: Context,
+    private val nowMs: () -> Long = { System.currentTimeMillis() },
+) : AudioRecorder {
+    private var recorder: MediaRecorder? = null
+    private var outputFile: File? = null
+    private var startedAtMs: Long? = null
+
+    override fun start(): Boolean {
+        if (startedAtMs != null) return false
+
+        val file = runCatching {
+            File.createTempFile("voxtral_dictation_", ".m4a", context.cacheDir ?: context.filesDir)
+        }.getOrElse {
+            return false
+        }
+
+        val localRecorder = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                MediaRecorder(context)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaRecorder()
+            }
+        } catch (error: Exception) {
+            file.delete()
+            return false
+        }
+
+        return try {
+            localRecorder.apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioSamplingRate(16_000)
+                setAudioChannels(1)
+                setAudioEncodingBitRate(64_000)
+                setOutputFile(file.absolutePath)
+                prepare()
+                start()
+            }
+            recorder = localRecorder
+            outputFile = file
+            startedAtMs = nowMs()
+            true
+        } catch (error: Exception) {
+            runCatching { localRecorder.reset() }
+            runCatching { localRecorder.release() }
+            file.delete()
+            false
+        }
+    }
+
+    override fun stopAndRead(): Result<AudioRecording> {
+        val localRecorder = recorder ?: return Result.failure(
+            IllegalStateException("No active recording session"),
+        )
+        val file = outputFile ?: return Result.failure(
+            IllegalStateException("No active recording file"),
+        )
+        val startedAt = startedAtMs ?: nowMs()
+
+        val stopResult = runCatching { localRecorder.stop() }
+        runCatching { localRecorder.reset() }
+        runCatching { localRecorder.release() }
+
+        recorder = null
+        outputFile = null
+        startedAtMs = null
+
+        stopResult.exceptionOrNull()?.let { error ->
+            file.delete()
+            return Result.failure(IllegalStateException("Recording was too short or unavailable.", error))
+        }
+
+        val durationMs = (nowMs() - startedAt).coerceAtLeast(0L)
+        return runCatching {
+            val bytes = file.readBytes()
+            file.delete()
+            AudioRecording(
+                bytes = bytes,
+                sampleRateHz = 16_000,
+                channelCount = 1,
+                durationMs = durationMs,
+                mimeType = "audio/mp4",
+                fileName = "recording.m4a",
+            )
+        }
+    }
+
+    override fun cancel() {
+        val localRecorder = recorder
+        val file = outputFile
+
+        recorder = null
+        outputFile = null
+        startedAtMs = null
+
+        if (localRecorder != null) {
+            runCatching { localRecorder.stop() }
+            runCatching { localRecorder.reset() }
+            runCatching { localRecorder.release() }
+        }
+        file?.delete()
     }
 }

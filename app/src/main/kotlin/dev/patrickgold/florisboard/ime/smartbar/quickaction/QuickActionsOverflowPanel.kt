@@ -16,6 +16,8 @@
 
 package dev.patrickgold.florisboard.ime.smartbar.quickaction
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -68,9 +70,11 @@ fun QuickActionsOverflowPanel() {
             .height(FlorisImeSizing.keyboardUiHeight()),
     ) {
         LazyVerticalGrid(
-            modifier = Modifier
-                .fillMaxWidth(),
-            columns = GridCells.Adaptive(FlorisImeSizing.smartbarHeight.coerceAtLeast(1.dp) * 2.2f),
+            modifier = Modifier.fillMaxWidth(),
+            columns = GridCells.Fixed(4),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(visibleActions) { action ->
                 QuickActionButton(
@@ -83,8 +87,7 @@ fun QuickActionsOverflowPanel() {
                 SnyggButton(
                     elementName = FlorisImeUi.SmartbarActionsOverflowCustomizeButton.elementName,
                     onClick = { keyboardManager.activeState.isActionsEditorVisible = true },
-                    modifier = Modifier
-                        .wrapContentWidth(),
+                    modifier = Modifier.wrapContentWidth(),
                 ) {
                     SnyggText(
                         text = stringRes(R.string.quick_actions_overflow__customize_actions_button),

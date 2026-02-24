@@ -16,7 +16,13 @@
 
 package dev.patrickgold.florisboard.ime.smartbar.quickaction
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -24,23 +30,36 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CircleShape
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
 import dev.patrickgold.florisboard.ime.keyboard.computeLabel
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
+import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.voxtralDictationManager
 import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggIcon
@@ -75,6 +94,11 @@ fun QuickActionButton(
         !isEnabled -> SnyggSelector.DISABLED
         else -> null
     }
+    val voxtralDictationManager by context.voxtralDictationManager()
+    val dictationState by voxtralDictationManager.stateFlow.collectAsState()
+    val showRecordingIndicator = action is QuickAction.InsertKey &&
+        action.data.code == KeyCode.VOICE_INPUT &&
+        dictationState == VoxtralDictationManager.DictationState.LISTENING
 
     // Need to manually cancel an action if this composable suddenly leaves the composition to prevent the key from
     // being stuck in the pressed state
@@ -92,8 +116,13 @@ fun QuickActionButton(
             attributes = attributes,
             selector = selector,
             modifier = modifier,
-            clickAndSemanticsModifier = Modifier
-                .aspectRatio(1f)
+            clickAndSemanticsModifier = (if (type == QuickActionBarType.INTERACTIVE_TILE) {
+                Modifier
+                    .fillMaxWidth()
+                    .height(108.dp)
+            } else {
+                Modifier.aspectRatio(1f)
+            })
                 .indication(interactionSource, LocalIndication.current)
                 .pointerInput(action, isEnabled) {
                     awaitEachGesture {
@@ -163,6 +192,32 @@ fun QuickActionButton(
                     )
                 }
             }
+            if (showRecordingIndicator && type == QuickActionBarType.INTERACTIVE_BUTTON) {
+                RecordingIndicatorDot(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 5.dp, end = 5.dp),
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun RecordingIndicatorDot(modifier: Modifier = Modifier) {
+    val blinkAlpha by rememberInfiniteTransition().animateFloat(
+        initialValue = 1f,
+        targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 650),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
+
+    Box(
+        modifier = modifier
+            .size(8.dp)
+            .alpha(blinkAlpha)
+            .background(Color(0xFFE53935), CircleShape),
+    )
 }

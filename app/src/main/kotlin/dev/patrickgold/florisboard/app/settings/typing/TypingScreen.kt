@@ -60,12 +60,11 @@ fun TypingScreen() = FlorisScreen {
     val navController = LocalNavController.current
 
     content {
-        // This card is temporary and is therefore not using a string resource (not so temporary as we thought...)
         FlorisErrorCard(
             modifier = Modifier.padding(8.dp),
             text = """
-                Suggestions (except system autofill) and spell checking are not available in this release. All
-                preferences in the "Corrections" group are properly implemented though.
+                Suggestions and spell checking are available in this build, but still experimental and language-dependent.
+                If behavior looks off for your language, please report feedback.
             """.trimIndent().replace('\n', ' '),
         )
 

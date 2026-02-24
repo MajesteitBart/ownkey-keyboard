@@ -2,47 +2,190 @@
   "$": "ime.extension.theme",
   "meta": {
     "id": "org.florisboard.themes.my",
-    "version": "0.2.0",
-    "title": "FlorisBoard default themes (Material You)",
+    "version": "0.3.0",
+    "title": "Voxtral Keyboard default themes (Material You)",
     "description": "Default Material You themes (both day and night) for the keyboard UI",
-    "maintainers": [ "patrickgold <patrick@patrickgold.dev>", "lm41 <lm41@lm41.xyz>" ],
+    "maintainers": [
+      "patrickgold <patrick@patrickgold.dev>",
+      "lm41 <lm41@lm41.xyz>"
+    ],
     "license": "apache-2.0"
   },
   "themes": [
     {
       "id": "floris_day_my",
       "label": "Floris Day (Material You)",
-      "authors": [ "lm41" ],
+      "authors": [
+        "lm41"
+      ],
       "isNight": false
     },
     {
       "id": "floris_day_my_borderless",
       "label": "Floris Day Borderless (Material You)",
-      "authors": [ "lm41" ],
+      "authors": [
+        "lm41"
+      ],
       "isNight": false
     },
     {
       "id": "floris_night_my",
       "label": "Floris Night (Material You)",
-      "authors": [ "lm41" ],
+      "authors": [
+        "lm41"
+      ],
       "isNight": true
     },
     {
       "id": "floris_night_my_borderless",
       "label": "Floris Night Borderless (Material You)",
-      "authors": [ "lm41" ],
+      "authors": [
+        "lm41"
+      ],
       "isNight": true
     },
     {
       "id": "floris_pure_night_my",
       "label": "Floris Pure Night (Material You)",
-      "authors": [ "lm41" ],
+      "authors": [
+        "lm41"
+      ],
       "isNight": true
     },
     {
       "id": "floris_pure_night_my_borderless",
       "label": "Floris Pure Night Borderless (Material You)",
-      "authors": [ "lm41" ],
+      "authors": [
+        "lm41"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_day_bordered_none",
+      "label": "Voxtral Day (Borders, None radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_bordered_small",
+      "label": "Voxtral Day (Borders, Small radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_bordered_medium",
+      "label": "Voxtral Day (Borders, Medium radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_bordered_large",
+      "label": "Voxtral Day (Borders, Large radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_borderless_none",
+      "label": "Voxtral Day (Borderless, None radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_borderless_small",
+      "label": "Voxtral Day (Borderless, Small radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_borderless_medium",
+      "label": "Voxtral Day (Borderless, Medium radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_day_borderless_large",
+      "label": "Voxtral Day (Borderless, Large radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": false
+    },
+    {
+      "id": "voxtral_night_bordered_none",
+      "label": "Voxtral Night (Borders, None radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_bordered_small",
+      "label": "Voxtral Night (Borders, Small radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_bordered_medium",
+      "label": "Voxtral Night (Borders, Medium radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_bordered_large",
+      "label": "Voxtral Night (Borders, Large radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_borderless_none",
+      "label": "Voxtral Night (Borderless, None radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_borderless_small",
+      "label": "Voxtral Night (Borderless, Small radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_borderless_medium",
+      "label": "Voxtral Night (Borderless, Medium radius)",
+      "authors": [
+        "Lambert"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "voxtral_night_borderless_large",
+      "label": "Voxtral Night (Borderless, Large radius)",
+      "authors": [
+        "Lambert"
+      ],
       "isNight": true
     }
   ]

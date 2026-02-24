@@ -80,8 +80,20 @@ object Backup {
     const val CLIPBOARD_IMAGES_JSON_NAME = "clipboard_images.json"
     const val CLIPBOARD_VIDEO_JSON_NAME = "clipboard_video.json"
 
+    private val SENSITIVE_PREF_KEYS = setOf(
+        "voxtral__api_key",
+    )
+
     fun defaultFileName(metadata: Metadata): String {
         return "backup_${metadata.packageName}_${metadata.versionCode}_${metadata.timestamp}.zip"
+    }
+
+    fun sanitizeJetprefBackupFile(file: java.io.File) {
+        if (!file.exists()) return
+        val sanitized = file.readLines().filterNot { line ->
+            SENSITIVE_PREF_KEYS.any { key -> line.startsWith("s;$key;") }
+        }
+        file.writeText(sanitized.joinToString(separator = "\n", postfix = "\n"))
     }
 
     enum class Destination {
@@ -175,11 +187,12 @@ fun BackupScreen() = FlorisScreen {
     suspend fun prepareBackupWorkspace() {
         val workspace = cacheManager.backupAndRestore.new()
         if (backupFilesSelector.jetprefDatastore) {
-            val fileBasedStorage = workspace.inputDir
+            val jetprefFile = workspace.inputDir
                 .subDir(AndroidAppDataStorage.JETPREF_DIR_NAME)
                 .subFile("${FlorisPreferenceModel.NAME}.${AndroidAppDataStorage.JETPREF_FILE_EXT}")
-                .let { FileBasedStorage(it.path) }
+            val fileBasedStorage = FileBasedStorage(jetprefFile.path)
             FlorisPreferenceStore.export(fileBasedStorage).getOrThrow()
+            Backup.sanitizeJetprefBackupFile(jetprefFile)
         }
         val workspaceFilesDir = workspace.inputDir.subDir("files")
         if (backupFilesSelector.imeKeyboard) {

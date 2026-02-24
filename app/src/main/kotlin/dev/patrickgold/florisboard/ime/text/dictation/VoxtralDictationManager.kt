@@ -16,9 +16,13 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.FlorisImeService
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.lib.devtools.flogError
@@ -35,14 +39,11 @@ import org.florisboard.lib.android.showShortToastSync
 /**
  * Dictation entrypoint for the keyboard voice key.
  *
- * MVP behavior:
- * - Debug builds: internal mock dictation flow (start/stop with microphone key).
- * - Non-debug builds: fallback to legacy "switch to external voice IME" flow.
+ * Debug behavior:
+ * - API key empty: internal mock dictation flow.
+ * - API key set: internal Voxtral API flow.
  *
- * TODO(voxtral):
- * - replace [NoOpAudioRecorder] with real microphone capture
- * - wire [VoxtralRelayTranscriptionClient] to backend relay
- * - expose routing mode as user-visible setting
+ * Non-debug behavior remains legacy fallback to external voice IME.
  */
 class VoxtralDictationManager(
     context: Context,
@@ -56,36 +57,48 @@ class VoxtralDictationManager(
 
     private enum class RoutingMode {
         MOCK_INTERNAL,
+        INTERNAL_VOXTRAL,
         EXTERNAL_IME_FALLBACK,
     }
 
     private val appContext by context.appContext()
     private val editorInstance by context.editorInstance()
+    private val prefs by FlorisPreferenceStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val voxtralSecretsStore = VoxtralSecretsStore(appContext)
 
-    private val routingMode = resolveRoutingMode()
-    private val audioRecorder: AudioRecorder = when (routingMode) {
-        RoutingMode.MOCK_INTERNAL -> NoOpAudioRecorder()
-        RoutingMode.EXTERNAL_IME_FALLBACK -> NoOpAudioRecorder()
-    }
-    private val transcriptionClient: TranscriptionClient = when (routingMode) {
-        RoutingMode.MOCK_INTERNAL -> MockTranscriptionClient()
-        RoutingMode.EXTERNAL_IME_FALLBACK -> VoxtralRelayTranscriptionClient()
+    private val mockAudioRecorder: AudioRecorder = NoOpAudioRecorder()
+    private val mediaAudioRecorder: AudioRecorder = MediaRecorderAudioRecorder(context = appContext)
+    private val mockTranscriptionClient: TranscriptionClient = MockTranscriptionClient()
+    private val voxtralTranscriptionClient: TranscriptionClient = VoxtralRelayTranscriptionClient(
+        apiKeyProvider = { apiKey() },
+        endpointUrlProvider = { prefs.voxtral.endpointUrl.get() },
+        modelProvider = { prefs.voxtral.model.get() },
+    )
+
+    private var activeSessionMode: RoutingMode? = null
+
+    init {
+        migrateLegacyApiKeyIfNeeded()
     }
 
     private val _stateFlow = MutableStateFlow(DictationState.IDLE)
     val stateFlow: StateFlow<DictationState> = _stateFlow
 
     fun onVoiceInputKeyPressed() {
-        when (routingMode) {
+        val currentMode = activeSessionMode ?: resolveRoutingMode()
+
+        when (currentMode) {
             RoutingMode.EXTERNAL_IME_FALLBACK -> {
                 FlorisImeService.switchToVoiceInputMethod()
                 return
             }
-            RoutingMode.MOCK_INTERNAL -> {
+
+            RoutingMode.MOCK_INTERNAL,
+            RoutingMode.INTERNAL_VOXTRAL -> {
                 when (_stateFlow.value) {
                     DictationState.IDLE,
-                    DictationState.ERROR -> startListening()
+                    DictationState.ERROR -> startListening(currentMode)
 
                     DictationState.LISTENING -> stopAndInsertTranscript()
                     DictationState.TRANSCRIBING -> {
@@ -96,33 +109,58 @@ class VoxtralDictationManager(
         }
     }
 
-    private fun startListening() {
-        val hasStarted = audioRecorder.start()
-        if (!hasStarted) {
+    private fun startListening(mode: RoutingMode) {
+        if (mode == RoutingMode.INTERNAL_VOXTRAL && !hasRecordAudioPermission()) {
             _stateFlow.value = DictationState.ERROR
-            appContext.showShortToastSync("Unable to start dictation")
+            appContext.showShortToastSync("Microphone permission missing. Grant it in Settings → Voxtral.")
             return
         }
+
+        val hasStarted = recorderFor(mode).start()
+        if (!hasStarted) {
+            _stateFlow.value = DictationState.ERROR
+            if (mode == RoutingMode.INTERNAL_VOXTRAL) {
+                appContext.showShortToastSync("Unable to start microphone recording")
+            } else {
+                appContext.showShortToastSync("Unable to start dictation")
+            }
+            return
+        }
+
+        activeSessionMode = mode
         _stateFlow.value = DictationState.LISTENING
-        appContext.showShortToastSync("Dictation started (mock mode). Tap mic again to insert text.")
+
+        if (mode == RoutingMode.MOCK_INTERNAL) {
+            appContext.showShortToastSync("Dictation started (mock mode). Tap mic again to insert text.")
+        } else {
+            appContext.showShortToastSync("Dictation started. Tap mic again to transcribe.")
+        }
     }
 
     private fun stopAndInsertTranscript() {
         scope.launch {
             _stateFlow.value = DictationState.TRANSCRIBING
-            val recording = audioRecorder.stopAndRead().getOrElse { error ->
-                setError("Failed to stop dictation", error)
+            val sessionMode = activeSessionMode ?: resolveRoutingMode()
+
+            val recorder = recorderFor(sessionMode)
+            val transcriptionClient = transcriptionClientFor(sessionMode)
+
+            val recording = recorder.stopAndRead().getOrElse { error ->
+                activeSessionMode = null
+                setError(error.message ?: "Failed to stop dictation", error)
                 return@launch
             }
 
             val transcript = withContext(Dispatchers.IO) {
                 transcriptionClient.transcribe(recording)
             }.getOrElse { error ->
-                setError("Failed to transcribe dictation", error)
+                activeSessionMode = null
+                setError(error.message ?: "Failed to transcribe dictation", error)
                 return@launch
             }.trim()
 
             if (transcript.isBlank()) {
+                activeSessionMode = null
                 _stateFlow.value = DictationState.ERROR
                 appContext.showShortToastSync("Dictation returned empty text")
                 return@launch
@@ -130,12 +168,18 @@ class VoxtralDictationManager(
 
             val wasCommitted = editorInstance.commitText(transcript)
             if (!wasCommitted) {
+                activeSessionMode = null
                 _stateFlow.value = DictationState.ERROR
                 appContext.showShortToastSync("Could not insert dictated text")
                 return@launch
             }
 
-            flogInfo { "Inserted mock dictation transcript (${transcript.length} chars)" }
+            if (sessionMode == RoutingMode.MOCK_INTERNAL) {
+                flogInfo { "Inserted mock dictation transcript (${transcript.length} chars)" }
+            } else {
+                flogInfo { "Inserted Voxtral dictation transcript (${transcript.length} chars)" }
+            }
+            activeSessionMode = null
             _stateFlow.value = DictationState.IDLE
         }
     }
@@ -147,10 +191,54 @@ class VoxtralDictationManager(
     }
 
     private fun resolveRoutingMode(): RoutingMode {
-        return if (BuildConfig.DEBUG) {
-            RoutingMode.MOCK_INTERNAL
-        } else {
-            RoutingMode.EXTERNAL_IME_FALLBACK
+        val apiKey = apiKey().trim()
+        return when {
+            apiKey.isNotEmpty() -> RoutingMode.INTERNAL_VOXTRAL
+            BuildConfig.DEBUG -> RoutingMode.MOCK_INTERNAL
+            else -> RoutingMode.EXTERNAL_IME_FALLBACK
         }
+    }
+
+    private fun apiKey(): String {
+        val secureApiKey = voxtralSecretsStore.getApiKey().trim()
+        if (secureApiKey.isNotEmpty()) {
+            return secureApiKey
+        }
+
+        val legacyApiKey = prefs.voxtral.apiKey.get().trim()
+        if (legacyApiKey.isNotEmpty()) {
+            voxtralSecretsStore.setApiKey(legacyApiKey)
+            scope.launch {
+                prefs.voxtral.apiKey.set("")
+            }
+            return legacyApiKey
+        }
+
+        return ""
+    }
+
+    private fun migrateLegacyApiKeyIfNeeded() {
+        apiKey()
+    }
+
+    private fun recorderFor(mode: RoutingMode): AudioRecorder {
+        return when (mode) {
+            RoutingMode.MOCK_INTERNAL -> mockAudioRecorder
+            RoutingMode.INTERNAL_VOXTRAL -> mediaAudioRecorder
+            RoutingMode.EXTERNAL_IME_FALLBACK -> mockAudioRecorder
+        }
+    }
+
+    private fun transcriptionClientFor(mode: RoutingMode): TranscriptionClient {
+        return when (mode) {
+            RoutingMode.MOCK_INTERNAL -> mockTranscriptionClient
+            RoutingMode.INTERNAL_VOXTRAL -> voxtralTranscriptionClient
+            RoutingMode.EXTERNAL_IME_FALLBACK -> mockTranscriptionClient
+        }
+    }
+
+    private fun hasRecordAudioPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
     }
 }

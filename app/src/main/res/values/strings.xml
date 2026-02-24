@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <string name="app_name">FlorisBoard</string>
+    <string name="app_name">Voxtral Keyboard</string>
 
     <string name="key__phone_pause" comment="Label for the Pause key in the telephone keyboard layout">Pause</string>
     <string name="key__phone_wait" comment="Label for the Wait key in the telephone keyboard layout">Wait</string>
@@ -124,8 +124,8 @@
     <string name="settings__system_default" comment="General string which is used when a preference has the system default value set">System default</string>
 
     <string name="settings__home__title" comment="Title of the Home screen">Welcome to {app_name}</string>
-    <string name="settings__home__ime_not_enabled" comment="Error message shown in Home fragment when FlorisBoard is not enabled in the system">FlorisBoard is not enabled in the system and thus won\'t be available as an input method in the input picker. Click here to resolve this issue.</string>
-    <string name="settings__home__ime_not_selected" comment="Warning message shown in Home fragment when FlorisBoard is not selected as the default keyboard">FlorisBoard is not selected as the default input method. Click here to resolve this issue.</string>
+    <string name="settings__home__ime_not_enabled" comment="Error message shown in Home fragment when Voxtral Keyboard is not enabled in the system">Voxtral Keyboard is not enabled in the system and thus won\'t be available as an input method in the input picker. Click here to resolve this issue.</string>
+    <string name="settings__home__ime_not_selected" comment="Warning message shown in Home fragment when Voxtral Keyboard is not selected as the default keyboard">Voxtral Keyboard is not selected as the default input method. Click here to resolve this issue.</string>
 
     <string name="settings__localization__title" comment="Title of languages and Layout screen">Languages &amp; Layouts</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Display language names in</string>
@@ -167,6 +167,12 @@
 
     <string name="settings__theme__title" comment="Title of the Theme screen">Theme</string>
     <string name="pref__theme__mode__label" comment="Label of the theme mode preference">Theme mode</string>
+    <string name="pref__theme__appearance__light" comment="Theme appearance value label">Light</string>
+    <string name="pref__theme__appearance__dark" comment="Theme appearance value label">Dark</string>
+    <string name="pref__theme__appearance__system" comment="Theme appearance value label">Follow system</string>
+    <string name="pref__theme__show_key_borders__label" comment="Label for key borders visibility preference">Show key borders</string>
+    <string name="pref__theme__show_key_borders__summary" comment="Summary for key borders visibility preference">Toggle between bordered and borderless key styling.</string>
+    <string name="pref__theme__key_radius__label" comment="Label for key corner radius preference">Button corner radius</string>
     <string name="pref__theme__sunrise_time__label" comment="Label of the sunrise time preference">Sunrise time</string>
     <string name="pref__theme__sunset_time__label" comment="Label of the sunset time preference">Sunset time</string>
     <string name="pref__theme__day" comment="Label of the day group (day means light theme)">Day theme</string>
@@ -175,7 +181,7 @@
         Accent color (Material You themes)
     </string>
     <string name="settings__theme_manager__title_manage" comment="Title of the theme manager screen for managing installed and custom themes">Manage installed themes</string>
-    <string name="pref__theme__source_assets" comment="Label for the theme source field">FlorisBoard App Assets</string>
+    <string name="pref__theme__source_assets" comment="Label for the theme source field">Voxtral Keyboard App Assets</string>
     <string name="pref__theme__source_internal" comment="Label for the theme source field">Internal Storage</string>
     <string name="pref__theme__source_external" comment="Label for the theme source field">External Provider</string>
 
@@ -563,6 +569,25 @@
     <string name="pref__gestures__swipe_distance_threshold__label" comment="Preference title">Swipe distance threshold</string>
 
     <string name="settings__other__title" comment="Title of Other settings">Other</string>
+    <string name="settings__voxtral__title" comment="Title of Voxtral settings screen">Voxtral</string>
+    <string name="settings__voxtral__summary" comment="Summary shown on Settings home item for Voxtral">Configure Voxtral dictation</string>
+    <string name="pref__voxtral__group_auth__label" comment="Title of the Voxtral authentication preference group">Authentication</string>
+    <string name="pref__voxtral__api_key__label" comment="Label of the Voxtral API key text field">API key</string>
+    <string name="pref__voxtral__api_key__summary" comment="Summary text for Voxtral API key preference">Stored encrypted on this device. After saving, the key is hidden and cannot be shown again in settings.</string>
+    <string name="pref__voxtral__create_account_action" comment="Button label to create Mistral account for API key">Create Mistral account</string>
+    <string name="pref__voxtral__api_key__status_set" comment="Status text shown when Voxtral API key is configured">API key is saved securely.</string>
+    <string name="pref__voxtral__api_key__status_missing" comment="Status text shown when Voxtral API key is missing">No API key configured yet.</string>
+    <string name="pref__voxtral__api_key__save_action" comment="Button label to save Voxtral API key">Save API key</string>
+    <string name="pref__voxtral__api_key__clear_action" comment="Button label to remove Voxtral API key">Remove API key</string>
+    <string name="pref__voxtral__group_connection__label" comment="Title of the Voxtral connection preference group">Connection</string>
+    <string name="pref__voxtral__endpoint__label" comment="Label of the Voxtral endpoint URL text field">Endpoint URL</string>
+    <string name="pref__voxtral__endpoint__summary" comment="Summary text for Voxtral endpoint URL preference">Default is Mistral. You can point this to a self-hosted OpenAI-compatible transcription endpoint.</string>
+    <string name="pref__voxtral__model__label" comment="Label of the Voxtral model text field">Model</string>
+    <string name="pref__voxtral__group_permissions__label" comment="Title of the Voxtral permissions preference group">Microphone access</string>
+    <string name="pref__voxtral__permission__summary" comment="Summary text for Voxtral microphone permission">Required to capture voice for dictation.</string>
+    <string name="pref__voxtral__permission__granted" comment="Status text shown when microphone permission is granted">Microphone permission granted.</string>
+    <string name="pref__voxtral__permission__missing" comment="Status text shown when microphone permission is missing">Microphone permission not granted yet.</string>
+    <string name="pref__voxtral__permission__grant_action" comment="Button label to request microphone permission">Grant microphone permission</string>
     <string name="pref__other__settings_theme__label" comment="Label of Settings theme preference in Other">Settings theme</string>
     <string name="pref__other__settings_theme__auto_amoled" comment="Possible value of Settings theme preference in Other">System default (AMOLED)</string>
     <string name="pref__other__settings_theme__light" comment="Possible value of Settings theme preference in Other">Light</string>
@@ -577,7 +602,7 @@
 
     <!-- About UI strings -->
     <string name="about__title" comment="Title of About activity">About</string>
-    <string name="about__app_icon_content_description" comment="Content description of app icon in About">App icon of FlorisBoard</string>
+    <string name="about__app_icon_content_description" comment="Content description of app icon in About">App icon of Voxtral Keyboard</string>
     <string name="about__view_licenses" comment="Label of View licenses button in About">Open source licenses</string>
     <string name="about__view_privacy_policy" comment="Label of View privacy policy button in About">Privacy policy</string>
     <string name="about__view_source_code" comment="Label of View source code button in About">Source code</string>
@@ -594,7 +619,7 @@
     <string name="about__privacy_policy__title" comment="Preference title">Privacy policy</string>
     <string name="about__privacy_policy__summary" comment="Preference summary">The privacy policy for this project</string>
     <string name="about__project_license__title" comment="Preference title">Project license</string>
-    <string name="about__project_license__summary" comment="Preference summary">FlorisBoard is licensed under {license_name}</string>
+    <string name="about__project_license__summary" comment="Preference summary">Voxtral Keyboard is licensed under {license_name}</string>
     <string name="about__project_license__error_license_text_failed" comment="Error text for license text loading failure">Error: Failed to load license text.\n-&gt; Reason: {error_message}</string>
     <string name="about__project_license__error_reason_asset_manager_null" comment="Error text if asset manager is null">Asset manager reference is null</string>
     <string name="about__third_party_licenses__title" comment="Preference title">Third-party licenses</string>
@@ -616,7 +641,7 @@
 
     <string name="setup__grant_notification_permission__title">Permit Crash Report Notifications</string>
     <string name="setup__grant_notification_permission__description">As of Android 13+, apps must ask for permission to
-        send notifications. In Florisboard, this is only used to open a crash report screen in the event of a crash.
+        send notifications. In Voxtral Keyboard, this is only used to open a crash report screen in the event of a crash.
         This permission can be changed at any time in the system settings.
     </string>
     <string name="setup__grant_notification_permission__btn">Grant Permission</string>
@@ -667,19 +692,19 @@
     <string name="backup_and_restore__restore__failure">Failed to restore data: {error_message}</string>
 
     <!-- Crash Dialog strings -->
-    <string name="crash_dialog__title" comment="Title of crash dialog">FlorisBoard error report</string>
-    <string name="crash_dialog__description" comment="Description of crash dialog">Sorry for the inconvenience, but FlorisBoard has crashed due to an unexpected error.</string>
-    <string name="crash_dialog__report_instructions" comment="Issue tracker report instructions for the crash dialog. The %s placeholder is the name of the crash report template and always in English/LTR.">If you wish to report this error, first check out the issue tracker on GitHub if your crash has not already been reported.\nIf it hasn\'t, copy the generated crash log and open a new issue. Use the \"%s\" template and fill out the description, the steps to reproduce, and paste the generated crash log at the end. This helps in making FlorisBoard better and more stable for everyone. Thank you!</string>
+    <string name="crash_dialog__title" comment="Title of crash dialog">Voxtral Keyboard error report</string>
+    <string name="crash_dialog__description" comment="Description of crash dialog">Sorry for the inconvenience, but Voxtral Keyboard has crashed due to an unexpected error.</string>
+    <string name="crash_dialog__report_instructions" comment="Issue tracker report instructions for the crash dialog. The %s placeholder is the name of the crash report template and always in English/LTR.">If you wish to report this error, first check out the issue tracker on GitHub if your crash has not already been reported.\nIf it hasn\'t, copy the generated crash log and open a new issue. Use the \"%s\" template and fill out the description, the steps to reproduce, and paste the generated crash log at the end. This helps in making Voxtral Keyboard better and more stable for everyone. Thank you!</string>
     <string name="crash_dialog__bug_report_template" comment="Name of the template to use in the GitHub issue tracker (is always in English)" translatable="false">Crash report</string>
     <string name="crash_dialog__copy_to_clipboard" comment="Label of Copy to clipboard button in crash dialog">Copy to system clipboard</string>
     <string name="crash_dialog__copy_to_clipboard_success" comment="Label of Copy to clipboard success message in crash dialog">Copied to system clipboard</string>
     <string name="crash_dialog__copy_to_clipboard_failure" comment="Label of Copy to clipboard failure message in crash dialog">Cannot copy to system clipboard: Clipboard manager instance not found</string>
     <string name="crash_dialog__open_issue_tracker" comment="Label of Open issue tracker button in crash dialog">Open issue tracker (github.com)</string>
     <string name="crash_dialog__close" comment="Label of Close button in crash dialog">Close</string>
-    <string name="crash_notification_channel__title" comment="Title of crash notification channel">FlorisBoard error reports</string>
-    <string name="crash_once_notification__title" comment="Title of the notification for a single crash">FlorisBoard has stopped working…</string>
+    <string name="crash_notification_channel__title" comment="Title of crash notification channel">Voxtral Keyboard error reports</string>
+    <string name="crash_once_notification__title" comment="Title of the notification for a single crash">Voxtral Keyboard has stopped working…</string>
     <string name="crash_once_notification__body" comment="Body of the notification for a single crash">Tap to view error details</string>
-    <string name="crash_multiple_notification__title" comment="Title of the notification for consecutive crashes">FlorisBoard seems to stop working repeatedly…</string>
+    <string name="crash_multiple_notification__title" comment="Title of the notification for consecutive crashes">Voxtral Keyboard seems to stop working repeatedly…</string>
     <string name="crash_multiple_notification__body" comment="Body of the notification for consecutive crashes">Falling back to previous keyboard to stop infinite crash loop. Tap to view error details</string>
 
 
@@ -830,7 +855,7 @@
     <string name="ext__export__failure">Failed to export extension: {error_message}</string>
     <string name="ext__import__success">Successfully imported extension!</string>
     <string name="ext__import__failure">Failed to import extension: {error_message}</string>
-    <string name="ext__import__ext_any" comment="Title of Importer screen for import of any supported FlorisBoard extension">Import extension</string>
+    <string name="ext__import__ext_any" comment="Title of Importer screen for import of any supported Voxtral Keyboard extension">Import extension</string>
     <string name="ext__import__ext_keyboard" comment="Title of Importer screen for keyboard extension import">Import keyboard extension</string>
     <string name="ext__import__ext_theme" comment="Title of Importer screen for theme extension import">Import theme extension</string>
     <string name="ext__import__ext_languagepack" comment="Title of Importer screen for language pack extension import">Import language pack extension</string>
@@ -870,7 +895,7 @@
     <string name="ext__addon_management_box__managing_placeholder">Managing {extensions}</string>
     <string name="ext__addon_management_box__addon_manager_info">All tasks related to importing, exporting, creating, customizing, and removing extensions can be handled through the centralized addon manager.</string>
     <string name="ext__addon_management_box__go_to_page">Go to {ext_home_title}</string>
-    <string name="ext__home__info">You can download and install extensions from the FlorisBoard Addons Store or import any extension file you have downloaded from the internet.</string>
+    <string name="ext__home__info">You can download and install extensions from the Voxtral Keyboard Addons Store or import any extension file you have downloaded from the internet.</string>
     <string name="ext__home__visit_store">Visit Addons Store</string>
     <string name="ext__home__manage_extensions">Manage installed extensions</string>
     <string name="ext__list__view_details">View details</string>
@@ -1118,6 +1143,10 @@
     <string name="enum__theme_mode__always_night" comment="Enum value label">Always night</string>
     <string name="enum__theme_mode__follow_system" comment="Enum value label">Follow system</string>
     <string name="enum__theme_mode__follow_time" comment="Enum value label">Follow time</string>
+    <string name="enum__theme_key_radius__none" comment="Enum value label">None</string>
+    <string name="enum__theme_key_radius__small" comment="Enum value label">Small</string>
+    <string name="enum__theme_key_radius__medium" comment="Enum value label">Medium</string>
+    <string name="enum__theme_key_radius__large" comment="Enum value label">Large</string>
 
     <string name="enum__utility_key_action__switch_to_emojis" comment="Enum value label">Switch to emojis</string>
     <string name="enum__utility_key_action__switch_language" comment="Enum value label">Switch language</string>

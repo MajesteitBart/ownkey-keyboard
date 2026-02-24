@@ -75,6 +75,7 @@ import dev.patrickgold.florisboard.app.settings.theme.ThemeManagerScreen
 import dev.patrickgold.florisboard.app.settings.theme.ThemeManagerScreenAction
 import dev.patrickgold.florisboard.app.settings.theme.ThemeScreen
 import dev.patrickgold.florisboard.app.settings.typing.TypingScreen
+import dev.patrickgold.florisboard.app.settings.voxtral.VoxtralScreen
 import dev.patrickgold.florisboard.app.setup.SetupScreen
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -171,6 +172,10 @@ object Routes {
         @Serializable
         @Deeplink("settings/media")
         object Media
+
+        @Serializable
+        @Deeplink("settings/voxtral")
+        object Voxtral
 
         @Serializable
         @Deeplink("settings/other")
@@ -313,6 +318,8 @@ object Routes {
             composableWithDeepLink(Settings.Clipboard::class) { ClipboardScreen() }
 
             composableWithDeepLink(Settings.Media::class) { MediaScreen() }
+
+            composableWithDeepLink(Settings.Voxtral::class) { VoxtralScreen() }
 
             composableWithDeepLink(Settings.Other::class) { OtherScreen() }
             composableWithDeepLink(Settings.PhysicalKeyboard::class) { PhysicalKeyboardScreen() }

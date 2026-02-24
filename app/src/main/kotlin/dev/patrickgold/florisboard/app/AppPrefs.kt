@@ -51,8 +51,9 @@ import dev.patrickgold.florisboard.ime.text.key.KeyHintConfiguration
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
+import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
-import dev.patrickgold.florisboard.ime.theme.extCoreTheme
+import dev.patrickgold.florisboard.ime.theme.extMyTheme
 import dev.patrickgold.florisboard.ime.window.ImeWindowConfig
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.lib.util.VersionName
@@ -99,7 +100,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val historyEnabled = boolean(
             key = "clipboard__history_enabled",
-            default = false,
+            default = true,
         )
         val historyNumGridColumnsPortrait = int(
             key = "clipboard__history_num_grid_columns_portrait",
@@ -164,7 +165,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val autoSpacePunctuation = boolean(
             key = "correction__auto_space_punctuation",
-            default = false,
+            default = true,
         )
         val doubleSpacePeriod = boolean(
             key = "correction__double_space_period",
@@ -491,7 +492,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val hintedSymbolsEnabled = boolean(
             key = "keyboard__hinted_symbols_enabled",
-            default = true,
+            default = false,
         )
         val hintedSymbolsMode = enum(
             key = "keyboard__hinted_symbols_mode",
@@ -684,7 +685,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val enabled = boolean(
             key = "suggestion__enabled",
-            default = false,
+            default = true,
         )
         val displayMode = enum(
             key = "suggestion__display_mode",
@@ -705,6 +706,22 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
     }
 
+    val voxtral = Voxtral()
+    inner class Voxtral {
+        val apiKey = string(
+            key = "voxtral__api_key",
+            default = "",
+        )
+        val endpointUrl = string(
+            key = "voxtral__endpoint_url",
+            default = "https://api.mistral.ai/v1/audio/transcriptions",
+        )
+        val model = string(
+            key = "voxtral__model",
+            default = "voxtral-mini-latest",
+        )
+    }
+
     val theme = Theme()
     inner class Theme {
         val mode = enum(
@@ -713,13 +730,21 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val dayThemeId = custom(
             key = "theme__day_theme_id",
-            default = extCoreTheme("floris_day"),
+            default = extMyTheme("voxtral_day_bordered_small"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
             key = "theme__night_theme_id",
-            default = extCoreTheme("floris_night"),
+            default = extMyTheme("voxtral_night_bordered_small"),
             serializer = ExtensionComponentName.Serializer,
+        )
+        val showKeyBorders = boolean(
+            key = "theme__show_key_borders",
+            default = true,
+        )
+        val keyRadius = enum(
+            key = "theme__key_radius",
+            default = ThemeKeyRadius.SMALL,
         )
         val accentColor = custom(
             key = "theme__accent_color",

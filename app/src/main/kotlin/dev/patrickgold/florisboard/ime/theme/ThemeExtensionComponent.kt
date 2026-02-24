@@ -32,6 +32,12 @@ inline fun extCoreTheme(id: String) = ExtensionComponentName(
 )
 
 @Suppress("NOTHING_TO_INLINE")
+inline fun extMyTheme(id: String) = ExtensionComponentName(
+    extensionId = "org.florisboard.themes.my",
+    componentId = id,
+)
+
+@Suppress("NOTHING_TO_INLINE")
 inline fun extPreviewTheme(id: String) = ExtensionComponentName(
     extensionId = "local.themes.preview",
     componentId = id,

@@ -35,6 +35,7 @@ import dev.patrickgold.florisboard.ime.keyboard.KeyboardManager
 import dev.patrickgold.florisboard.ime.media.emoji.FlorisEmojiCompat
 import dev.patrickgold.florisboard.ime.nlp.NlpManager
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.lib.cache.CacheManager
@@ -50,7 +51,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
 import org.florisboard.lib.kotlin.tryOrNull
-import org.florisboard.libnative.dummyAdd
 import java.lang.ref.WeakReference
 
 /**
@@ -61,17 +61,9 @@ private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 
 @Suppress("unused")
 class FlorisApplication : Application() {
-    companion object {
-        init {
-            try {
-                System.loadLibrary("fl_native")
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     private val mainHandler by lazy { Handler(mainLooper) }
     private val scope = CoroutineScope(Dispatchers.Default)
+    private val prefs by FlorisPreferenceStore
     val preferenceStoreLoaded = MutableStateFlow(false)
 
     val cacheManager = lazy { CacheManager(this) }
@@ -98,7 +90,6 @@ class FlorisApplication : Application() {
             )
             CrashUtility.install(this)
             FlorisEmojiCompat.init(this)
-            flogError { "dummy result: ${dummyAdd(3,4)}" }
 
             if (!UserManagerCompat.isUserUnlocked(this)) {
                 cacheDir?.deleteContentsRecursively()
@@ -122,11 +113,26 @@ class FlorisApplication : Application() {
                 datastoreName = FlorisPreferenceModel.NAME,
             )
             Log.i("PREFS", result.toString())
+            migrateLegacyVoxtralApiKeyIfNeeded()
             preferenceStoreLoaded.value = true
         }
         extensionManager.value.init()
         clipboardManager.value.initializeForContext(this)
         DictionaryManager.init(this)
+    }
+
+
+    private suspend fun migrateLegacyVoxtralApiKeyIfNeeded() {
+        val legacyApiKey = prefs.voxtral.apiKey.get().trim()
+        if (legacyApiKey.isBlank()) {
+            return
+        }
+
+        val secretsStore = VoxtralSecretsStore(this)
+        if (!secretsStore.hasApiKey()) {
+            secretsStore.setApiKey(legacyApiKey)
+        }
+        prefs.voxtral.apiKey.set("")
     }
 
     private inner class BootComplete : BroadcastReceiver() {
