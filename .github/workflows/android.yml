@@ -113,6 +113,24 @@ jobs:
             app/build/outputs/bundle/release/output-metadata.json
           if-no-files-found: error
 
+      - name: Publish GitHub prerelease assets (non-tag builds)
+        if: ${{ github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-${{ github.run_id }}-${{ steps.vars.outputs.build_type }}
+          target_commitish: ${{ github.sha }}
+          name: Ownkey CI ${{ steps.vars.outputs.build_type }} · run ${{ github.run_number }}
+          prerelease: true
+          fail_on_unmatched_files: false
+          generate_release_notes: false
+          body: |
+            Automated CI prerelease from `${{ github.ref_name }}`.
+            Commit: `${{ github.sha }}`
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          files: |
+            app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/*.apk
+            app/build/outputs/bundle/release/*.aab
+
       - name: Publish GitHub release assets (tag builds)
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
