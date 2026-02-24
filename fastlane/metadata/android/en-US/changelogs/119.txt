@@ -1,0 +1,7 @@
+Ownkey rebrand + docs refresh.
+
+Highlights:
+- Mistral Voxtral ASR-first input flow
+- BYOK setup with encrypted key storage
+- Improved autocorrect/suggestions (EN/NL)
+- Design and UX updates for dark theme and quick actions

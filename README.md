@@ -82,6 +82,7 @@ So, app-side telemetry/monitoring is not the model, but networked ASR naturally 
 - Feature scope and status: [VOXTRAL_FEATURE_SCOPE.md](VOXTRAL_FEATURE_SCOPE.md)
 - API setup (direct + relay options): [VOXTRAL_API_SETUP.md](VOXTRAL_API_SETUP.md)
 - Brandbook (HTML): [`docs/brandbook/ownkey-brand-book-2026-02-24-v2.html`](docs/brandbook/ownkey-brand-book-2026-02-24-v2.html)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
