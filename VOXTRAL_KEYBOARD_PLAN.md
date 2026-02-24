@@ -1,92 +1,86 @@
-# Voxtral Keyboard Plan (FlorisBoard fork)
+# Ownkey Keyboard Plan (FlorisBoard-derived)
 
 ## Goal
-Build an open-source Android keyboard with first-class voice dictation using **Mistral Voxtral Mini**,
-with strong punctuation handling and a smooth in-keyboard UX.
 
-## Why this base
-This repo is forked from FlorisBoard (open-source, Android keyboard, Kotlin codebase), which already has:
-- robust IME architecture
-- quick-action voice key support
-- multilingual keyboard/layout foundations
+Build a high-quality, open-source Android keyboard where users can:
+- bring their own AI API keys,
+- use Mistral Voxtral ASR for practical dictation,
+- get reliable autocorrect/suggestions,
+- keep privacy and control by default.
 
-## Product direction
-- Replace "open external voice IME" flow with built-in dictation flow.
-- Tap microphone key -> record audio -> transcribe via Voxtral Mini -> insert text at cursor.
-- Add punctuation and formatting post-processing options.
-- Match a dark, high-contrast keyboard style with a utility toolbar above the keys.
-- Prioritize requested features: clipboard (+ sync), NL/EN streaming ASR with punctuation, spellcheck + dictionary.
+---
 
-See also: `VOXTRAL_FEATURE_SCOPE.md` for the concrete v0.2 scope and acceptance criteria.
+## Product pillars
 
-## Architecture (recommended)
+1. **Control**
+   - User chooses provider/endpoint/model.
+   - No forced vendor lock-in.
 
-### 1) Android app layer
-- New dictation controller in the IME app.
-- Audio recording pipeline (PCM/WAV, 16 kHz+).
-- UI state in keyboard smartbar:
-  - idle
-  - listening
-  - transcribing
-  - inserting
-  - error/retry
+2. **Privacy**
+   - No in-app monitoring of private content.
+   - Keys stored encrypted on-device.
 
-### 2) Networking layer
-Two options:
+3. **Typing quality**
+   - Suggestions/autocorrect tuned for real daily use.
 
-A. Direct from app to Mistral API (fast to prototype, not secure for production)
-- API key embedded/obfuscated in app, still extractable.
+4. **UX clarity**
+   - Clean dark design, low visual noise, fast interactions.
 
-B. Backend relay (recommended for production)
-- Keyboard app sends audio to your backend.
-- Backend holds Mistral key, calls Voxtral Mini, returns transcript.
-- Enables rate limiting, auth, usage quotas, logging, and key rotation.
+---
 
-## Implementation phases
+## Architecture
 
-### Phase 1 (MVP)
-- Hook VOICE_INPUT key to internal dictation flow.
-- Record short utterances (tap-to-start / tap-to-stop).
-- Send audio to Voxtral endpoint.
-- Insert transcript into active editor.
+## 1) IME app layer
+- Internal dictation orchestration in keyboard flow
+- Audio capture + dictation state handling
+- Suggestion/autocorrect pipeline improvements
+- Theme and quick-action UX layer
 
-### Phase 2 (Quality)
-- Auto punctuation mode and language-aware formatting.
-- Better endpointing (silence detection).
-- Retry behavior, clearer error feedback.
-- Optional local post-processing rules (Dutch + English).
+## 2) ASR integration layer
+- Default direct path to Mistral Voxtral endpoint
+- Configurable endpoint/model for compatible backends
+- Optional relay mode for production hardening
 
-### Phase 3 (Production hardening)
-- Move to backend relay.
-- Telemetry (privacy-safe), rate limits, abuse protection.
-- Config flags + staged rollout.
+## 3) Security layer
+- Keystore-backed encrypted API key storage
+- Legacy plaintext migration + cleanup
+- Backup export sanitization for key fields
 
-## Key risks / decisions
-- **API key security**: mobile client key leakage risk is real.
-- **Battery + latency**: streaming vs chunked upload tradeoff.
-- **Privacy**: clear UX around cloud transcription.
-- **Licensing**: keep FlorisBoard license/attribution intact in derivative distribution.
+---
 
-## MVP implemented
+## What is already shipped
 
-### What was implemented
-- `KeyCode.VOICE_INPUT` now routes through an internal dictation hook (`VoxtralDictationManager`) instead of directly switching IME every time.
-- Added minimal dictation module scaffolding with clear interfaces:
-  - `AudioRecorder` abstraction
-  - `TranscriptionClient` abstraction
-  - `VoxtralDictationManager`
-- Added safe mock dictation flow for local testing without API keys:
-  - debug build behavior: tap mic once to start mock listening, tap again to insert mock transcript
-  - non-debug behavior: fallback to legacy external voice IME switching
-- Added concise future integration setup doc for backend relay + environment variables.
+- Voice key integrated with internal Voxtral dictation manager.
+- Mistral defaults configured (`/v1/audio/transcriptions`, `voxtral-mini-latest`).
+- Endpoint + model configurable in settings.
+- Encrypted API key storage via AndroidX Security.
+- Autocorrect/suggestion tuning with EN/NL frequency dictionaries and ranking improvements.
+- Design pass for quick actions, theme options, and cleaner dark look.
+- Ownkey brandbook included in repo (`docs/brandbook/...`).
 
-### Exact changed files
-- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/keyboard/KeyboardManager.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/FlorisImeService.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/FlorisApplication.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/VoxtralDictationManager.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/AudioRecorder.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/TranscriptionClient.kt`
-- `.env.voxtral.example`
-- `VOXTRAL_API_SETUP.md`
-- `VOXTRAL_KEYBOARD_PLAN.md`
+---
+
+## Next roadmap (practical)
+
+## Phase A — dictation quality
+- More robust streaming/partial transcript handling
+- Better stop detection and retry UX
+- Better error taxonomy and UI feedback
+
+## Phase B — typing quality
+- More language-aware correction tuning
+- Better contextual next-word quality
+- Regression test set for autocorrect edge cases
+
+## Phase C — product hardening
+- Optional managed relay deployment templates
+- Release automation + changelog discipline
+- Privacy docs + in-app disclosure polish
+
+---
+
+## Licensing and attribution
+
+- Base project: FlorisBoard (Apache-2.0)
+- Ownkey continues under Apache-2.0
+- Keep attribution clear in source and release notes for derivative work

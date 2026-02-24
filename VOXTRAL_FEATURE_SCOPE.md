@@ -1,50 +1,73 @@
-# Voxtral Keyboard — Feature scope (v0.2)
+# Ownkey Keyboard — feature scope (current)
 
-## Design direction (reference screenshot)
-- Dark theme first, high contrast keys, rounded rectangles.
-- Utility toolbar above keys with quick actions.
-- Bottom row with language switch centered and visible.
-- Minimal visual noise, fast interactions.
+This scope reflects the current Ownkey direction: Android keyboard + practical AI input + privacy-first controls.
 
-## P0 features (requested)
+## Product direction
 
-### 1) Clipboard (+ sync)
-- Integrate with Android clipboard APIs as primary source.
-- Keep local clipboard history in keyboard app (respecting Android privacy rules).
-- If user already has **Link to Windows / Phone Link** clipboard sync enabled, current clipboard copy/paste between phone and Windows should work automatically (because we use system clipboard).
-- Add explicit sync mode toggle for **keyboard-owned history/pinned clips**:
-  - Off (default, local only)
-  - Relay sync (encrypted sync via backend)
+- Open-source Android keyboard
+- BYOK (users add their own API keys)
+- Mistral Voxtral ASR as the default voice-input path
+- Stronger autocorrect/suggestions for daily typing
+- Cleaner dark visual system and streamlined settings UX
 
-**Note:** Android does not expose a generic API to sync full keyboard-managed clipboard history across devices. OS-level Phone Link helps with system clipboard, but not full custom history sync.
+---
 
-### 2) ASR with punctuation, streaming (NL + EN)
-- Streaming dictation path via Voxtral Mini.
-- Language mode:
-  - Auto (NL/EN)
-  - Force Dutch
-  - Force English
-- Punctuation mode:
-  - Auto punctuation ON/OFF
-- Low-latency partial transcript updates with final replacement.
+## P0 focus (implemented / in progress)
 
-### 3) Automatic spellcheck + dictionary
-- Enable/keep keyboard spellcheck suggestions by default.
-- Ensure Dutch + English dictionaries installed and selectable.
-- Add settings for:
-  - Auto-correct ON/OFF
-  - Personal dictionary edits
-  - Learned words reset
+## 1) ASR input with Voxtral
 
-## Implementation order
-1. Toolbar + action model updates (clipboard + mic prominence).
-2. Real audio recorder + streaming transcription client.
-3. NL/EN language + punctuation options.
-4. Clipboard history and sync mode toggle scaffolding.
-5. Spellcheck/dictionary defaults and QA.
+**Implemented**
+- Internal dictation flow integrated with voice key
+- Configurable endpoint + model
+- Default configured for Mistral Voxtral Mini
+- Settings UX for connection values
 
-## Done criteria for v0.2
-- User can open clipboard quickly from toolbar.
-- User can dictate in Dutch and English with punctuation.
-- User sees spelling suggestions and can manage dictionary behavior.
-- No API secrets in app binary.
+**Next refinements**
+- More robust streaming/partial transcript behavior
+- Better endpointing/silence handling
+- Additional UX states and retry affordances
+
+## 2) Autocorrect that works in real typing
+
+**Implemented**
+- Suggestion ranking tuned
+- Caching added for faster responses
+- EN/NL frequency dictionaries integrated
+- Safer typo correction behavior and fallback suggestions
+
+**Next refinements**
+- More typo patterns and contextual ranking
+- Expanded language quality checks
+- Additional regression tests for false corrections
+
+## 3) Ownkey design improvements
+
+**Implemented**
+- Dark-first visual pass
+- Samsung-inspired quick-action layout updates
+- Theme controls simplified (appearance, borders, corner radius)
+
+**Next refinements**
+- Consistent visual polish across all settings screens
+- Optional premium style packs (without license conflicts)
+- Better animation/motion consistency
+
+## 4) Privacy + key management
+
+**Implemented**
+- Encrypted API key storage (Keystore-backed)
+- Backup sanitization for sensitive fields
+- Open-source transparency baseline
+
+**Next refinements**
+- Clearer in-app privacy copy per network feature
+- Optional relay mode presets for managed deployments
+
+---
+
+## Done criteria for this cycle
+
+- User can configure Voxtral endpoint/model/key and dictate reliably.
+- User gets noticeably better autocorrect/suggestions than baseline Floris behavior.
+- UI reflects Ownkey style direction consistently in key flows.
+- Sensitive key storage is encrypted and backup-safe.
