@@ -31,6 +31,11 @@ on:
           - debug
           - beta
           - release
+      include_wear:
+        description: "Also build Wear artifacts"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -63,54 +68,103 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             BUILD_TYPE="${{ github.event.inputs.build_type }}"
+            INCLUDE_WEAR="${{ github.event.inputs.include_wear }}"
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             BUILD_TYPE="release"
+            INCLUDE_WEAR="true"
           else
             BUILD_TYPE="debug"
+            INCLUDE_WEAR="true"
           fi
 
           BUILD_TYPE="${BUILD_TYPE,,}"
           BUILD_TYPE_CAP="${BUILD_TYPE^}"
-          APK_TASK="assemble${BUILD_TYPE_CAP}"
+          APP_APK_TASK=":app:assemble${BUILD_TYPE_CAP}"
 
+          # Wear module currently supports debug/release variants.
           if [[ "${BUILD_TYPE}" == "release" ]]; then
-            BUNDLE_TASK="bundleRelease"
+            WEAR_BUILD_TYPE="release"
+            WEAR_APK_TASK=":wear:assembleRelease"
+            APP_BUNDLE_TASK=":app:bundleRelease"
+            WEAR_BUNDLE_TASK=":wear:bundleRelease"
           else
-            BUNDLE_TASK=""
+            WEAR_BUILD_TYPE="debug"
+            WEAR_APK_TASK=":wear:assembleDebug"
+            APP_BUNDLE_TASK=""
+            WEAR_BUNDLE_TASK=""
           fi
 
           echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
-          echo "apk_task=${APK_TASK}" >> "$GITHUB_OUTPUT"
-          echo "bundle_task=${BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
-          echo "Selected APK task: ${APK_TASK}"
-          if [[ -n "${BUNDLE_TASK}" ]]; then
-            echo "Selected AAB task: ${BUNDLE_TASK}"
+          echo "wear_build_type=${WEAR_BUILD_TYPE}" >> "$GITHUB_OUTPUT"
+          echo "app_apk_task=${APP_APK_TASK}" >> "$GITHUB_OUTPUT"
+          echo "wear_apk_task=${WEAR_APK_TASK}" >> "$GITHUB_OUTPUT"
+          echo "app_bundle_task=${APP_BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
+          echo "wear_bundle_task=${WEAR_BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
+          echo "include_wear=${INCLUDE_WEAR}" >> "$GITHUB_OUTPUT"
+
+          echo "Selected app APK task: ${APP_APK_TASK}"
+          if [[ "${INCLUDE_WEAR}" == "true" ]]; then
+            echo "Selected wear APK task: ${WEAR_APK_TASK}"
+          fi
+          if [[ -n "${APP_BUNDLE_TASK}" ]]; then
+            echo "Selected app AAB task: ${APP_BUNDLE_TASK}"
+          fi
+          if [[ -n "${WEAR_BUNDLE_TASK}" && "${INCLUDE_WEAR}" == "true" ]]; then
+            echo "Selected wear AAB task: ${WEAR_BUNDLE_TASK}"
           fi
 
-      - name: Build APK with Gradle
-        run: ./gradlew clean ${{ steps.vars.outputs.apk_task }} --stacktrace
+      - name: Build phone APK with Gradle
+        run: ./gradlew clean ${{ steps.vars.outputs.app_apk_task }} --stacktrace
 
-      - name: Build release AAB
-        if: ${{ steps.vars.outputs.bundle_task != '' }}
-        run: ./gradlew ${{ steps.vars.outputs.bundle_task }} --stacktrace
+      - name: Build wear APK with Gradle
+        if: ${{ steps.vars.outputs.include_wear == 'true' }}
+        run: ./gradlew ${{ steps.vars.outputs.wear_apk_task }} --stacktrace
 
-      - name: Upload APK artifact
+      - name: Build phone release AAB
+        if: ${{ steps.vars.outputs.app_bundle_task != '' }}
+        run: ./gradlew ${{ steps.vars.outputs.app_bundle_task }} --stacktrace
+
+      - name: Build wear release AAB
+        if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
+        run: ./gradlew ${{ steps.vars.outputs.wear_bundle_task }} --stacktrace
+
+      - name: Upload phone APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ownkey-${{ steps.vars.outputs.build_type }}-apk
+          name: ownkey-phone-${{ steps.vars.outputs.build_type }}-apk
           path: |
             app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/*.apk
             app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/output-metadata.json
           if-no-files-found: error
 
-      - name: Upload release AAB artifact
-        if: ${{ steps.vars.outputs.bundle_task != '' }}
+      - name: Upload wear APK artifact
+        if: ${{ steps.vars.outputs.include_wear == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ownkey-release-aab
+          name: ownkey-wear-${{ steps.vars.outputs.wear_build_type }}-apk
+          path: |
+            wear/build/outputs/apk/${{ steps.vars.outputs.wear_build_type }}/*.apk
+            wear/build/outputs/apk/${{ steps.vars.outputs.wear_build_type }}/output-metadata.json
+          if-no-files-found: error
+
+      - name: Upload phone release AAB artifact
+        if: ${{ steps.vars.outputs.app_bundle_task != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ownkey-phone-release-aab
           path: |
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/bundle/release/output-metadata.json
+          if-no-files-found: error
+
+      - name: Upload wear release AAB artifact
+        if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ownkey-wear-release-aab
+          path: |
+            wear/build/outputs/bundle/release/*.aab
+            wear/build/outputs/bundle/release/output-metadata.json
           if-no-files-found: error
 
       - name: Publish GitHub prerelease assets (non-tag builds)
@@ -129,7 +183,9 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           files: |
             app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/*.apk
+            wear/build/outputs/apk/${{ steps.vars.outputs.wear_build_type }}/*.apk
             app/build/outputs/bundle/release/*.aab
+            wear/build/outputs/bundle/release/*.aab
 
       - name: Publish GitHub release assets (tag builds)
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -137,5 +193,7 @@ jobs:
         with:
           files: |
             app/build/outputs/apk/release/*.apk
+            wear/build/outputs/apk/release/*.apk
             app/build/outputs/bundle/release/*.aab
+            wear/build/outputs/bundle/release/*.aab
           generate_release_notes: true

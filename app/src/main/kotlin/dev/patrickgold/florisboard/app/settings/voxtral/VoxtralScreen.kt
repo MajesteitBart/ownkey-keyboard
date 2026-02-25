@@ -81,6 +81,7 @@ fun VoxtralScreen() = FlorisScreen {
         val model by prefsRef.voxtral.model.collectAsState()
         val languageHint by prefsRef.voxtral.languageHint.collectAsState()
         val coroutineScope = rememberCoroutineScope()
+        var wearSyncStatus by remember { mutableStateOf("") }
 
         LaunchedEffect(Unit) {
             val legacyApiKey = prefsRef.voxtral.apiKey.get().trim()
@@ -137,6 +138,21 @@ fun VoxtralScreen() = FlorisScreen {
                         coroutineScope.launch {
                             prefsRef.voxtral.apiKey.set("")
                         }
+
+                        WearVoxtralSync.pushConfig(
+                            context = context,
+                            config = WearVoxtralConfig(
+                                apiKey = normalizedApiKey,
+                                endpointUrl = endpointUrl,
+                                model = model,
+                                languageHint = languageHint,
+                            ),
+                        ) { result ->
+                            wearSyncStatus = result.fold(
+                                onSuccess = { count -> "Wear sync gelukt ($count device${if (count == 1) "" else "s"})" },
+                                onFailure = { error -> "Wear sync mislukt: ${error.message}" },
+                            )
+                        }
                     },
                     enabled = apiKeyInput.trim().isNotEmpty(),
                 ) {
@@ -149,6 +165,21 @@ fun VoxtralScreen() = FlorisScreen {
                             hasStoredApiKey = false
                             coroutineScope.launch {
                                 prefsRef.voxtral.apiKey.set("")
+                            }
+
+                            WearVoxtralSync.pushConfig(
+                                context = context,
+                                config = WearVoxtralConfig(
+                                    apiKey = "",
+                                    endpointUrl = endpointUrl,
+                                    model = model,
+                                    languageHint = languageHint,
+                                ),
+                            ) { result ->
+                                wearSyncStatus = result.fold(
+                                    onSuccess = { count -> "Wear sync gelukt ($count device${if (count == 1) "" else "s"})" },
+                                    onFailure = { error -> "Wear sync mislukt: ${error.message}" },
+                                )
                             }
                         },
                     ) {
@@ -206,6 +237,33 @@ fun VoxtralScreen() = FlorisScreen {
                 label = { Text(stringRes(R.string.pref__voxtral__language_hint__label)) },
                 singleLine = true,
             )
+            Button(
+                onClick = {
+                    WearVoxtralSync.pushConfig(
+                        context = context,
+                        config = WearVoxtralConfig(
+                            apiKey = voxtralSecretsStore.getApiKey(),
+                            endpointUrl = endpointUrl,
+                            model = model,
+                            languageHint = languageHint,
+                        ),
+                    ) { result ->
+                        wearSyncStatus = result.fold(
+                            onSuccess = { count -> "Wear sync gelukt ($count device${if (count == 1) "" else "s"})" },
+                            onFailure = { error -> "Wear sync mislukt: ${error.message}" },
+                        )
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(stringRes(R.string.pref__voxtral__sync_wear__action))
+            }
+            if (wearSyncStatus.isNotBlank()) {
+                Text(
+                    text = wearSyncStatus,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
         }
 
         PreferenceGroup(title = stringRes(R.string.pref__voxtral__group_permissions__label)) {

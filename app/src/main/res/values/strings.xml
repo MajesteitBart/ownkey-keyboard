@@ -590,6 +590,7 @@
     <string name="pref__voxtral__permission__granted" comment="Status text shown when microphone permission is granted">Microphone permission granted.</string>
     <string name="pref__voxtral__permission__missing" comment="Status text shown when microphone permission is missing">Microphone permission not granted yet.</string>
     <string name="pref__voxtral__permission__grant_action" comment="Button label to request microphone permission">Grant microphone permission</string>
+    <string name="pref__voxtral__sync_wear__action" comment="Button label to sync Voxtral settings to watch">Sync to Wear</string>
     <string name="pref__other__settings_theme__label" comment="Label of Settings theme preference in Other">Settings theme</string>
     <string name="pref__other__settings_theme__auto_amoled" comment="Possible value of Settings theme preference in Other">System default (AMOLED)</string>
     <string name="pref__other__settings_theme__light" comment="Possible value of Settings theme preference in Other">Light</string>

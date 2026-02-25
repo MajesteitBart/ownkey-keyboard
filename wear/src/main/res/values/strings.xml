@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Ownkey Wear</string>
+    <string name="api_key_hint">Mistral API key</string>
+    <string name="endpoint_hint">Endpoint</string>
+    <string name="model_hint">Model</string>
+    <string name="language_hint">Language hint (nl/en)</string>
+    <string name="start_recording">Start opnemen</string>
+    <string name="stop_and_transcribe">Stop + transcribe</string>
+    <string name="submit_text">Verstuur / Enter</string>
+    <string name="backspace_text">Backspace</string>
+</resources>
