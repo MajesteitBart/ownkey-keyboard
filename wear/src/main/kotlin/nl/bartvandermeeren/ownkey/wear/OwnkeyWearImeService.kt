@@ -43,15 +43,15 @@ class OwnkeyWearImeService : InputMethodService() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(10), dp(8), dp(10))
+            setPadding(dp(6), dp(8), dp(6), dp(8))
         }
 
         val status = TextView(this).apply {
             text = "Enter your input"
-            textSize = 16f
+            textSize = 14f
             gravity = Gravity.CENTER_HORIZONTAL
             setTextColor(Color.WHITE)
-            setPadding(0, 0, 0, dp(10))
+            setPadding(0, 0, 0, dp(8))
         }
 
         val row = LinearLayout(this).apply {
@@ -255,7 +255,7 @@ class OwnkeyWearImeService : InputMethodService() {
     }
 
     private fun createRoundActionButton(iconRes: Int, description: String): ImageButton {
-        val size = dp(52)
+        val size = dp(44)
         val button = ImageButton(this).apply {
             setImageResource(iconRes)
             contentDescription = description
@@ -265,12 +265,12 @@ class OwnkeyWearImeService : InputMethodService() {
                 shape = GradientDrawable.OVAL
                 setColor(Color.parseColor("#C9D6F4"))
             }
-            setPadding(dp(14), dp(14), dp(14), dp(14))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
         }
 
         val lp = LinearLayout.LayoutParams(size, size).apply {
-            marginStart = dp(4)
-            marginEnd = dp(4)
+            marginStart = dp(2)
+            marginEnd = dp(2)
         }
         button.layoutParams = lp
         return button

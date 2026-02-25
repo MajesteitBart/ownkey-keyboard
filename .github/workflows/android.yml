@@ -62,7 +62,7 @@ jobs:
       - name: Set up CMake and Ninja
         uses: lukka/get-cmake@v4.0.2
 
-      - name: Resolve build tasks
+      - name: Resolve build tasks and version metadata
         id: vars
         shell: bash
         run: |
@@ -81,7 +81,6 @@ jobs:
           BUILD_TYPE_CAP="${BUILD_TYPE^}"
           APP_APK_TASK=":app:assemble${BUILD_TYPE_CAP}"
 
-          # Wear module currently supports debug/release variants.
           if [[ "${BUILD_TYPE}" == "release" ]]; then
             WEAR_BUILD_TYPE="release"
             WEAR_APK_TASK=":wear:assembleRelease"
@@ -94,6 +93,9 @@ jobs:
             WEAR_BUNDLE_TASK=""
           fi
 
+          VERSION=$(grep '^projectVersionName=' gradle.properties | cut -d= -f2 | tr -d '\r')
+          SHORT_SHA="${GITHUB_SHA::7}"
+
           echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
           echo "wear_build_type=${WEAR_BUILD_TYPE}" >> "$GITHUB_OUTPUT"
           echo "app_apk_task=${APP_APK_TASK}" >> "$GITHUB_OUTPUT"
@@ -101,6 +103,8 @@ jobs:
           echo "app_bundle_task=${APP_BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
           echo "wear_bundle_task=${WEAR_BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
           echo "include_wear=${INCLUDE_WEAR}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
           echo "Selected app APK task: ${APP_APK_TASK}"
           if [[ "${INCLUDE_WEAR}" == "true" ]]; then
@@ -112,6 +116,7 @@ jobs:
           if [[ -n "${WEAR_BUNDLE_TASK}" && "${INCLUDE_WEAR}" == "true" ]]; then
             echo "Selected wear AAB task: ${WEAR_BUNDLE_TASK}"
           fi
+          echo "Version: ${VERSION}"
 
       - name: Build phone APK with Gradle
         run: ./gradlew clean ${{ steps.vars.outputs.app_apk_task }} --stacktrace
@@ -128,72 +133,107 @@ jobs:
         if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
         run: ./gradlew ${{ steps.vars.outputs.wear_bundle_task }} --stacktrace
 
+      - name: Prepare versioned distributables
+        id: package
+        shell: bash
+        run: |
+          rm -rf dist
+          mkdir -p dist/phone dist/wear
+
+          BUILD_TYPE="${{ steps.vars.outputs.build_type }}"
+          WEAR_BUILD_TYPE="${{ steps.vars.outputs.wear_build_type }}"
+          VERSION="${{ steps.vars.outputs.version }}"
+          SHORT_SHA="${{ steps.vars.outputs.short_sha }}"
+
+          APP_APK_SRC=$(ls app/build/outputs/apk/${BUILD_TYPE}/*.apk | head -n1)
+          APP_APK_NAME="ownkey-phone-${BUILD_TYPE}-v${VERSION}-${SHORT_SHA}.apk"
+          cp "$APP_APK_SRC" "dist/phone/${APP_APK_NAME}"
+          echo "app_apk=dist/phone/${APP_APK_NAME}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${{ steps.vars.outputs.include_wear }}" == "true" ]]; then
+            WEAR_APK_SRC=$(ls wear/build/outputs/apk/${WEAR_BUILD_TYPE}/*.apk | head -n1)
+            WEAR_APK_NAME="ownkey-wear-${WEAR_BUILD_TYPE}-v${VERSION}-${SHORT_SHA}.apk"
+            cp "$WEAR_APK_SRC" "dist/wear/${WEAR_APK_NAME}"
+            echo "wear_apk=dist/wear/${WEAR_APK_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "${{ steps.vars.outputs.app_bundle_task }}" ]]; then
+            APP_AAB_SRC=$(ls app/build/outputs/bundle/release/*.aab | head -n1)
+            APP_AAB_NAME="ownkey-phone-release-v${VERSION}-${SHORT_SHA}.aab"
+            cp "$APP_AAB_SRC" "dist/phone/${APP_AAB_NAME}"
+            echo "app_aab=dist/phone/${APP_AAB_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ "${{ steps.vars.outputs.include_wear }}" == "true" && -n "${{ steps.vars.outputs.wear_bundle_task }}" ]]; then
+            WEAR_AAB_SRC=$(ls wear/build/outputs/bundle/release/*.aab | head -n1)
+            WEAR_AAB_NAME="ownkey-wear-release-v${VERSION}-${SHORT_SHA}.aab"
+            cp "$WEAR_AAB_SRC" "dist/wear/${WEAR_AAB_NAME}"
+            echo "wear_aab=dist/wear/${WEAR_AAB_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "Prepared distributables:"
+          find dist -type f -maxdepth 3 | sort
+
       - name: Upload phone APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ownkey-phone-${{ steps.vars.outputs.build_type }}-apk
-          path: |
-            app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/*.apk
-            app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/output-metadata.json
+          name: ownkey-phone-${{ steps.vars.outputs.build_type }}-v${{ steps.vars.outputs.version }}
+          path: ${{ steps.package.outputs.app_apk }}
           if-no-files-found: error
 
       - name: Upload wear APK artifact
         if: ${{ steps.vars.outputs.include_wear == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ownkey-wear-${{ steps.vars.outputs.wear_build_type }}-apk
-          path: |
-            wear/build/outputs/apk/${{ steps.vars.outputs.wear_build_type }}/*.apk
-            wear/build/outputs/apk/${{ steps.vars.outputs.wear_build_type }}/output-metadata.json
+          name: ownkey-wear-${{ steps.vars.outputs.wear_build_type }}-v${{ steps.vars.outputs.version }}
+          path: ${{ steps.package.outputs.wear_apk }}
           if-no-files-found: error
 
       - name: Upload phone release AAB artifact
         if: ${{ steps.vars.outputs.app_bundle_task != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ownkey-phone-release-aab
-          path: |
-            app/build/outputs/bundle/release/*.aab
-            app/build/outputs/bundle/release/output-metadata.json
+          name: ownkey-phone-release-aab-v${{ steps.vars.outputs.version }}
+          path: ${{ steps.package.outputs.app_aab }}
           if-no-files-found: error
 
       - name: Upload wear release AAB artifact
         if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ownkey-wear-release-aab
-          path: |
-            wear/build/outputs/bundle/release/*.aab
-            wear/build/outputs/bundle/release/output-metadata.json
+          name: ownkey-wear-release-aab-v${{ steps.vars.outputs.version }}
+          path: ${{ steps.package.outputs.wear_aab }}
           if-no-files-found: error
 
       - name: Publish GitHub prerelease assets (non-tag builds)
         if: ${{ github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ci-${{ github.run_id }}-${{ steps.vars.outputs.build_type }}
+          tag_name: ci-${{ github.run_id }}-${{ steps.vars.outputs.build_type }}-v${{ steps.vars.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: Ownkey CI ${{ steps.vars.outputs.build_type }} · run ${{ github.run_number }}
+          name: Ownkey CI ${{ steps.vars.outputs.build_type }} v${{ steps.vars.outputs.version }} · run ${{ github.run_number }}
           prerelease: true
           fail_on_unmatched_files: false
           generate_release_notes: false
           body: |
             Automated CI prerelease from `${{ github.ref_name }}`.
+            Version: `${{ steps.vars.outputs.version }}`
             Commit: `${{ github.sha }}`
+            Includes: Phone + Wear artifacts
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           files: |
-            app/build/outputs/apk/${{ steps.vars.outputs.build_type }}/*.apk
-            wear/build/outputs/apk/${{ steps.vars.outputs.wear_build_type }}/*.apk
-            app/build/outputs/bundle/release/*.aab
-            wear/build/outputs/bundle/release/*.aab
+            dist/phone/*.apk
+            dist/phone/*.aab
+            dist/wear/*.apk
+            dist/wear/*.aab
 
       - name: Publish GitHub release assets (tag builds)
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/release/*.apk
-            wear/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
-            wear/build/outputs/bundle/release/*.aab
+            dist/phone/*.apk
+            dist/phone/*.aab
+            dist/wear/*.apk
+            dist/wear/*.aab
           generate_release_notes: true
