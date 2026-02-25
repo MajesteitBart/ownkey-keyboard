@@ -17,6 +17,7 @@
 package dev.patrickgold.florisboard.ime.nlp.latin
 
 import android.content.Context
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
@@ -69,6 +70,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val isPrefixMatch: Boolean,
     )
 
+    private data class ScoredCandidate(
+        val ranked: RankedCandidate,
+        val confidence: Double,
+    )
+
     private data class SuggestCacheKey(
         val language: String,
         val composingText: String,
@@ -87,6 +93,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     )
 
     private val appContext by context.appContext()
+    private val prefs by FlorisPreferenceStore
     private val languageModels = guardedByLock { mutableMapOf<String, LanguageModel>() }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
     private val emptyModel = LanguageModel(
@@ -223,7 +230,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     if (rankedCandidates.isEmpty()) {
                         emptyList()
                     } else {
-                        rankedCandidates.values
+                        val sortedCandidates = rankedCandidates.values
                             .sortedWith(
                                 compareByDescending<RankedCandidate> { rankSuggestionCandidate(model, normalizedInput, it) }
                                     .thenByDescending { it.frequency }
@@ -231,11 +238,30 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                             )
                             .take(maxCandidateCount)
                             .map { candidate ->
+                                ScoredCandidate(
+                                    ranked = candidate,
+                                    confidence = calculateConfidence(model, normalizedInput, candidate),
+                                )
+                            }
+                        val autoCorrectPolicy = currentHighCertaintyAutocorrectPolicy()
+                        val topCandidate = sortedCandidates.firstOrNull()
+                        val runnerUpConfidence = sortedCandidates.getOrNull(1)?.confidence
+
+                        sortedCandidates.map { scoredCandidate ->
+                                val candidate = scoredCandidate.ranked
                                 val suggestionText = applyInputCase(rawInput, candidate.word, locale)
+                                val isAutoCommitCandidate = topCandidate == scoredCandidate && autoCorrectPolicy.shouldAutoCommit(
+                                    normalizedInput = normalizedInput,
+                                    candidateWord = candidate.word,
+                                    candidateEditDistance = candidate.distance,
+                                    candidateConfidence = scoredCandidate.confidence,
+                                    runnerUpConfidence = runnerUpConfidence,
+                                    hasExactInputMatch = hasExactMatch,
+                                )
                                 WordSuggestionCandidate(
                                     text = suggestionText,
-                                    confidence = calculateConfidence(model, normalizedInput, candidate),
-                                    isEligibleForAutoCommit = false,
+                                    confidence = scoredCandidate.confidence,
+                                    isEligibleForAutoCommit = isAutoCommitCandidate,
                                     sourceProvider = this@LatinLanguageProvider,
                                 )
                             }
@@ -685,6 +711,22 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private fun normalizeLanguageCode(languageCode: String): String {
         return languageCode.trim().lowercase(Locale.ROOT)
+    }
+
+    private fun currentHighCertaintyAutocorrectPolicy(): HighCertaintyAutocorrectPolicy {
+        val minConfidencePercent = prefs.correction.highCertaintyAutocorrectMinConfidencePercent.get().coerceIn(50, 99)
+        val minGapPercent = prefs.correction.highCertaintyAutocorrectMinConfidenceGapPercent.get().coerceIn(0, 50)
+        val minInputLength = prefs.correction.highCertaintyAutocorrectMinInputLength.get().coerceIn(3, 12)
+
+        return HighCertaintyAutocorrectPolicy(
+            HighCertaintyAutocorrectConfig(
+                enabled = prefs.correction.highCertaintyAutocorrectEnabled.get(),
+                minConfidence = minConfidencePercent / 100.0,
+                minConfidenceGap = minGapPercent / 100.0,
+                minInputLength = minInputLength,
+                maxAutoCorrectEditDistance = MaxEditDistance,
+            )
+        )
     }
 
     private fun normalizeDictionaryWord(word: String): String {

@@ -163,6 +163,22 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "correction__auto_capitalization",
             default = true,
         )
+        val highCertaintyAutocorrectEnabled = boolean(
+            key = "correction__high_certainty_autocorrect_enabled",
+            default = true,
+        )
+        val highCertaintyAutocorrectMinConfidencePercent = int(
+            key = "correction__high_certainty_autocorrect_min_confidence_percent",
+            default = 88,
+        )
+        val highCertaintyAutocorrectMinConfidenceGapPercent = int(
+            key = "correction__high_certainty_autocorrect_min_confidence_gap_percent",
+            default = 12,
+        )
+        val highCertaintyAutocorrectMinInputLength = int(
+            key = "correction__high_certainty_autocorrect_min_input_length",
+            default = 4,
+        )
         val autoSpacePunctuation = boolean(
             key = "correction__auto_space_punctuation",
             default = true,
