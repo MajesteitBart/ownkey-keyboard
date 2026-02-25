@@ -52,15 +52,15 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val MinLengthForTypoCorrections = 4
         private const val SuggestionCacheMaxSize = 128
         private const val SuggestionContextTailLength = 96
-        private const val FallbackNextWordPoolSize = 64
+        private const val ShortcutPrefixDepth = 3
+        private const val ShortcutPrefixPoolSize = 48
+        private const val ShortcutFallbackPoolSize = 64
 
         private val FrequencyDictionaryAssets = mapOf(
             "en" to "ime/dict/frequencywords/en_50k.txt",
             "nl" to "ime/dict/frequencywords/nl_50k.txt",
         )
     }
-
-    private data class WordFrequency(val word: String, val frequency: Int)
 
     private data class RankedCandidate(
         val word: String,
@@ -83,7 +83,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val words: Map<String, Int>,
         val deleteIndex: Map<String, Set<String>>,
         val maxFrequency: Int,
-        val wordsByFirstChar: Map<Char, List<WordFrequency>>,
+        val predictionShortcuts: LatinPredictionShortcuts,
     )
 
     private val appContext by context.appContext()
@@ -93,7 +93,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         words = emptyMap(),
         deleteIndex = emptyMap(),
         maxFrequency = 1,
-        wordsByFirstChar = emptyMap(),
+        predictionShortcuts = LatinPredictionShortcuts(emptyMap()),
     )
     private val suggestionCache = guardedByLock {
         object : LinkedHashMap<SuggestCacheKey, List<SuggestionCandidate>>(SuggestionCacheMaxSize, 0.75f, true) {
@@ -381,21 +381,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             indexWord(word, deleteIndex)
         }
 
-        val wordsByFirstChar = words.entries
-            .filter { it.key.isNotEmpty() }
-            .groupBy(
-                keySelector = { it.key.first() },
-                valueTransform = { WordFrequency(word = it.key, frequency = it.value) },
-            )
-            .mapValues { (_, list) ->
-                list.sortedByDescending { it.frequency }
-            }
+        val predictionShortcuts = LatinPredictionShortcuts(
+            words = words,
+            maxPrefixDepth = ShortcutPrefixDepth,
+            prefixPoolSize = ShortcutPrefixPoolSize,
+            fallbackPoolSize = ShortcutFallbackPoolSize,
+        )
 
         return LanguageModel(
             words = words,
             deleteIndex = deleteIndex.mapValues { (_, set) -> set.toSet() },
             maxFrequency = words.values.maxOrNull()?.coerceAtLeast(1) ?: 1,
-            wordsByFirstChar = wordsByFirstChar,
+            predictionShortcuts = predictionShortcuts,
         )
     }
 
@@ -475,23 +472,15 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         input: String,
         maxCount: Int,
     ): List<RankedCandidate> {
-        val firstChar = input.firstOrNull() ?: return emptyList()
-        val bucket = model.wordsByFirstChar[firstChar] ?: return emptyList()
-
-        val prefixCandidates = mutableListOf<RankedCandidate>()
-        for (candidate in bucket) {
-            if (candidate.word == input || !candidate.word.startsWith(input)) continue
-            prefixCandidates.add(
+        return model.predictionShortcuts.lookupPrefixCandidates(input, maxCount)
+            .map { candidate ->
                 RankedCandidate(
                     word = candidate.word,
                     distance = 0,
                     frequency = candidate.frequency,
                     isPrefixMatch = true,
                 )
-            )
-            if (prefixCandidates.size >= maxCount) break
-        }
-        return prefixCandidates
+            }
     }
 
     private suspend fun suggestNextWordCandidates(
@@ -661,24 +650,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         previousWord: String,
         maxCandidateCount: Int,
     ): List<SuggestionCandidate> {
-        val fallbackWords = model.words.entries
-            .asSequence()
-            .filter { (word, _) -> word != previousWord && word.length >= 2 }
-            .sortedByDescending { it.value }
-            .take(FallbackNextWordPoolSize)
-            .sortedWith(
-                compareByDescending<Map.Entry<String, Int>> { it.value }
-                    .thenBy { it.key }
-            )
-            .take(maxCandidateCount)
-            .toList()
+        val fallbackWords = model.predictionShortcuts.fallbackCandidates(previousWord, maxCandidateCount)
 
         if (fallbackWords.isEmpty()) return emptyList()
 
         return fallbackWords.map { entry ->
             WordSuggestionCandidate(
-                text = entry.key,
-                confidence = (0.20 + 0.35 * (entry.value.toDouble() / model.maxFrequency.toDouble())).coerceIn(0.10, 0.55),
+                text = entry.word,
+                confidence = (0.20 + 0.35 * (entry.frequency.toDouble() / model.maxFrequency.toDouble())).coerceIn(0.10, 0.55),
                 isEligibleForAutoCommit = false,
                 sourceProvider = this@LatinLanguageProvider,
             )
@@ -743,7 +722,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): SuggestCacheKey {
-        val textBeforeTail = content.textBeforeSelection.takeLast(SuggestionContextTailLength)
+        val hasCurrentWordInput = content.composingText.isNotBlank() || content.currentWordText.isNotBlank()
+        val textBeforeTail = if (hasCurrentWordInput) {
+            ""
+        } else {
+            content.textBeforeSelection.takeLast(SuggestionContextTailLength)
+        }
         return SuggestCacheKey(
             language = normalizeLanguageCode(subtype.primaryLocale.language),
             composingText = content.composingText,
