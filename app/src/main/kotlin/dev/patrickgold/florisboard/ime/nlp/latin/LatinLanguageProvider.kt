@@ -29,6 +29,7 @@ import dev.patrickgold.florisboard.ime.nlp.SpellingResult
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
+import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val MinLengthForTypoCorrections = 4
         private const val SuggestionCacheMaxSize = 128
         private const val SuggestionContextTailLength = 96
+        private const val MixedLanguageTokenWindowSize = 6
         private const val ShortcutPrefixDepth = 3
         private const val ShortcutPrefixPoolSize = 48
         private const val ShortcutFallbackPoolSize = 64
@@ -77,6 +79,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val confidence: Double,
     )
 
+    private data class AggregatedScoredCandidate(
+        val ranked: RankedCandidate,
+        val locale: Locale,
+        val rankingScore: Double,
+        val confidence: Double,
+    )
+
     private data class SuggestCacheKey(
         val language: String,
         val composingText: String,
@@ -94,6 +103,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val predictionShortcuts: LatinPredictionShortcuts,
     )
 
+    private data class SubtypeLanguageContext(
+        val language: String,
+        val locale: FlorisLocale,
+        val model: LanguageModel,
+        val isPrimary: Boolean,
+    )
+
     private val appContext by context.appContext()
     private val prefs by FlorisPreferenceStore
     private val languageModels = guardedByLock { mutableMapOf<String, LanguageModel>() }
@@ -105,6 +121,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         predictionShortcuts = LatinPredictionShortcuts(emptyMap()),
     )
     private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
+    private val mixedLanguageScoringPolicy = MixedLanguageScoringPolicy()
     private val suggestionCache = guardedByLock {
         object : LinkedHashMap<SuggestCacheKey, List<SuggestionCandidate>>(SuggestionCacheMaxSize, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SuggestCacheKey, List<SuggestionCandidate>>?): Boolean {
@@ -120,9 +137,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun preload(subtype: Subtype) = withContext(Dispatchers.IO) {
-        ensureLanguageModelLoaded(subtype.primaryLocale.language)
-        subtype.secondaryLocales.forEach { secondaryLocale ->
-            ensureLanguageModelLoaded(secondaryLocale.language)
+        subtype.locales().forEach { locale ->
+            ensureLanguageModelLoaded(locale.language)
         }
     }
 
@@ -146,8 +162,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             return SpellingResult.validWord()
         }
 
-        val model = getLanguageModelForSubtype(subtype)
-        if (isExactKnownWord(model, normalizedWord) || isUserDictionaryWord(subtype, normalizedWord)) {
+        val languageContexts = getLanguageContextsForSubtype(subtype)
+        if (languageContexts.any { context -> isExactKnownWord(context.model, normalizedWord) } ||
+            isUserDictionaryWord(subtype, normalizedWord)
+        ) {
             return SpellingResult.validWord()
         }
 
@@ -156,9 +174,20 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             suggestedWords.add(applyInputCase(rawWord, suggestion, locale))
         }
 
-        val ranked = lookupCorrections(model, normalizedWord, MaxLookupCandidateCount)
-        for (candidate in ranked) {
-            suggestedWords.add(applyInputCase(rawWord, candidate.word, locale))
+        val rankedCorrections = mutableListOf<Pair<RankedCandidate, Locale>>()
+        languageContexts.forEach { context ->
+            lookupCorrections(context.model, normalizedWord, MaxLookupCandidateCount).forEach { candidate ->
+                rankedCorrections.add(candidate to context.locale.base)
+            }
+        }
+
+        val rankedCandidates = rankedCorrections.sortedWith(
+            compareBy<Pair<RankedCandidate, Locale>> { it.first.distance }
+                .thenByDescending { it.first.frequency }
+                .thenBy { it.first.word }
+        )
+        for ((candidate, candidateLocale) in rankedCandidates) {
+            suggestedWords.add(applyInputCase(rawWord, candidate.word, candidateLocale))
             if (suggestedWords.size >= maxSuggestionCount) break
         }
 
@@ -168,7 +197,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             return SpellingResult.validWord()
         }
 
-        val highConfidence = ranked.firstOrNull()?.distance?.let { it <= 1 } == true
+        val highConfidence = rankedCandidates.firstOrNull()?.first?.distance?.let { it <= 1 } == true
         return SpellingResult.typo(suggestions.toTypedArray(), isHighConfidenceResult = highConfidence)
     }
 
@@ -190,84 +219,126 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             cache[cacheKey]?.let { return it }
         }
 
-        val locale = subtype.primaryLocale.base
+        val primaryLocale = subtype.primaryLocale.base
         val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
+        val languageContexts = getLanguageContextsForSubtype(subtype)
         val suggestions = if (rawInput.isBlank()) {
-            suggestNextWordCandidates(subtype, content, maxCandidateCount, locale)
+            suggestNextWordCandidates(
+                content = content,
+                maxCandidateCount = maxCandidateCount,
+                locale = primaryLocale,
+                languageContexts = languageContexts,
+            )
         } else {
-            val normalizedInput = normalizeInputWord(rawInput, locale)
+            val normalizedInput = normalizeInputWord(rawInput, primaryLocale)
             if (normalizedInput.isBlank()) {
                 emptyList()
             } else {
-                val model = getLanguageModelForSubtype(subtype)
-                if (model.words.isEmpty()) {
+                val nonEmptyLanguageContexts = languageContexts.filter { context -> context.model.words.isNotEmpty() }
+                if (nonEmptyLanguageContexts.isEmpty()) {
                     emptyList()
                 } else {
-                    val hasExactMatch = isExactKnownWord(model, normalizedInput) || isUserDictionaryWord(subtype, normalizedInput)
-                    val rankedCandidates = LinkedHashMap<String, RankedCandidate>()
+                    val contextTokens = extractRecentContextTokens(content.textBeforeSelection)
+                    val languageConfidenceWeights = computeLanguageConfidenceWeights(
+                        languageContexts = nonEmptyLanguageContexts,
+                        contextTokens = contextTokens,
+                        normalizedInput = normalizedInput,
+                    )
+                    val hasExactMatch = nonEmptyLanguageContexts.any { context ->
+                        isExactKnownWord(context.model, normalizedInput)
+                    } || isUserDictionaryWord(subtype, normalizedInput)
+                    val aggregatedCandidates = LinkedHashMap<String, AggregatedScoredCandidate>()
 
-                    if (hasExactMatch) {
-                        val frequency = model.words[normalizedInput] ?: 1
-                        rankedCandidates[normalizedInput] = RankedCandidate(
-                            word = normalizedInput,
-                            distance = 0,
-                            frequency = frequency,
-                            isPrefixMatch = true,
-                        )
-                    }
+                    for (context in nonEmptyLanguageContexts) {
+                        val model = context.model
+                        val perLanguageCandidates = LinkedHashMap<String, RankedCandidate>()
+                        if (isExactKnownWord(model, normalizedInput)) {
+                            val frequency = model.words[normalizedInput] ?: 1
+                            perLanguageCandidates[normalizedInput] = RankedCandidate(
+                                word = normalizedInput,
+                                distance = 0,
+                                frequency = frequency,
+                                isPrefixMatch = true,
+                            )
+                        }
 
-                    val prefixes = lookupPrefixCandidates(model, normalizedInput, MaxLookupCandidateCount)
-                    for (candidate in prefixes) {
-                        rankedCandidates.putIfAbsent(candidate.word, candidate)
-                        if (rankedCandidates.size >= MaxLookupCandidateCount) break
-                    }
+                        val prefixes = lookupPrefixCandidates(model, normalizedInput, MaxLookupCandidateCount)
+                        for (candidate in prefixes) {
+                            perLanguageCandidates.putIfAbsent(candidate.word, candidate)
+                            if (perLanguageCandidates.size >= MaxLookupCandidateCount) break
+                        }
 
-                    if (shouldUseTypoCorrections(normalizedInput)) {
-                        val corrections = lookupCorrections(model, normalizedInput, MaxLookupCandidateCount)
-                        for (candidate in corrections) {
-                            rankedCandidates.putIfAbsent(candidate.word, candidate)
-                            if (rankedCandidates.size >= MaxLookupCandidateCount) break
+                        if (shouldUseTypoCorrections(normalizedInput)) {
+                            val corrections = lookupCorrections(model, normalizedInput, MaxLookupCandidateCount)
+                            for (candidate in corrections) {
+                                perLanguageCandidates.putIfAbsent(candidate.word, candidate)
+                                if (perLanguageCandidates.size >= MaxLookupCandidateCount) break
+                            }
+                        }
+
+                        val languageWeight = languageConfidenceWeights[context.language] ?: 0.0
+                        perLanguageCandidates.values.forEach { candidate ->
+                            val baseRankScore = rankSuggestionCandidate(model, normalizedInput, candidate)
+                            val weightedRankScore = mixedLanguageScoringPolicy.applyLanguageWeight(baseRankScore, languageWeight)
+                            val baseConfidence = calculateConfidence(model, normalizedInput, candidate)
+                            val weightedConfidence = mixedLanguageScoringPolicy.blendCandidateConfidence(baseConfidence, languageWeight)
+                            val current = aggregatedCandidates[candidate.word]
+                            if (current == null ||
+                                weightedRankScore > current.rankingScore ||
+                                (weightedRankScore == current.rankingScore && weightedConfidence > current.confidence)
+                            ) {
+                                aggregatedCandidates[candidate.word] = AggregatedScoredCandidate(
+                                    ranked = candidate,
+                                    locale = context.locale.base,
+                                    rankingScore = weightedRankScore,
+                                    confidence = weightedConfidence,
+                                )
+                            }
                         }
                     }
 
-                    if (rankedCandidates.isEmpty()) {
+                    if (aggregatedCandidates.isEmpty()) {
                         emptyList()
                     } else {
-                        val sortedCandidates = rankedCandidates.values
+                        val sortedCandidates = aggregatedCandidates.values
                             .sortedWith(
-                                compareByDescending<RankedCandidate> { rankSuggestionCandidate(model, normalizedInput, it) }
-                                    .thenByDescending { it.frequency }
-                                    .thenBy { it.word }
+                                compareByDescending<AggregatedScoredCandidate> { it.rankingScore }
+                                    .thenByDescending { it.ranked.frequency }
+                                    .thenBy { it.ranked.word }
                             )
                             .take(maxCandidateCount)
                             .map { candidate ->
                                 ScoredCandidate(
-                                    ranked = candidate,
-                                    confidence = calculateConfidence(model, normalizedInput, candidate),
+                                    ranked = candidate.ranked,
+                                    confidence = candidate.confidence,
                                 )
                             }
                         val autoCorrectPolicy = currentHighCertaintyAutocorrectPolicy()
                         val topCandidate = sortedCandidates.firstOrNull()
                         val runnerUpConfidence = sortedCandidates.getOrNull(1)?.confidence
 
-                        sortedCandidates.map { scoredCandidate ->
-                                val candidate = scoredCandidate.ranked
-                                val suggestionText = applyInputCase(rawInput, candidate.word, locale)
-                                val isAutoCommitCandidate = topCandidate == scoredCandidate && autoCorrectPolicy.shouldAutoCommit(
-                                    normalizedInput = normalizedInput,
-                                    candidateWord = candidate.word,
-                                    candidateEditDistance = candidate.distance,
-                                    candidateConfidence = scoredCandidate.confidence,
-                                    runnerUpConfidence = runnerUpConfidence,
-                                    hasExactInputMatch = hasExactMatch,
-                                )
-                                WordSuggestionCandidate(
-                                    text = suggestionText,
-                                    confidence = scoredCandidate.confidence,
-                                    isEligibleForAutoCommit = isAutoCommitCandidate,
-                                    sourceProvider = this@LatinLanguageProvider,
-                                )
-                            }
+                        val sortedCandidateLocales = sortedCandidates.map { scoredCandidate ->
+                            aggregatedCandidates[scoredCandidate.ranked.word]?.locale ?: primaryLocale
+                        }
+                        sortedCandidates.mapIndexed { index, scoredCandidate ->
+                            val candidate = scoredCandidate.ranked
+                            val suggestionLocale = sortedCandidateLocales[index]
+                            val suggestionText = applyInputCase(rawInput, candidate.word, suggestionLocale)
+                            val isAutoCommitCandidate = topCandidate == scoredCandidate && autoCorrectPolicy.shouldAutoCommit(
+                                normalizedInput = normalizedInput,
+                                candidateWord = candidate.word,
+                                candidateEditDistance = candidate.distance,
+                                candidateConfidence = scoredCandidate.confidence,
+                                runnerUpConfidence = runnerUpConfidence,
+                                hasExactInputMatch = hasExactMatch,
+                            )
+                            WordSuggestionCandidate(
+                                text = suggestionText,
+                                confidence = scoredCandidate.confidence,
+                                isEligibleForAutoCommit = isAutoCommitCandidate,
+                                sourceProvider = this@LatinLanguageProvider,
+                            )
+                        }
                     }
                 }
             }
@@ -280,14 +351,19 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
+        val resolvedLocale = resolveBestLocaleForWord(
+            subtype = subtype,
+            candidateWord = candidate.text.toString(),
+        )
         val promotion = rapidVocabularyLearner.onSuggestionAccepted(
-            language = subtype.primaryLocale.language,
+            language = resolvedLocale.language,
             candidateWord = candidate.text.toString(),
             confidence = candidate.confidence,
         ) ?: return
 
+        val promotionLocale = resolveLocaleByLanguage(subtype, promotion.language) ?: resolvedLocale
         promotePersonalVocabulary(
-            subtype = subtype,
+            locale = promotionLocale,
             normalizedWord = promotion.word,
             confirmations = promotion.confirmations,
         )
@@ -295,8 +371,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
+        val resolvedLocale = resolveBestLocaleForWord(
+            subtype = subtype,
+            candidateWord = candidate.text.toString(),
+        )
         rapidVocabularyLearner.onSuggestionReverted(
-            language = subtype.primaryLocale.language,
+            language = resolvedLocale.language,
             candidateWord = candidate.text.toString(),
         )
     }
@@ -332,6 +412,46 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return languageModels.withLock { models ->
             models[language] ?: models[LegacyModelKey] ?: emptyModel
         }
+    }
+
+    private suspend fun getLanguageContextsForSubtype(subtype: Subtype): List<SubtypeLanguageContext> {
+        val seenLanguages = LinkedHashSet<String>()
+        val contexts = mutableListOf<SubtypeLanguageContext>()
+        val locales = subtype.locales()
+
+        locales.forEachIndexed { index, locale ->
+            val language = normalizeLanguageCode(locale.language)
+            if (!seenLanguages.add(language)) return@forEachIndexed
+
+            ensureLanguageModelLoaded(language)
+            val model = languageModels.withLock { models ->
+                models[language] ?: models[LegacyModelKey] ?: emptyModel
+            }
+            contexts.add(
+                SubtypeLanguageContext(
+                    language = language,
+                    locale = locale,
+                    model = model,
+                    isPrimary = index == 0,
+                )
+            )
+        }
+
+        if (contexts.isNotEmpty()) return contexts
+
+        val primaryLanguage = normalizeLanguageCode(subtype.primaryLocale.language)
+        ensureLanguageModelLoaded(primaryLanguage)
+        val fallbackModel = languageModels.withLock { models ->
+            models[primaryLanguage] ?: models[LegacyModelKey] ?: emptyModel
+        }
+        return listOf(
+            SubtypeLanguageContext(
+                language = primaryLanguage,
+                locale = subtype.primaryLocale,
+                model = fallbackModel,
+                isPrimary = true,
+            )
+        )
     }
 
     private suspend fun ensureLanguageModelLoaded(languageCode: String) {
@@ -526,10 +646,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     private suspend fun suggestNextWordCandidates(
-        subtype: Subtype,
         content: EditorContent,
         maxCandidateCount: Int,
         locale: Locale,
+        languageContexts: List<SubtypeLanguageContext>,
     ): List<SuggestionCandidate> {
         val textBeforeSelection = content.textBeforeSelection
         if (textBeforeSelection.isBlank() || !isNextWordBoundary(textBeforeSelection)) {
@@ -541,34 +661,54 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         val previousWord = tokens.last()
         val previousPreviousWord = tokens.getOrNull(tokens.lastIndex - 1)
-        val model = getLanguageModelForSubtype(subtype)
+        val contextTokens = extractRecentContextTokens(textBeforeSelection)
+        val nonEmptyLanguageContexts = languageContexts.filter { context -> context.model.words.isNotEmpty() }
+        if (nonEmptyLanguageContexts.isEmpty()) return emptyList()
 
-        val scores = mutableMapOf<String, Int>()
+        val languageConfidenceWeights = computeLanguageConfidenceWeights(
+            languageContexts = nonEmptyLanguageContexts,
+            contextTokens = contextTokens,
+            normalizedInput = null,
+        )
+
+        val scores = mutableMapOf<String, Double>()
         val frequencies = mutableMapOf<String, Int>()
 
-        for (index in 0 until tokens.lastIndex) {
-            val current = tokens[index]
-            val next = tokens[index + 1]
+        for (context in nonEmptyLanguageContexts) {
+            val languageWeight = languageConfidenceWeights[context.language] ?: 0.0
+            val languageMultiplier = (0.50 + languageWeight).coerceIn(0.50, 1.50)
+            val model = context.model
 
-            if (next == previousWord) continue
-            if (current != previousWord) continue
+            for (index in 0 until tokens.lastIndex) {
+                val current = tokens[index]
+                val next = tokens[index + 1]
 
-            var score = 3
-            if (previousPreviousWord != null && index > 0 && tokens[index - 1] == previousPreviousWord) {
-                score += 6
+                if (next == previousWord) continue
+                if (current != previousWord) continue
+                if (!model.words.containsKey(next)) continue
+
+                var score = 3.0
+                if (previousPreviousWord != null && index > 0 && tokens[index - 1] == previousPreviousWord) {
+                    score += 6.0
+                }
+
+                scores[next] = scores.getOrDefault(next, 0.0) + score * languageMultiplier
+                frequencies[next] = maxOf(frequencies.getOrDefault(next, 0), model.words[next] ?: 1)
             }
-
-            scores[next] = scores.getOrDefault(next, 0) + score
-            frequencies[next] = maxOf(frequencies.getOrDefault(next, 0), model.words[next] ?: 1)
         }
 
         if (scores.isEmpty()) {
-            return suggestFallbackNextWordCandidates(model, previousWord, maxCandidateCount)
+            return suggestFallbackNextWordCandidates(
+                languageContexts = nonEmptyLanguageContexts,
+                languageConfidenceWeights = languageConfidenceWeights,
+                previousWord = previousWord,
+                maxCandidateCount = maxCandidateCount,
+            )
         }
 
         val ranked = scores.entries
             .sortedWith(
-                compareByDescending<Map.Entry<String, Int>> { it.value }
+                compareByDescending<Map.Entry<String, Double>> { it.value }
                     .thenByDescending { frequencies.getOrDefault(it.key, 0) }
                     .thenBy { it.key }
             )
@@ -576,15 +716,16 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         if (ranked.isEmpty()) return emptyList()
 
-        val maxScore = ranked.first().value.coerceAtLeast(1)
+        val maxScore = ranked.first().value.coerceAtLeast(1.0)
+        val maxFrequency = frequencies.values.maxOrNull()?.coerceAtLeast(1) ?: 1
         return ranked.map { entry ->
             val candidateWord = entry.key
             val candidateScore = entry.value
             val candidateFrequency = frequencies.getOrDefault(candidateWord, 1)
             val confidence = (
                 0.25 +
-                    0.55 * (candidateScore.toDouble() / maxScore.toDouble()) +
-                    0.20 * (candidateFrequency.toDouble() / model.maxFrequency.toDouble())
+                    0.55 * (candidateScore / maxScore) +
+                    0.20 * (candidateFrequency.toDouble() / maxFrequency.toDouble())
                 ).coerceIn(0.05, 0.98)
 
             WordSuggestionCandidate(
@@ -625,6 +766,36 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         flushToken()
 
         return tokens
+    }
+
+    private fun extractRecentContextTokens(textBeforeSelection: String): List<String> {
+        return extractWordTokens(textBeforeSelection, Locale.ROOT)
+            .takeLast(MixedLanguageTokenWindowSize)
+    }
+
+    private fun computeLanguageConfidenceWeights(
+        languageContexts: List<SubtypeLanguageContext>,
+        contextTokens: List<String>,
+        normalizedInput: String?,
+    ): Map<String, Double> {
+        val signals = languageContexts.map { context ->
+            val contextEvidence = contextTokens.mapIndexed { index, token ->
+                if (!context.model.words.containsKey(token)) {
+                    0.0
+                } else {
+                    val recencyWeight = (index + 1).toDouble() / contextTokens.size.coerceAtLeast(1).toDouble()
+                    0.6 + 0.4 * recencyWeight
+                }
+            }.sum()
+            val hasExactInputMatch = normalizedInput != null && context.model.words.containsKey(normalizedInput)
+            LanguageConfidenceSignal(
+                language = context.language,
+                isPrimary = context.isPrimary,
+                contextEvidence = contextEvidence,
+                hasExactInputMatch = hasExactInputMatch,
+            )
+        }
+        return mixedLanguageScoringPolicy.computeLanguageWeights(signals)
     }
 
     private fun boundedDamerauLevenshtein(source: String, target: String, limit: Int): Int {
@@ -688,18 +859,37 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     private fun suggestFallbackNextWordCandidates(
-        model: LanguageModel,
+        languageContexts: List<SubtypeLanguageContext>,
+        languageConfidenceWeights: Map<String, Double>,
         previousWord: String,
         maxCandidateCount: Int,
     ): List<SuggestionCandidate> {
-        val fallbackWords = model.predictionShortcuts.fallbackCandidates(previousWord, maxCandidateCount)
+        val weightedCandidates = mutableMapOf<String, Pair<Double, Double>>()
+        languageContexts.forEach { context ->
+            val languageWeight = languageConfidenceWeights[context.language] ?: 0.0
+            val languageMultiplier = (0.50 + languageWeight).coerceIn(0.50, 1.50)
+            val fallbackWords = context.model.predictionShortcuts.fallbackCandidates(previousWord, maxCandidateCount)
+            fallbackWords.forEach { entry ->
+                val baseConfidence = (0.20 + 0.35 * (entry.frequency.toDouble() / context.model.maxFrequency.toDouble()))
+                    .coerceIn(0.10, 0.55)
+                val weightedRank = baseConfidence * languageMultiplier
+                val weightedConfidence = mixedLanguageScoringPolicy.blendCandidateConfidence(baseConfidence, languageWeight)
+                val current = weightedCandidates[entry.word]
+                if (current == null || weightedRank > current.first) {
+                    weightedCandidates[entry.word] = weightedRank to weightedConfidence
+                }
+            }
+        }
 
-        if (fallbackWords.isEmpty()) return emptyList()
+        if (weightedCandidates.isEmpty()) return emptyList()
 
-        return fallbackWords.map { entry ->
+        return weightedCandidates.entries
+            .sortedByDescending { it.value.first }
+            .take(maxCandidateCount)
+            .map { entry ->
             WordSuggestionCandidate(
-                text = entry.word,
-                confidence = (0.20 + 0.35 * (entry.frequency.toDouble() / model.maxFrequency.toDouble())).coerceIn(0.10, 0.55),
+                text = entry.key,
+                confidence = entry.value.second,
                 isEligibleForAutoCommit = false,
                 sourceProvider = this@LatinLanguageProvider,
             )
@@ -787,7 +977,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             content.textBeforeSelection.takeLast(SuggestionContextTailLength)
         }
         return SuggestCacheKey(
-            language = normalizeLanguageCode(subtype.primaryLocale.language),
+            language = subtype.locales()
+                .joinToString(separator = ",") { locale -> normalizeLanguageCode(locale.language) },
             composingText = content.composingText,
             currentWordText = content.currentWordText,
             textBeforeTail = textBeforeTail,
@@ -799,7 +990,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private fun isUserDictionaryWord(subtype: Subtype, normalizedWord: String): Boolean {
         return try {
-            DictionaryManager.default().spell(normalizedWord, subtype.primaryLocale)
+            val dictionaryManager = DictionaryManager.default()
+            subtype.locales().any { locale ->
+                dictionaryManager.spell(normalizedWord, locale)
+            }
         } catch (_: Throwable) {
             false
         }
@@ -811,8 +1005,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         maxCount: Int,
     ): List<String> {
         return try {
-            DictionaryManager.default().queryUserDictionary(normalizedWord, subtype.primaryLocale)
+            val dictionaryManager = DictionaryManager.default()
+            subtype.locales()
                 .asSequence()
+                .flatMap { locale ->
+                    dictionaryManager.queryUserDictionary(normalizedWord, locale).asSequence()
+                }
                 .map { normalizeDictionaryWord(it.text.toString()) }
                 .filter { it.isNotBlank() && it != normalizedWord }
                 .distinct()
@@ -824,7 +1022,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     private fun promotePersonalVocabulary(
-        subtype: Subtype,
+        locale: FlorisLocale,
         normalizedWord: String,
         confirmations: Int,
     ) {
@@ -832,7 +1030,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             val dictionaryManager = DictionaryManager.default()
             dictionaryManager.loadUserDictionariesIfNecessary()
             val florisDao = dictionaryManager.florisUserDictionaryDao() ?: return
-            val locale = subtype.primaryLocale
             val existing = florisDao.queryExact(normalizedWord, locale).firstOrNull()
             val confidenceBoost = (confirmations * 16).coerceAtMost(64)
             val updatedFrequency = ((existing?.freq ?: 160) + confidenceBoost).coerceAtMost(FREQUENCY_MAX)
@@ -857,6 +1054,25 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         } catch (e: Throwable) {
             flogError { "Failed promoting rapid personal vocabulary entry: $e" }
+        }
+    }
+
+    private suspend fun resolveBestLocaleForWord(subtype: Subtype, candidateWord: String): FlorisLocale {
+        val normalizedWord = normalizeDictionaryWord(candidateWord)
+        if (normalizedWord.isBlank()) return subtype.primaryLocale
+
+        val contexts = getLanguageContextsForSubtype(subtype)
+        val matchingLanguage = contexts.firstOrNull { context ->
+            context.model.words.containsKey(normalizedWord)
+        }?.language ?: return subtype.primaryLocale
+
+        return resolveLocaleByLanguage(subtype, matchingLanguage) ?: subtype.primaryLocale
+    }
+
+    private fun resolveLocaleByLanguage(subtype: Subtype, language: String): FlorisLocale? {
+        val normalizedLanguage = normalizeLanguageCode(language)
+        return subtype.locales().firstOrNull { locale ->
+            normalizeLanguageCode(locale.language) == normalizedLanguage
         }
     }
 
