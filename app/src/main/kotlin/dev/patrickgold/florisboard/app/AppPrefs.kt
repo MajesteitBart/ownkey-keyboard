@@ -720,6 +720,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "voxtral__model",
             default = "voxtral-mini-latest",
         )
+        val languageHint = string(
+            key = "voxtral__language_hint",
+            default = "",
+        )
     }
 
     val theme = Theme()

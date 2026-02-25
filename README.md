@@ -10,7 +10,23 @@ Core idea:
 - keep user control over settings, provider choice, and local behavior
 - no in-app monitoring of private user content
 
+Also included:
+- **Wear OS companion IME** focused on reliable transcript-first input
+- phone-to-watch Voxtral config sync (API key, endpoint, model, language hint)
+
 This project is a derivative fork of FlorisBoard and remains Apache-2.0 licensed.
+
+---
+
+## Screenshots (current direction)
+
+### Wear OS input design direction (Material You style)
+
+![Wear OS material input reference](docs/screenshots/wear-material-reference.jpg)
+
+### Wear OS live IME prototype
+
+![Wear OS live IME screenshot](docs/screenshots/wear-ime-live.jpg)
 
 ---
 
@@ -73,6 +89,25 @@ So, app-side telemetry/monitoring is not the model, but networked ASR naturally 
 - Install debug APK
 - Enable Ownkey Keyboard in Android input settings
 - Open Ownkey settings to configure Voxtral endpoint/model and API key
+
+---
+
+## CI / Releases
+
+GitHub Actions workflow: **Ownkey Android CI**
+
+What it now builds:
+- Phone APK
+- Wear APK
+- Release AABs for both modules (on release builds)
+
+Artifacts are exported with explicit versioned names, for example:
+- `ownkey-phone-debug-v0.6.0-alpha02-<sha>.apk`
+- `ownkey-wear-debug-v0.6.0-alpha02-<sha>.apk`
+- `ownkey-phone-release-v0.6.0-alpha02-<sha>.aab`
+- `ownkey-wear-release-v0.6.0-alpha02-<sha>.aab`
+
+This is intended to keep Play Store upload files and test builds traceable per version.
 
 ---
 

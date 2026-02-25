@@ -24,6 +24,7 @@ material-kolor = "4.1.1"
 mikepenz-aboutlibraries = "13.2.1"
 patrickgold-compose-tooltip = "0.2.0-rc02"
 patrickgold-jetpref = "0.3.0"
+play-services-wearable = "19.0.0"
 
 # Testing
 androidx-benchmark = "1.4.1"
@@ -73,6 +74,7 @@ patrickgold-jetpref-datastore-model = { module = "dev.patrickgold.jetpref:jetpre
 patrickgold-jetpref-datastore-model-processor = { module = "dev.patrickgold.jetpref:jetpref-datastore-model-processor", version.ref = "patrickgold-jetpref" }
 patrickgold-jetpref-datastore-ui = { module = "dev.patrickgold.jetpref:jetpref-datastore-ui", version.ref = "patrickgold-jetpref" }
 patrickgold-jetpref-material-ui = { module = "dev.patrickgold.jetpref:jetpref-material-ui", version.ref = "patrickgold-jetpref" }
+play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "play-services-wearable" }
 
 # Testing
 androidx-benchmark-macro = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "androidx-benchmark" }
