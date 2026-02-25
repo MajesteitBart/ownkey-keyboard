@@ -61,15 +61,55 @@ class VoxtralRelayTranscriptionClient(
     private val apiKeyProvider: () -> String,
     private val endpointUrlProvider: () -> String = { DefaultEndpointUrl },
     private val modelProvider: () -> String = { DefaultModel },
+    private val languageHintProvider: () -> String = { "" },
     private val connectTimeoutMs: Int = 30_000,
     private val readTimeoutMs: Int = 60_000,
+    private val maxRetryAttempts: Int = 2,
+    private val retryDelayMs: Long = 700,
 ) : TranscriptionClient {
     companion object {
         const val DefaultEndpointUrl = "https://api.mistral.ai/v1/audio/transcriptions"
         const val DefaultModel = "voxtral-mini-latest"
     }
 
+    private data class PreparedRequest(
+        val apiKey: String,
+        val endpointUrl: String,
+        val model: String,
+        val languageHint: String,
+    )
+
     override suspend fun transcribe(recording: AudioRecording): Result<String> {
+        val preparedRequest = prepareRequest(recording).getOrElse { error ->
+            return Result.failure(error)
+        }
+
+        var attempt = 0
+        var lastError: Throwable? = null
+
+        while (attempt < maxRetryAttempts) {
+            attempt += 1
+            val result = runCatching {
+                executeRequest(preparedRequest, recording)
+            }
+            if (result.isSuccess) {
+                return result
+            }
+
+            val error = result.exceptionOrNull() ?: IllegalStateException("Unknown Voxtral transcription error")
+            lastError = error
+
+            if (!shouldRetry(error) || attempt >= maxRetryAttempts) {
+                return Result.failure(error)
+            }
+
+            delay(retryDelayMs * attempt)
+        }
+
+        return Result.failure(lastError ?: IllegalStateException("Unknown Voxtral transcription error"))
+    }
+
+    private fun prepareRequest(recording: AudioRecording): Result<PreparedRequest> {
         val apiKey = apiKeyProvider().trim()
         if (apiKey.isEmpty()) {
             return Result.failure(IllegalStateException("No Voxtral API key configured."))
@@ -84,22 +124,37 @@ class VoxtralRelayTranscriptionClient(
         }
 
         val model = modelProvider().trim().ifBlank { DefaultModel }
+        val languageHint = languageHintProvider().trim()
 
-        return runCatching {
-            val boundary = "----VoxtralBoundary${System.currentTimeMillis()}"
-            val connection = (URL(endpointUrl).openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                doInput = true
-                doOutput = true
-                connectTimeout = connectTimeoutMs
-                readTimeout = readTimeoutMs
-                setRequestProperty("Authorization", "Bearer $apiKey")
-                setRequestProperty("Accept", "application/json")
-                setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-            }
+        return Result.success(
+            PreparedRequest(
+                apiKey = apiKey,
+                endpointUrl = endpointUrl,
+                model = model,
+                languageHint = languageHint,
+            ),
+        )
+    }
 
+    private fun executeRequest(preparedRequest: PreparedRequest, recording: AudioRecording): String {
+        val boundary = "----VoxtralBoundary${System.currentTimeMillis()}"
+        val connection = (URL(preparedRequest.endpointUrl).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doInput = true
+            doOutput = true
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
+            setRequestProperty("Authorization", "Bearer ${preparedRequest.apiKey}")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        }
+
+        try {
             DataOutputStream(connection.outputStream).use { out ->
-                out.writeMultipartField(boundary, "model", model)
+                out.writeMultipartField(boundary, "model", preparedRequest.model)
+                if (preparedRequest.languageHint.isNotBlank()) {
+                    out.writeMultipartField(boundary, "language", preparedRequest.languageHint)
+                }
                 out.writeMultipartFile(
                     boundary = boundary,
                     fieldName = "file",
@@ -119,8 +174,9 @@ class VoxtralRelayTranscriptionClient(
 
             if (statusCode !in 200..299) {
                 val message = responseBody.trim().take(300)
-                throw IllegalStateException(
-                    "Voxtral API request failed (HTTP $statusCode). ${if (message.isNotBlank()) message else "No response body."}",
+                throw VoxtralHttpException(
+                    statusCode = statusCode,
+                    message = "Voxtral API request failed (HTTP $statusCode). ${if (message.isNotBlank()) message else "No response body."}",
                 )
             }
 
@@ -129,16 +185,39 @@ class VoxtralRelayTranscriptionClient(
                 throw IllegalStateException("Voxtral API returned an empty transcript.")
             }
 
-            transcript
+            return transcript
+        } finally {
+            connection.disconnect()
         }
     }
 
     private fun extractTranscript(responseBody: String): String {
-        val json = Json.parseToJsonElement(responseBody).jsonObject
-        return json.optString("text")
-            ?: json.optString("transcript")
+        val root = Json.parseToJsonElement(responseBody).jsonObject
+
+        return root.optString("text")
+            ?: root.optString("transcript")
+            ?: root.optObject("data")?.optString("text")
+            ?: root.optObject("result")?.optString("text")
             ?: ""
     }
+
+    private fun shouldRetry(error: Throwable): Boolean {
+        return when (error) {
+            is java.io.IOException -> true
+            is VoxtralHttpException -> {
+                error.statusCode == 408 ||
+                    error.statusCode == 429 ||
+                    error.statusCode in 500..599
+            }
+
+            else -> false
+        }
+    }
+
+    private class VoxtralHttpException(
+        val statusCode: Int,
+        message: String,
+    ) : IllegalStateException(message)
 }
 
 private fun DataOutputStream.writeMultipartField(
@@ -169,4 +248,8 @@ private fun DataOutputStream.writeMultipartFile(
 private fun JsonObject.optString(key: String): String? {
     val value = this[key] as? JsonPrimitive ?: return null
     return value.contentOrNull
+}
+
+private fun JsonObject.optObject(key: String): JsonObject? {
+    return this[key] as? JsonObject
 }

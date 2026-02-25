@@ -79,6 +79,7 @@ fun VoxtralScreen() = FlorisScreen {
         val prefsRef = prefs
         val endpointUrl by prefsRef.voxtral.endpointUrl.collectAsState()
         val model by prefsRef.voxtral.model.collectAsState()
+        val languageHint by prefsRef.voxtral.languageHint.collectAsState()
         val coroutineScope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) {
@@ -186,6 +187,23 @@ fun VoxtralScreen() = FlorisScreen {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 label = { Text(stringRes(R.string.pref__voxtral__model__label)) },
+                singleLine = true,
+            )
+            Text(
+                text = stringRes(R.string.pref__voxtral__language_hint__summary),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            OutlinedTextField(
+                value = languageHint,
+                onValueChange = { value ->
+                    coroutineScope.launch {
+                        prefsRef.voxtral.languageHint.set(value)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                label = { Text(stringRes(R.string.pref__voxtral__language_hint__label)) },
                 singleLine = true,
             )
         }

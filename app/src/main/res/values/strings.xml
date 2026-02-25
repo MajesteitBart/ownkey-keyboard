@@ -583,6 +583,8 @@
     <string name="pref__voxtral__endpoint__label" comment="Label of the Voxtral endpoint URL text field">Endpoint URL</string>
     <string name="pref__voxtral__endpoint__summary" comment="Summary text for Voxtral endpoint URL preference">Default is Mistral. You can point this to a self-hosted OpenAI-compatible transcription endpoint.</string>
     <string name="pref__voxtral__model__label" comment="Label of the Voxtral model text field">Model</string>
+    <string name="pref__voxtral__language_hint__label" comment="Label of the Voxtral language hint text field">Language hint (optional)</string>
+    <string name="pref__voxtral__language_hint__summary" comment="Summary text for Voxtral language hint preference">Improve recognition by setting an ISO language code, for example "nl" or "en". Leave empty for auto.</string>
     <string name="pref__voxtral__group_permissions__label" comment="Title of the Voxtral permissions preference group">Microphone access</string>
     <string name="pref__voxtral__permission__summary" comment="Summary text for Voxtral microphone permission">Required to capture voice for dictation.</string>
     <string name="pref__voxtral__permission__granted" comment="Status text shown when microphone permission is granted">Microphone permission granted.</string>

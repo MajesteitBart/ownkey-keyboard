@@ -74,6 +74,7 @@ class VoxtralDictationManager(
         apiKeyProvider = { apiKey() },
         endpointUrlProvider = { prefs.voxtral.endpointUrl.get() },
         modelProvider = { prefs.voxtral.model.get() },
+        languageHintProvider = { prefs.voxtral.languageHint.get() },
     )
 
     private var activeSessionMode: RoutingMode? = null
