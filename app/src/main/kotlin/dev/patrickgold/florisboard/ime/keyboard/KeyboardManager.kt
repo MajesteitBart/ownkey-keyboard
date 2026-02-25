@@ -101,6 +101,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val layoutManager = LayoutManager(context)
     private val keyboardCache = TextKeyboardCache()
+    private val autocorrectUndoTracker = AutocorrectUndoTracker()
 
     val resources = KeyboardManagerResources()
     val activeState = ObservableKeyboardState.new()
@@ -296,6 +297,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         TypingSpeedMetrics.recordWordCommittedBySuggestion()
         if (origin == CandidateCommitOrigin.AUTO_COMMIT && candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectApplied()
+            val content = editorInstance.activeContent
+            val originalToken = content.composingText.ifBlank { content.currentWordText }
+            autocorrectUndoTracker.trackAutoCorrect(originalToken = originalToken, correctedCandidate = candidate)
+        } else {
+            autocorrectUndoTracker.clearPending()
         }
         scope.launch {
             candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
@@ -425,7 +431,27 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     )
                 }
             }
+            autocorrectUndoTracker.clearIfCandidateMatches(candidateForRevert)
         }
+    }
+
+    private fun handleUndoLastAutocorrect(): Boolean {
+        val undoReplacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return false
+        if (!editorInstance.setSelection(undoReplacement.range.start, undoReplacement.range.end)) return false
+        if (!editorInstance.commitText(undoReplacement.originalToken)) return false
+        autocorrectUndoTracker.clearPending()
+        if (undoReplacement.candidate.isEligibleForAutoCommit) {
+            TypingSpeedMetrics.recordAutoCorrectUndone()
+        }
+        undoReplacement.candidate.sourceProvider?.let { sourceProvider ->
+            scope.launch {
+                sourceProvider.notifySuggestionReverted(
+                    subtype = subtypeManager.activeSubtype,
+                    candidate = undoReplacement.candidate,
+                )
+            }
+        }
+        return true
     }
 
     /**
@@ -786,7 +812,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             KeyCode.TOGGLE_INCOGNITO_MODE -> scope.launch { handleToggleIncognitoMode() }
             KeyCode.TOGGLE_AUTOCORRECT -> handleToggleAutocorrect()
-            KeyCode.UNDO -> editorInstance.performUndo()
+            KeyCode.UNDO -> if (!handleUndoLastAutocorrect()) editorInstance.performUndo()
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS
             KeyCode.VIEW_NUMERIC -> activeState.keyboardMode = KeyboardMode.NUMERIC
             KeyCode.VIEW_NUMERIC_ADVANCED -> activeState.keyboardMode = KeyboardMode.NUMERIC_ADVANCED
