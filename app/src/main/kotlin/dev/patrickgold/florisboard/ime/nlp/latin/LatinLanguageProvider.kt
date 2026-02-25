@@ -21,6 +21,8 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
+import dev.patrickgold.florisboard.ime.dictionary.FREQUENCY_MAX
+import dev.patrickgold.florisboard.ime.dictionary.UserDictionaryEntry
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingResult
@@ -102,6 +104,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         maxFrequency = 1,
         predictionShortcuts = LatinPredictionShortcuts(emptyMap()),
     )
+    private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
     private val suggestionCache = guardedByLock {
         object : LinkedHashMap<SuggestCacheKey, List<SuggestionCandidate>>(SuggestionCacheMaxSize, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SuggestCacheKey, List<SuggestionCandidate>>?): Boolean {
@@ -277,12 +280,25 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
-        // We can use flogDebug, flogInfo, flogWarning and flogError for debug logging, which is a wrapper for Logcat
-        flogDebug { candidate.toString() }
+        val promotion = rapidVocabularyLearner.onSuggestionAccepted(
+            language = subtype.primaryLocale.language,
+            candidateWord = candidate.text.toString(),
+            confidence = candidate.confidence,
+        ) ?: return
+
+        promotePersonalVocabulary(
+            subtype = subtype,
+            normalizedWord = promotion.word,
+            confirmations = promotion.confirmations,
+        )
+        suggestionCache.withLock { it.clear() }
     }
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
-        flogDebug { candidate.toString() }
+        rapidVocabularyLearner.onSuggestionReverted(
+            language = subtype.primaryLocale.language,
+            candidateWord = candidate.text.toString(),
+        )
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
@@ -804,6 +820,43 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 .toList()
         } catch (_: Throwable) {
             emptyList()
+        }
+    }
+
+    private fun promotePersonalVocabulary(
+        subtype: Subtype,
+        normalizedWord: String,
+        confirmations: Int,
+    ) {
+        try {
+            val dictionaryManager = DictionaryManager.default()
+            dictionaryManager.loadUserDictionariesIfNecessary()
+            val florisDao = dictionaryManager.florisUserDictionaryDao() ?: return
+            val locale = subtype.primaryLocale
+            val existing = florisDao.queryExact(normalizedWord, locale).firstOrNull()
+            val confidenceBoost = (confirmations * 16).coerceAtMost(64)
+            val updatedFrequency = ((existing?.freq ?: 160) + confidenceBoost).coerceAtMost(FREQUENCY_MAX)
+
+            if (existing == null) {
+                florisDao.insert(
+                    UserDictionaryEntry(
+                        id = 0L,
+                        word = normalizedWord,
+                        freq = updatedFrequency,
+                        locale = locale.localeTag(),
+                        shortcut = null,
+                    )
+                )
+            } else {
+                florisDao.update(
+                    existing.copy(
+                        freq = updatedFrequency,
+                        locale = existing.locale ?: locale.localeTag(),
+                    )
+                )
+            }
+        } catch (e: Throwable) {
+            flogError { "Failed promoting rapid personal vocabulary entry: $e" }
         }
     }
 
