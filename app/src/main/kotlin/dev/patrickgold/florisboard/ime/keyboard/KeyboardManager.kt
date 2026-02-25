@@ -46,6 +46,7 @@ import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
@@ -84,6 +85,11 @@ import org.florisboard.lib.kotlin.collectLatestIn
 private val DoubleSpacePeriodMatcher = """([^.!?‽\s]\s)""".toRegex()
 
 class KeyboardManager(context: Context) : InputKeyEventReceiver {
+    enum class CandidateCommitOrigin {
+        MANUAL,
+        AUTO_COMMIT,
+    }
+
     private val prefs by FlorisPreferenceStore
     private val appContext by context.appContext()
     private val clipboardManager by context.clipboardManager()
@@ -281,7 +287,16 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    fun commitCandidate(candidate: SuggestionCandidate) {
+    fun commitCandidate(
+        candidate: SuggestionCandidate,
+        origin: CandidateCommitOrigin = CandidateCommitOrigin.MANUAL,
+    ) {
+        val candidateIndex = nlpManager.activeCandidates.indexOf(candidate).takeIf { it >= 0 }
+        TypingSpeedMetrics.recordSuggestionAccepted(candidateIndex)
+        TypingSpeedMetrics.recordWordCommittedBySuggestion()
+        if (origin == CandidateCommitOrigin.AUTO_COMMIT && candidate.isEligibleForAutoCommit) {
+            TypingSpeedMetrics.recordAutoCorrectApplied()
+        }
         scope.launch {
             candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
         }
@@ -399,6 +414,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private fun revertPreviouslyAcceptedCandidate() {
         editorInstance.phantomSpace.candidateForRevert?.let { candidateForRevert ->
+            if (candidateForRevert.isEligibleForAutoCommit) {
+                TypingSpeedMetrics.recordAutoCorrectUndone()
+            }
             candidateForRevert.sourceProvider?.let { sourceProvider ->
                 scope.launch {
                     sourceProvider.notifySuggestionReverted(
@@ -535,7 +553,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     fun handleHardwareKeyboardSpace() {
         val candidate = nlpManager.getAutoCommitCandidate()
-        candidate?.let { commitCandidate(it) }
+        candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
+        TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         // Skip handling changing to characters keyboard and double space periods
         // TODO: this is whether we commit space after selecting candidate. Should be determined by SuggestionProvider
         if (!subtypeManager.activeSubtype.primaryLocale.supportsAutoSpace &&
@@ -550,7 +569,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     private fun handleSpace(data: KeyData) {
         val candidate = nlpManager.getAutoCommitCandidate()
-        candidate?.let { commitCandidate(it) }
+        candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
+        TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
             when (activeState.keyboardMode) {
                 KeyboardMode.NUMERIC_ADVANCED,
@@ -776,8 +796,12 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.VIEW_SYMBOLS2 -> activeState.keyboardMode = KeyboardMode.SYMBOLS2
             else -> {
                 if (activeState.imeUiMode == ImeUiMode.MEDIA) {
-                    nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
-                    editorInstance.commitText(data.asString(isForDisplay = false))
+                    nlpManager.getAutoCommitCandidate()?.let {
+                        commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
+                    }
+                    val text = data.asString(isForDisplay = false)
+                    TypingSpeedMetrics.recordTextInput(text)
+                    editorInstance.commitText(text)
                     return@batchEdit
                 }
                 when (activeState.keyboardMode) {
@@ -788,6 +812,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                         KeyType.CHARACTER,
                         KeyType.NUMERIC -> {
                             val text = data.asString(isForDisplay = false)
+                            TypingSpeedMetrics.recordTextInput(text)
                             editorInstance.commitText(text)
                         }
                         else -> when (data.code) {
@@ -802,8 +827,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                         KeyType.CHARACTER, KeyType.NUMERIC ->{
                             val text = data.asString(isForDisplay = false)
                             if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0))) {
-                                nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
+                                nlpManager.getAutoCommitCandidate()?.let {
+                                    commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
+                                }
                             }
+                            TypingSpeedMetrics.recordTextInput(text)
                             editorInstance.commitChar(text)
                         }
                         else -> {

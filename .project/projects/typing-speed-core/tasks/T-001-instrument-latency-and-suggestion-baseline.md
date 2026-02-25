@@ -1,9 +1,9 @@
 ---
 id: T-001
 name: Instrument latency and suggestion baseline
-status: ready
+status: review
 created: 2026-02-25T19:38:38Z
-updated: 2026-02-25T19:38:38Z
+updated: 2026-02-25T22:05:00Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -27,10 +27,13 @@ Add privacy-safe metrics for suggestion latency p95, top-3 acceptance rate, keys
 This task enables KPI-driven sequencing and validation for all subsequent tasks.
 
 ## Definition of Done
-- [ ] Implementation complete
+- [x] Implementation complete
 - [ ] Tests pass
 - [ ] Review complete
 - [ ] Docs updated
 
 ## Evidence Log
 - 2026-02-25: Task created.
+- 2026-02-25: Added aggregate-only typing speed metrics instrumentation for suggestion latency p95, top-3 acceptance, keystrokes/word, autocorrect false ratio, and undo frequency.
+- 2026-02-25: Added unit tests for `TypingSpeedMetrics` aggregation math and word-boundary behavior.
+- 2026-02-25: Verification attempt blocked in this environment (`JAVA_HOME`/`java` missing), so Gradle tests/compile could not run.
