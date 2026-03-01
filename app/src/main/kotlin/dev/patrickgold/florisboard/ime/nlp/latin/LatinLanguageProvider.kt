@@ -61,6 +61,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val ShortcutPrefixDepth = 3
         private const val ShortcutPrefixPoolSize = 48
         private const val ShortcutFallbackPoolSize = 64
+        private const val FrequencyDictionaryMaxWords = 10_000
 
         private val FrequencyDictionaryAssets = mapOf(
             "en" to "ime/dict/frequencywords/en_50k.txt",
@@ -521,18 +522,20 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private fun buildLanguageModelFromFrequencyAsset(assetPath: String): LanguageModel {
         val words = mutableMapOf<String, Int>()
         appContext.assets.open(assetPath).bufferedReader().use { reader ->
-            reader.forEachLine { line ->
+            for (line in reader.lineSequence()) {
+                if (words.size >= FrequencyDictionaryMaxWords) break
+
                 val trimmed = line.trim()
-                if (trimmed.isEmpty()) return@forEachLine
+                if (trimmed.isEmpty()) continue
 
                 val separatorIndex = trimmed.lastIndexOfAny(charArrayOf(' ', '\t'))
-                if (separatorIndex <= 0 || separatorIndex >= trimmed.lastIndex) return@forEachLine
+                if (separatorIndex <= 0 || separatorIndex >= trimmed.lastIndex) continue
 
                 val rawWord = trimmed.substring(0, separatorIndex)
                 val normalizedWord = normalizeDictionaryWord(rawWord)
-                if (normalizedWord.isBlank()) return@forEachLine
+                if (normalizedWord.isBlank()) continue
 
-                val frequency = trimmed.substring(separatorIndex + 1).toIntOrNull() ?: return@forEachLine
+                val frequency = trimmed.substring(separatorIndex + 1).toIntOrNull() ?: continue
                 val safeFrequency = frequency.coerceAtLeast(1)
                 val currentFrequency = words[normalizedWord] ?: 0
                 if (safeFrequency > currentFrequency) {
@@ -547,7 +550,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val rawData = appContext.assets.readText(LegacyDictionaryAssetPath)
         val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
         val words = mutableMapOf<String, Int>()
-        jsonData.forEach { (word, frequency) ->
+        for ((word, frequency) in jsonData) {
+            if (words.size >= FrequencyDictionaryMaxWords) break
             val normalizedWord = normalizeDictionaryWord(word)
             if (normalizedWord.isNotBlank()) {
                 words[normalizedWord] = frequency.coerceAtLeast(1)
