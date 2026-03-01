@@ -24,6 +24,7 @@ import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.extensionManager
+import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
 import dev.patrickgold.florisboard.lib.titlecase
 import dev.patrickgold.florisboard.lib.util.TimeUtils
 import dev.patrickgold.florisboard.lib.util.UnitUtils
@@ -58,6 +59,10 @@ object Devtools {
             append(generateExtensionConfigLog(context))
             appendLine()
             append(generateActiveSubtypeConfigLog(context))
+            if (TypingSpeedMetrics.isEnabled) {
+                appendLine()
+                append(generateTypingSpeedMetricsLog())
+            }
         }
     }
 
@@ -163,6 +168,25 @@ object Devtools {
             } catch (_: IOException) {
                 appendLine("Failed to retrieve.")
             }
+        }
+    }
+
+    fun generateTypingSpeedMetricsLog(withTitle: Boolean = true): String {
+        val snapshot = TypingSpeedMetrics.captureSnapshot()
+        return buildString {
+            if (withTitle) appendLine("======= TYPING SPEED METRICS =======")
+            append("Suggestion latency p95 (ms)         : ").appendLine(String.format("%.2f", snapshot.suggestionLatencyP95Ms))
+            append("Suggestion latency sample count     : ").appendLine(snapshot.suggestionLatencySampleCount)
+            append("Suggestion accepts (total)          : ").appendLine(snapshot.suggestionAcceptCount)
+            append("Suggestion accepts in top-3         : ").appendLine(snapshot.top3SuggestionAcceptCount)
+            append("Top-3 acceptance rate               : ").appendLine(String.format("%.4f", snapshot.top3AcceptanceRate))
+            append("Text input keystrokes               : ").appendLine(snapshot.textInputKeystrokeCount)
+            append("Committed words                     : ").appendLine(snapshot.committedWordCount)
+            append("Keystrokes per word                 : ").appendLine(String.format("%.4f", snapshot.keystrokesPerWord))
+            append("Autocorrect applies (auto-commit)   : ").appendLine(snapshot.autoCorrectApplyCount)
+            append("Autocorrect undos                   : ").appendLine(snapshot.autoCorrectUndoCount)
+            append("False autocorrect ratio             : ").appendLine(String.format("%.4f", snapshot.falseAutocorrectRatio))
+            append("Undo autocorrect frequency          : ").appendLine(String.format("%.4f", snapshot.undoAutocorrectFrequency))
         }
     }
 

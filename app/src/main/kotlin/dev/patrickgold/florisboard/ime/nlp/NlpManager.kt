@@ -230,6 +230,7 @@ class NlpManager(context: Context) {
                     }
                 }
             }
+            TypingSpeedMetrics.recordSuggestionLatency(SystemClock.uptimeMillis() - reqTime)
         }
     }
 
