@@ -61,6 +61,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val ShortcutPrefixDepth = 3
         private const val ShortcutPrefixPoolSize = 48
         private const val ShortcutFallbackPoolSize = 64
+        // Bound typo-delete index size to avoid startup OOM on constrained heaps.
+        private const val MaxDeleteIndexWordCount = 20_000
+        private const val MaxDeleteIndexedWordLength = 18
 
         private val FrequencyDictionaryAssets = mapOf(
             "en" to "ime/dict/frequencywords/en_50k.txt",
@@ -115,7 +118,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private data class LanguageModel(
         val words: Map<String, Int>,
-        val deleteIndex: Map<String, Set<String>>,
+        val deleteIndex: Map<String, List<String>>,
         val maxFrequency: Int,
         val predictionShortcuts: LatinPredictionShortcuts,
     )
@@ -559,10 +562,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private fun buildLanguageModel(words: Map<String, Int>): LanguageModel {
         if (words.isEmpty()) return emptyModel
 
-        val deleteIndex = mutableMapOf<String, MutableSet<String>>()
-        words.keys.forEach { word ->
-            indexWord(word, deleteIndex)
-        }
+        val deleteIndex = mutableMapOf<String, MutableList<String>>()
+        words.entries
+            .asSequence()
+            .filter { (word, _) -> word.length in 2..MaxDeleteIndexedWordLength }
+            .sortedWith(
+                compareByDescending<Map.Entry<String, Int>> { it.value }
+                    .thenBy { it.key }
+            )
+            .take(MaxDeleteIndexWordCount)
+            .forEach { (word, _) ->
+                indexWord(word, deleteIndex)
+            }
 
         val predictionShortcuts = LatinPredictionShortcuts(
             words = words,
@@ -573,21 +584,31 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         return LanguageModel(
             words = words,
-            deleteIndex = deleteIndex.mapValues { (_, set) -> set.toSet() },
+            deleteIndex = deleteIndex.mapValues { (_, list) -> list.toList() },
             maxFrequency = words.values.maxOrNull()?.coerceAtLeast(1) ?: 1,
             predictionShortcuts = predictionShortcuts,
         )
     }
 
-    private fun indexWord(word: String, deleteIndex: MutableMap<String, MutableSet<String>>) {
-        deleteIndex.getOrPut(word) { mutableSetOf() }.add(word)
+    private fun indexWord(word: String, deleteIndex: MutableMap<String, MutableList<String>>) {
+        val uniqueDeletes = LinkedHashSet<String>()
         generateDeletes(word, MaxEditDistance).forEach { deletedWord ->
-            deleteIndex.getOrPut(deletedWord) { mutableSetOf() }.add(word)
+            if (uniqueDeletes.add(deletedWord)) {
+                deleteIndex.getOrPut(deletedWord) { mutableListOf() }.add(word)
+            }
         }
     }
 
     private fun generateDeletes(word: String, maxDistance: Int): Set<String> {
         if (word.isEmpty() || maxDistance <= 0) return emptySet()
+
+        if (maxDistance == 1) {
+            val deletes = LinkedHashSet<String>(word.length)
+            for (i in word.indices) {
+                deletes.add(word.removeRange(i, i + 1))
+            }
+            return deletes
+        }
 
         val deletes = mutableSetOf<String>()
         val queue = ArrayDeque<Pair<String, Int>>()
@@ -618,6 +639,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val candidateWords = LinkedHashSet<String>()
         model.deleteIndex[input]?.let { candidateWords.addAll(it) }
         generateDeletes(input, MaxEditDistance).forEach { deletedWord ->
+            if (model.words.containsKey(deletedWord)) {
+                candidateWords.add(deletedWord)
+            }
             model.deleteIndex[deletedWord]?.let { candidateWords.addAll(it) }
         }
 
