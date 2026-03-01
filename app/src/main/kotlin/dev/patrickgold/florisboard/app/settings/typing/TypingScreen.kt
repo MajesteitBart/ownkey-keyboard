@@ -42,6 +42,7 @@ import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
 import dev.patrickgold.florisboard.lib.compose.FlorisHyperlinkText
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
 import dev.patrickgold.jetpref.datastore.ui.ListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
@@ -99,6 +100,29 @@ fun TypingScreen() = FlorisScreen {
                 prefs.correction.autoCapitalization,
                 title = stringRes(R.string.pref__correction__auto_capitalization__label),
                 summary = stringRes(R.string.pref__correction__auto_capitalization__summary),
+            )
+            SwitchPreference(
+                prefs.correction.appSpecificAutocorrectProfilesEnabled,
+                title = stringRes(R.string.pref__correction__app_specific_autocorrect_profiles_enabled__label),
+                summary = stringRes(R.string.pref__correction__app_specific_autocorrect_profiles_enabled__summary),
+            )
+            DialogSliderPreference(
+                prefs.correction.appSpecificAutocorrectChatAggressivenessPercent,
+                title = stringRes(R.string.pref__correction__app_specific_autocorrect_chat_aggressiveness__label),
+                valueLabel = { percent -> stringRes(R.string.unit__percent__symbol, "v" to percent) },
+                min = 70,
+                max = 130,
+                stepIncrement = 2,
+                enabledIf = { prefs.correction.appSpecificAutocorrectProfilesEnabled isEqualTo true },
+            )
+            DialogSliderPreference(
+                prefs.correction.appSpecificAutocorrectEmailAggressivenessPercent,
+                title = stringRes(R.string.pref__correction__app_specific_autocorrect_email_aggressiveness__label),
+                valueLabel = { percent -> stringRes(R.string.unit__percent__symbol, "v" to percent) },
+                min = 70,
+                max = 130,
+                stepIncrement = 2,
+                enabledIf = { prefs.correction.appSpecificAutocorrectProfilesEnabled isEqualTo true },
             )
             val isAutoSpacePunctuationEnabled by prefs.correction.autoSpacePunctuation.collectAsState()
             SwitchPreference(

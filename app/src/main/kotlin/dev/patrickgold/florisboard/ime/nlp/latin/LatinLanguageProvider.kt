@@ -19,6 +19,7 @@ package dev.patrickgold.florisboard.ime.nlp.latin
 import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
+import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.FREQUENCY_MAX
@@ -94,7 +95,23 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val maxCandidateCount: Int,
         val allowPossiblyOffensive: Boolean,
         val isPrivateSession: Boolean,
+        val autocorrectPolicySignature: String,
     )
+
+    private data class AutocorrectPolicySnapshot(
+        val profile: AutocorrectAppProfile,
+        val config: HighCertaintyAutocorrectConfig,
+    ) {
+        val policy: HighCertaintyAutocorrectPolicy = HighCertaintyAutocorrectPolicy(config)
+        val signature: String = listOf(
+            profile.name,
+            config.enabled.toString(),
+            config.minConfidence,
+            config.minConfidenceGap,
+            config.minInputLength,
+            config.maxAutoCorrectEditDistance,
+        ).joinToString(separator = "|")
+    }
 
     private data class LanguageModel(
         val words: Map<String, Int>,
@@ -111,6 +128,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     )
 
     private val appContext by context.appContext()
+    private val editorInstance by context.editorInstance()
     private val prefs by FlorisPreferenceStore
     private val languageModels = guardedByLock { mutableMapOf<String, LanguageModel>() }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
@@ -208,12 +226,15 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
+        val autocorrectAppContext = currentAutocorrectAppContext()
+        val autocorrectPolicySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(autocorrectAppContext)
         val cacheKey = buildSuggestCacheKey(
             subtype = subtype,
             content = content,
             maxCandidateCount = maxCandidateCount,
             allowPossiblyOffensive = allowPossiblyOffensive,
             isPrivateSession = isPrivateSession,
+            autocorrectPolicySignature = autocorrectPolicySnapshot.signature,
         )
         suggestionCache.withLock { cache ->
             cache[cacheKey]?.let { return it }
@@ -313,7 +334,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                                     confidence = candidate.confidence,
                                 )
                             }
-                        val autoCorrectPolicy = currentHighCertaintyAutocorrectPolicy()
+                        val autoCorrectPolicy = autocorrectPolicySnapshot.policy
                         val topCandidate = sortedCandidates.firstOrNull()
                         val runnerUpConfidence = sortedCandidates.getOrNull(1)?.confidence
 
@@ -919,19 +940,42 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return languageCode.trim().lowercase(Locale.ROOT)
     }
 
-    private fun currentHighCertaintyAutocorrectPolicy(): HighCertaintyAutocorrectPolicy {
+    private fun currentAutocorrectAppContext(): AutocorrectAppContext {
+        val activeInfo = editorInstance.activeInfo
+        return AutocorrectAppContext(
+            packageName = activeInfo.packageName,
+            inputVariation = activeInfo.inputAttributes.variation,
+            imeAction = activeInfo.imeOptions.action,
+        )
+    }
+
+    private fun currentHighCertaintyAutocorrectPolicySnapshot(
+        appContext: AutocorrectAppContext,
+    ): AutocorrectPolicySnapshot {
         val minConfidencePercent = prefs.correction.highCertaintyAutocorrectMinConfidencePercent.get().coerceIn(50, 99)
         val minGapPercent = prefs.correction.highCertaintyAutocorrectMinConfidenceGapPercent.get().coerceIn(0, 50)
         val minInputLength = prefs.correction.highCertaintyAutocorrectMinInputLength.get().coerceIn(3, 12)
+        val baseConfig = HighCertaintyAutocorrectConfig(
+            enabled = prefs.correction.highCertaintyAutocorrectEnabled.get(),
+            minConfidence = minConfidencePercent / 100.0,
+            minConfidenceGap = minGapPercent / 100.0,
+            minInputLength = minInputLength,
+            maxAutoCorrectEditDistance = MaxEditDistance,
+        )
 
-        return HighCertaintyAutocorrectPolicy(
-            HighCertaintyAutocorrectConfig(
-                enabled = prefs.correction.highCertaintyAutocorrectEnabled.get(),
-                minConfidence = minConfidencePercent / 100.0,
-                minConfidenceGap = minGapPercent / 100.0,
-                minInputLength = minInputLength,
-                maxAutoCorrectEditDistance = MaxEditDistance,
+        val appSpecificPolicy = AppSpecificAutocorrectProfilePolicy(
+            AppSpecificAutocorrectConfig(
+                enabled = prefs.correction.appSpecificAutocorrectProfilesEnabled.get(),
+                chatAggressivenessPercent = prefs.correction.appSpecificAutocorrectChatAggressivenessPercent.get(),
+                emailAggressivenessPercent = prefs.correction.appSpecificAutocorrectEmailAggressivenessPercent.get(),
             )
+        )
+        val profile = appSpecificPolicy.resolveProfile(appContext)
+        val effectiveConfig = appSpecificPolicy.applyProfile(baseConfig, profile)
+
+        return AutocorrectPolicySnapshot(
+            profile = profile,
+            config = effectiveConfig,
         )
     }
 
@@ -969,6 +1013,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         maxCandidateCount: Int,
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
+        autocorrectPolicySignature: String,
     ): SuggestCacheKey {
         val hasCurrentWordInput = content.composingText.isNotBlank() || content.currentWordText.isNotBlank()
         val textBeforeTail = if (hasCurrentWordInput) {
@@ -985,6 +1030,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             maxCandidateCount = maxCandidateCount,
             allowPossiblyOffensive = allowPossiblyOffensive,
             isPrivateSession = isPrivateSession,
+            autocorrectPolicySignature = autocorrectPolicySignature,
         )
     }
 
