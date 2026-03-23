@@ -752,6 +752,22 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "voxtral__language_hint",
             default = "",
         )
+        val postProcessingEnabled = boolean(
+            key = "voxtral__post_processing_enabled",
+            default = false,
+        )
+        val postProcessingUseUserDictionary = boolean(
+            key = "voxtral__post_processing_use_user_dictionary",
+            default = true,
+        )
+        val postProcessingEndpointUrl = string(
+            key = "voxtral__post_processing_endpoint_url",
+            default = "https://api.mistral.ai/v1/chat/completions",
+        )
+        val postProcessingModel = string(
+            key = "voxtral__post_processing_model",
+            default = "ministral-3b-latest",
+        )
     }
 
     val theme = Theme()

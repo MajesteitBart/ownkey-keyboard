@@ -1,47 +1,87 @@
 package nl.bartvandermeeren.ownkey.wear
 
+import android.content.ContentValues
 import android.content.Context
 import android.media.MediaRecorder
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.os.ParcelFileDescriptor
+import android.provider.MediaStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import java.io.DataOutputStream
-import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class AudioRecording(
     val bytes: ByteArray,
     val mimeType: String,
     val fileName: String,
+    val recordingUri: String?,
+    val durationMs: Long,
 )
 
 data class RecordingSession(
     val recorder: MediaRecorder,
-    val outputFile: File,
+    val outputUri: Uri,
+    val outputFileName: String,
+    val startedAtEpochMs: Long,
+    val descriptor: ParcelFileDescriptor,
+    val appContext: Context,
+    val usesPendingFlag: Boolean,
 )
 
 fun startRecording(context: Context): RecordingSession? {
-    val outputFile = runCatching {
-        File.createTempFile("ownkey_wear_", ".m4a", context.cacheDir ?: context.filesDir)
-    }.getOrNull() ?: return null
+    val appContext = context.applicationContext
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    val fileName = "ownkey_wear_$timestamp.m4a"
+    val usePending = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, "audio/mp4")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_RECORDINGS}/Ownkey")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+    }
+
+    val outputUri = appContext.contentResolver
+        .insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+        ?: return null
+
+    val descriptor = runCatching {
+        appContext.contentResolver.openFileDescriptor(outputUri, "w")
+    }.getOrNull()
+
+    if (descriptor == null) {
+        appContext.contentResolver.delete(outputUri, null, null)
+        return null
+    }
 
     val recorder = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
+            MediaRecorder(appContext)
         } else {
             @Suppress("DEPRECATION")
             MediaRecorder()
         }
     } catch (_: Exception) {
-        outputFile.delete()
+        runCatching { descriptor.close() }
+        appContext.contentResolver.delete(outputUri, null, null)
         return null
     }
 
@@ -53,44 +93,79 @@ fun startRecording(context: Context): RecordingSession? {
             setAudioSamplingRate(16_000)
             setAudioChannels(1)
             setAudioEncodingBitRate(64_000)
-            setOutputFile(outputFile.absolutePath)
+            setOutputFile(descriptor.fileDescriptor)
             prepare()
             start()
         }
-        RecordingSession(recorder = recorder, outputFile = outputFile)
+
+        RecordingSession(
+            recorder = recorder,
+            outputUri = outputUri,
+            outputFileName = fileName,
+            startedAtEpochMs = System.currentTimeMillis(),
+            descriptor = descriptor,
+            appContext = appContext,
+            usesPendingFlag = usePending,
+        )
     } catch (_: Exception) {
         runCatching { recorder.reset() }
         runCatching { recorder.release() }
-        outputFile.delete()
+        runCatching { descriptor.close() }
+        appContext.contentResolver.delete(outputUri, null, null)
         null
     }
 }
 
 fun stopRecording(session: RecordingSession): Result<AudioRecording> {
     return runCatching {
-        val recorder = session.recorder
-        val outputFile = session.outputFile
+        stopRecorderInternal(session)
+        publishIfPending(session)
 
-        try {
-            recorder.stop()
-        } finally {
-            runCatching { recorder.reset() }
-            runCatching { recorder.release() }
-        }
-
-        val bytes = outputFile.readBytes()
-        outputFile.delete()
+        val bytes = session.appContext.contentResolver.openInputStream(session.outputUri)
+            ?.use { it.readBytes() }
+            ?: ByteArray(0)
 
         if (bytes.isEmpty()) {
+            session.appContext.contentResolver.delete(session.outputUri, null, null)
             throw IllegalStateException("Geen audio opgenomen")
         }
 
         AudioRecording(
             bytes = bytes,
             mimeType = "audio/mp4",
-            fileName = "recording.m4a",
+            fileName = session.outputFileName,
+            recordingUri = session.outputUri.toString(),
+            durationMs = (System.currentTimeMillis() - session.startedAtEpochMs).coerceAtLeast(0L),
         )
     }
+}
+
+fun cancelRecording(session: RecordingSession): Result<Unit> {
+    return runCatching {
+        stopRecorderInternal(session)
+        session.appContext.contentResolver.delete(session.outputUri, null, null)
+    }
+}
+
+private fun stopRecorderInternal(session: RecordingSession) {
+    try {
+        session.recorder.stop()
+    } catch (_: Exception) {
+        // Ignore stop failures for very short recordings.
+    } finally {
+        runCatching { session.recorder.reset() }
+        runCatching { session.recorder.release() }
+        runCatching { session.descriptor.close() }
+    }
+}
+
+private fun publishIfPending(session: RecordingSession) {
+    if (!session.usesPendingFlag || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.IS_PENDING, 0)
+    }
+    session.appContext.contentResolver.update(session.outputUri, values, null, null)
 }
 
 class VoxtralWearClient(
@@ -232,6 +307,16 @@ class VoxtralWearClient(
     ) : IllegalStateException(message)
 }
 
+@Serializable
+data class SavedTranscriptSession(
+    val id: String,
+    val createdAtEpochMs: Long,
+    val providerLabel: String,
+    val transcript: String,
+    val durationMs: Long,
+    val recordingUri: String? = null,
+)
+
 class WearSettingsStore(context: Context) {
     private val prefs = runCatching {
         val masterKey = MasterKey.Builder(context)
@@ -267,6 +352,24 @@ class WearSettingsStore(context: Context) {
     fun getLanguageHint(): String = prefs.getString("language_hint", "").orEmpty()
     fun setLanguageHint(value: String) {
         prefs.edit().putString("language_hint", value).apply()
+    }
+
+    fun getSavedSessions(): List<SavedTranscriptSession> {
+        val raw = prefs.getString("saved_sessions_json", "[]").orEmpty()
+        return runCatching {
+            Json.decodeFromString<List<SavedTranscriptSession>>(raw)
+        }.getOrDefault(emptyList())
+    }
+
+    fun saveSession(session: SavedTranscriptSession) {
+        val updated = listOf(session) + getSavedSessions().filterNot { it.id == session.id }
+        val trimmed = updated.take(120)
+        prefs.edit().putString("saved_sessions_json", Json.encodeToString(trimmed)).apply()
+    }
+
+    fun removeSession(sessionId: String) {
+        val updated = getSavedSessions().filterNot { it.id == sessionId }
+        prefs.edit().putString("saved_sessions_json", Json.encodeToString(updated)).apply()
     }
 }
 
