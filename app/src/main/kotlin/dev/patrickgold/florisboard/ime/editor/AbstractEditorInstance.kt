@@ -412,7 +412,7 @@ abstract class AbstractEditorInstance(context: Context) {
         return true
     }
 
-    open fun finalizeComposingText(text: String): Boolean {
+    open fun finalizeComposingText(text: String, cursorAdvanceAfterText: Int = 0): Boolean {
         val ic = currentInputConnection() ?: return false
         val content = activeContent
         val composing = content.composing
@@ -420,18 +420,26 @@ abstract class AbstractEditorInstance(context: Context) {
         if (activeInfo.isRawInputEditor || composing.isNotValid) {
             return false
         } else runBlocking {
-            val newSelection = EditorRange.cursor(composing.end + (text.length - content.composingText.length))
+            val safeCursorAdvance = cursorAdvanceAfterText.coerceIn(0, content.textAfterSelection.length)
+            val newSelection = EditorRange.cursor(
+                composing.end + (text.length - content.composingText.length) + safeCursorAdvance
+            )
             val newContent = content.generateCopy(
                 selection = newSelection,
                 textBeforeSelection = buildString {
                     append(content.textBeforeSelection.removeSuffix(content.composingText))
                     append(text)
+                    append(content.textAfterSelection.take(safeCursorAdvance))
                 },
+                textAfterSelection = content.textAfterSelection.drop(safeCursorAdvance),
                 selectedText = "",
             )
             expectedContentQueue.push(newContent)
             ic.setComposingText(text, 1)
             ic.finishComposingText()
+            if (safeCursorAdvance > 0) {
+                ic.setSelection(newSelection.start, newSelection.end)
+            }
             _lastCommitPosition.handleCommit(newContent.selection)
         }
         ic.endBatchEdit()

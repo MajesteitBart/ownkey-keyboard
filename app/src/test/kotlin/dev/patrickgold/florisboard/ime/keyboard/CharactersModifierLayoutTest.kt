@@ -20,16 +20,47 @@ import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.lib.io.loadJsonAsset
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Test
-import java.nio.file.Files
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.io.path.exists
+import kotlin.io.path.readText
 
-class CharactersModifierLayoutTest {
-    @Test
-    fun `characters modifier layout exposes direct numeric advanced popup on symbols key`() {
-        val layoutPath = Paths.get(
+class CharactersModifierLayoutTest : FunSpec({
+    test("characters modifier layout exposes direct numeric advanced popup on symbols key") {
+        val layoutPath = candidateLayoutPaths().firstOrNull(Path::exists)
+            ?: error("Unable to find characters modifier layout JSON from module or repo root")
+        val layoutJson = layoutPath.readText()
+        val layout = loadJsonAsset<LayoutArrangement>(layoutJson).getOrThrow()
+
+        val viewSymbolsKey = layout
+            .last()
+            .first()
+            .let { it as TextKeyData }
+        val numericAdvancedPopup = viewSymbolsKey.popup?.main as? TextKeyData
+
+        numericAdvancedPopup.shouldNotBeNull()
+        numericAdvancedPopup.code shouldBe KeyCode.VIEW_NUMERIC_ADVANCED
+        numericAdvancedPopup.type shouldBe KeyType.SYSTEM_GUI
+    }
+})
+
+private fun candidateLayoutPaths(): List<Path> {
+    return listOf(
+        Paths.get(
+            "src",
+            "main",
+            "assets",
+            "ime",
+            "keyboard",
+            "org.florisboard.layouts",
+            "layouts",
+            "charactersMod",
+            "default.json",
+        ),
+        Paths.get(
             "app",
             "src",
             "main",
@@ -40,18 +71,6 @@ class CharactersModifierLayoutTest {
             "layouts",
             "charactersMod",
             "default.json",
-        )
-        val layoutJson = Files.readString(layoutPath)
-        val layout = loadJsonAsset<LayoutArrangement>(layoutJson).getOrThrow()
-
-        val viewSymbolsKey = layout
-            .last()
-            .first()
-            .let { it as TextKeyData }
-        val numericAdvancedPopup = viewSymbolsKey.popup?.main as? TextKeyData
-
-        assertNotNull(numericAdvancedPopup)
-        assertEquals(KeyCode.VIEW_NUMERIC_ADVANCED, numericAdvancedPopup?.code)
-        assertEquals(KeyType.SYSTEM_GUI, numericAdvancedPopup?.type)
-    }
+        ),
+    )
 }

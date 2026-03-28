@@ -254,8 +254,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val content = activeContent
         return if (content.composing.isValid) {
-            phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
-            super.finalizeComposingText(text)
+            val spacingDecision = AcceptedSuggestionSpacingPolicy.forComposingReplacement(content)
+            phantomSpace.setActive(
+                showComposingRegion = false,
+                candidate = candidate,
+                insertSeparator = spacingDecision.shouldActivatePhantomSpace,
+            )
+            super.finalizeComposingText(text, cursorAdvanceAfterText = spacingDecision.cursorAdvanceAfterCommit)
         } else {
             val isPhantomSpaceActive = phantomSpace.determine(text)
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
@@ -614,9 +619,10 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             showComposingRegion: Boolean,
             stayActiveNextUpdate: Boolean = true,
             candidate: SuggestionCandidate? = null,
+            insertSeparator: Boolean = true,
         ) {
             state.set(
-                F_IS_ACTIVE
+                (if (insertSeparator) F_IS_ACTIVE else 0)
                     or (if (showComposingRegion) F_SHOW_COMPOSING_REGION else 0)
                     or (if (stayActiveNextUpdate) F_STAY_ACTIVE_NEXT_UPDATE else 0)
             )
