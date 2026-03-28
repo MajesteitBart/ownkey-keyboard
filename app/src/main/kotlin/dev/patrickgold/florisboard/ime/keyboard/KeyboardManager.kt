@@ -39,6 +39,7 @@ import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
 import dev.patrickgold.florisboard.ime.editor.ImeOptions
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.editor.OperationUnit
+import dev.patrickgold.florisboard.ime.editor.PendingSeparatorSuggestionContent
 import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
@@ -235,7 +236,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             nlpManager.clearSuggestions()
             return
         }
-        nlpManager.suggest(subtypeManager.activeSubtype, content)
+        val suggestionContent = PendingSeparatorSuggestionContent.forRefresh(
+            content = content,
+            hasPendingSeparator = editorInstance.phantomSpace.isActive,
+        )
+        nlpManager.suggest(subtypeManager.activeSubtype, suggestionContent)
     }
 
     /**
