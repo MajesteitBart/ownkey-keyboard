@@ -100,7 +100,11 @@ class EmojiSuggestionProvider(private val context: Context) : SuggestionProvider
         EmojiHistoryHelper.markEmojiUsed(prefs, candidate.emoji)
     }
 
-    override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
+    override suspend fun notifySuggestionReverted(
+        subtype: Subtype,
+        candidate: SuggestionCandidate,
+        originalToken: String?,
+    ) {
         // No-op
     }
 

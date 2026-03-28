@@ -69,6 +69,11 @@ internal class AutocorrectUndoTracker {
         )
     }
 
+    fun originalTokenForCandidate(candidate: SuggestionCandidate?): String? {
+        val pending = pendingOperation ?: return null
+        return if (candidate == pending.candidate) pending.originalToken else null
+    }
+
     fun clearPending() {
         pendingOperation = null
     }

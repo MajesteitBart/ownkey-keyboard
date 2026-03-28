@@ -87,6 +87,22 @@ class HighCertaintyAutocorrectPolicyTest : FunSpec({
         ).shouldBeFalse()
     }
 
+    test("auto-commit blocked when user preference suppresses the input") {
+        val policy = HighCertaintyAutocorrectPolicy(
+            HighCertaintyAutocorrectConfig(minInputLength = 3)
+        )
+
+        policy.shouldAutoCommit(
+            normalizedInput = "teh",
+            candidateWord = "the",
+            candidateEditDistance = 1,
+            candidateConfidence = 0.97,
+            runnerUpConfidence = 0.10,
+            hasExactInputMatch = false,
+            isBlockedByUserPreference = true,
+        ).shouldBeFalse()
+    }
+
     test("auto-commit blocked for short input and larger edit distance") {
         val policy = HighCertaintyAutocorrectPolicy(
             HighCertaintyAutocorrectConfig(minInputLength = 4, maxAutoCorrectEditDistance = 1)

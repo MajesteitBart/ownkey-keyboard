@@ -340,6 +340,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                         val autoCorrectPolicy = autocorrectPolicySnapshot.policy
                         val topCandidate = sortedCandidates.firstOrNull()
                         val runnerUpConfidence = sortedCandidates.getOrNull(1)?.confidence
+                        val isBlockedByUserPreference = isAutoCorrectBlockedByUserPreference(
+                            subtype = subtype,
+                            normalizedInput = normalizedInput,
+                        )
 
                         val sortedCandidateLocales = sortedCandidates.map { scoredCandidate ->
                             aggregatedCandidates[scoredCandidate.ranked.word]?.locale ?: primaryLocale
@@ -355,6 +359,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                                 candidateConfidence = scoredCandidate.confidence,
                                 runnerUpConfidence = runnerUpConfidence,
                                 hasExactInputMatch = hasExactMatch,
+                                isBlockedByUserPreference = isBlockedByUserPreference,
                             )
                             WordSuggestionCandidate(
                                 text = suggestionText,
@@ -394,7 +399,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         suggestionCache.withLock { it.clear() }
     }
 
-    override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
+    override suspend fun notifySuggestionReverted(
+        subtype: Subtype,
+        candidate: SuggestionCandidate,
+        originalToken: String?,
+    ) {
         val resolvedLocale = resolveBestLocaleForWord(
             subtype = subtype,
             candidateWord = candidate.text.toString(),
@@ -403,6 +412,20 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             language = resolvedLocale.language,
             candidateWord = candidate.text.toString(),
         )
+
+        val normalizedOriginalToken = originalToken
+            ?.let { normalizeInputWord(it, resolvedLocale.base) }
+            ?.takeIf { it.isNotBlank() }
+        if (candidate.isEligibleForAutoCommit && normalizedOriginalToken != null) {
+            val didUpdateNeverCorrectWords = NeverCorrectWordsHelper.suppressWord(
+                prefs = prefs,
+                normalizedWord = normalizedOriginalToken,
+                language = resolvedLocale.language,
+            )
+            if (didUpdateNeverCorrectWords) {
+                suggestionCache.withLock { it.clear() }
+            }
+        }
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
@@ -1144,6 +1167,20 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return subtype.locales().firstOrNull { locale ->
             normalizeLanguageCode(locale.language) == normalizedLanguage
         }
+    }
+
+    private fun isAutoCorrectBlockedByUserPreference(
+        subtype: Subtype,
+        normalizedInput: String,
+    ): Boolean {
+        val languages = subtype.locales().mapTo(linkedSetOf()) { locale ->
+            normalizeLanguageCode(locale.language)
+        }
+        return NeverCorrectWordsHelper.isBlocked(
+            prefs = prefs,
+            normalizedWord = normalizedInput,
+            languages = languages,
+        )
     }
 
     private fun applyInputCase(rawInput: String, suggestion: String, locale: Locale): String {

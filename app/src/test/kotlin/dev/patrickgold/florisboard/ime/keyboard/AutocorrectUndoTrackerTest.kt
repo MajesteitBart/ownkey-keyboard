@@ -122,6 +122,15 @@ class AutocorrectUndoTrackerTest : FunSpec({
         tracker.findBackspaceRestoreReplacement(content).shouldBeNull()
     }
 
+    test("returns original token for matching candidate") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate)
+
+        tracker.originalTokenForCandidate(correctedCandidate) shouldBe "teh"
+        tracker.originalTokenForCandidate(WordSuggestionCandidate(text = "tea", isEligibleForAutoCommit = true)).shouldBeNull()
+    }
+
     test("ignores invalid autocorrect history with blank or identical tokens") {
         val tracker = AutocorrectUndoTracker()
         tracker.trackAutoCorrect(

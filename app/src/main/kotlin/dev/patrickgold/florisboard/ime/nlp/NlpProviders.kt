@@ -153,14 +153,19 @@ interface SuggestionProvider : NlpProvider {
     suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate)
 
     /**
-     * Is called when a previously automatically accepted suggestion has been reverted by the user with backspace. This
-     * is purely a notification about an event and can safely be ignored if not needed.
+     * Is called when a previously automatically accepted suggestion has been reverted by the user with backspace or
+     * explicit undo. This is purely a notification about an event and can safely be ignored if not needed.
      *
      * @param subtype Information about the current subtype, primarily used for getting the primary and secondary
      *  language for correct dictionary selection.
      * @param candidate The exact suggestion candidate which has been reverted.
+     * @param originalToken The original token restored by the revert flow, if available.
      */
-    suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate)
+    suspend fun notifySuggestionReverted(
+        subtype: Subtype,
+        candidate: SuggestionCandidate,
+        originalToken: String? = null,
+    )
 
     /**
      * Called if the user requests to prevent a certain suggested word from showing again. It is up to the actual
@@ -275,7 +280,11 @@ object FallbackNlpProvider : SpellingProvider, SuggestionProvider {
         // Do nothing
     }
 
-    override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
+    override suspend fun notifySuggestionReverted(
+        subtype: Subtype,
+        candidate: SuggestionCandidate,
+        originalToken: String?,
+    ) {
         // Do nothing
     }
 

@@ -7,3 +7,7 @@ Track key project decisions with context and rationale.
 - Keep all typing-speed instrumentation aggregate-only, no raw typed text persisted.
 - Execute typing-speed roadmap sequentially by task ID (T-001 onward) on `feat/speed-prediction-autocorrect`.
 - Require compile + unit-test validation before pushing each task commit.
+
+## 2026-03-28
+
+- Treat explicit autocorrect revert actions as strong negative feedback and seed a per-language protected-spelling list from them before building the broader manual never-correct UI.

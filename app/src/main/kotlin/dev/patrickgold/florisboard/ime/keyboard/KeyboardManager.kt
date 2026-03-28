@@ -423,11 +423,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             if (candidateForRevert.isEligibleForAutoCommit) {
                 TypingSpeedMetrics.recordAutoCorrectUndone()
             }
+            val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
             candidateForRevert.sourceProvider?.let { sourceProvider ->
                 scope.launch {
                     sourceProvider.notifySuggestionReverted(
                         subtype = subtypeManager.activeSubtype,
                         candidate = candidateForRevert,
+                        originalToken = originalToken,
                     )
                 }
             }
@@ -458,6 +460,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 sourceProvider.notifySuggestionReverted(
                     subtype = subtypeManager.activeSubtype,
                     candidate = replacement.candidate,
+                    originalToken = replacement.originalToken,
                 )
             }
         }
