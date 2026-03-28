@@ -5,7 +5,9 @@
     { "code":   -7, "label": "delete", "type": "enter_editing" }
   ],
   [
-    { "code": -202, "label": "view_symbols", "type": "system_gui" },
+    { "code": -202, "label": "view_symbols", "type": "system_gui", "popup": {
+      "main": { "code": -205, "label": "view_numeric_advanced", "type": "system_gui" }
+    } },
     { "$": "variation_selector",
       "default":  { "code":   44, "label": ",", "groupId": 1 },
       "email":    { "code":   64, "label": "@", "groupId": 1 },
