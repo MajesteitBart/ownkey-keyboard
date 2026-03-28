@@ -1,7 +1,7 @@
 ---
 title: T-009 first execution slice - direct numeric-advanced shortcut
 created: 2026-03-28T13:11:21Z
-updated: 2026-03-28T13:11:21Z
+updated: 2026-03-28T13:20:31Z
 task_id: T-009
 ---
 
@@ -27,6 +27,12 @@ Implemented the first dependency-safe execution slice for T-009 by extending the
   - Failing call path: Gradle file-lock listener startup -> `NetworkInterface.getNetworkInterfaces()`
   - Interpretation: environment blocker, not a code-level compile failure discovered in this pass
 
+## CI Outcome
+- GitHub PR: `https://github.com/MajesteitBart/ownkey-keyboard/pull/7`
+- Successful Android CI run: `https://github.com/MajesteitBart/ownkey-keyboard/actions/runs/23686005603`
+- Phone artifact: `https://github.com/MajesteitBart/ownkey-keyboard/actions/runs/23686005603/artifacts/6158810158`
+  - Contains `ownkey-phone-debug-v0.6.0-alpha02-1d8be84.apk`
+
 ## Follow-up
-- Run the Gradle validation and APK build in CI or a shell without the sandbox network-interface restriction.
+- If a local developer shell without the sandbox restriction is available, re-run the focused Gradle validation there so the local execution path matches CI.
 - If user testing still shows too much layer friction after this shortcut, continue T-009 with a second slice focused on momentary symbol/number return behavior.
