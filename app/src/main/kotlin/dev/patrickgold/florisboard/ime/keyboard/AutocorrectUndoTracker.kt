@@ -58,6 +58,22 @@ internal class AutocorrectUndoTracker {
         )
     }
 
+    fun findBackspaceRestoreReplacement(content: EditorContent): AutocorrectUndoReplacement? {
+        if (content.selection.isSelectionMode) return null
+        val operation = pendingOperation ?: return null
+        val correctedTokenRange = findBackspaceRestoreRange(content, operation.correctedToken) ?: return null
+        return AutocorrectUndoReplacement(
+            range = correctedTokenRange,
+            originalToken = operation.originalToken,
+            candidate = operation.candidate,
+        )
+    }
+
+    fun originalTokenForCandidate(candidate: SuggestionCandidate?): String? {
+        val pending = pendingOperation ?: return null
+        return if (candidate == pending.candidate) pending.originalToken else null
+    }
+
     fun clearPending() {
         pendingOperation = null
     }
@@ -73,6 +89,21 @@ internal class AutocorrectUndoTracker {
         if (content.currentWord.isValid && content.currentWordText == correctedToken) {
             return content.currentWord
         }
+        return findTokenRangeBeforeCursor(content, correctedToken)
+    }
+
+    private fun findBackspaceRestoreRange(content: EditorContent, correctedToken: String): EditorRange? {
+        if (
+            content.currentWord.isValid &&
+            content.selection.end == content.currentWord.end &&
+            content.currentWordText == correctedToken
+        ) {
+            return content.currentWord
+        }
+        return findTokenRangeBeforeCursor(content, correctedToken)
+    }
+
+    private fun findTokenRangeBeforeCursor(content: EditorContent, correctedToken: String): EditorRange? {
         val beforeCursor = content.textBeforeSelection
         if (beforeCursor.isEmpty()) return null
 

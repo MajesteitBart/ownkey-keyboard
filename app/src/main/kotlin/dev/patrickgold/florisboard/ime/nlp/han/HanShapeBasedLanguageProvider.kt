@@ -210,7 +210,11 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
         flogDebug { candidate.toString() }
     }
 
-    override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
+    override suspend fun notifySuggestionReverted(
+        subtype: Subtype,
+        candidate: SuggestionCandidate,
+        originalToken: String?,
+    ) {
         flogDebug { candidate.toString() }
     }
 

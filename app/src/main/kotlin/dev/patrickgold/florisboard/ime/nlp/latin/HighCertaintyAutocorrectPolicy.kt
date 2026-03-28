@@ -34,9 +34,11 @@ internal class HighCertaintyAutocorrectPolicy(
         candidateConfidence: Double,
         runnerUpConfidence: Double?,
         hasExactInputMatch: Boolean,
+        isBlockedByUserPreference: Boolean = false,
     ): Boolean {
         if (!config.enabled) return false
         if (hasExactInputMatch) return false
+        if (isBlockedByUserPreference) return false
         if (normalizedInput.length < config.minInputLength) return false
         if (candidateWord == normalizedInput) return false
         if (candidateEditDistance < 1 || candidateEditDistance > config.maxAutoCorrectEditDistance) return false

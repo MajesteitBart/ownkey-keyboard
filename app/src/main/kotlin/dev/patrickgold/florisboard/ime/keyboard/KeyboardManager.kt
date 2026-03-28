@@ -39,6 +39,7 @@ import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
 import dev.patrickgold.florisboard.ime.editor.ImeOptions
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.editor.OperationUnit
+import dev.patrickgold.florisboard.ime.editor.PendingSeparatorSuggestionContent
 import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
@@ -235,7 +236,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             nlpManager.clearSuggestions()
             return
         }
-        nlpManager.suggest(subtypeManager.activeSubtype, content)
+        val suggestionContent = PendingSeparatorSuggestionContent.forRefresh(
+            content = content,
+            hasPendingSeparator = editorInstance.phantomSpace.isActive,
+        )
+        nlpManager.suggest(subtypeManager.activeSubtype, suggestionContent)
     }
 
     /**
@@ -423,11 +428,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             if (candidateForRevert.isEligibleForAutoCommit) {
                 TypingSpeedMetrics.recordAutoCorrectUndone()
             }
+            val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
             candidateForRevert.sourceProvider?.let { sourceProvider ->
                 scope.launch {
                     sourceProvider.notifySuggestionReverted(
                         subtype = subtypeManager.activeSubtype,
                         candidate = candidateForRevert,
+                        originalToken = originalToken,
                     )
                 }
             }
@@ -437,17 +444,28 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private fun handleUndoLastAutocorrect(): Boolean {
         val undoReplacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return false
-        if (!editorInstance.setSelection(undoReplacement.range.start, undoReplacement.range.end)) return false
-        if (!editorInstance.commitText(undoReplacement.originalToken)) return false
+        return restoreTrackedAutocorrect(undoReplacement)
+    }
+
+    private fun handleBackspaceAutocorrectRestore(unit: OperationUnit): Boolean {
+        if (unit != OperationUnit.CHARACTERS) return false
+        val restoreReplacement = autocorrectUndoTracker.findBackspaceRestoreReplacement(editorInstance.activeContent) ?: return false
+        return restoreTrackedAutocorrect(restoreReplacement)
+    }
+
+    private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement): Boolean {
+        if (!editorInstance.setSelection(replacement.range.start, replacement.range.end)) return false
+        if (!editorInstance.commitText(replacement.originalToken)) return false
         autocorrectUndoTracker.clearPending()
-        if (undoReplacement.candidate.isEligibleForAutoCommit) {
+        if (replacement.candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectUndone()
         }
-        undoReplacement.candidate.sourceProvider?.let { sourceProvider ->
+        replacement.candidate.sourceProvider?.let { sourceProvider ->
             scope.launch {
                 sourceProvider.notifySuggestionReverted(
                     subtype = subtypeManager.activeSubtype,
-                    candidate = undoReplacement.candidate,
+                    candidate = replacement.candidate,
+                    originalToken = replacement.originalToken,
                 )
             }
         }
@@ -465,6 +483,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             it.isManualSelectionMode = false
             it.isManualSelectionModeStart = false
             it.isManualSelectionModeEnd = false
+        }
+        if (handleBackspaceAutocorrectRestore(unit)) {
+            return
         }
         revertPreviouslyAcceptedCandidate()
         editorInstance.deleteBackwards(unit)

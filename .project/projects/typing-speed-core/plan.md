@@ -3,7 +3,7 @@ name: Typing Speed Core
 status: planned
 lead: ownkey-keyboard-team
 created: 2026-02-25T19:38:38Z
-updated: 2026-02-25T19:38:38Z
+updated: 2026-03-28T17:16:03Z
 linear_project_id:
 ---
 
@@ -58,3 +58,4 @@ linear_project_id:
 12. Improve symbols/numbers flow to reduce mode-switches while preserving prediction continuity.
 13. Optimize keyboard open + first input path to meet <200 ms perceived responsiveness.
 14. Validate KPI trajectory and adjust thresholds before broad rollout.
+15. Remember reverted autocorrect spellings so repeated user-rejected corrections stop auto-committing immediately, then expose that protected-word list with explicit management UI.

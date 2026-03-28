@@ -418,7 +418,11 @@ class NlpManager(context: Context) {
             }
         }
 
-        override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
+        override suspend fun notifySuggestionReverted(
+            subtype: Subtype,
+            candidate: SuggestionCandidate,
+            originalToken: String?,
+        ) {
             // Do nothing
         }
 

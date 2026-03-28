@@ -70,6 +70,67 @@ class AutocorrectUndoTrackerTest : FunSpec({
         tracker.findUndoReplacement(contentAtCursor("I like tea ")).shouldBeNull()
     }
 
+    test("returns backspace restore replacement for corrected token before trailing space") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate)
+
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I like the ")) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 7, end = 10),
+            originalToken = "teh",
+            candidate = correctedCandidate,
+        )
+    }
+
+    test("returns backspace restore replacement when cursor is at end of corrected current word") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "hello", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "helo", correctedCandidate = correctedCandidate)
+
+        tracker.findBackspaceRestoreReplacement(wordContent(text = "hello", cursor = 5)) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(0, 5),
+            originalToken = "helo",
+            candidate = correctedCandidate,
+        )
+    }
+
+    test("does not return backspace restore replacement when cursor moved inside corrected word") {
+        val tracker = AutocorrectUndoTracker()
+        tracker.trackAutoCorrect(
+            originalToken = "helo",
+            correctedCandidate = WordSuggestionCandidate(text = "hello", isEligibleForAutoCommit = true),
+        )
+
+        tracker.findBackspaceRestoreReplacement(wordContent(text = "hello", cursor = 3)).shouldBeNull()
+    }
+
+    test("does not return backspace restore replacement for active text selection") {
+        val tracker = AutocorrectUndoTracker()
+        tracker.trackAutoCorrect(
+            originalToken = "helo",
+            correctedCandidate = WordSuggestionCandidate(text = "hello", isEligibleForAutoCommit = true),
+        )
+
+        val content = EditorContent(
+            text = "hello world",
+            offset = 0,
+            localSelection = EditorRange(0, 5),
+            localComposing = EditorRange.Unspecified,
+            localCurrentWord = EditorRange(0, 5),
+        )
+
+        tracker.findBackspaceRestoreReplacement(content).shouldBeNull()
+    }
+
+    test("returns original token for matching candidate") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate)
+
+        tracker.originalTokenForCandidate(correctedCandidate) shouldBe "teh"
+        tracker.originalTokenForCandidate(WordSuggestionCandidate(text = "tea", isEligibleForAutoCommit = true)).shouldBeNull()
+    }
+
     test("ignores invalid autocorrect history with blank or identical tokens") {
         val tracker = AutocorrectUndoTracker()
         tracker.trackAutoCorrect(
@@ -93,5 +154,15 @@ private fun contentAtCursor(text: String): EditorContent {
         localSelection = EditorRange.cursor(text.length),
         localComposing = EditorRange.Unspecified,
         localCurrentWord = EditorRange.Unspecified,
+    )
+}
+
+private fun wordContent(text: String, cursor: Int): EditorContent {
+    return EditorContent(
+        text = text,
+        offset = 0,
+        localSelection = EditorRange.cursor(cursor),
+        localComposing = EditorRange.Unspecified,
+        localCurrentWord = EditorRange(0, text.length),
     )
 }

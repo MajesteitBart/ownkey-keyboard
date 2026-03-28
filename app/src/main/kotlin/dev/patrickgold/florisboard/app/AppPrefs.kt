@@ -38,6 +38,7 @@ import dev.patrickgold.florisboard.ime.media.emoji.EmojiHistory
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSkinTone
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
+import dev.patrickgold.florisboard.ime.nlp.latin.NeverCorrectWords
 import dev.patrickgold.florisboard.ime.smartbar.CandidatesDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
@@ -250,6 +251,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val enableFlorisUserDictionary = boolean(
             key = "suggestion__enable_floris_user_dictionary",
             default = true,
+        )
+        val neverCorrectWordsData = custom(
+            key = "dictionary__never_correct_words_data",
+            default = NeverCorrectWords.Empty,
+            serializer = NeverCorrectWords.Serializer,
         )
     }
 
