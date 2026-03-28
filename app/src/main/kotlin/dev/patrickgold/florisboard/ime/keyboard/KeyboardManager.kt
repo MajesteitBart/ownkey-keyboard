@@ -437,17 +437,27 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private fun handleUndoLastAutocorrect(): Boolean {
         val undoReplacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return false
-        if (!editorInstance.setSelection(undoReplacement.range.start, undoReplacement.range.end)) return false
-        if (!editorInstance.commitText(undoReplacement.originalToken)) return false
+        return restoreTrackedAutocorrect(undoReplacement)
+    }
+
+    private fun handleBackspaceAutocorrectRestore(unit: OperationUnit): Boolean {
+        if (unit != OperationUnit.CHARACTERS) return false
+        val restoreReplacement = autocorrectUndoTracker.findBackspaceRestoreReplacement(editorInstance.activeContent) ?: return false
+        return restoreTrackedAutocorrect(restoreReplacement)
+    }
+
+    private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement): Boolean {
+        if (!editorInstance.setSelection(replacement.range.start, replacement.range.end)) return false
+        if (!editorInstance.commitText(replacement.originalToken)) return false
         autocorrectUndoTracker.clearPending()
-        if (undoReplacement.candidate.isEligibleForAutoCommit) {
+        if (replacement.candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectUndone()
         }
-        undoReplacement.candidate.sourceProvider?.let { sourceProvider ->
+        replacement.candidate.sourceProvider?.let { sourceProvider ->
             scope.launch {
                 sourceProvider.notifySuggestionReverted(
                     subtype = subtypeManager.activeSubtype,
-                    candidate = undoReplacement.candidate,
+                    candidate = replacement.candidate,
                 )
             }
         }
@@ -465,6 +475,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             it.isManualSelectionMode = false
             it.isManualSelectionModeStart = false
             it.isManualSelectionModeEnd = false
+        }
+        if (handleBackspaceAutocorrectRestore(unit)) {
+            return
         }
         revertPreviouslyAcceptedCandidate()
         editorInstance.deleteBackwards(unit)
