@@ -4,7 +4,7 @@ slug: predictive-typing-quality-trust
 owner: ownkey-keyboard-team
 status: draft
 created: 2026-03-28T11:19:17Z
-updated: 2026-03-28T11:35:00Z
+updated: 2026-03-28T13:11:21Z
 outcome: Define a trust-first predictive typing roadmap that can raise top-3 suggestion acceptance by 15%, hold suggestion latency under 50 ms p95, and reduce false autocorrect pain by 30% across EN, NL, and mixed-language flows.
 ---
 
@@ -12,6 +12,11 @@ outcome: Define a trust-first predictive typing roadmap that can raise top-3 sug
 
 ## Executive Summary
 OwnKey needs a predictive typing roadmap that optimizes for both speed and trust. The strongest public evidence from modern keyboards suggests that good products do not rely on one magic next-word model. They use a hybrid prediction stack: decoder logic for literal input and correction, compact language-model components for speed, richer neural components for context, and personalization layers that respect privacy boundaries. This project defines the planning baseline, evaluation model, and rollout shape needed before a larger implementation push.
+
+### Research anchors
+- Google's earlier Gboard decoder work describes a weighted finite-state decoding stack for mobile keyboard correction and prediction, which supports keeping decoder or candidate-generation responsibilities separate from the ranking model instead of assuming one end-to-end model should do everything. Source: [Gboard decoder / FST search](https://arxiv.org/abs/1704.03987).
+- Google's newer Gboard search-space work reinforces the same layered idea for neural systems: candidate search space quality matters independently from downstream ranking quality. Source: [Gboard neural search space](https://arxiv.org/abs/2410.15575).
+- Keyboard personalization and privacy are not optional add-ons. Public Gboard, SwiftKey, and Apple work all point toward on-device or privacy-preserving adaptation as the practical direction for production keyboards. Sources: [Gboard federated keyboard prediction](https://research.google/pubs/federated-learning-for-mobile-keyboard-prediction-2/), [Gboard federated learning + differential privacy](https://arxiv.org/abs/2305.18465), [SwiftKey differentially private transformer](https://arxiv.org/abs/2505.05648), and [Apple private and personalized frequency estimation](https://machinelearning.apple.com/research/private-and-personalized).
 
 ## Problem and Users
 OwnKey's most valuable typing moments are also the easiest to break. Fast typers lose rhythm when predictions lag. Multilingual users stop trusting the bar when language routing collapses inside one sentence. Autocorrect becomes harmful when it is technically accurate too often in the wrong moments, such as names, jargon, or code-switching. Mobile keyboards also do more than next-word prediction. They combine literal typing, correction, completion, and sometimes swipe-style decoding under strict on-device latency constraints.

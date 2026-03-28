@@ -3,7 +3,7 @@ name: Predictive Typing Quality & Trust
 status: planned
 lead: ownkey-keyboard-team
 created: 2026-03-28T11:19:17Z
-updated: 2026-03-28T11:35:00Z
+updated: 2026-03-28T13:11:21Z
 linear_project_id: 8e478486-d8e6-44e4-bac7-5a55c6bbdba8
 ---
 
@@ -11,13 +11,13 @@ linear_project_id: 8e478486-d8e6-44e4-bac7-5a55c6bbdba8
 
 ## Architecture Decisions
 - Keep this project planning-focused and separate from `typing-speed-core`, which already contains implementation-era task history.
-- Plan around a hybrid keyboard stack: decoder and candidate generation, language-model ranking, multilingual routing, and personalization are separate concerns that must be tuned together.
+- Plan around a hybrid keyboard stack: decoder and candidate generation, language-model ranking, multilingual routing, and personalization are separate concerns that must be tuned together. This matches public Gboard evidence across both FST decoder work and newer neural search-space work rather than a single-model story. Sources: [1704.03987](https://arxiv.org/abs/1704.03987), [2410.15575](https://arxiv.org/abs/2410.15575).
 - Treat latency, ranking quality, and trust errors as separate decision axes, not one blended score.
 - Use trust-first defaults: prediction help should degrade gracefully instead of correcting aggressively under uncertainty.
 - Assume compact methods such as finite-state search or n-gram components may still be the right fit for some low-latency layers, even if richer neural models are used elsewhere.
 - Treat GRU/RNN-class and lightweight transformer options as candidate ranking layers, not automatic replacements for the whole stack.
 - Design multilingual and personalization policies together so language-mixing does not poison learned vocabulary.
-- Keep future federated-learning and differential-privacy options compatible with the planning baseline, even if no training approach is selected yet.
+- Keep future federated-learning and differential-privacy options compatible with the planning baseline, even if no training approach is selected yet. Sources: [Gboard FL keyboard prediction](https://research.google/pubs/federated-learning-for-mobile-keyboard-prediction-2/), [Gboard FL + DP](https://arxiv.org/abs/2305.18465), [SwiftKey DP transformer](https://arxiv.org/abs/2505.05648), [Apple private personalization](https://machinelearning.apple.com/research/private-and-personalized).
 - Make reversibility a first-class product constraint through undo, suppression, and explainable tuning surfaces.
 
 ## Workstream Design

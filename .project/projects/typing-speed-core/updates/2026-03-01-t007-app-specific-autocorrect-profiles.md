@@ -16,7 +16,7 @@ stream: ws-4-context-policy-and-metrics
 - Added unit tests in `AppSpecificAutocorrectProfilePolicyTest` for package mapping, heuristic fallback, safe default behavior, and aggressiveness scaling.
 
 ## Verification
-- `JAVA_HOME=/home/bartadmin/.local/jdks/temurin-17 ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "dev.patrickgold.florisboard.ime.nlp.latin.*"` (pass)
+- `JAVA_HOME=$HOME/.local/jdks/temurin-17 ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "dev.patrickgold.florisboard.ime.nlp.latin.*"` (pass)
 
 ## Privacy Notes
 - App-context handling is based on editor metadata (`packageName`, input variation, IME action) already provided by the Android IME framework.

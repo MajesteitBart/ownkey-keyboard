@@ -38,4 +38,4 @@ Must include safe fallback when app context is unknown.
 - 2026-03-01: Integrated app-specific profile scaling into `LatinLanguageProvider` high-certainty autocorrect policy snapshot and suggestion cache signatures so auto-commit behavior can differ per app context without stale cache reuse.
 - 2026-03-01: Added new correction preferences and Typing settings controls for enabling app-specific profiles and configuring chat/email aggressiveness percentages.
 - 2026-03-01: Added `AppSpecificAutocorrectProfilePolicyTest` coverage for package mapping, heuristic fallback, safe default, aggressive/conservative threshold scaling, and disabled-policy passthrough.
-- 2026-03-01: Verified with `JAVA_HOME=/home/bartadmin/.local/jdks/temurin-17 ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "dev.patrickgold.florisboard.ime.nlp.latin.*"` (PASS).
+- 2026-03-01: Verified with `JAVA_HOME=$HOME/.local/jdks/temurin-17 ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest --tests "dev.patrickgold.florisboard.ime.nlp.latin.*"` (PASS).

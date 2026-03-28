@@ -3,7 +3,7 @@ id: T-002
 name: Set latency budget and warm-start acceptance bar
 status: ready
 created: 2026-03-28T11:19:17Z
-updated: 2026-03-28T11:35:00Z
+updated: 2026-03-28T13:11:21Z
 linear_issue_id: 7153d4f5-e877-4d45-8b22-78421c1381b4
 github_issue:
 github_pr:
@@ -25,7 +25,7 @@ Define the performance envelope for suggestion refresh, keyboard open, first-use
 - [ ] The latency plan states which responsibilities belong in decoder or compact-model layers versus richer neural layers.
 
 ## Technical Notes
-Use representative device classes instead of one desktop-like benchmark only, and assume some stack layers may need n-gram or finite-state simplicity for speed.
+Use representative device classes instead of one desktop-like benchmark only, and assume some stack layers may need n-gram or finite-state simplicity for speed. The public Gboard decoder and search-space work are the main anchors for keeping low-latency candidate-generation layers lightweight even when downstream ranking grows more neural. Sources: [1704.03987](https://arxiv.org/abs/1704.03987), [2410.15575](https://arxiv.org/abs/2410.15575).
 
 ## Definition of Done
 - [ ] Implementation complete
