@@ -25,8 +25,10 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.editorInstance
+import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.devtools.flogInfo
+import dev.patrickgold.florisboard.subtypeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,6 +65,7 @@ class VoxtralDictationManager(
 
     private val appContext by context.appContext()
     private val editorInstance by context.editorInstance()
+    private val subtypeManager by context.subtypeManager()
     private val prefs by FlorisPreferenceStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val voxtralSecretsStore = VoxtralSecretsStore(appContext)
@@ -75,6 +78,11 @@ class VoxtralDictationManager(
         endpointUrlProvider = { prefs.voxtral.endpointUrl.get() },
         modelProvider = { prefs.voxtral.model.get() },
         languageHintProvider = { prefs.voxtral.languageHint.get() },
+    )
+    private val rewriteClient: RewriteClient = MistralChatRewriteClient(
+        apiKeyProvider = { apiKey() },
+        endpointUrlProvider = { prefs.voxtral.postProcessingEndpointUrl.get() },
+        modelProvider = { prefs.voxtral.postProcessingModel.get() },
     )
 
     private var activeSessionMode: RoutingMode? = null
@@ -167,7 +175,13 @@ class VoxtralDictationManager(
                 return@launch
             }
 
-            val wasCommitted = editorInstance.commitText(transcript)
+            val textToInsert = if (shouldCleanUpDictation(sessionMode)) {
+                cleanUpTranscript(transcript)
+            } else {
+                transcript
+            }
+
+            val wasCommitted = editorInstance.commitText(textToInsert)
             if (!wasCommitted) {
                 activeSessionMode = null
                 _stateFlow.value = DictationState.ERROR
@@ -176,13 +190,62 @@ class VoxtralDictationManager(
             }
 
             if (sessionMode == RoutingMode.MOCK_INTERNAL) {
-                flogInfo { "Inserted mock dictation transcript (${transcript.length} chars)" }
+                flogInfo { "Inserted mock dictation transcript (${textToInsert.length} chars)" }
             } else {
-                flogInfo { "Inserted Voxtral dictation transcript (${transcript.length} chars)" }
+                flogInfo { "Inserted Voxtral dictation transcript (${textToInsert.length} chars)" }
             }
             activeSessionMode = null
             _stateFlow.value = DictationState.IDLE
         }
+    }
+
+    private suspend fun cleanUpTranscript(transcript: String): String {
+        val rewrittenText = withContext(Dispatchers.IO) {
+            rewriteClient.rewrite(
+                RewriteRequest(
+                    text = transcript,
+                    languageTag = activeLanguageTag(),
+                ),
+            )
+        }.getOrElse { error ->
+            flogError { "Post-dictation cleanup failed: ${error.message}" }
+            appContext.showShortToastSync("Dictation cleanup failed; inserted original transcript")
+            return transcript
+        }.trim()
+
+        if (rewrittenText.isBlank()) {
+            appContext.showShortToastSync("Dictation cleanup returned empty text; inserted original transcript")
+            return transcript
+        }
+
+        flogInfo { "Cleaned up dictation transcript (${transcript.length} -> ${rewrittenText.length} chars)" }
+        return rewrittenText
+    }
+
+    private fun shouldCleanUpDictation(mode: RoutingMode): Boolean {
+        if (mode != RoutingMode.INTERNAL_VOXTRAL) {
+            return false
+        }
+        if (!prefs.voxtral.postProcessingEnabled.get()) {
+            return false
+        }
+        if (editorInstance.activeInfo.isRawInputEditor) {
+            return false
+        }
+        if (editorInstance.activeInfo.imeOptions.flagNoPersonalizedLearning) {
+            return false
+        }
+        return when (editorInstance.activeInfo.inputAttributes.variation) {
+            InputAttributes.Variation.PASSWORD,
+            InputAttributes.Variation.VISIBLE_PASSWORD,
+            InputAttributes.Variation.WEB_PASSWORD,
+            -> false
+            else -> true
+        }
+    }
+
+    private fun activeLanguageTag(): String? {
+        return subtypeManager.activeSubtype.primaryLocale.languageTag().ifBlank { null }
     }
 
     private fun setError(message: String, error: Throwable) {

@@ -12,12 +12,13 @@ spec_status_at_plan_time: active
 # Delivery Plan: AI Dictation Rewrite
 
 ## What Changed After Probe
-No probe completed yet. Initial discovery suggests the MVP should start with a provider abstraction plus preview-first UX, not an automatic post-dictation rewrite.
+2026-05-01 implementation pass: shipped the first useful provider/domain slice as post-dictation cleanup behind the existing `voxtral__post_processing_enabled` preference. This deliberately does not rewrite arbitrary typed text and does not add selected-text/recent-text replacement yet. Preview/apply UI remains the next safety milestone before exposing a broader explicit rewrite action.
 
 ## Architecture Decisions
 - Treat AI rewrite as a separate post-processing pipeline, not part of Voxtral transcription.
 - Capture rewrite target by explicit priority: selected text, last dictation transcript, bounded recent text before cursor.
 - Keep the first user-facing action explicit and preview-first.
+- For the initial implementation slice only, allow automatic cleanup of the just-produced dictation transcript when the existing post-processing setting is enabled. Provider failure inserts the original transcript.
 - Use active keyboard subtype as the primary language signal.
 - Design provider abstraction from day one: cloud provider first, local/on-device provider later.
 - Reuse the secure secret-storage pattern from `VoxtralSecretsStore` for any user-provided provider keys.
@@ -39,9 +40,16 @@ Required before implementation approval:
 
 ## Milestone Strategy
 1. M1 Discovery and probes: finish scope clarification, evaluate provider options, and test editor replacement.
-2. M2 MVP cloud rewrite: implement explicit action, preview, provider config, and safe replacement behind a flag/debug setting.
+2. M2 MVP cloud rewrite: provider abstraction and post-dictation cleanup path are started; remaining work is explicit action, preview, provider config polish, and safe replacement behind a flag/debug setting.
 3. M3 Local provider experiment: add ML Kit Proofreading/Rewriting feature detection and optional use on supported devices.
 4. M4 Beta hardening: polish UX, language edge cases, privacy copy, and compatibility matrix.
+
+## Implementation Notes
+- Added a `RewriteClient` abstraction and Mistral chat-completions implementation near the existing `TranscriptionClient`.
+- Reused the existing secure Voxtral API key and post-processing endpoint/model preferences.
+- The post-dictation cleanup path runs only for internal Voxtral dictation, only when `postProcessingEnabled` is true, and skips raw/no-personalized-learning/password fields.
+- Active keyboard subtype language is passed as a prompt hint through `SubtypeManager.activeSubtype.primaryLocale.languageTag()`.
+- Preview/apply/cancel UI, selected text replacement, last-dictation range replacement, and on-device provider selection remain open.
 
 ## Rollout Strategy
 - Start behind internal/debug feature flag.
