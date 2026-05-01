@@ -37,6 +37,11 @@ for project_dir in .project/projects/*; do
   echo "  Plan status: ${plan_status:-unknown}"
 
   total=0
+  for task in "$project_dir"/tasks/*.md; do
+    [[ -f "$task" ]] || continue
+    total=$((total + 1))
+  done
+
   for st in backlog ready in-progress review done blocked canceled; do
     count=0
     for task in "$project_dir"/tasks/*.md; do
@@ -45,7 +50,6 @@ for project_dir in .project/projects/*; do
       if [[ "$status" == "$st" ]]; then
         count=$((count + 1))
       fi
-      total=$((total + 1))
     done
     [[ $count -gt 0 ]] && echo "  $st: $count"
   done
@@ -53,5 +57,5 @@ for project_dir in .project/projects/*; do
 done
 
 if [[ $project_count -eq 0 ]]; then
-  echo "No projects found. Create one with: .claude/scripts/pm/init.sh <slug> <project-name>"
+  echo "No projects found. Create one with: .agents/scripts/pm/init.sh <slug> <project-name>"
 fi

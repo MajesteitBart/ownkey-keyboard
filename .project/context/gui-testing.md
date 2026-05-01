@@ -1,16 +1,16 @@
 # GUI Testing Policy
 
 ## Enforcement Mode
-- `advisory` or `required`
+- `<advisory|required>`
 
 ## Smoke Routes
-- List critical routes and flows
+- <list any critical UI routes or state that must be exercised>
 
 ## Console Filtering
-- Define acceptable warnings and blocked errors
+- <describe which browser or runtime errors are blocking>
 
 ## Evidence Requirements
-- Screenshots, logs, and comparison notes
+- <describe what screenshots, logs, or notes must be captured>
 
 ## Design Validation Threshold
-- Define what must match expected UI behavior before merge
+- <describe the usability and visual quality bar for UI work>

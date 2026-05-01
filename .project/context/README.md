@@ -1,6 +1,8 @@
 # Delano Context Pack
 
-Keep this folder current for execution continuity.
+This folder is seeded by `delano install` with generic starter context.
+
+Update each file to describe this repository's real delivery context before active implementation work begins.
 
 Required context files:
 

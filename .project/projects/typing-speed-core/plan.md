@@ -3,8 +3,10 @@ name: Typing Speed Core
 status: planned
 lead: ownkey-keyboard-team
 created: 2026-02-25T19:38:38Z
-updated: 2026-03-28T17:16:03Z
+updated: 2026-05-01T11:27:21Z
 linear_project_id:
+risk_level: medium
+spec_status_at_plan_time: active
 ---
 
 # Delivery Plan: Typing Speed Core

@@ -4,8 +4,11 @@ slug: typing-speed-core
 owner: ownkey-keyboard-team
 status: draft
 created: 2026-02-25T19:38:38Z
-updated: 2026-02-25T19:38:38Z
+updated: 2026-05-01T11:27:21Z
 outcome: Deliver measurable typing-speed gains by reducing prediction latency and correction friction while preserving user control.
+uncertainty: medium
+probe_required: false
+probe_status: skipped
 ---
 
 # Spec: Typing Speed Core

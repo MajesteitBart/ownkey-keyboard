@@ -3,8 +3,10 @@ name: Predictive Typing Quality & Trust
 status: planned
 lead: ownkey-keyboard-team
 created: 2026-03-28T11:19:17Z
-updated: 2026-03-28T13:11:21Z
+updated: 2026-05-01T11:27:21Z
 linear_project_id: 8e478486-d8e6-44e4-bac7-5a55c6bbdba8
+risk_level: medium
+spec_status_at_plan_time: active
 ---
 
 # Delivery Plan: Predictive Typing Quality & Trust

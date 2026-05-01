@@ -2,17 +2,17 @@
 
 Capture architecture and delivery patterns that should be reused.
 
-1. **Spec-first decomposition**
-   - Start from measurable outcomes and map to workstreams, then atomic tasks with explicit acceptance criteria.
+## Handbook-First Delivery
+- <describe how this repository uses Delano's operating model>
 
-2. **Latency-first typing loop**
-   - Treat suggestion latency budget as a hard contract; optimize compute path before adding feature depth.
+## File-Contract-First State
+- <describe which files are canonical and how tooling should treat them>
 
-3. **User-control-first correction model**
-   - Prefer high-certainty autocorrect with explicit, fast undo/recovery affordances.
+## Thin Runtime Wrapping
+- <describe how wrappers or automation should stay conservative>
 
-4. **Contextual adaptation with bounded complexity**
-   - Introduce per-language and app-context behavior as explicit policy layers, not hidden side effects.
+## Compatibility Without Dual Truth
+- <describe any compatibility mirrors and the canonical runtime boundary>
 
-5. **Evidence-backed closure**
-   - Each task requires test/performance evidence and KPI impact notes before completion.
+## Conservative Installation
+- <describe any install, bootstrap, or write-safety expectations>

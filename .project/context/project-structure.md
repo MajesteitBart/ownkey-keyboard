@@ -2,9 +2,18 @@
 
 Document major repository boundaries and ownership.
 
-- `app/`: Main Android IME application (prediction, autocorrect, settings, UI behavior)
-- `wear/`: Wear OS companion IME and dictation entry points
-- `lib/compose/`: Shared Compose/UI support components
-- `.project/context/`: Canonical cross-agent execution context
-- `.project/projects/<slug>/`: Delivery project contracts (spec, plan, workstreams, tasks, updates)
-- `.project/registry/`: External mapping and migration registries
+## Canonical Boundaries
+- `HANDBOOK.md`: <describe where operating rules live>
+- `.project/`: <describe the delivery-truth contents for this repository>
+- `.agents/`: <describe the shared runtime assets in use>
+- `.claude/`: <note compatibility expectations if present>
+- `.delano/`: <note any optional presentation or UI layer if present>
+
+## Runtime Areas
+- <list the important scripts, skills, rules, hooks, or service areas>
+
+## Documentation Areas
+- <list the primary operator-facing docs or reference files>
+
+## Working Notes
+- <capture scratch paths, generated areas, or local-only conventions worth knowing>
