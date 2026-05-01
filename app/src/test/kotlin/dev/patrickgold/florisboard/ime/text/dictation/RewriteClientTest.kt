@@ -22,7 +22,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.content
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -42,13 +42,13 @@ class RewriteClientTest : FunSpec({
             ),
         ).jsonObject
 
-        body["model"]?.jsonPrimitive?.content shouldBe "ministral-3b-latest"
+        body["model"]?.jsonPrimitive?.contentOrNull shouldBe "ministral-3b-latest"
         val messages = body["messages"]?.jsonArray.shouldNotBeNull()
         messages shouldHaveSize 2
-        messages[0].jsonObject["role"]?.jsonPrimitive?.content shouldBe "system"
-        messages[0].jsonObject["content"]?.jsonPrimitive?.content.shouldNotBeNull() shouldContain "Dutch (nl-NL)"
-        messages[1].jsonObject["role"]?.jsonPrimitive?.content shouldBe "user"
-        messages[1].jsonObject["content"]?.jsonPrimitive?.content shouldBe
+        messages[0].jsonObject["role"]?.jsonPrimitive?.contentOrNull shouldBe "system"
+        messages[0].jsonObject["content"]?.jsonPrimitive?.contentOrNull.shouldNotBeNull() shouldContain "Dutch (nl-NL)"
+        messages[1].jsonObject["role"]?.jsonPrimitive?.contentOrNull shouldBe "user"
+        messages[1].jsonObject["content"]?.jsonPrimitive?.contentOrNull shouldBe
             "I think I think we should meet tomorrow"
     }
 
