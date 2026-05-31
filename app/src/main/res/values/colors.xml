@@ -19,7 +19,7 @@
     <color name="ownkey_panel">#111315</color>
     <color name="ownkey_bone">#F3F1EC</color>
     <color name="ownkey_ash">#B6BAC3</color>
-    <color name="ownkey_signal_orange">#DE5F14</color>
+    <color name="ownkey_signal_orange">#F56C1E</color>
 
     <color name="cardViewBackgroundColor">#FFFFFF</color><!-- White -->
     <color name="navigationBarColor">#000000</color><!-- Black -->

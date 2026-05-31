@@ -17,7 +17,7 @@ Canonical assets:
 - `OwnkeyBrand.Line` / `#2B3037`: low-contrast dividers and borders.
 - `OwnkeyBrand.Bone` / `#F3F1EC`: primary text and monkey face color on dark surfaces.
 - `OwnkeyBrand.Ash` / `#B6BAC3`: secondary labels, helper text, and muted metadata.
-- `OwnkeyBrand.SignalOrange` / `#DE5F14`: voice, AI, active recording, and brand signal moments.
+- `OwnkeyBrand.SignalOrange` / `#F56C1E`: voice, AI, active recording, primary keyboard actions, and brand signal moments.
 - `OwnkeyBrand.SignalAmber` / `#F5A524`: warning and paused voice states.
 - `OwnkeyBrand.TrustBlue` / `#2F6BFF`: primary setup/settings actions.
 - `OwnkeyBrand.SuccessGreen` / `#3EDB83`: success feedback only.

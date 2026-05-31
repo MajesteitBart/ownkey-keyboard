@@ -812,7 +812,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val accentColor = custom(
             key = "theme__accent_color",
-            default = Color(0xFF004AFF),
+            default = Color(0xFFF56C1E),
             serializer = ColorPreferenceSerializer,
         )
         val sunriseTime = localTime(

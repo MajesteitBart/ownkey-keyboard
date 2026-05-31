@@ -28,7 +28,7 @@ object OwnkeyBrand {
     val Line = Color(0xFF2B3037)
     val Bone = Color(0xFFF3F1EC)
     val Ash = Color(0xFFB6BAC3)
-    val SignalOrange = Color(0xFFDE5F14)
+    val SignalOrange = Color(0xFFF56C1E)
     val SignalAmber = Color(0xFFF5A524)
     val TrustBlue = Color(0xFF2F6BFF)
     val SuccessGreen = Color(0xFF3EDB83)

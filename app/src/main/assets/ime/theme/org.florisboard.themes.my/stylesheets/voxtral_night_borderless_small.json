@@ -1,8 +1,8 @@
 {
   "$schema": "https://schemas.florisboard.org/snygg/v2/stylesheet",
   "@defines": {
-    "--primary": "dynamic-dark-color(inversePrimary)",
-    "--primary-variant": "dynamic-dark-color(primary)",
+    "--primary": "#f56c1e",
+    "--primary-variant": "#c94f0d",
     "--secondary": "dynamic-dark-color(secondaryContainer)",
     "--secondary-variant": "dynamic-dark-color(secondary)",
     "--background": "dynamic-dark-color(background)",
@@ -13,10 +13,10 @@
     "--focused-popup-surface": "dynamic-dark-color(surfaceContainerHigh)",
     "--drag-marker": "rgb(255,0,0)",
     "--spacer-color": "dynamic-dark-color(scrim)",
-    "--one-hand-background": "dynamic-dark-color(inversePrimary)",
+    "--one-hand-background": "#f56c1e",
     "--one-hand-foreground": "dynamic-dark-color(scrim)",
     "--incognito-icon-color": "#00000011",
-    "--on-primary": "dynamic-dark-color(onPrimary)",
+    "--on-primary": "#18191B",
     "--on-background": "dynamic-dark-color(onBackground)",
     "--on-background-disabled": "rgb(175,175,175)",
     "--on-surface": "dynamic-dark-color(onSurface)",
@@ -72,12 +72,12 @@
   },
   "key[code=10]": {
     "background": "var(--primary)",
-    "foreground": "var(--on-surface)",
+    "foreground": "var(--on-primary)",
     "margin": "0dp 6dp"
   },
   "key[code=10]:pressed": {
     "background": "var(--primary-variant)",
-    "foreground": "var(--on-surface)"
+    "foreground": "var(--on-primary)"
   },
   "key[code=32]": {
     "background": "var(--surface)",
