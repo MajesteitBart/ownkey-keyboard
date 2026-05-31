@@ -93,6 +93,8 @@
     <string name="quick_action__toggle_incognito_mode__tooltip">Toggle incognito mode</string>
     <string name="quick_action__toggle_autocorrect" comment="Please mind the limited available space for the quick action strings">Autocorrect</string>
     <string name="quick_action__toggle_autocorrect__tooltip">Toggle autocorrect</string>
+    <string name="quick_action__ai_rewrite" comment="Please mind the limited available space for the quick action strings">Rewrite</string>
+    <string name="quick_action__ai_rewrite__tooltip">Rewrite selected text</string>
     <string name="quick_action__voice_input" comment="Please mind the limited available space for the quick action strings">Voice input</string>
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Open voice input provider</string>
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Floating</string>
@@ -646,6 +648,10 @@
     <string name="setup__select_ime__description">{app_name} is now enabled in your system. To actively use it, switch to {app_name} by selecting it in the input selector dialog!</string>
     <string name="setup__select_ime__switch_keyboard_btn">Switch Keyboard</string>
 
+    <string name="setup__grant_microphone_permission__title">Allow Microphone Access</string>
+    <string name="setup__grant_microphone_permission__description">{app_name} uses the microphone only when you start dictation. Grant access now so voice input is ready from the keyboard.</string>
+    <string name="setup__grant_microphone_permission__btn">Allow Microphone</string>
+
     <string name="setup__grant_notification_permission__title">Permit Crash Report Notifications</string>
     <string name="setup__grant_notification_permission__description">As of Android 13+, apps must ask for permission to
         send notifications. In Voxtral Keyboard, this is only used to open a crash report screen in the event of a crash.
@@ -657,6 +663,8 @@
     <string name="setup__finish_up__description_p1">{app_name} is now enabled in the system and ready to be customized by you.</string>
     <string name="setup__finish_up__description_p2">If you encounter any issues, bugs, crashes or just want to make a suggestion, check out the project repository from the about screen!</string>
     <string name="setup__finish_up__finish_btn">Start Customizing</string>
+    <string name="setup__step_status_done">Done</string>
+    <string name="setup__step_status_locked">Waiting</string>
 
     <!-- Physical keyboard -->
     <string name="physical_keyboard__title">Physical keyboard</string>

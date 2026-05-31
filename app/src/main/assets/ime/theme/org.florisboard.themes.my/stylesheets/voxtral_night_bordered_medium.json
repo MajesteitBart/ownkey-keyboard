@@ -9,8 +9,9 @@
     "--background-variant": "dynamic-dark-color(background)",
     "--surface": "dynamic-dark-color(surfaceContainerLow)",
     "--surface-variant": "dynamic-dark-color(surfaceContainer)",
-    "--toolbar-surface": "dynamic-dark-color(surfaceContainerHigh)",
-    "--toolbar-action-surface": "dynamic-dark-color(surfaceContainerHighest)",
+    "--toolbar-surface": "#141518",
+    "--toolbar-action-surface": "#25272d",
+    "--toolbar-action-surface-pressed": "#30333a",
     "--popup-surface": "dynamic-dark-color(surfaceContainerLow)",
     "--focused-popup-surface": "dynamic-dark-color(surfaceContainerHigh)",
     "--drag-marker": "rgb(255,0,0)",
@@ -130,24 +131,46 @@
     "font-size": "18sp",
     "foreground": "var(--on-surface)"
   },
+  "smartbar-shared-actions-row": {
+    "background": "var(--toolbar-surface)",
+    "foreground": "var(--on-surface)"
+  },
   "smartbar-shared-actions-toggle": {
-    "background": "var(--primary)",
-    "foreground": "var(--on-primary)",
-    "margin": "6dp",
+    "background": "var(--toolbar-action-surface)",
+    "foreground": "var(--on-surface)",
+    "margin": "4dp",
     "shape": "circle()",
-    "shadow-elevation": "2dp"
+    "shadow-elevation": "1dp"
+  },
+  "smartbar-shared-actions-toggle:pressed": {
+    "background": "var(--toolbar-action-surface-pressed)",
+    "foreground": "var(--on-surface)"
+  },
+  "smartbar-extended-actions-row": {
+    "background": "var(--toolbar-surface)",
+    "foreground": "var(--on-surface)"
   },
   "smartbar-extended-actions-toggle": {
-    "background": "transparent",
-    "foreground": "var(--on-surface-variant)",
-    "margin": "6dp",
-    "shape": "circle()"
+    "background": "var(--toolbar-action-surface)",
+    "foreground": "var(--on-surface)",
+    "margin": "4dp",
+    "shape": "circle()",
+    "shadow-elevation": "1dp"
+  },
+  "smartbar-extended-actions-toggle:pressed": {
+    "background": "var(--toolbar-action-surface-pressed)",
+    "foreground": "var(--on-surface)"
   },
   "smartbar-action-key": {
     "background": "var(--toolbar-action-surface)",
     "foreground": "var(--on-surface)",
     "margin": "4dp",
-    "shape": "circle()"
+    "shape": "rounded-corner(18dp, 18dp, 18dp, 18dp)",
+    "shadow-elevation": "1dp"
+  },
+  "smartbar-action-key:pressed": {
+    "background": "var(--toolbar-action-surface-pressed)",
+    "foreground": "var(--on-surface)"
   },
   "smartbar-action-key:disabled": {
     "foreground": "var(--on-background-disabled)"
@@ -185,6 +208,10 @@
     "shape": "circle()",
     "margin": "0dp 0dp 8dp 0dp",
     "shadow-elevation": "1dp"
+  },
+  "smartbar-action-tile-icon:pressed": {
+    "background": "var(--toolbar-action-surface-pressed)",
+    "foreground": "var(--on-surface)"
   },
   "smartbar-action-tile-text": {
     "foreground": "var(--on-surface)",

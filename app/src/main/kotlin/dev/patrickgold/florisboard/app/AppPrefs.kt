@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import dev.patrickgold.florisboard.app.settings.theme.ColorPreferenceSerializer
 import dev.patrickgold.florisboard.app.settings.theme.DisplayKbdAfterDialogs
 import dev.patrickgold.florisboard.app.settings.theme.SnyggLevel
+import dev.patrickgold.florisboard.app.setup.MicrophonePermissionState
 import dev.patrickgold.florisboard.app.setup.NotificationPermissionState
 import dev.patrickgold.florisboard.ime.clipboard.CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO
 import dev.patrickgold.florisboard.ime.clipboard.ClipboardSyncBehavior
@@ -52,6 +53,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyHintConfiguration
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
+import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.theme.extMyTheme
@@ -437,7 +439,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
 
         val hapticEnabled = boolean(
             key = "input_feedback__haptic_enabled",
-            default = true,
+            default = false,
         )
         val hapticActivationMode = enum(
             key = "input_feedback__haptic_activation_mode",
@@ -449,11 +451,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val hapticVibrationDuration = int(
             key = "input_feedback__haptic_vibration_duration",
-            default = 50,
+            default = 15,
         )
         val hapticVibrationStrength = int(
             key = "input_feedback__haptic_vibration_strength",
-            default = 50,
+            default = 20,
         )
         val hapticFeatKeyPress = boolean(
             key = "input_feedback__haptic_feat_key_press",
@@ -503,6 +505,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "internal__notification_permission_state",
             default = NotificationPermissionState.NOT_SET,
         )
+        val microphonePermissionState = enum(
+            key = "internal__microphone_permission_state",
+            default = MicrophonePermissionState.NOT_SET,
+        )
     }
 
     val keyboard = Keyboard()
@@ -518,11 +524,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val hintedNumberRowEnabled = boolean(
             key = "keyboard__hinted_number_row_enabled",
-            default = true,
+            default = false,
         )
         val hintedNumberRowMode = enum(
             key = "keyboard__hinted_number_row_mode",
-            default = KeyHintMode.SMART_PRIORITY,
+            default = KeyHintMode.ACCENT_PRIORITY,
         )
         val hintedSymbolsEnabled = boolean(
             key = "keyboard__hinted_symbols_enabled",
@@ -530,7 +536,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val hintedSymbolsMode = enum(
             key = "keyboard__hinted_symbols_mode",
-            default = KeyHintMode.SMART_PRIORITY,
+            default = KeyHintMode.ACCENT_PRIORITY,
         )
         val utilityKeyEnabled = boolean(
             key = "keyboard__utility_key_enabled",
@@ -661,7 +667,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val layout = enum(
             key = "smartbar__layout",
-            default = SmartbarLayout.SUGGESTIONS_ACTIONS_SHARED,
+            default = SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED,
         )
         val actionArrangement = custom(
             key = "smartbar__action_arrangement",
@@ -674,7 +680,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val sharedActionsExpanded = boolean(
             key = "smartbar__shared_actions_expanded",
-            default = false,
+            default = true,
         )
         @Deprecated("Always enabled due to UX issues")
         val sharedActionsAutoExpandCollapse = boolean(
@@ -683,11 +689,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val sharedActionsExpandWithAnimation = boolean(
             key = "smartbar__shared_actions_expand_with_animation",
-            default = true,
+            default = false,
         )
         val extendedActionsExpanded = boolean(
             key = "smartbar__extended_actions_expanded",
-            default = false,
+            default = true,
         )
         val extendedActionsPlacement = enum(
             key = "smartbar__extended_actions_placement",
@@ -774,6 +780,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "voxtral__post_processing_model",
             default = "ministral-3b-latest",
         )
+        val rewritePrompts = string(
+            key = "voxtral__rewrite_prompts",
+            default = RewritePromptPresets.defaultJson,
+        )
     }
 
     val theme = Theme()
@@ -784,12 +794,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val dayThemeId = custom(
             key = "theme__day_theme_id",
-            default = extMyTheme("voxtral_day_bordered_small"),
+            default = extMyTheme("voxtral_day_bordered_none"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
             key = "theme__night_theme_id",
-            default = extMyTheme("voxtral_night_bordered_small"),
+            default = extMyTheme("voxtral_night_bordered_none"),
             serializer = ExtensionComponentName.Serializer,
         )
         val showKeyBorders = boolean(
@@ -798,11 +808,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val keyRadius = enum(
             key = "theme__key_radius",
-            default = ThemeKeyRadius.SMALL,
+            default = ThemeKeyRadius.NONE,
         )
         val accentColor = custom(
             key = "theme__accent_color",
-            default = Color.Unspecified,
+            default = Color(0xFF004AFF),
             serializer = ColorPreferenceSerializer,
         )
         val sunriseTime = localTime(
@@ -919,6 +929,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 if (QuickAction.InsertKey(TextKeyData.TOGGLE_RESIZE_MODE) !in newArrangement) {
                     newArrangement = newArrangement.copy(
                         dynamicActions = newArrangement.dynamicActions.plus(QuickAction.InsertKey(TextKeyData.TOGGLE_RESIZE_MODE))
+                    )
+                }
+                if (QuickAction.InsertKey(TextKeyData.AI_REWRITE) !in newArrangement) {
+                    newArrangement = newArrangement.copy(
+                        dynamicActions = listOf(QuickAction.InsertKey(TextKeyData.AI_REWRITE)).plus(newArrangement.dynamicActions)
                     )
                 }
                 val json = QuickActionJsonConfig.encodeToString(newArrangement.distinct())

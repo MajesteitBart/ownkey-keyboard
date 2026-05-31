@@ -16,7 +16,6 @@
 
 package dev.patrickgold.florisboard.app.settings.about
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +43,7 @@ import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.launchUrl
 import dev.patrickgold.jetpref.datastore.ui.Preference
+import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.android.stringRes
 import org.florisboard.lib.compose.FlorisCanvasIcon
 import org.florisboard.lib.compose.stringRes
@@ -85,13 +85,11 @@ fun AboutScreen() = FlorisScreen {
             onClick = {
                 try {
                     clipboardManager.addNewPlaintext(appVersion)
-                    Toast.makeText(context, R.string.about__version_copied__title, Toast.LENGTH_SHORT).show()
+                    context.showShortToastSync(R.string.about__version_copied__title)
                 } catch (e: Throwable) {
-                    Toast.makeText(
-                        context,
+                    context.showShortToastSync(
                         context.stringRes(R.string.about__version_copied__error, "error_message" to e.message),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    )
                 }
             },
         )

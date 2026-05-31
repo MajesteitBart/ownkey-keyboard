@@ -17,13 +17,20 @@
 package dev.patrickgold.florisboard.ime.smartbar
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.absoluteOffset
@@ -41,7 +48,6 @@ import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -54,17 +60,21 @@ import androidx.compose.ui.graphics.isUnspecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
+import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButton
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsRow
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.ToggleOverflowPanelAction
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.nlpManager
+import dev.patrickgold.florisboard.voxtralDictationManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
@@ -94,46 +104,66 @@ private val NoAnimationTween = tween<Float>(0)
 @Composable
 fun Smartbar() {
     val prefs by FlorisPreferenceStore
+    val context = LocalContext.current
+    val voxtralDictationManager by context.voxtralDictationManager()
     val smartbarEnabled by prefs.smartbar.enabled.collectAsState()
     val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
+    val dictationState by voxtralDictationManager.stateFlow.collectAsState()
+
+    val showDictationControls = dictationState == VoxtralDictationManager.DictationState.LISTENING ||
+        dictationState == VoxtralDictationManager.DictationState.PAUSED ||
+        dictationState == VoxtralDictationManager.DictationState.TRANSCRIBING
 
     AnimatedVisibility(
         visible = smartbarEnabled,
         enter = VerticalEnterTransition,
         exit = VerticalExitTransition,
     ) {
-        when (extendedActionsPlacement) {
-            ExtendedActionsPlacement.ABOVE_CANDIDATES -> {
-                SnyggColumn(FlorisImeUi.Smartbar.elementName) {
-                    SmartbarSecondaryRow()
-                    SmartbarMainRow()
-                }
-            }
-
-            ExtendedActionsPlacement.BELOW_CANDIDATES -> {
-                SnyggColumn(FlorisImeUi.Smartbar.elementName) {
-                    SmartbarMainRow()
-                    SmartbarSecondaryRow()
-                }
-            }
-
-            ExtendedActionsPlacement.OVERLAY_APP_UI -> {
-                SnyggBox(FlorisImeUi.Smartbar.elementName,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(FlorisImeSizing.smartbarHeight),
-                    allowClip = false,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(FlorisImeSizing.smartbarHeight * 2)
-                            .absoluteOffset(y = -FlorisImeSizing.smartbarHeight),
-                        contentAlignment = Alignment.BottomStart,
-                    ) {
-                        SmartbarSecondaryRow()
+        AnimatedContent(
+            targetState = showDictationControls,
+            transitionSpec = {
+                (fadeIn(tween(180)) + slideInVertically(tween(180)) { height -> height / 3 })
+                    .togetherWith(fadeOut(tween(140)) + slideOutVertically(tween(140)) { height -> -height / 4 })
+            },
+            label = "dictation-smartbar-transition",
+        ) { showControls ->
+            if (showControls) {
+                DictationRecordingBar()
+            } else {
+                when (extendedActionsPlacement) {
+                    ExtendedActionsPlacement.ABOVE_CANDIDATES -> {
+                        SnyggColumn(FlorisImeUi.Smartbar.elementName) {
+                            SmartbarSecondaryRow()
+                            SmartbarMainRow()
+                        }
                     }
-                    SmartbarMainRow()
+
+                    ExtendedActionsPlacement.BELOW_CANDIDATES -> {
+                        SnyggColumn(FlorisImeUi.Smartbar.elementName) {
+                            SmartbarMainRow()
+                            SmartbarSecondaryRow()
+                        }
+                    }
+
+                    ExtendedActionsPlacement.OVERLAY_APP_UI -> {
+                        SnyggBox(FlorisImeUi.Smartbar.elementName,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(FlorisImeSizing.smartbarHeight),
+                            allowClip = false,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(FlorisImeSizing.smartbarHeight * 2)
+                                    .absoluteOffset(y = -FlorisImeSizing.smartbarHeight),
+                                contentAlignment = Alignment.BottomStart,
+                            ) {
+                                SmartbarSecondaryRow()
+                            }
+                            SmartbarMainRow()
+                        }
+                    }
                 }
             }
         }
@@ -158,6 +188,7 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
     val flipToggles by prefs.smartbar.flipToggles.collectAsState()
     val sharedActionsExpanded by prefs.smartbar.sharedActionsExpanded.collectAsState()
     val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
+    val actionArrangement by prefs.smartbar.actionArrangement.collectAsState()
 
     val shouldAnimate by prefs.smartbar.sharedActionsExpandWithAnimation.collectAsState()
 
@@ -279,7 +310,6 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
 
     @Composable
     fun StickyAction() {
-        val actionArrangement by prefs.smartbar.actionArrangement.collectAsState()
         val evaluator by keyboardManager.activeSmartbarEvaluator.collectAsState()
 
         val action = when {
@@ -296,74 +326,94 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
 
         if (action != null) {
             QuickActionButton(
-                modifier = Modifier.padding(horizontal = 4.dp),
                 action = action,
                 evaluator = evaluator,
             )
         } else {
             Spacer(
                 modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .aspectRatio(1f),
+                    .aspectRatio(QuickActionButtonAspectRatio),
             )
         }
     }
 
-    SideEffect {
-        if (!shouldAnimate) {
-            scope.launch {
-                prefs.smartbar.sharedActionsExpandWithAnimation.set(true)
-            }
-        }
-    }
-
-    SnyggRow(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(FlorisImeSizing.smartbarHeight),
     ) {
-        when (smartbarLayout) {
-            SmartbarLayout.SUGGESTIONS_ONLY -> {
-                if (shouldShowInlineSuggestionsUi) {
-                    InlineSuggestionsUi(inlineSuggestions)
-                } else {
-                    CandidatesRow()
-                }
-            }
+        val horizontalPadding = if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED) {
+            extendedActionRowEdgePadding(
+                width = maxWidth,
+                smartbarHeight = FlorisImeSizing.smartbarHeight,
+                actionCount = actionArrangement.dynamicActions.size + 1,
+            )
+        } else {
+            0.dp
+        }
 
-            SmartbarLayout.ACTIONS_ONLY -> {
-                if (shouldShowInlineSuggestionsUi) {
-                    InlineSuggestionsUi(inlineSuggestions)
-                } else {
-                    QuickActionsRow(FlorisImeUi.SmartbarSharedActionsRow.elementName)
+        SnyggRow(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = horizontalPadding),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (smartbarLayout) {
+                SmartbarLayout.SUGGESTIONS_ONLY -> {
+                    if (shouldShowInlineSuggestionsUi) {
+                        InlineSuggestionsUi(inlineSuggestions)
+                    } else {
+                        CandidatesRow()
+                    }
                 }
-            }
 
-            SmartbarLayout.SUGGESTIONS_ACTIONS_SHARED -> {
-                if (!flipToggles) {
-                    SharedActionsToggle()
-                    CenterContent()
-                    StickyAction()
-                } else {
-                    StickyAction()
-                    CenterContent()
-                    SharedActionsToggle()
+                SmartbarLayout.ACTIONS_ONLY -> {
+                    if (shouldShowInlineSuggestionsUi) {
+                        InlineSuggestionsUi(inlineSuggestions)
+                    } else {
+                        QuickActionsRow(FlorisImeUi.SmartbarSharedActionsRow.elementName)
+                    }
                 }
-            }
 
-            SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED -> {
-                if (!flipToggles) {
-                    ExtendedActionsToggle()
-                    CenterContent()
-                    StickyAction()
-                } else {
-                    StickyAction()
-                    CenterContent()
-                    ExtendedActionsToggle()
+                SmartbarLayout.SUGGESTIONS_ACTIONS_SHARED -> {
+                    if (!flipToggles) {
+                        SharedActionsToggle()
+                        CenterContent()
+                        StickyAction()
+                    } else {
+                        StickyAction()
+                        CenterContent()
+                        SharedActionsToggle()
+                    }
+                }
+
+                SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED -> {
+                    if (!flipToggles) {
+                        ExtendedActionsToggle()
+                        CenterContent()
+                        StickyAction()
+                    } else {
+                        StickyAction()
+                        CenterContent()
+                        ExtendedActionsToggle()
+                    }
                 }
             }
         }
     }
+}
+
+private fun extendedActionRowEdgePadding(
+    width: Dp,
+    smartbarHeight: Dp,
+    actionCount: Int,
+): Dp {
+    val visibleActionCount = actionCount
+        .coerceAtMost((width / (smartbarHeight * QuickActionButtonAspectRatio)).toInt())
+        .coerceAtLeast(1)
+    val actionWidth = smartbarHeight * QuickActionButtonAspectRatio
+    val freeWidth = (width - actionWidth * visibleActionCount).coerceAtLeast(0.dp)
+    return freeWidth / (visibleActionCount + 1)
 }
 
 @Composable

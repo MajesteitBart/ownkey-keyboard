@@ -33,6 +33,7 @@ import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsStyleCache
 import dev.patrickgold.florisboard.ime.smartbar.Smartbar
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsOverflowPanel
+import dev.patrickgold.florisboard.ime.text.rewrite.RewriteOptionsPanel
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboardLayout
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
@@ -59,7 +60,9 @@ fun TextInputLayout(
             .wrapContentHeight(),
     ) {
         Smartbar()
-        if (state.isActionsOverflowVisible) {
+        if (keyboardManager.isRewriteOptionsVisible) {
+            RewriteOptionsPanel()
+        } else if (state.isActionsOverflowVisible) {
             QuickActionsOverflowPanel()
         } else {
             Box {

@@ -37,6 +37,7 @@ import dev.patrickgold.florisboard.ime.nlp.NlpManager
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
+import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.crashutility.CrashUtility
@@ -76,6 +77,7 @@ class FlorisApplication : Application() {
     val subtypeManager = lazy { SubtypeManager(this) }
     val themeManager = lazy { ThemeManager(this) }
     val voxtralDictationManager = lazy { VoxtralDictationManager(this) }
+    val llmRewriteManager = lazy { LlmRewriteManager(this) }
 
     override fun onCreate() {
         super.onCreate()
@@ -182,3 +184,5 @@ fun Context.subtypeManager() = this.florisApplication().subtypeManager
 fun Context.themeManager() = this.florisApplication().themeManager
 
 fun Context.voxtralDictationManager() = this.florisApplication().voxtralDictationManager
+
+fun Context.llmRewriteManager() = this.florisApplication().llmRewriteManager

@@ -19,11 +19,11 @@ package dev.patrickgold.florisboard.lib.util
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
 import androidx.annotation.StringRes
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.io.FlorisRef
+import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.android.stringRes
 import org.florisboard.lib.kotlin.CurlyArg
 import kotlin.contracts.InvocationKind
@@ -40,11 +40,7 @@ fun Context.launchUrl(url: String) {
         this.startActivity(intent)
     } catch (e: ActivityNotFoundException) {
         flogError { e.toString() }
-        Toast.makeText(
-            this,
-            this.stringRes(R.string.general__no_browser_app_found_for_url, "url" to url),
-            Toast.LENGTH_LONG,
-        ).show()
+        showLongToastSync(this.stringRes(R.string.general__no_browser_app_found_for_url, "url" to url))
     }
 }
 
@@ -66,7 +62,7 @@ inline fun <T : Any> Context.launchActivity(kClass: KClass<T>, intentModifier: (
         this.startActivity(intent)
     } catch (e: ActivityNotFoundException) {
         flogError { e.toString() }
-        Toast.makeText(this, e.localizedMessage, Toast.LENGTH_LONG).show()
+        showLongToastSync(e.localizedMessage ?: e.toString())
     }
 }
 
@@ -80,6 +76,6 @@ inline fun Context.launchActivity(intentModifier: (Intent) -> Unit) {
         this.startActivity(intent)
     } catch (e: ActivityNotFoundException) {
         flogError { e.toString() }
-        Toast.makeText(this, e.localizedMessage, Toast.LENGTH_LONG).show()
+        showLongToastSync(e.localizedMessage ?: e.toString())
     }
 }

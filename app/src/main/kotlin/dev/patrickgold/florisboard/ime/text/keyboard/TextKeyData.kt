@@ -149,6 +149,7 @@ data class TextKeyData(
                 TOGGLE_ACTIONS_EDITOR,
                 TOGGLE_INCOGNITO_MODE,
                 TOGGLE_AUTOCORRECT,
+                AI_REWRITE,
             )
         }
 
@@ -530,6 +531,12 @@ data class TextKeyData(
             type = KeyType.FUNCTION,
             code = KeyCode.TOGGLE_AUTOCORRECT,
             label = "toggle_autocorrect",
+        )
+        /** Predefined key data for [KeyCode.AI_REWRITE] */
+        val AI_REWRITE = TextKeyData(
+            type = KeyType.FUNCTION,
+            code = KeyCode.AI_REWRITE,
+            label = "ai_rewrite",
         )
     }
 }

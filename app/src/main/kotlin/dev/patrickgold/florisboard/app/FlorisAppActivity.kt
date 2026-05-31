@@ -16,8 +16,10 @@
 
 package dev.patrickgold.florisboard.app
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -38,6 +40,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
@@ -45,6 +48,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.apptheme.FlorisAppTheme
 import dev.patrickgold.florisboard.app.ext.ExtensionImportScreenType
+import dev.patrickgold.florisboard.app.setup.MicrophonePermissionState
 import dev.patrickgold.florisboard.app.setup.NotificationPermissionState
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.cacheManager
@@ -117,6 +121,11 @@ class FlorisAppActivity : ComponentActivity() {
                 prefs.internal.notificationPermissionState.get() == NotificationPermissionState.NOT_SET
             ) {
                 // update pref value to show the setup screen again
+                prefs.internal.isImeSetUp.set(false)
+            }
+            if (prefs.internal.microphonePermissionState.get() == MicrophonePermissionState.NOT_SET &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+            ) {
                 prefs.internal.isImeSetUp.set(false)
             }
             AppVersionUtils.updateVersionOnInstallAndLastUse(this, prefs)

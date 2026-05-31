@@ -17,12 +17,21 @@
 package org.florisboard.lib.android
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Build
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.StringRes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.florisboard.lib.kotlin.CurlyArg
+import kotlin.math.roundToInt
 
 /**
  * Shows a short toast with specified text.
@@ -30,7 +39,11 @@ import org.florisboard.lib.kotlin.CurlyArg
  * @param text The text to show in the toast popup.
  */
 suspend fun Context.showShortToast(text: String): Toast = withContext(Dispatchers.Main.immediate) {
-    Toast.makeText(this@showShortToast, text, Toast.LENGTH_SHORT).also { it.show() }
+    if (OwnkeyToastBus.tryShowInIme(text, durationMillis = 2_000L)) {
+        Toast(this@showShortToast).apply { duration = Toast.LENGTH_SHORT }
+    } else {
+        makeOwnkeyToast(text, Toast.LENGTH_SHORT).also { it.show() }
+    }
 }
 
 /**
@@ -61,7 +74,80 @@ suspend fun Context.showShortToast(@StringRes id: Int, vararg args: CurlyArg): T
  * @param text The text to show in the toast popup.
  */
 suspend fun Context.showLongToast(text: String): Toast = withContext(Dispatchers.Main.immediate) {
-    Toast.makeText(this@showLongToast, text, Toast.LENGTH_LONG).also { it.show() }
+    if (OwnkeyToastBus.tryShowInIme(text, durationMillis = 3_500L)) {
+        Toast(this@showLongToast).apply { duration = Toast.LENGTH_LONG }
+    } else {
+        makeOwnkeyToast(text, Toast.LENGTH_LONG).also { it.show() }
+    }
+}
+
+private fun Context.makeOwnkeyToast(text: String, duration: Int): Toast {
+    val toast = Toast(this)
+    val horizontalInset = dp(20)
+    val backgroundColor = ownkeyToastBackground(text)
+    val background = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = dp(16).toFloat()
+        setColor(backgroundColor)
+    }
+    val container = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        minimumHeight = dp(48)
+        setPadding(dp(18), dp(10), dp(8), dp(10))
+        this.background = background
+        layoutParams = ViewGroup.LayoutParams(
+            (resources.displayMetrics.widthPixels - horizontalInset * 2).coerceAtLeast(dp(280)),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            elevation = dp(12).toFloat()
+        }
+    }
+    val message = TextView(this).apply {
+        this.text = text
+        setTextColor(Color.BLACK)
+        textSize = 13f
+        includeFontPadding = false
+        maxLines = 3
+        layoutParams = LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1f,
+        )
+    }
+    val close = TextView(this).apply {
+        this.text = "\u00D7"
+        setTextColor(Color.BLACK)
+        textSize = 26f
+        typeface = Typeface.DEFAULT
+        gravity = Gravity.CENTER
+        includeFontPadding = false
+        layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+        setOnClickListener { toast.cancel() }
+    }
+    container.addView(message)
+    container.addView(close)
+
+    toast.duration = duration
+    toast.view = container
+    toast.setGravity(Gravity.BOTTOM or Gravity.FILL_HORIZONTAL, 0, dp(28))
+    return toast
+}
+
+private fun ownkeyToastBackground(text: String): Int {
+    val normalized = text.lowercase()
+    return when {
+        listOf("success", "successfully", "saved", "copied", "inserted", "gelukt", "opgeslagen", "gekopieerd")
+            .any { it in normalized } -> Color.rgb(62, 219, 131)
+        listOf("error", "failed", "failure", "unable", "missing", "could not", "invalid", "fout", "mislukt")
+            .any { it in normalized } -> Color.rgb(255, 122, 122)
+        else -> Color.rgb(247, 247, 247)
+    }
+}
+
+private fun Context.dp(value: Int): Int {
+    return (value * resources.displayMetrics.density).roundToInt()
 }
 
 /**
@@ -140,4 +226,3 @@ fun Context.showLongToastSync(@StringRes id: Int): Toast = runBlocking {
 fun Context.showLongToastSync(@StringRes id: Int, vararg args: CurlyArg): Toast = runBlocking {
     showLongToast(id, *args)
 }
-

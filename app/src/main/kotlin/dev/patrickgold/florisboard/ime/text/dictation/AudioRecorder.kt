@@ -33,6 +33,16 @@ interface AudioRecorder {
     fun start(): Boolean
 
     /**
+     * Pauses an in-progress recording.
+     */
+    fun pause(): Boolean
+
+    /**
+     * Resumes a paused recording.
+     */
+    fun resume(): Boolean
+
+    /**
      * Stops recording and returns captured audio.
      */
     fun stopAndRead(): Result<AudioRecording>
@@ -41,6 +51,11 @@ interface AudioRecorder {
      * Cancels an in-progress recording without producing output.
      */
     fun cancel()
+
+    /**
+     * Returns the latest microphone input level normalized to 0..1.
+     */
+    fun currentAmplitude(): Float
 }
 
 data class AudioRecording(
@@ -59,10 +74,27 @@ class NoOpAudioRecorder(
     private val nowMs: () -> Long = { System.currentTimeMillis() },
 ) : AudioRecorder {
     private var startedAtMs: Long? = null
+    private var pausedAtMs: Long? = null
+    private var pausedDurationMs: Long = 0L
 
     override fun start(): Boolean {
         if (startedAtMs != null) return false
         startedAtMs = nowMs()
+        pausedAtMs = null
+        pausedDurationMs = 0L
+        return true
+    }
+
+    override fun pause(): Boolean {
+        if (startedAtMs == null || pausedAtMs != null) return false
+        pausedAtMs = nowMs()
+        return true
+    }
+
+    override fun resume(): Boolean {
+        val pausedAt = pausedAtMs ?: return false
+        pausedDurationMs += (nowMs() - pausedAt).coerceAtLeast(0L)
+        pausedAtMs = null
         return true
     }
 
@@ -70,8 +102,13 @@ class NoOpAudioRecorder(
         val startedAt = startedAtMs ?: return Result.failure(
             IllegalStateException("No active recording session"),
         )
+        pausedAtMs?.let { pausedAt ->
+            pausedDurationMs += (nowMs() - pausedAt).coerceAtLeast(0L)
+        }
         startedAtMs = null
-        val durationMs = (nowMs() - startedAt).coerceAtLeast(0L)
+        pausedAtMs = null
+        val durationMs = (nowMs() - startedAt - pausedDurationMs).coerceAtLeast(0L)
+        pausedDurationMs = 0L
         return Result.success(
             AudioRecording(
                 bytes = ByteArray(0),
@@ -86,6 +123,12 @@ class NoOpAudioRecorder(
 
     override fun cancel() {
         startedAtMs = null
+        pausedAtMs = null
+        pausedDurationMs = 0L
+    }
+
+    override fun currentAmplitude(): Float {
+        return 0f
     }
 }
 
@@ -101,6 +144,8 @@ class MediaRecorderAudioRecorder(
     private var recorder: MediaRecorder? = null
     private var outputFile: File? = null
     private var startedAtMs: Long? = null
+    private var pausedAtMs: Long? = null
+    private var pausedDurationMs: Long = 0L
 
     override fun start(): Boolean {
         if (startedAtMs != null) return false
@@ -138,6 +183,8 @@ class MediaRecorderAudioRecorder(
             recorder = localRecorder
             outputFile = file
             startedAtMs = nowMs()
+            pausedAtMs = null
+            pausedDurationMs = 0L
             true
         } catch (error: Exception) {
             runCatching { localRecorder.reset() }
@@ -145,6 +192,25 @@ class MediaRecorderAudioRecorder(
             file.delete()
             false
         }
+    }
+
+    override fun pause(): Boolean {
+        val localRecorder = recorder ?: return false
+        if (pausedAtMs != null) return false
+        return runCatching {
+            localRecorder.pause()
+            pausedAtMs = nowMs()
+        }.isSuccess
+    }
+
+    override fun resume(): Boolean {
+        val localRecorder = recorder ?: return false
+        val pausedAt = pausedAtMs ?: return false
+        return runCatching {
+            localRecorder.resume()
+            pausedDurationMs += (nowMs() - pausedAt).coerceAtLeast(0L)
+            pausedAtMs = null
+        }.isSuccess
     }
 
     override fun stopAndRead(): Result<AudioRecording> {
@@ -156,6 +222,11 @@ class MediaRecorderAudioRecorder(
         )
         val startedAt = startedAtMs ?: nowMs()
 
+        pausedAtMs?.let { pausedAt ->
+            pausedDurationMs += (nowMs() - pausedAt).coerceAtLeast(0L)
+            pausedAtMs = null
+            runCatching { localRecorder.resume() }
+        }
         val stopResult = runCatching { localRecorder.stop() }
         runCatching { localRecorder.reset() }
         runCatching { localRecorder.release() }
@@ -169,7 +240,8 @@ class MediaRecorderAudioRecorder(
             return Result.failure(IllegalStateException("Recording was too short or unavailable.", error))
         }
 
-        val durationMs = (nowMs() - startedAt).coerceAtLeast(0L)
+        val durationMs = (nowMs() - startedAt - pausedDurationMs).coerceAtLeast(0L)
+        pausedDurationMs = 0L
         return runCatching {
             val bytes = file.readBytes()
             file.delete()
@@ -191,6 +263,8 @@ class MediaRecorderAudioRecorder(
         recorder = null
         outputFile = null
         startedAtMs = null
+        pausedAtMs = null
+        pausedDurationMs = 0L
 
         if (localRecorder != null) {
             runCatching { localRecorder.stop() }
@@ -198,5 +272,12 @@ class MediaRecorderAudioRecorder(
             runCatching { localRecorder.release() }
         }
         file?.delete()
+    }
+
+    override fun currentAmplitude(): Float {
+        val localRecorder = recorder ?: return 0f
+        return runCatching {
+            (localRecorder.maxAmplitude.toFloat() / 32_767f).coerceIn(0f, 1f)
+        }.getOrDefault(0f)
     }
 }

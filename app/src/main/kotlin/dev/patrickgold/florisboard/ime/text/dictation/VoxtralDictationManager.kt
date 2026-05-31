@@ -29,9 +29,12 @@ import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.devtools.flogInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.florisboard.lib.android.showShortToastSync
@@ -51,8 +54,20 @@ class VoxtralDictationManager(
     enum class DictationState {
         IDLE,
         LISTENING,
+        PAUSED,
         TRANSCRIBING,
         ERROR,
+    }
+
+    data class RecordingSessionState(
+        val startedAtMs: Long,
+        val pausedAtMs: Long? = null,
+        val pausedDurationMs: Long = 0L,
+    ) {
+        fun elapsedMs(nowMs: Long = System.currentTimeMillis()): Long {
+            val activePauseMs = pausedAtMs?.let { (nowMs - it).coerceAtLeast(0L) } ?: 0L
+            return (nowMs - startedAtMs - pausedDurationMs - activePauseMs).coerceAtLeast(0L)
+        }
     }
 
     private enum class RoutingMode {
@@ -78,6 +93,7 @@ class VoxtralDictationManager(
     )
 
     private var activeSessionMode: RoutingMode? = null
+    private var audioLevelJob: Job? = null
 
     init {
         migrateLegacyApiKeyIfNeeded()
@@ -85,6 +101,12 @@ class VoxtralDictationManager(
 
     private val _stateFlow = MutableStateFlow(DictationState.IDLE)
     val stateFlow: StateFlow<DictationState> = _stateFlow
+
+    private val _recordingSessionFlow = MutableStateFlow<RecordingSessionState?>(null)
+    val recordingSessionFlow: StateFlow<RecordingSessionState?> = _recordingSessionFlow
+
+    private val _audioLevelFlow = MutableStateFlow(0f)
+    val audioLevelFlow: StateFlow<Float> = _audioLevelFlow
 
     fun onVoiceInputKeyPressed() {
         val currentMode = activeSessionMode ?: resolveRoutingMode()
@@ -102,6 +124,7 @@ class VoxtralDictationManager(
                     DictationState.ERROR -> startListening(currentMode)
 
                     DictationState.LISTENING -> stopAndInsertTranscript()
+                    DictationState.PAUSED -> stopAndInsertTranscript()
                     DictationState.TRANSCRIBING -> {
                         appContext.showShortToastSync("Dictation is already transcribing…")
                     }
@@ -129,7 +152,9 @@ class VoxtralDictationManager(
         }
 
         activeSessionMode = mode
+        _recordingSessionFlow.value = RecordingSessionState(startedAtMs = System.currentTimeMillis())
         _stateFlow.value = DictationState.LISTENING
+        startAudioLevelPolling()
 
         if (mode == RoutingMode.MOCK_INTERNAL) {
             appContext.showShortToastSync("Dictation started (mock mode). Tap mic again to insert text.")
@@ -138,9 +163,31 @@ class VoxtralDictationManager(
         }
     }
 
-    private fun stopAndInsertTranscript() {
+    fun togglePauseResume() {
+        when (_stateFlow.value) {
+            DictationState.LISTENING -> pauseListening()
+            DictationState.PAUSED -> resumeListening()
+            else -> Unit
+        }
+    }
+
+    fun cancelDictation() {
+        val sessionMode = activeSessionMode ?: return
+        recorderFor(sessionMode).cancel()
+        stopAudioLevelPolling()
+        activeSessionMode = null
+        _recordingSessionFlow.value = null
+        _stateFlow.value = DictationState.IDLE
+        appContext.showShortToastSync("Dictation cancelled")
+    }
+
+    fun stopAndInsertTranscript() {
+        if (_stateFlow.value != DictationState.LISTENING && _stateFlow.value != DictationState.PAUSED) {
+            return
+        }
         scope.launch {
             _stateFlow.value = DictationState.TRANSCRIBING
+            stopAudioLevelPolling()
             val sessionMode = activeSessionMode ?: resolveRoutingMode()
 
             val recorder = recorderFor(sessionMode)
@@ -148,6 +195,7 @@ class VoxtralDictationManager(
 
             val recording = recorder.stopAndRead().getOrElse { error ->
                 activeSessionMode = null
+                _recordingSessionFlow.value = null
                 setError(error.message ?: "Failed to stop dictation", error)
                 return@launch
             }
@@ -156,12 +204,14 @@ class VoxtralDictationManager(
                 transcriptionClient.transcribe(recording)
             }.getOrElse { error ->
                 activeSessionMode = null
+                _recordingSessionFlow.value = null
                 setError(error.message ?: "Failed to transcribe dictation", error)
                 return@launch
             }.trim()
 
             if (transcript.isBlank()) {
                 activeSessionMode = null
+                _recordingSessionFlow.value = null
                 _stateFlow.value = DictationState.ERROR
                 appContext.showShortToastSync("Dictation returned empty text")
                 return@launch
@@ -170,6 +220,7 @@ class VoxtralDictationManager(
             val wasCommitted = editorInstance.commitText(transcript)
             if (!wasCommitted) {
                 activeSessionMode = null
+                _recordingSessionFlow.value = null
                 _stateFlow.value = DictationState.ERROR
                 appContext.showShortToastSync("Could not insert dictated text")
                 return@launch
@@ -181,11 +232,41 @@ class VoxtralDictationManager(
                 flogInfo { "Inserted Voxtral dictation transcript (${transcript.length} chars)" }
             }
             activeSessionMode = null
+            _recordingSessionFlow.value = null
             _stateFlow.value = DictationState.IDLE
         }
     }
 
+    private fun pauseListening() {
+        val sessionMode = activeSessionMode ?: return
+        if (recorderFor(sessionMode).pause()) {
+            _recordingSessionFlow.value = _recordingSessionFlow.value?.copy(
+                pausedAtMs = System.currentTimeMillis(),
+            )
+            _stateFlow.value = DictationState.PAUSED
+        } else {
+            appContext.showShortToastSync("Unable to pause dictation")
+        }
+    }
+
+    private fun resumeListening() {
+        val sessionMode = activeSessionMode ?: return
+        val session = _recordingSessionFlow.value ?: return
+        val pausedAt = session.pausedAtMs ?: return
+        if (recorderFor(sessionMode).resume()) {
+            _recordingSessionFlow.value = session.copy(
+                pausedAtMs = null,
+                pausedDurationMs = session.pausedDurationMs + (System.currentTimeMillis() - pausedAt).coerceAtLeast(0L),
+            )
+            _stateFlow.value = DictationState.LISTENING
+        } else {
+            appContext.showShortToastSync("Unable to resume dictation")
+        }
+    }
+
     private fun setError(message: String, error: Throwable) {
+        stopAudioLevelPolling()
+        _recordingSessionFlow.value = null
         _stateFlow.value = DictationState.ERROR
         flogError { "$message: ${error.message}" }
         appContext.showShortToastSync(message)
@@ -198,6 +279,27 @@ class VoxtralDictationManager(
             BuildConfig.DEBUG -> RoutingMode.MOCK_INTERNAL
             else -> RoutingMode.EXTERNAL_IME_FALLBACK
         }
+    }
+
+    private fun startAudioLevelPolling() {
+        audioLevelJob?.cancel()
+        audioLevelJob = scope.launch {
+            while (isActive) {
+                val sessionMode = activeSessionMode
+                _audioLevelFlow.value = if (sessionMode != null && _stateFlow.value == DictationState.LISTENING) {
+                    recorderFor(sessionMode).currentAmplitude()
+                } else {
+                    0f
+                }
+                delay(50L)
+            }
+        }
+    }
+
+    private fun stopAudioLevelPolling() {
+        audioLevelJob?.cancel()
+        audioLevelJob = null
+        _audioLevelFlow.value = 0f
     }
 
     private fun apiKey(): String {

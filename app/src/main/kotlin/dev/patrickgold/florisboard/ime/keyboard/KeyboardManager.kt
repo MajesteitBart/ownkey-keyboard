@@ -22,6 +22,7 @@ import android.view.KeyEvent
 import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
@@ -107,6 +108,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     val resources = KeyboardManagerResources()
     val activeState = ObservableKeyboardState.new()
     var smartbarVisibleDynamicActionsCount by mutableIntStateOf(0)
+    var isRewriteOptionsVisible by mutableStateOf(false)
     private var lastToastReference = WeakReference<Toast>(null)
 
     private val activeEvaluatorGuard = Mutex(locked = false)
@@ -806,7 +808,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.IME_UI_MODE_TEXT -> activeState.imeUiMode = ImeUiMode.TEXT
             KeyCode.IME_UI_MODE_MEDIA -> activeState.imeUiMode = ImeUiMode.MEDIA
             KeyCode.IME_UI_MODE_CLIPBOARD -> activeState.imeUiMode = ImeUiMode.CLIPBOARD
-            KeyCode.VOICE_INPUT -> FlorisImeService.handleVoiceInputAction()
+            KeyCode.VOICE_INPUT -> {
+                isRewriteOptionsVisible = false
+                activeState.isActionsOverflowVisible = false
+                FlorisImeService.handleVoiceInputAction()
+            }
             KeyCode.KANA_SWITCHER -> handleKanaSwitch()
             KeyCode.KANA_HIRA -> handleKanaHira()
             KeyCode.KANA_KATA -> handleKanaKata()
@@ -826,10 +832,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 prefs.smartbar.enabled.let { it.set(!it.get()) }
             }
             KeyCode.TOGGLE_ACTIONS_OVERFLOW -> {
+                isRewriteOptionsVisible = false
                 activeState.isActionsOverflowVisible = !activeState.isActionsOverflowVisible
             }
             KeyCode.TOGGLE_ACTIONS_EDITOR -> {
                 activeState.isActionsEditorVisible = !activeState.isActionsEditorVisible
+            }
+            KeyCode.AI_REWRITE -> {
+                activeState.isActionsOverflowVisible = false
+                isRewriteOptionsVisible = !isRewriteOptionsVisible
             }
             KeyCode.TOGGLE_INCOGNITO_MODE -> scope.launch { handleToggleIncognitoMode() }
             KeyCode.TOGGLE_AUTOCORRECT -> handleToggleAutocorrect()

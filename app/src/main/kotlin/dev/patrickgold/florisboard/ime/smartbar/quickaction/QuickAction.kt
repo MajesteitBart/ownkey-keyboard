@@ -97,6 +97,7 @@ fun QuickAction.computeDisplayName(evaluator: ComputingEvaluator): String {
             KeyCode.TOGGLE_ACTIONS_OVERFLOW -> R.string.quick_action__toggle_actions_overflow
             KeyCode.TOGGLE_INCOGNITO_MODE -> R.string.quick_action__toggle_incognito_mode
             KeyCode.TOGGLE_AUTOCORRECT -> R.string.quick_action__toggle_autocorrect
+            KeyCode.AI_REWRITE -> R.string.quick_action__ai_rewrite
             KeyCode.VOICE_INPUT -> R.string.quick_action__voice_input
             KeyCode.IME_HIDE_UI -> R.string.quick_action__ime_hide_ui
             KeyCode.TOGGLE_FLOATING_WINDOW -> R.string.quick_action__floating_window_mode
@@ -137,6 +138,7 @@ fun QuickAction.computeTooltip(evaluator: ComputingEvaluator): String {
             KeyCode.TOGGLE_ACTIONS_OVERFLOW -> R.string.quick_action__toggle_actions_overflow__tooltip
             KeyCode.TOGGLE_INCOGNITO_MODE -> R.string.quick_action__toggle_incognito_mode__tooltip
             KeyCode.TOGGLE_AUTOCORRECT -> R.string.quick_action__toggle_autocorrect__tooltip
+            KeyCode.AI_REWRITE -> R.string.quick_action__ai_rewrite__tooltip
             KeyCode.VOICE_INPUT -> R.string.quick_action__voice_input__tooltip
             KeyCode.IME_HIDE_UI -> R.string.quick_action__ime_hide_ui__tooltip
             KeyCode.TOGGLE_FLOATING_WINDOW -> R.string.quick_action__floating_window_mode__tooltip

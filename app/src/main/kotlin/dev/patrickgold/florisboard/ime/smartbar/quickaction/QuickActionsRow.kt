@@ -70,7 +70,8 @@ fun QuickActionsRow(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val width = constraints.maxWidth.toDp()
         val height = constraints.maxHeight.toDp()
-        val numActionsToShow = ((width / height).toInt() - (if (showOverflowAction) 1 else 0)).coerceAtLeast(0)
+        val actionWidth = height * QuickActionButtonAspectRatio
+        val numActionsToShow = ((width / actionWidth).toInt() - (if (showOverflowAction) 1 else 0)).coerceAtLeast(0)
         val visibleActions = dynamicActions
             .subList(0, numActionsToShow.coerceAtMost(dynamicActions.size))
 

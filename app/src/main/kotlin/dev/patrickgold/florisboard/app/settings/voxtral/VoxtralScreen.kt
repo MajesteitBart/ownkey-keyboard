@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
+import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteSecretsStore
+import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.launchUrl
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -55,6 +57,7 @@ fun VoxtralScreen() = FlorisScreen {
 
     val context = LocalContext.current
     val voxtralSecretsStore = remember { VoxtralSecretsStore(context) }
+    val llmRewriteSecretsStore = remember { LlmRewriteSecretsStore(context) }
 
     var hasMicPermission by remember {
         mutableStateOf(
@@ -66,6 +69,12 @@ fun VoxtralScreen() = FlorisScreen {
         mutableStateOf(voxtralSecretsStore.hasApiKey())
     }
     var apiKeyInput by remember {
+        mutableStateOf("")
+    }
+    var hasStoredLlmApiKey by remember {
+        mutableStateOf(llmRewriteSecretsStore.hasApiKey())
+    }
+    var llmApiKeyInput by remember {
         mutableStateOf("")
     }
 
@@ -80,8 +89,14 @@ fun VoxtralScreen() = FlorisScreen {
         val endpointUrl by prefsRef.voxtral.endpointUrl.collectAsState()
         val model by prefsRef.voxtral.model.collectAsState()
         val languageHint by prefsRef.voxtral.languageHint.collectAsState()
+        val rewriteEndpointUrl by prefsRef.voxtral.postProcessingEndpointUrl.collectAsState()
+        val rewriteModel by prefsRef.voxtral.postProcessingModel.collectAsState()
+        val rewritePromptsJson by prefsRef.voxtral.rewritePrompts.collectAsState()
         val coroutineScope = rememberCoroutineScope()
         var wearSyncStatus by remember { mutableStateOf("") }
+        var promptDrafts by remember(rewritePromptsJson) {
+            mutableStateOf(RewritePromptPresets.decode(rewritePromptsJson))
+        }
 
         LaunchedEffect(Unit) {
             val legacyApiKey = prefsRef.voxtral.apiKey.get().trim()
@@ -263,6 +278,162 @@ fun VoxtralScreen() = FlorisScreen {
                     text = wearSyncStatus,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
+            }
+        }
+
+        PreferenceGroup(title = "LLM rewrite") {
+            Text(
+                text = "Rewrite uses a separate provider key and OpenAI/Mistral-compatible chat completions endpoint. A ChatGPT subscription does not replace API access.",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            Text(
+                text = if (hasStoredLlmApiKey) {
+                    "LLM API key is saved"
+                } else {
+                    "No LLM API key saved"
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            OutlinedTextField(
+                value = llmApiKeyInput,
+                onValueChange = { value ->
+                    llmApiKeyInput = value
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                label = { Text("LLM API key") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Button(
+                    onClick = {
+                        llmRewriteSecretsStore.setApiKey(llmApiKeyInput.trim())
+                        llmApiKeyInput = ""
+                        hasStoredLlmApiKey = llmRewriteSecretsStore.hasApiKey()
+                    },
+                    enabled = llmApiKeyInput.trim().isNotEmpty(),
+                ) {
+                    Text("Save LLM key")
+                }
+                if (hasStoredLlmApiKey) {
+                    Button(
+                        onClick = {
+                            llmRewriteSecretsStore.clearApiKey()
+                            hasStoredLlmApiKey = false
+                        },
+                    ) {
+                        Text("Clear")
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = rewriteEndpointUrl,
+                onValueChange = { value ->
+                    coroutineScope.launch {
+                        prefsRef.voxtral.postProcessingEndpointUrl.set(value)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                label = { Text("Rewrite endpoint") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = rewriteModel,
+                onValueChange = { value ->
+                    coroutineScope.launch {
+                        prefsRef.voxtral.postProcessingModel.set(value)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                label = { Text("Rewrite model") },
+                singleLine = true,
+            )
+            Text(
+                text = "Rewrite voices",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            promptDrafts.forEachIndexed { index, prompt ->
+                OutlinedTextField(
+                    value = prompt.name,
+                    onValueChange = { value ->
+                        promptDrafts = promptDrafts.toMutableList().also { prompts ->
+                            prompts[index] = prompt.copy(name = value)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    label = { Text("Voice name") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = prompt.instruction,
+                    onValueChange = { value ->
+                        promptDrafts = promptDrafts.toMutableList().also { prompts ->
+                            prompts[index] = prompt.copy(instruction = value)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    label = { Text("Prompt instruction") },
+                    minLines = 2,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            promptDrafts = promptDrafts.toMutableList().also { prompts ->
+                                prompts.removeAt(index)
+                            }
+                        },
+                        enabled = promptDrafts.size > 1,
+                    ) {
+                        Text("Remove")
+                    }
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Button(
+                    onClick = {
+                        promptDrafts = promptDrafts.plus(RewritePromptPresets.newCustom(promptDrafts.size))
+                    },
+                ) {
+                    Text("Add voice")
+                }
+                Button(
+                    onClick = {
+                        promptDrafts = RewritePromptPresets.defaults
+                        coroutineScope.launch {
+                            prefsRef.voxtral.rewritePrompts.set(RewritePromptPresets.defaultJson)
+                        }
+                    },
+                ) {
+                    Text("Reset")
+                }
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            prefsRef.voxtral.rewritePrompts.set(RewritePromptPresets.encode(promptDrafts))
+                        }
+                    },
+                ) {
+                    Text("Save voices")
+                }
             }
         }
 

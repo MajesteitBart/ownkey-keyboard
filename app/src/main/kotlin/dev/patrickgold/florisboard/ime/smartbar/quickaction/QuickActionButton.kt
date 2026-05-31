@@ -71,6 +71,8 @@ enum class QuickActionBarType {
     EDITOR_TILE;
 }
 
+internal const val QuickActionButtonAspectRatio = 1.35f
+
 @Composable
 fun QuickActionButton(
     action: QuickAction,
@@ -121,7 +123,7 @@ fun QuickActionButton(
                     .fillMaxWidth()
                     .height(108.dp)
             } else {
-                Modifier.aspectRatio(1f)
+                Modifier.aspectRatio(QuickActionButtonAspectRatio)
             })
                 .indication(interactionSource, LocalIndication.current)
                 .pointerInput(action, isEnabled) {

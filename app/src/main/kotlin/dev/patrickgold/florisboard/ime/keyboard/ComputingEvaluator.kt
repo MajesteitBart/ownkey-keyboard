@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.Backspace
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
@@ -303,6 +304,9 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.TOGGLE_AUTOCORRECT -> {
             Icons.Default.FontDownload
+        }
+        KeyCode.AI_REWRITE -> {
+            Icons.Default.AutoFixHigh
         }
         KeyCode.KANA_SWITCHER -> {
             if (evaluator.state.isKanaKata) {

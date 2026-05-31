@@ -25,13 +25,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
 import android.widget.Toolbar
 import androidx.activity.ComponentActivity
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.android.stringRes
 import dev.patrickgold.florisboard.lib.devtools.Devtools
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
@@ -121,7 +121,7 @@ class CrashDialogActivity : ComponentActivity() {
             } else {
                 resources.getString(R.string.crash_dialog__copy_to_clipboard_failure)
             }
-            Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show()
+            showShortToastSync(toastMessage)
         }
 
         openBugReportForm.setOnClickListener {
