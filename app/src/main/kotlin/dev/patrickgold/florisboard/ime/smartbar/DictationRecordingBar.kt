@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.voxtralDictationManager
@@ -112,12 +113,12 @@ fun DictationRecordingBar(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xF41C1D20),
-                            Color(0xF7212226),
+                            OwnkeyBrand.PanelRaised.copy(alpha = 0.96f),
+                            OwnkeyBrand.Action.copy(alpha = 0.97f),
                         ),
                     ),
                 )
-                .border(1.dp, Color.White.copy(alpha = 0.07f), panelShape)
+                .border(1.dp, OwnkeyBrand.Bone.copy(alpha = 0.07f), panelShape)
                 .padding(horizontal = if (compact) 12.dp else 14.dp, vertical = 10.dp),
         ) {
             if (isTranscribing) {
@@ -200,14 +201,14 @@ private fun DictationStatusRow(
                     modifier = Modifier.size(14.dp),
                     strokeWidth = 2.dp,
                     color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.15f),
+                    trackColor = OwnkeyBrand.Bone.copy(alpha = 0.15f),
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.KeyboardVoice,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
-                    tint = if (isPaused) Color(0xFFFFB84D) else Color(0xFFFF8A00),
+                    tint = if (isPaused) OwnkeyBrand.WarningYellow else OwnkeyBrand.SignalOrange,
                 )
             }
         }
@@ -218,7 +219,7 @@ private fun DictationStatusRow(
                 isPaused -> "Paused"
                 else -> "Listening"
             },
-            color = Color.White,
+            color = OwnkeyBrand.Bone,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -228,11 +229,11 @@ private fun DictationStatusRow(
         Box(
             modifier = Modifier
                 .size(3.dp)
-                .background(Color.White.copy(alpha = 0.34f), CircleShape),
+                .background(OwnkeyBrand.Bone.copy(alpha = 0.34f), CircleShape),
         )
         Text(
             text = elapsedText,
-            color = Color(0xFFB8B8BD),
+            color = OwnkeyBrand.Ash,
             fontSize = 12.sp,
             maxLines = 1,
         )
@@ -249,12 +250,12 @@ private fun TranscribingContent(modifier: Modifier = Modifier) {
         CircularProgressIndicator(
             modifier = Modifier.size(22.dp),
             strokeWidth = 2.5.dp,
-            color = Color(0xFFFF9B18),
-            trackColor = Color.White.copy(alpha = 0.14f),
+            color = OwnkeyBrand.SignalOrange,
+            trackColor = OwnkeyBrand.Bone.copy(alpha = 0.14f),
         )
         Text(
             text = "Preparing transcript",
-            color = Color.White.copy(alpha = 0.86f),
+            color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
             fontSize = 13.sp,
             maxLines = 1,
         )
@@ -273,8 +274,8 @@ private fun RecordingIconButton(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.075f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+            .background(OwnkeyBrand.Bone.copy(alpha = 0.075f))
+            .border(1.dp, OwnkeyBrand.Bone.copy(alpha = 0.08f), CircleShape)
             .clickable(
                 onClickLabel = contentDescription,
                 onClick = onClick,
@@ -301,11 +302,11 @@ private fun FinishDictationButton(
                 Brush.verticalGradient(
                     listOf(
                         Color(0xFFFFA51C),
-                        Color(0xFFD37400),
+                        OwnkeyBrand.SignalOrange,
                     ),
                 ),
             )
-            .border(1.dp, Color(0xFFFFC05E).copy(alpha = 0.34f), CircleShape)
+            .border(1.dp, OwnkeyBrand.SignalAmber.copy(alpha = 0.34f), CircleShape)
             .clickable(
                 onClickLabel = "Stop and transcribe",
                 onClick = onClick,
@@ -332,7 +333,7 @@ private fun AudioLevelWaveform(
         modifier = modifier
             .alpha(if (paused) 0.34f else 1f),
     ) {
-        val color = Color(0xFFFF9B18)
+        val color = OwnkeyBrand.SignalOrange
         val stroke = 3.8.dp.toPx()
         val centerY = size.height / 2f
         val bars = 14

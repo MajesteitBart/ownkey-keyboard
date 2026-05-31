@@ -24,6 +24,7 @@ import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,8 +62,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -71,6 +73,7 @@ import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.LocalNavController
+import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.compose.FlorisScreenScope
@@ -86,16 +89,6 @@ import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.FlorisBulletSpacer
 import org.florisboard.lib.compose.FlorisStepState
 import org.florisboard.lib.compose.stringRes
-
-private val OwnkeySetupBackground = Color(0xFF0B0D10)
-private val OwnkeySetupPanel = Color(0xFF11151A)
-private val OwnkeySetupPanelRaised = Color(0xFF171C22)
-private val OwnkeySetupAction = Color(0xFF25272D)
-private val OwnkeySetupActionPressed = Color(0xFF30333A)
-private val OwnkeySetupPrimary = Color(0xFF0B57FF)
-private val OwnkeySetupText = Color(0xFFF7F8FA)
-private val OwnkeySetupMutedText = Color(0xFFB6BAC3)
-private val OwnkeySetupBorder = Color(0xFF2B3037)
 
 @Composable
 fun SetupScreen() = FlorisScreen {
@@ -208,15 +201,15 @@ private fun FlorisScreenScope.content(
 
         MaterialTheme(
             colorScheme = darkColorScheme(
-                primary = OwnkeySetupPrimary,
-                onPrimary = OwnkeySetupText,
-                background = OwnkeySetupBackground,
-                onBackground = OwnkeySetupText,
-                surface = OwnkeySetupPanel,
-                onSurface = OwnkeySetupText,
-                surfaceVariant = OwnkeySetupAction,
-                onSurfaceVariant = OwnkeySetupMutedText,
-                outline = OwnkeySetupBorder,
+                primary = OwnkeyBrand.TrustBlue,
+                onPrimary = OwnkeyBrand.Bone,
+                background = OwnkeyBrand.Key,
+                onBackground = OwnkeyBrand.Bone,
+                surface = OwnkeyBrand.Panel,
+                onSurface = OwnkeyBrand.Bone,
+                surfaceVariant = OwnkeyBrand.Action,
+                onSurfaceVariant = OwnkeyBrand.Ash,
+                outline = OwnkeyBrand.Line,
             ),
         ) {
             SetupContent(
@@ -240,7 +233,7 @@ private fun SetupContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OwnkeySetupBackground),
+            .background(OwnkeyBrand.Key),
     ) {
         Column(
             modifier = Modifier
@@ -250,24 +243,35 @@ private fun SetupContent(
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = OwnkeySetupPanel,
-                contentColor = OwnkeySetupText,
+                color = OwnkeyBrand.Panel,
+                contentColor = OwnkeyBrand.Bone,
                 shape = RoundedCornerShape(22.dp),
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp,
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Text(
-                        text = stringRes(R.string.floris_app_name),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_ownkey_mark),
+                        contentDescription = stringRes(R.string.floris_app_name),
+                        modifier = Modifier.size(width = 58.dp, height = 44.dp),
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringRes(R.string.setup__intro_message),
-                        color = OwnkeySetupMutedText,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = stringRes(R.string.floris_app_name),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringRes(R.string.setup__intro_message),
+                            color = OwnkeyBrand.Ash,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
             }
 
@@ -305,19 +309,19 @@ private fun SetupStepCard(
     } else {
         Modifier
     }
-    val cardColor = if (isCurrent) OwnkeySetupPanelRaised else OwnkeySetupPanel
+    val cardColor = if (isCurrent) OwnkeyBrand.PanelRaised else OwnkeyBrand.Panel
     val numberColor = when {
-        isCurrent -> OwnkeySetupPrimary
-        isDone -> OwnkeySetupActionPressed
-        else -> OwnkeySetupAction
+        isCurrent -> OwnkeyBrand.SignalOrange
+        isDone -> OwnkeyBrand.ActionPressed
+        else -> OwnkeyBrand.Action
     }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, OwnkeySetupBorder, RoundedCornerShape(22.dp)),
+            .border(1.dp, OwnkeyBrand.Line, RoundedCornerShape(22.dp)),
         color = cardColor,
-        contentColor = OwnkeySetupText,
+        contentColor = OwnkeyBrand.Bone,
         shape = RoundedCornerShape(22.dp),
         tonalElevation = 0.dp,
         shadowElevation = if (isCurrent) 2.dp else 0.dp,
@@ -336,7 +340,7 @@ private fun SetupStepCard(
                 ) {
                     Text(
                         text = number.toString(),
-                        color = OwnkeySetupText,
+                        color = OwnkeyBrand.Bone,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -350,7 +354,7 @@ private fun SetupStepCard(
                     if (!isCurrent) {
                         Text(
                             text = if (isDone) stringRes(R.string.setup__step_status_done) else stringRes(R.string.setup__step_status_locked),
-                            color = OwnkeySetupMutedText,
+                            color = OwnkeyBrand.Ash,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -377,12 +381,12 @@ private fun footer(context: Context) {
     ) {
         val privacyPolicyUrl = stringRes(R.string.florisboard__privacy_policy_url)
         TextButton(onClick = { context.launchUrl(privacyPolicyUrl) }) {
-            Text(text = stringRes(R.string.setup__footer__privacy_policy), color = OwnkeySetupMutedText)
+            Text(text = stringRes(R.string.setup__footer__privacy_policy), color = OwnkeyBrand.Ash)
         }
         FlorisBulletSpacer()
         val repositoryUrl = stringRes(R.string.florisboard__repo_url)
         TextButton(onClick = { context.launchUrl(repositoryUrl) }) {
-            Text(text = stringRes(R.string.setup__footer__repository), color = OwnkeySetupMutedText)
+            Text(text = stringRes(R.string.setup__footer__repository), color = OwnkeyBrand.Ash)
         }
     }
 }
@@ -457,7 +461,7 @@ private fun StepText(text: String) {
     Text(
         modifier = Modifier.padding(bottom = 10.dp),
         text = text,
-        color = OwnkeySetupMutedText,
+        color = OwnkeyBrand.Ash,
         style = MaterialTheme.typography.bodyMedium,
     )
 }
@@ -472,8 +476,8 @@ private fun ColumnScope.StepButton(
             .align(Alignment.End)
             .padding(top = 6.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = OwnkeySetupPrimary,
-            contentColor = OwnkeySetupText,
+            containerColor = OwnkeyBrand.TrustBlue,
+            contentColor = OwnkeyBrand.Bone,
         ),
         shape = RoundedCornerShape(16.dp),
         onClick = onClick,

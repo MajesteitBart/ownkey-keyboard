@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import dev.patrickgold.florisboard.app.OwnkeyBrand
 import kotlinx.coroutines.delay
 import org.florisboard.lib.android.OwnkeyToastBus
 import org.florisboard.lib.android.OwnkeyToastMessage
@@ -83,8 +84,10 @@ fun BoxScope.OwnkeyToastOverlay() {
 
     AnimatedVisibility(
         visible = message != null,
-        enter = fadeIn() + slideInVertically { it / 2 },
-        exit = fadeOut() + slideOutVertically { it / 2 },
+        enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(OwnkeyBrand.MotionFastMillis)) +
+            slideInVertically(animationSpec = androidx.compose.animation.core.tween(OwnkeyBrand.MotionFastMillis)) { it / 2 },
+        exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(OwnkeyBrand.MotionFastMillis)) +
+            slideOutVertically(animationSpec = androidx.compose.animation.core.tween(OwnkeyBrand.MotionFastMillis)) { it / 2 },
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .zIndex(100f)
@@ -149,9 +152,11 @@ private fun ownkeyToastBackground(text: String): Color {
     val normalized = text.lowercase()
     return when {
         listOf("success", "successfully", "saved", "copied", "inserted", "gelukt", "opgeslagen", "gekopieerd")
-            .any { it in normalized } -> Color(0xFF3EDB83)
+            .any { it in normalized } -> OwnkeyBrand.SuccessGreen
+        listOf("warning", "permission", "paused", "let op", "machtiging", "toestemming")
+            .any { it in normalized } -> OwnkeyBrand.WarningYellow
         listOf("error", "failed", "failure", "unable", "missing", "could not", "invalid", "fout", "mislukt")
-            .any { it in normalized } -> Color(0xFFFF7A7A)
-        else -> Color(0xFFF7F7F7)
+            .any { it in normalized } -> OwnkeyBrand.ErrorRed
+        else -> OwnkeyBrand.Bone
     }
 }

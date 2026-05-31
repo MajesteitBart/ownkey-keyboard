@@ -13,6 +13,13 @@
     <color name="textColorError">#FFFFFF</color><!-- White -->
 
     <color name="ic_app_icon_background">#000000</color>
+    <color name="ownkey_app_icon_background">#18191B</color>
+    <color name="ownkey_key">#0A0B0C</color>
+    <color name="ownkey_graphite">#18191B</color>
+    <color name="ownkey_panel">#111315</color>
+    <color name="ownkey_bone">#F3F1EC</color>
+    <color name="ownkey_ash">#B6BAC3</color>
+    <color name="ownkey_signal_orange">#DE5F14</color>
 
     <color name="cardViewBackgroundColor">#FFFFFF</color><!-- White -->
     <color name="navigationBarColor">#000000</color><!-- Black -->

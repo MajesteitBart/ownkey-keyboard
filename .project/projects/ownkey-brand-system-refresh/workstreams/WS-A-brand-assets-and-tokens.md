@@ -1,9 +1,9 @@
 ---
 name: WS-A Brand Assets and Tokens
 owner: ownkey-keyboard-team
-status: planned
+status: completed
 created: 2026-05-31T16:45:00Z
-updated: 2026-05-31T16:45:00Z
+updated: 2026-05-31T17:05:00Z
 ---
 
 # Workstream: WS-A Brand Assets and Tokens

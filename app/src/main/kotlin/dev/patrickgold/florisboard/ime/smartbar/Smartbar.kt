@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
@@ -87,7 +88,7 @@ import org.florisboard.lib.snygg.ui.SnyggIconButton
 import org.florisboard.lib.snygg.ui.SnyggRow
 import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 
-const val AnimationDuration = 200
+const val AnimationDuration = OwnkeyBrand.MotionStandardMillis
 
 val VerticalEnterTransition = EnterTransition.verticalTween(AnimationDuration)
 val VerticalExitTransition = ExitTransition.verticalTween(AnimationDuration)
@@ -122,8 +123,12 @@ fun Smartbar() {
         AnimatedContent(
             targetState = showDictationControls,
             transitionSpec = {
-                (fadeIn(tween(180)) + slideInVertically(tween(180)) { height -> height / 3 })
-                    .togetherWith(fadeOut(tween(140)) + slideOutVertically(tween(140)) { height -> -height / 4 })
+                (fadeIn(tween(OwnkeyBrand.MotionStandardMillis)) +
+                    slideInVertically(tween(OwnkeyBrand.MotionStandardMillis)) { height -> height / 3 })
+                    .togetherWith(
+                        fadeOut(tween(OwnkeyBrand.MotionFastMillis)) +
+                            slideOutVertically(tween(OwnkeyBrand.MotionFastMillis)) { height -> -height / 4 },
+                    )
             },
             label = "dictation-smartbar-transition",
         ) { showControls ->

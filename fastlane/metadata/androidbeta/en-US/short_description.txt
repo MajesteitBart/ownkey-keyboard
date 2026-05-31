@@ -1,1 +1,1 @@
-Beta of Ownkey Keyboard, Voxtral ASR + BYOK + autocorrect + private input.
+Beta of Ownkey Keyboard: BYOK AI typing, Voxtral voice input, autocorrect.
