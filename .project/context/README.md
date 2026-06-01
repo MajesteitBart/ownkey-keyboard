@@ -13,3 +13,7 @@ Required context files:
 - `project-style-guide.md`
 - `progress.md`
 - `gui-testing.md`
+
+Supplemental context:
+
+- `play-store-usps.md`

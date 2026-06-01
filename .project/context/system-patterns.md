@@ -2,17 +2,23 @@
 
 Capture architecture and delivery patterns that should be reused.
 
-1. **Spec-first decomposition**
-   - Start from measurable outcomes and map to workstreams, then atomic tasks with explicit acceptance criteria.
+1. **User-control-first AI**
+   - Every cloud AI feature should expose provider, endpoint/model, and key expectations clearly. Do not hide provider lock-in behind friendly copy.
 
-2. **Latency-first typing loop**
-   - Treat suggestion latency budget as a hard contract; optimize compute path before adding feature depth.
+2. **Privacy claims must match implementation**
+   - It is safe to say Ownkey does not add private-content monitoring and stores keys encrypted on-device. Also say that enabled cloud AI sends request data to the configured provider.
 
-3. **User-control-first correction model**
-   - Prefer high-certainty autocorrect with explicit, fast undo/recovery affordances.
+3. **AI as umbrella, provider as implementation**
+   - Use `AI` for user-facing settings sections that include dictation and rewrite. Keep provider-specific names like Voxtral, OpenAI, Anthropic, and Mistral inside configuration details.
 
-4. **Contextual adaptation with bounded complexity**
-   - Introduce per-language and app-context behavior as explicit policy layers, not hidden side effects.
+4. **Onboarding/settings visual continuity**
+   - New settings surfaces should mirror the Ownkey onboarding direction: dark background, restrained panels, clear sections, brand tokens, and low-noise hierarchy.
 
-5. **Evidence-backed closure**
-   - Each task requires test/performance evidence and KPI impact notes before completion.
+5. **Latency-first typing loop**
+   - Treat suggestion latency and keyboard responsiveness as hard product constraints. AI features must not make ordinary typing feel slower.
+
+6. **Evidence-backed closure**
+   - For implementation tasks, capture test/build evidence and any visual caveats before closing or pushing.
+
+7. **Store copy from real features only**
+   - Google Play USPs should reflect shipped or directly implemented behavior. Avoid promising hosted AI, private cloud processing, or model capabilities that the app does not control.
