@@ -575,9 +575,9 @@
     <string name="pref__gestures__swipe_distance_threshold__label" comment="Preference title">Swipe distance threshold</string>
 
     <string name="settings__other__title" comment="Title of Other settings">Other</string>
-    <string name="settings__voxtral__title" comment="Title of Voxtral settings screen">Voxtral</string>
-    <string name="settings__voxtral__summary" comment="Summary shown on Settings home item for Voxtral">Configure Voxtral dictation</string>
-    <string name="pref__voxtral__group_auth__label" comment="Title of the Voxtral authentication preference group">Authentication</string>
+    <string name="settings__voxtral__title" comment="Title of AI settings screen">AI</string>
+    <string name="settings__voxtral__summary" comment="Summary shown on Settings home item for AI">Configure dictation and rewrite</string>
+    <string name="pref__voxtral__group_auth__label" comment="Title of the dictation authentication preference group">Dictation key</string>
     <string name="pref__voxtral__api_key__label" comment="Label of the Voxtral API key text field">API key</string>
     <string name="pref__voxtral__api_key__summary" comment="Summary text for Voxtral API key preference">Stored encrypted on this device. After saving, the key is hidden and cannot be shown again in settings.</string>
     <string name="pref__voxtral__create_account_action" comment="Button label to create Mistral account for API key">Create Mistral account</string>
@@ -597,6 +597,25 @@
     <string name="pref__voxtral__permission__missing" comment="Status text shown when microphone permission is missing">Microphone permission not granted yet.</string>
     <string name="pref__voxtral__permission__grant_action" comment="Button label to request microphone permission">Grant microphone permission</string>
     <string name="pref__voxtral__sync_wear__action" comment="Button label to sync Voxtral settings to watch">Sync to Wear</string>
+    <string name="pref__ai__intro_title" comment="Title of AI settings intro">Ownkey AI</string>
+    <string name="pref__ai__intro_summary" comment="Summary on AI settings intro">Configure voice dictation and LLM rewrite providers from one place.</string>
+    <string name="pref__ai__rewrite_group__label" comment="Title of the LLM rewrite preference group">LLM rewrite</string>
+    <string name="pref__ai__rewrite_group__summary" comment="Summary of the LLM rewrite preference group">Rewrite uses its own provider API key. ChatGPT or Claude app subscriptions do not replace API access.</string>
+    <string name="pref__ai__rewrite_key__label" comment="Label of the LLM rewrite API key text field">Rewrite API key</string>
+    <string name="pref__ai__rewrite_key__status_set" comment="Status text when rewrite API key is configured">Rewrite API key is saved securely.</string>
+    <string name="pref__ai__rewrite_key__status_missing" comment="Status text when rewrite API key is missing">No rewrite API key configured yet.</string>
+    <string name="pref__ai__rewrite_key__save_action" comment="Button label to save rewrite API key">Save rewrite key</string>
+    <string name="pref__ai__rewrite_key__clear_action" comment="Button label to remove rewrite API key">Remove rewrite key</string>
+    <string name="pref__ai__rewrite_provider__label" comment="Label for rewrite provider presets">Provider</string>
+    <string name="pref__ai__rewrite_endpoint__label" comment="Label for rewrite endpoint URL">Rewrite endpoint</string>
+    <string name="pref__ai__rewrite_model__label" comment="Label for rewrite model">Rewrite model</string>
+    <string name="pref__ai__rewrite_voices__label" comment="Label for rewrite prompt presets">Rewrite voices</string>
+    <string name="pref__ai__rewrite_voice_name__label" comment="Label for rewrite voice name">Voice name</string>
+    <string name="pref__ai__rewrite_instruction__label" comment="Label for rewrite prompt instruction">Prompt instruction</string>
+    <string name="pref__ai__rewrite_voice__remove_action" comment="Button label to remove a rewrite voice">Remove</string>
+    <string name="pref__ai__rewrite_voice__add_action" comment="Button label to add a rewrite voice">Add voice</string>
+    <string name="pref__ai__rewrite_voice__reset_action" comment="Button label to reset rewrite voices">Reset</string>
+    <string name="pref__ai__rewrite_voice__save_action" comment="Button label to save rewrite voices">Save voices</string>
     <string name="pref__other__settings_theme__label" comment="Label of Settings theme preference in Other">Settings theme</string>
     <string name="pref__other__settings_theme__auto_amoled" comment="Possible value of Settings theme preference in Other">System default (AMOLED)</string>
     <string name="pref__other__settings_theme__light" comment="Possible value of Settings theme preference in Other">Light</string>

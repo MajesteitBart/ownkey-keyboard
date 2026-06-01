@@ -53,6 +53,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyHintConfiguration
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
+import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
@@ -774,11 +775,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val postProcessingEndpointUrl = string(
             key = "voxtral__post_processing_endpoint_url",
-            default = "https://api.mistral.ai/v1/chat/completions",
+            default = LlmRewriteProviders.byId(LlmRewriteProviders.OpenAiResponses).endpointUrl,
         )
         val postProcessingModel = string(
             key = "voxtral__post_processing_model",
-            default = "ministral-3b-latest",
+            default = LlmRewriteProviders.byId(LlmRewriteProviders.OpenAiResponses).defaultModel,
+        )
+        val postProcessingProvider = string(
+            key = "voxtral__post_processing_provider",
+            default = LlmRewriteProviders.OpenAiResponses,
         )
         val rewritePrompts = string(
             key = "voxtral__rewrite_prompts",

@@ -54,6 +54,7 @@ class LlmRewriteManager(
         apiKeyProvider = { secretsStore.getApiKey() },
         endpointUrlProvider = { prefs.voxtral.postProcessingEndpointUrl.get() },
         modelProvider = { prefs.voxtral.postProcessingModel.get() },
+        providerIdProvider = { prefs.voxtral.postProcessingProvider.get() },
     )
 
     private val _stateFlow = MutableStateFlow(RewriteState.IDLE)
@@ -65,7 +66,7 @@ class LlmRewriteManager(
             return
         }
         if (!secretsStore.hasApiKey()) {
-            appContext.showShortToastSync("Add an LLM API key in Settings → Voxtral")
+            appContext.showShortToastSync("Add an LLM API key in Settings → AI")
             return
         }
 

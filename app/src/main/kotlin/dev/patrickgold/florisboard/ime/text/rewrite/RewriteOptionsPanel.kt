@@ -132,7 +132,7 @@ fun RewriteOptionsPanel(
         }
 
         Text(
-            text = "Edit voices in Settings > Voxtral",
+            text = "Edit voices in Settings > AI",
             color = Color(0xFFC8C8CC),
             fontSize = 12.sp,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),

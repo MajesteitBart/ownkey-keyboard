@@ -33,20 +33,22 @@ class LlmRewriteClient(
     private val apiKeyProvider: () -> String,
     private val endpointUrlProvider: () -> String,
     private val modelProvider: () -> String,
+    private val providerIdProvider: () -> String = { "" },
     private val connectTimeoutMs: Int = 30_000,
     private val readTimeoutMs: Int = 60_000,
     private val maxRetryAttempts: Int = 2,
     private val retryDelayMs: Long = 700,
 ) {
     companion object {
-        const val DefaultEndpointUrl = "https://api.mistral.ai/v1/chat/completions"
-        const val DefaultModel = "ministral-3b-latest"
+        const val DefaultEndpointUrl = "https://api.openai.com/v1/responses"
+        const val DefaultModel = "gpt-5.5"
     }
 
     private data class PreparedRequest(
         val apiKey: String,
         val endpointUrl: String,
         val model: String,
+        val providerId: String,
         val prompt: RewritePromptPreset,
         val input: String,
     )
@@ -85,12 +87,27 @@ class LlmRewriteClient(
             return Result.failure(IllegalStateException("No LLM API key configured."))
         }
 
-        val endpointUrl = endpointUrlProvider().trim().ifBlank { DefaultEndpointUrl }
+        val rawEndpointUrl = endpointUrlProvider().trim()
+        val rawProviderId = providerIdProvider().trim()
+        val defaultProviderId = LlmRewriteProviders.OpenAiResponses
+        val providerId = when {
+            rawProviderId.isBlank() -> LlmRewriteProviders.inferFromEndpoint(rawEndpointUrl)
+            rawProviderId == defaultProviderId &&
+                rawEndpointUrl.isNotBlank() &&
+                rawEndpointUrl != LlmRewriteProviders.byId(defaultProviderId).endpointUrl -> {
+                LlmRewriteProviders.inferFromEndpoint(rawEndpointUrl)
+            }
+
+            else -> rawProviderId
+        }
+        val providerPreset = LlmRewriteProviders.byId(providerId)
+
+        val endpointUrl = rawEndpointUrl.ifBlank { providerPreset.endpointUrl.ifBlank { DefaultEndpointUrl } }
         if (!endpointUrl.startsWith("https://") && !endpointUrl.startsWith("http://")) {
             return Result.failure(IllegalStateException("LLM endpoint URL must start with https:// or http://"))
         }
 
-        val model = modelProvider().trim().ifBlank { DefaultModel }
+        val model = modelProvider().trim().ifBlank { providerPreset.defaultModel.ifBlank { DefaultModel } }
         val trimmedInput = input.trim()
         if (trimmedInput.isBlank()) {
             return Result.failure(IllegalStateException("Select or type text before rewriting."))
@@ -101,6 +118,7 @@ class LlmRewriteClient(
                 apiKey = apiKey,
                 endpointUrl = endpointUrl,
                 model = model,
+                providerId = providerPreset.id,
                 prompt = prompt,
                 input = trimmedInput,
             ),
@@ -114,9 +132,23 @@ class LlmRewriteClient(
             doOutput = true
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
-            setRequestProperty("Authorization", "Bearer ${request.apiKey}")
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Content-Type", "application/json")
+            when (request.providerId) {
+                LlmRewriteProviders.Anthropic -> {
+                    setRequestProperty("x-api-key", request.apiKey)
+                    setRequestProperty("anthropic-version", "2023-06-01")
+                }
+
+                LlmRewriteProviders.OpenRouter -> {
+                    setRequestProperty("Authorization", "Bearer ${request.apiKey}")
+                    setRequestProperty("X-Title", "Ownkey Keyboard")
+                }
+
+                else -> {
+                    setRequestProperty("Authorization", "Bearer ${request.apiKey}")
+                }
+            }
         }
 
         try {
@@ -150,6 +182,40 @@ class LlmRewriteClient(
     }
 
     private fun buildPayload(request: PreparedRequest): JsonObject {
+        return when (request.providerId) {
+            LlmRewriteProviders.OpenAiResponses -> buildOpenAiResponsesPayload(request)
+            LlmRewriteProviders.Anthropic -> buildAnthropicPayload(request)
+            else -> buildChatCompletionsPayload(request)
+        }
+    }
+
+    private fun buildOpenAiResponsesPayload(request: PreparedRequest): JsonObject {
+        return buildJsonObject {
+            put("model", JsonPrimitive(request.model))
+            put("instructions", JsonPrimitive(rewriteSystemInstruction))
+            put("store", JsonPrimitive(false))
+            put("input", JsonPrimitive(rewriteUserInstruction(request)))
+        }
+    }
+
+    private fun buildAnthropicPayload(request: PreparedRequest): JsonObject {
+        return buildJsonObject {
+            put("model", JsonPrimitive(request.model))
+            put("max_tokens", JsonPrimitive(1024))
+            put("temperature", JsonPrimitive(0.35))
+            put("system", JsonPrimitive(rewriteSystemInstruction))
+            put("messages", buildJsonArray {
+                add(
+                    buildJsonObject {
+                        put("role", JsonPrimitive("user"))
+                        put("content", JsonPrimitive(rewriteUserInstruction(request)))
+                    },
+                )
+            })
+        }
+    }
+
+    private fun buildChatCompletionsPayload(request: PreparedRequest): JsonObject {
         return buildJsonObject {
             put("model", JsonPrimitive(request.model))
             put("temperature", JsonPrimitive(0.35))
@@ -157,23 +223,24 @@ class LlmRewriteClient(
                 add(
                     buildJsonObject {
                         put("role", JsonPrimitive("system"))
-                        put(
-                            "content",
-                            JsonPrimitive("You rewrite user-provided text. Return only the rewritten text without explanation."),
-                        )
+                        put("content", JsonPrimitive(rewriteSystemInstruction))
                     },
                 )
                 add(
                     buildJsonObject {
                         put("role", JsonPrimitive("user"))
-                        put(
-                            "content",
-                            JsonPrimitive("Rewrite instruction:\n${request.prompt.instruction}\n\nText:\n${request.input}"),
-                        )
+                        put("content", JsonPrimitive(rewriteUserInstruction(request)))
                     },
                 )
             })
         }
+    }
+
+    private val rewriteSystemInstruction =
+        "You rewrite user-provided text. Return only the rewritten text without explanation."
+
+    private fun rewriteUserInstruction(request: PreparedRequest): String {
+        return "Rewrite instruction:\n${request.prompt.instruction}\n\nText:\n${request.input}"
     }
 
     private fun extractRewrite(responseBody: String): String {
@@ -185,6 +252,25 @@ class LlmRewriteClient(
         val messageContent = message?.optString("content")
         if (!messageContent.isNullOrBlank()) {
             return messageContent
+        }
+
+        val anthropicContent = (root["content"] as? JsonArray)
+            ?.firstNotNullOfOrNull { contentPart ->
+                contentPart.jsonObject.optString("text")
+            }
+        if (!anthropicContent.isNullOrBlank()) {
+            return anthropicContent
+        }
+
+        val responseOutput = (root["output"] as? JsonArray)
+            ?.firstNotNullOfOrNull { outputItem ->
+                val content = outputItem.jsonObject["content"] as? JsonArray
+                content?.firstNotNullOfOrNull { contentPart ->
+                    contentPart.jsonObject.optString("text")
+                }
+            }
+        if (!responseOutput.isNullOrBlank()) {
+            return responseOutput
         }
 
         return root.optString("output_text")

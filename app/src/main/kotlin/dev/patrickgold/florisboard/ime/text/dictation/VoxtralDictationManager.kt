@@ -136,7 +136,7 @@ class VoxtralDictationManager(
     private fun startListening(mode: RoutingMode) {
         if (mode == RoutingMode.INTERNAL_VOXTRAL && !hasRecordAudioPermission()) {
             _stateFlow.value = DictationState.ERROR
-            appContext.showShortToastSync("Microphone permission missing. Grant it in Settings → Voxtral.")
+            appContext.showShortToastSync("Microphone permission missing. Grant it in Settings → AI.")
             return
         }
 
