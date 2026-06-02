@@ -1,0 +1,16 @@
+appId: com.android.settings
+---
+- launchApp
+- tapOn:
+    text: "Search settings"
+- waitForAnimationToEnd
+- takeScreenshot: "ownkey-idle-expanded"
+- tapOn:
+    point: "92%,66%"
+- waitForAnimationToEnd
+- takeScreenshot: "ownkey-listening"
+- tapOn:
+    point: "92%,66%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "ownkey-after-stop-or-processing"
