@@ -698,7 +698,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val extendedActionsPlacement = enum(
             key = "smartbar__extended_actions_placement",
-            default = ExtendedActionsPlacement.ABOVE_CANDIDATES,
+            default = ExtendedActionsPlacement.OVERLAY_APP_UI,
         )
     }
 
