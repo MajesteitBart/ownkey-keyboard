@@ -38,8 +38,8 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.UnfoldLess
-import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,7 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isUnspecified
@@ -278,24 +277,15 @@ private fun SmartbarMainRow(
             },
             modifier = Modifier.sizeIn(maxHeight = FlorisImeSizing.smartbarHeight).aspectRatio(1f)
         ) {
-            val transition = updateTransition(extendedActionsExpanded, label = "smartbarSecondaryRowToggleBtn")
-            val alpha by transition.animateFloat(label = "alpha") { if (it) 1f else 0f }
-            val rotation by transition.animateFloat(label = "rotation") { if (it) 180f else 0f }
-            // Expanded icon
+            // Single chevron: points down (⌄) when the action pill is expanded, up (⌃) when
+            // minimized, matching the target design.
             SnyggIcon(
                 FlorisImeUi.SmartbarExtendedActionsToggle.elementName,
-                modifier = Modifier
-                    .alpha(alpha)
-                    .rotate(rotation),
-                imageVector = Icons.Default.UnfoldLess,
-            )
-            // Not expanded icon
-            SnyggIcon(
-                FlorisImeUi.SmartbarExtendedActionsToggle.elementName,
-                modifier = Modifier
-                    .alpha(1f - alpha)
-                    .rotate(rotation - 180f),
-                imageVector = Icons.Default.UnfoldMore,
+                imageVector = if (extendedActionsExpanded) {
+                    Icons.Default.KeyboardArrowDown
+                } else {
+                    Icons.Default.KeyboardArrowUp
+                },
             )
         }
     }
@@ -431,20 +421,20 @@ private fun extendedActionRowEdgePadding(
 private fun SmartbarSecondaryRow(modifier: Modifier = Modifier) {
     val prefs by FlorisPreferenceStore
     val smartbarLayout by prefs.smartbar.layout.collectAsState()
-    val secondaryRowStyle = rememberSnyggThemeQuery(FlorisImeUi.SmartbarExtendedActionsRow.elementName)
     val windowStyle = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName)
     val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
     val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
-    val background = secondaryRowStyle.background().let { color ->
-        if (extendedActionsPlacement == ExtendedActionsPlacement.OVERLAY_APP_UI) {
-            if (color.isUnspecified || color.alpha == 0f) {
-                windowStyle.background(default = Color.Black)
-            } else {
-                color
-            }
-        } else {
-            color
-        }
+
+    // The action pill (rounded background, side margins, border) is drawn by QuickActionsRow
+    // via the `smartbar-extended-actions-row` Snygg element. We must NOT paint a full-width
+    // backdrop in the same color here, or it masks the pill's rounded corners and margins,
+    // making it read as a flat edge-to-edge bar. Only the overlay placement needs an opaque
+    // backdrop so the row stays readable over the host app's UI; use the keyboard window
+    // surface for that (darker than the pill), so the pill still stands out.
+    val overlayBackground = if (extendedActionsPlacement == ExtendedActionsPlacement.OVERLAY_APP_UI) {
+        windowStyle.background(default = Color.Black)
+    } else {
+        Color.Unspecified
     }
 
     AnimatedVisibility(
@@ -457,7 +447,7 @@ private fun SmartbarSecondaryRow(modifier: Modifier = Modifier) {
             modifier = modifier
                 .fillMaxWidth()
                 .height(FlorisImeSizing.smartbarHeight)
-                .background(background),
+                .then(if (overlayBackground.isUnspecified) Modifier else Modifier.background(overlayBackground)),
         )
     }
 }

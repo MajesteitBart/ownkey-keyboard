@@ -76,7 +76,10 @@ data class QuickActionArrangement(
 
         val Default = QuickActionArrangement(
             stickyAction = QuickAction.InsertKey(TextKeyData.VOICE_INPUT),
-            dynamicActions = OwnkeyDefaultTopBarActions + listOf(
+            // Keep only the core actions in the visible pill (matches the target design:
+            // 6 core actions + overflow). Everything else lives in the overflow menu.
+            dynamicActions = OwnkeyDefaultTopBarActions,
+            hiddenActions = listOf(
                 QuickAction.InsertKey(TextKeyData.SETTINGS),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_COMPACT_LAYOUT),
                 QuickAction.InsertKey(TextKeyData.REDO),
@@ -94,8 +97,6 @@ data class QuickActionArrangement(
                 QuickAction.InsertKey(TextKeyData.LANGUAGE_SWITCH),
                 QuickAction.InsertKey(TextKeyData.FORWARD_DELETE),
                 QuickAction.InsertKey(TextKeyData.IME_HIDE_UI),
-            ),
-            hiddenActions = listOf(
             ),
         )
     }
