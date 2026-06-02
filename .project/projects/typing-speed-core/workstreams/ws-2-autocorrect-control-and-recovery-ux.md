@@ -1,4 +1,5 @@
 ---
+id: WS-2
 name: WS-2 Autocorrect Control and Recovery UX
 owner: ime-ux-team
 status: planned

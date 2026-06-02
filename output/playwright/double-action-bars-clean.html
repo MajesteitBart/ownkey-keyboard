@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clean Double Action Bars</title>
+  <style>
+    :root {
+      --bg: #090a0b;
+      --panel: #111214;
+      --button: #1e2024;
+      --button-soft: #191b1f;
+      --text: #f4f1ef;
+      --muted: #aaa7a5;
+      --faint: rgba(255, 255, 255, 0.08);
+      --orange: #ff681a;
+      --orange-hot: #ff9a17;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .board {
+      width: 1440px;
+      height: 860px;
+      padding: 82px 72px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 98px;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(255, 104, 26, 0.045), transparent 45%),
+        linear-gradient(180deg, #0a0b0c 0%, #070808 100%);
+    }
+
+    .state {
+      display: grid;
+      gap: 22px;
+    }
+
+    .label {
+      color: #d6d1ce;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0;
+      opacity: 0.82;
+      padding-left: 6px;
+    }
+
+    .primary {
+      height: 96px;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 28px;
+    }
+
+    .tool {
+      height: 96px;
+      border: 0;
+      border-radius: 38px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #202126 0%, #1b1c20 100%);
+      color: var(--text);
+      box-shadow:
+        0 18px 34px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    }
+
+    .tool.dim {
+      color: var(--muted);
+    }
+
+    .secondary {
+      height: 92px;
+      display: grid;
+      grid-template-columns: 92px 1fr 126px;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .side,
+    .mic {
+      height: 92px;
+      border-radius: 34px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #202126 0%, #1b1c20 100%);
+      color: var(--text);
+      box-shadow:
+        0 16px 30px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    }
+
+    .mic.active {
+      background: linear-gradient(180deg, var(--orange-hot) 0%, var(--orange) 100%);
+      color: #fff;
+      box-shadow:
+        0 18px 36px rgba(255, 104, 26, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+
+    .suggestions {
+      height: 92px;
+      display: flex;
+      align-items: center;
+      border-radius: 34px;
+      background: rgba(255, 255, 255, 0.012);
+      overflow: hidden;
+    }
+
+    .word {
+      flex: 1;
+      text-align: center;
+      font-size: 34px;
+      font-weight: 430;
+      line-height: 1;
+      color: #f0edeb;
+    }
+
+    .word + .word {
+      box-shadow: inset 1px 0 0 var(--faint);
+    }
+
+    .listening {
+      height: 92px;
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      padding: 0 20px 0 26px;
+      border-radius: 34px;
+      background: linear-gradient(180deg, #1a1b1f 0%, #151619 100%);
+      box-shadow:
+        0 16px 30px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.025);
+      overflow: hidden;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      white-space: nowrap;
+      font-size: 31px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .status .time {
+      color: var(--muted);
+      font-weight: 480;
+    }
+
+    .status-mark {
+      width: 50px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 25px;
+      background: rgba(255, 104, 26, 0.13);
+      color: var(--orange);
+    }
+
+    .wave {
+      flex: 1;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-width: 300px;
+    }
+
+    .wave span {
+      width: 8px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--orange-hot), var(--orange));
+    }
+
+    .wave span:nth-child(1) { height: 24px; }
+    .wave span:nth-child(2) { height: 38px; }
+    .wave span:nth-child(3) { height: 50px; }
+    .wave span:nth-child(4) { height: 31px; }
+    .wave span:nth-child(5) { height: 43px; }
+    .wave span:nth-child(6) { height: 27px; }
+    .wave span:nth-child(7) { height: 52px; }
+    .wave span:nth-child(8) { height: 34px; }
+    .wave span:nth-child(9) { height: 45px; }
+    .wave span:nth-child(10) { height: 28px; }
+    .wave span:nth-child(11) { height: 40px; }
+    .wave span:nth-child(12) { height: 30px; }
+    .wave span:nth-child(13) { height: 36px; }
+    .wave span:nth-child(14) { height: 29px; }
+
+    .quiet-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: #e7e4e2;
+      flex: 0 0 auto;
+    }
+
+    .recording-combined {
+      height: 210px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 0 28px 0 32px;
+      border-radius: 44px;
+      background: linear-gradient(180deg, #17181b 0%, #111215 100%);
+      box-shadow:
+        0 24px 52px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.028);
+    }
+
+    .recording-combined .status {
+      font-size: 34px;
+      min-width: 312px;
+    }
+
+    .recording-combined .status-mark {
+      width: 74px;
+      height: 74px;
+      border-radius: 37px;
+      background: linear-gradient(180deg, #22242a 0%, #1a1c20 100%);
+    }
+
+    .recording-combined .status-mark svg {
+      width: 42px;
+      height: 42px;
+      color: var(--orange);
+    }
+
+    .recording-combined .wave {
+      min-width: 360px;
+      height: 68px;
+      justify-content: center;
+    }
+
+    .recording-combined .wave span {
+      width: 9px;
+    }
+
+    .rec-circle {
+      width: 92px;
+      height: 92px;
+      display: grid;
+      place-items: center;
+      border-radius: 46px;
+      color: #f3efec;
+      background: linear-gradient(180deg, #25262b 0%, #1b1c20 100%);
+      box-shadow:
+        0 14px 28px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      flex: 0 0 auto;
+    }
+
+    .rec-circle.active {
+      width: 104px;
+      height: 104px;
+      border-radius: 52px;
+      background: linear-gradient(180deg, var(--orange-hot) 0%, var(--orange) 100%);
+      box-shadow:
+        0 18px 38px rgba(255, 104, 26, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    }
+
+    svg {
+      width: 42px;
+      height: 42px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .tool svg {
+      width: 44px;
+      height: 44px;
+    }
+
+    .side svg {
+      width: 34px;
+      height: 34px;
+    }
+
+    .status-mark svg {
+      width: 31px;
+      height: 31px;
+      stroke-width: 3.6;
+    }
+
+    .quiet-actions svg,
+    .rec-circle svg {
+      width: 36px;
+      height: 36px;
+      stroke-width: 3.3;
+    }
+
+    .rec-circle.active svg {
+      width: 48px;
+      height: 48px;
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="state">
+      <div class="label">Typing</div>
+      <div class="primary">
+        <div class="tool">
+          <svg viewBox="0 0 48 48">
+            <path d="M20 34 34 20"></path>
+            <path d="M16 38 12 42"></path>
+            <path d="M28 12 36 20"></path>
+            <path d="M10 12h.1M18 8h.1M40 30h.1M36 38h.1"></path>
+          </svg>
+        </div>
+        <div class="tool">
+          <svg viewBox="0 0 48 48">
+            <path d="M18 18 10 26l8 8"></path>
+            <path d="M12 26h18c7 0 10 4 10 10"></path>
+          </svg>
+        </div>
+        <div class="tool">
+          <svg viewBox="0 0 48 48">
+            <path d="M18 10h12"></path>
+            <path d="M16 14h16v6H16z"></path>
+            <path d="M14 18H9v32h30V18h-5"></path>
+            <path d="M15 28h18M15 36h18"></path>
+          </svg>
+        </div>
+        <div class="tool dim">
+          <svg viewBox="0 0 48 48">
+            <path d="M14 14h20v20H14z" stroke-dasharray="3.8 4.8"></path>
+            <path d="M20 20h8v8h-8z"></path>
+          </svg>
+        </div>
+        <div class="tool dim">
+          <svg viewBox="0 0 48 48">
+            <path d="M18 16h20v24H18z"></path>
+            <path d="M10 8h20v24H10z"></path>
+          </svg>
+        </div>
+        <div class="tool dim">
+          <svg viewBox="0 0 48 48">
+            <path d="M14 24h.1M24 24h.1M34 24h.1"></path>
+          </svg>
+        </div>
+      </div>
+
+      <div class="secondary">
+        <div class="side">
+          <svg viewBox="0 0 48 48">
+            <path d="m16 14 8 8 8-8"></path>
+            <path d="m16 38 8-8 8 8"></path>
+          </svg>
+        </div>
+        <div class="suggestions">
+          <div class="word">you</div>
+          <div class="word">the</div>
+          <div class="word">to</div>
+          <div class="word">'s</div>
+          <div class="word">it</div>
+          <div class="word">and</div>
+          <div class="word">that</div>
+        </div>
+        <div class="mic">
+          <svg viewBox="0 0 48 48">
+            <path d="M24 7a7 7 0 0 0-7 7v10a7 7 0 0 0 14 0V14a7 7 0 0 0-7-7Z"></path>
+            <path d="M12 23a12 12 0 0 0 24 0"></path>
+            <path d="M24 35v8"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="state">
+      <div class="label">Listening</div>
+      <div class="recording-combined">
+          <div class="status">
+            <span class="status-mark">
+              <svg viewBox="0 0 48 48">
+                <path d="M24 8a6 6 0 0 0-6 6v10a6 6 0 0 0 12 0V14a6 6 0 0 0-6-6Z"></path>
+                <path d="M13 23a11 11 0 0 0 22 0"></path>
+              </svg>
+            </span>
+            <span>Listening <span class="time">&middot; 00:08</span></span>
+          </div>
+          <div class="wave">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="rec-circle">
+            <svg viewBox="0 0 48 48">
+              <path d="M18 12v24"></path>
+              <path d="M30 12v24"></path>
+            </svg>
+          </div>
+          <div class="rec-circle">
+            <svg viewBox="0 0 48 48">
+              <path d="M15 16h18"></path>
+              <path d="M20 16v-5h8v5"></path>
+              <path d="M18 20v24h12V20"></path>
+            </svg>
+          </div>
+        <div class="rec-circle active">
+          <svg viewBox="0 0 48 48">
+            <path d="M24 7a7 7 0 0 0-7 7v10a7 7 0 0 0 14 0V14a7 7 0 0 0-7-7Z"></path>
+            <path d="M12 23a12 12 0 0 0 24 0"></path>
+            <path d="M24 35v8"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

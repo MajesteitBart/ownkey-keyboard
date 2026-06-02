@@ -6,12 +6,13 @@ created: 2026-03-28T16:45:00Z
 updated: 2026-03-28T17:05:00Z
 linear_issue_id:
 github_issue:
-github_pr: 7
+github_pr: https://github.com/MajesteitBart/ownkey-keyboard/pull/7
 depends_on: [T-003, T-004]
 conflicts_with: []
 parallel: true
 priority: medium
 estimate: S
+workstream: WS-2
 ---
 
 # Task: Make accepted corrections reuse existing spacing like mainstream keyboards

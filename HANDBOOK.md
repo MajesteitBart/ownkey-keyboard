@@ -2,8 +2,9 @@
 
 ## First Edition, v3
 
-Version: 3.1  
-Last updated: 2026-02-19
+Version: 3.3
+Last updated: 2026-06-02
+Runtime/package compatibility: covers `@bvdm/delano` through 0.2.10
 
 ---
 
@@ -41,14 +42,14 @@ If you are reading this for implementation, start with Sections 4, 8, 9, 11, 17,
 15. Decision framework and question bank  
 16. Role operating playbooks  
 17. Templates and operational checklists  
-18. Migration playbook (existing Delano repos)  
+18. Runtime refresh and migration playbook
 19. Adoption roadmap and maturity gates
 
 ---
 
 ## 1) Purpose and design principles
 
-Delano is an **agent-agnostic, skill-driven, spec-first delivery system**.
+Delano is an **agent-agnostic, runtime-guided, skill-driven, spec-first delivery system**.
 
 Its core objective is:
 
@@ -56,7 +57,7 @@ Its core objective is:
 
 ### 1.1 Primary flow
 
-**Outcome -> Spec -> Delivery Project -> Workstreams -> Tasks -> Linear Issues -> PRs -> Release -> Learnings**
+**Outcome -> Draft/Planned Spec -> Probe Decision -> Approved/Active Spec -> Delivery Project -> Workstreams -> Tasks -> PRs -> Release -> Learnings**
 
 ### 1.2 Design principles
 
@@ -118,6 +119,7 @@ Delano is not:
 
 - **Outcome**: measurable business result
 - **Spec**: product and delivery intent for one outcome
+- **Prototype Probe**: time-boxed learning loop used to retire material uncertainty before spec approval
 - **Delivery Project**: bounded implementation scope
 - **Workstream**: coherent implementation slice
 - **Task**: atomic engineering unit
@@ -129,13 +131,25 @@ Delano is not:
 - Keep stable IDs in local and remote systems.
 - Prefer language that maps directly to execution responsibilities.
 
-### 3.3 Why this model
+### 3.3 Spec terminology
+
+Delano's file contracts use compact lifecycle states:
+
+- `planned` is the local contract state for a draft spec that is not approved for execution yet.
+- `active` is the local contract state for an approved spec that can drive planning and execution.
+- `complete` is the local contract state after outcome review and delivery closeout.
+
+User-facing docs may use "Draft Spec" and "Approved Spec" for readability. Treat those as wording aliases for `planned` and `active` unless a local policy says otherwise.
+
+### 3.4 Why this model
 
 This model keeps the strongest existing Delano patterns:
 
 - local markdown truth in `.project`
+- canonical shared runtime in `.agents`
 - deterministic script execution
 - explicit rules and guardrails
+- probe-first learning when uncertainty is material
 - compatibility with Linear-native execution
 
 ---
@@ -198,7 +212,7 @@ Recommended naming:
 
 Operational rule:
 
-- Every task issue must carry one workstream identifier.
+- Every task issue must carry one workstream identifier in task frontmatter (`workstream: WS-A`) and the corresponding Linear workstream label (`ws-a`).
 
 #### 4.2.5 Task -> Issue
 
@@ -245,25 +259,36 @@ Not default because it weakens planning, milestone visibility, and structured go
       workstreams/
       tasks/
       updates/
+      research/
       decisions.md
   context/
+  templates/
   registry/
     linear-map.json
 
-.claude/
+.agents/
+  adapters/
+    <agent>/
+  common/
   skills/
   scripts/
   rules/
   hooks/
   logs/
 
+.claude/     # compatibility mirror of .agents
+
 .delano/     # optional UI layer
+
+.codex/
+  hooks.json  # optional Codex SessionStart hook config; inert until trusted
 ```
 
 ### 5.2 Boundary policy
 
 - `.project` is delivery truth.
-- `.claude` is runtime behavior and enforcement.
+- `.agents` is canonical runtime behavior and enforcement.
+- `.claude` is a compatibility mirror or symlink of `.agents`, never an independent source of truth.
 - `.delano` is optional presentation, never source of truth.
 
 ### 5.3 Interoperability requirements
@@ -272,6 +297,7 @@ A coding agent is Delano-compatible if it can:
 
 - read and write markdown contracts
 - execute shell scripts
+- operate against the canonical `.agents` runtime or a supported compatibility mirror
 - interact with Linear and GitHub interfaces
 - honor rule constraints
 - produce structured execution updates
@@ -286,49 +312,90 @@ A coding agent is Delano-compatible if it can:
 name: <project-name>
 slug: <kebab-case>
 owner: <person-or-team>
-status: draft|approved|active|complete|canceled
+status: planned|active|complete|deferred
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 outcome: <measurable target>
+uncertainty: low|medium|high
+probe_required: true|false
+probe_status: pending|skipped|completed
 ```
 
 Required sections:
 
 - Executive summary
 - Problem and users
-- Scope and non-goals
+- Outcome and success metrics
+- User stories
+- Acceptance scenarios
+- Scope
 - Functional requirements
 - Non-functional requirements
-- Success metrics
-- Risks and assumptions
+- Assumptions
+- Needs clarification
+- Hypotheses and unknowns
+- Touchpoints to exercise
+- Probe findings
+- Footguns discovered
+- Remaining unknowns
 - Dependencies
+- Approval notes
 
 ### 6.2 `plan.md` contract
 
 ```yaml
 name: <project-name>
-status: planned|in-progress|done|canceled
+status: planned|active|done|deferred
 lead: <person>
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 linear_project_id: <id>
+risk_level: low|medium|high
+spec_status_at_plan_time: planned|active|complete|deferred
 ```
 
 Required sections:
 
+- What changed after probe
+- Technical context
 - Architecture decisions
+- Policy and contract checks
+- Generated artifact map
+- Complexity exceptions
+- Probe-driven architecture changes
 - Workstream design
 - Milestone strategy
 - Rollout strategy
 - Test strategy
 - Rollback strategy
+- Remaining delivery risks
 
-### 6.3 `tasks/*.md` contract
+### 6.3 `workstreams/*.md` contract
+
+```yaml
+id: WS-A
+name: WS-A API Foundation
+owner: backend-team
+status: planned|active|done|deferred
+created: <ISO8601 UTC>
+updated: <ISO8601 UTC>
+```
+
+Required sections:
+
+- Objective
+- Owned files/areas
+- Dependencies
+- Risks
+- Handoff criteria
+
+### 6.4 `tasks/*.md` contract
 
 ```yaml
 id: T-001
 name: <task-title>
-status: backlog|ready|in-progress|review|done|blocked|canceled
+status: ready|in-progress|blocked|done|deferred
+workstream: WS-A
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 linear_issue_id: <id-or-empty>
@@ -337,82 +404,144 @@ github_pr: <url-or-empty>
 depends_on: []
 conflicts_with: []
 parallel: true|false
-priority: low|medium|high|urgent
-estimate: XS|S|M|L|XL
+priority: low|medium|high
+estimate: S|M|L|XL
+story_id:
+acceptance_criteria_ids: []
 ```
 
 Required sections:
 
 - Description
 - Acceptance criteria
+- Traceability
 - Technical notes
 - Definition of done
 - Evidence log
 
-### 6.4 Contract invariants
+The current validator requires the core task keys above through `estimate`. `story_id` and `acceptance_criteria_ids` are canonical template fields for traceability and should be populated when a task maps to explicit spec stories or acceptance scenarios. They are not currently hard validation failures when empty.
+
+### 6.5 Research intake contract
+
+Research intake is upstream evidence gathering, not executable task truth.
+
+```text
+.project/projects/<slug>/research/<research-slug>/
+  task_plan.md
+  findings.md
+  progress.md
+```
+
+Use research when intent, options, external evidence, or imported artifacts need investigation before mutating `spec.md`, `plan.md`, workstreams, tasks, decisions, or updates.
+
+Durable findings must either:
+
+- fold forward into canonical Delano artifacts; or
+- close explicitly as no-action.
+
+### 6.6 Contract invariants
 
 - `created` immutable
 - `updated` real UTC system timestamp
+- probe decision explicit before spec activation
 - dependency graph acyclic before execution
 - no absolute path leakage in shared output
+- research findings are not execution truth until folded forward
 
 ---
 
 ## 7) Status models and transition policy
 
-### 7.1 Why expanded task states exist
+### 7.1 Why compact runtime states exist
 
-Expanded states solve execution ambiguity:
+The v0.2 runtime uses compact status sets that are enforced by schemas and validation:
 
-- `backlog` vs `ready` separates unsized ideas from executable work
-- `review` enforces handoff before closure
-- `blocked` exposes dependency constraints explicitly
+- `planned` means a spec, plan, or workstream is defined but not actively being executed.
+- `ready` means a task is executable and should not carry unresolved local dependencies.
+- `in-progress` means implementation has started.
+- `blocked` exposes dependency constraints explicitly.
+- `done` and `complete` are terminal success states for delivery plans/tasks and specs respectively.
+- `deferred` is the terminal non-completion state for postponed or canceled work.
+
+Idea triage belongs outside executable task files. Review is a gate recorded in evidence, updates, quality notes, or PR state; it is not a canonical v0.2 task status.
 
 ### 7.2 Lifecycle definitions
 
 #### Spec
 
-`draft -> approved -> active -> complete`  
-optional terminal: `canceled`
+`planned -> active -> complete`  
+optional terminal: `deferred`
+
+Probe decision rule while spec is `planned`:
+
+- `probe_required: false` allows activation once other discovery gates pass.
+- `probe_required: true` requires a Prototype Probe and recorded findings before activation.
 
 #### Delivery Project
 
-`planned -> in-progress -> done`  
-optional terminal: `canceled`
+`planned -> active -> done`
+optional terminal: `deferred`
+
+#### Workstream
+
+`planned -> active -> done`  
+optional terminal: `deferred`
 
 #### Task
 
-`backlog -> ready -> in-progress -> review -> done`  
-optional branches: `blocked`, `canceled`
+`ready -> in-progress -> done`  
+optional branches: `blocked`, `deferred`
 
 ### 7.3 Transition policy
 
-- No `in-progress` with unmet hard dependencies.
+- No `ready`, `in-progress`, or `done` transition with unmet local dependencies.
 - No `done` without evidence completion.
 - No project `done` with unresolved required tasks.
+- No progressed task without an existing parent workstream.
+- No `in-progress` task unless its workstream is `active`.
+- No `done` task unless its workstream is `active` or `done`.
+- No workstream with zero open tasks unless it is `done` or `deferred`.
+- No spec `active` without explicit probe decision fields.
+- No spec `active` with unresolved required probe findings.
 - No spec `complete` without outcome review.
 
-### 7.4 Review semantics
+Current artifact scans and proposed transitions are strict for local task dependencies: `ready`, `in-progress`, and `done` tasks fail validation when they depend on unresolved local tasks.
 
-`review` may include one or more:
+Probe and outcome rules are policy gates unless a local validator or review workflow enforces them directly. They still belong in the handbook because agents and operators must not treat schema pass/fail as the whole approval model.
+
+### 7.4 Native CLI lifecycle rollups
+
+The native `delano project`, `delano workstream`, and `delano task` commands patch existing contracts rather than regenerating them.
+
+Task lifecycle commands apply scoped parent rollups:
+
+- `delano task start` and `delano task close` promote planned project and workstream lifecycle to active.
+- `delano task close` and `delano task defer` mark an affected workstream `done` when all tasks in that workstream are closed.
+- `delano task close` and `delano task defer` mark the project spec `complete` and plan `done` when all project tasks are closed.
+- `delano task open` reopens closed parent lifecycle to active when reopening a closed task.
+- `delano task close` can open dependency-only blocked dependents when all their local dependencies are now done.
+
+These rollups are intentionally scoped and evidence-driven. They do not remove the need to review changed files, rerun validation, and record release evidence before handoff.
+
+### 7.5 Review semantics
+
+Review is a quality gate before closure. It may include one or more:
 
 - code review
 - quality gate verification
 - product acceptance for user-visible changes
 
-Teams must define exact review semantics in local policy.
+Teams must define exact review semantics in local policy and record the result in evidence, updates, or PR state.
 
-### 7.5 Explicit Delano -> Linear status mapping
+### 7.6 Explicit Delano -> Linear status mapping
 
 | Delano task status | Preferred Linear state |
 |---|---|
-| backlog | Triage or Backlog |
 | ready | Todo |
 | in-progress | In Progress |
-| review | In Review |
 | done | Done |
 | blocked | Blocked (if exists) or Todo + blocked relation/label |
-| canceled | Canceled |
+| deferred | Canceled, Icebox, or Backlog depending on team policy |
 
 If team workflow names differ, maintain this semantic mapping in sync rules.
 
@@ -422,79 +551,108 @@ If team workflow names differ, maintain this semantic mapping in sync rules.
 
 ### 8.1 Component model
 
+- **CLI**: package distribution, install, viewer launch, native state commands, and wrappers
 - **Skills**: reasoning and orchestration
 - **Scripts**: deterministic execution
 - **Rules**: constraints and policy
 - **Hooks**: runtime tracking and guardrails
 
-### 8.2 Skill contract standard
+### 8.2 CLI command map
+
+The current `delano` CLI exposes both native state commands and PM-script wrappers.
+
+Native package/runtime commands:
+
+| Command | Role | Writes |
+|---|---|---|
+| `delano onboarding` | approval-first review of repo agent instructions | none by default |
+| `delano install` | install or refresh the approved runtime payload | allowlisted runtime/package files |
+| `delano viewer` | launch the read-only local `.project` UI | nothing |
+| `delano project` | create, show, and patch project contracts | `.project/projects/<slug>/` |
+| `delano workstream` | add, show, and patch workstream contracts | `workstreams/*.md` |
+| `delano task` | add and patch task contracts with scoped lifecycle rollups | `tasks/*.md` and parent rollups |
+| `delano update` | add progress updates from templates | `updates/*.md` |
+
+PM-script wrappers:
+
+| Command | Wrapped surface |
+|---|---|
+| `delano init` | `.agents/scripts/pm/init.sh` |
+| `delano import-spec-kit` | `.agents/scripts/pm/import-spec-kit.sh` |
+| `delano research` | `.agents/scripts/pm/research.sh` |
+| `delano validate` | `.agents/scripts/pm/validate.sh` |
+| `delano status` | `.agents/scripts/pm/status.sh` |
+| `delano next` | `.agents/scripts/pm/next.sh` |
+
+Use the native state commands for template-backed contract creation and lifecycle patching. Use wrappers when invoking the established PM-script runtime directly.
+
+### 8.3 Current runtime foundation
+
+The package adds enforceable local runtime surfaces around the handbook process:
+
+- **Operating modes**: Mode 0 patch, Mode 1 scoped change, Mode 2 feature, Mode 3 uncertain feature, and Mode 4 multi-stream. Modes are additive hints for task depth and required proof, not a reason to skip safety gates.
+- **Contract validation**: schemas and validators cover artifact scope, schema shape, operating modes, status transitions, evidence maps, strict fixtures, sync scaffolding, leases, metrics, text safety, context audit, and skill-output evals.
+- **Evidence expectations**: done tasks need checked acceptance criteria plus implementation or validation evidence. v0.2 evidence mapping remains markdown-based; full criterion-to-ledger instance validation is a later maturity gate.
+- **Dry-run sync**: GitHub and Linear sync surfaces inspect, classify drift, and produce repair plans without remote mutation unless a future explicit apply gate is approved.
+- **Lease semantics**: multi-agent work uses leases with conflict zones, lifecycle state, and handoff summaries. Conflict checks must run before overlapping work proceeds.
+- **Release gates**: `npm run build:assets`, package-manifest drift checks, PM validation, and `npm test` are the local release baseline. Formal CI publishing, enterprise state-machine orchestration, and non-mocked Linear behavior remain later maturity gates.
+
+### 8.4 Skill contract standard
 
 Each skill must define:
 
-- intent and trigger context
+- `description` frontmatter
+- trigger context
 - required inputs
 - output schema
 - quality checks
 - failure behavior
 - allowed side effects
 - script hooks
+- execution assets
 
-### 8.3 Skill contract examples
+Required Delano skills currently include:
+
+- `discovery-skill`
+- `research-skill`
+- `prototype-skill`
+- `planning-skill`
+- `breakdown-skill`
+- `sync-skill`
+- `execution-skill`
+- `quality-skill`
+- `closeout-skill`
+- `learning-skill`
+
+Each required skill needs a runbook, at least two markdown templates, and a `## Execution assets` section in `SKILL.md`.
+
+### 8.5 Skill contract examples
 
 #### Example: breakdown-skill
 
 ```yaml
 name: breakdown-skill
-intent: decompose approved plan into atomic tasks
-inputs:
-  - spec_path
-  - plan_path
-  - workstream_files
-outputs:
-  - task_files
-  - dependency_graph
-quality_checks:
-  - acceptance criteria are binary
-  - estimate present per task
-  - dependency graph acyclic
-failure_behavior:
-  - stop on circular dependency
-  - return ambiguity report
-script_hooks:
-  - bash .claude/scripts/pm/validate.sh
+description: Decompose an approved plan into atomic tasks with dependencies and acceptance criteria. Use when planning is complete and execution must be prepared.
 ```
+
+Expected body sections include trigger context, required inputs, output schema, quality checks, failure behavior, allowed side effects, script hooks, and execution assets.
 
 #### Example: sync-skill
 
 ```yaml
 name: sync-skill
-intent: reconcile local contracts with Linear and GitHub
-inputs:
-  - project_slug
-  - local_registry
-  - task_files
-outputs:
-  - updated_registry
-  - drift_report
-quality_checks:
-  - active tasks mapped
-  - no duplicate mapping
-  - dependency parity pass
-failure_behavior:
-  - dry-run when uncertainty detected
-  - emit conflict resolution actions
-script_hooks:
-  - bash .claude/scripts/pm/status.sh
-  - bash .claude/scripts/pm/validate.sh
+description: Inspect local and remote delivery state, classify drift, and produce repair guidance without mutating remote systems unless an explicit apply-capable workflow is approved.
 ```
 
-### 8.4 Annotated script catalog
+### 8.6 Annotated script catalog
 
 #### Critical path scripts
 
 | Script | Purpose | Criticality |
 |---|---|---|
 | `pm/init.sh` | bootstrap delivery runtime and baseline checks | high |
+| `pm/import-spec-kit.sh` | import a supported Spec Kit-style markdown artifact into Delano contracts | high |
+| `pm/research.sh` | open repo-native research intake for unclear intent | high |
 | `pm/validate.sh` | contract and reference integrity validation | high |
 | `pm/status.sh` | project portfolio snapshot | high |
 | `pm/next.sh` | dependency-safe next task discovery | high |
@@ -518,10 +676,11 @@ script_hooks:
 | `query-log.sh` | query change stream |
 | `test-and-log.sh` | capture test execution logs |
 | `check-path-standards.sh` | path/privacy enforcement |
+| `check-text-safety.mjs` | hidden/bidirectional Unicode control enforcement |
 | `fix-path-standards.sh` | path normalization |
 | `git-sparse-download.sh` | sparse external resource retrieval |
 
-### 8.5 Rule system scope
+### 8.7 Rule system scope
 
 Rules should cover:
 
@@ -532,11 +691,12 @@ Rules should cover:
 - test execution hygiene
 - agent coordination protocol
 
-### 8.6 Hook system scope
+### 8.8 Hook system scope
 
 Hooks should handle:
 
 - session tracking
+- Codex `SessionStart` context injection when hooks are enabled and trusted
 - post-tool mutation logging
 - prompt submission logging (optional)
 - worktree shell context correction
@@ -548,46 +708,87 @@ Hooks should handle:
 
 This section explicitly links workflow stages to runtime components.
 
-### Team fast-spike rule (optional)
+### Prototype Probe (conditional)
 
-Use this only when uncertainty is high and speed is critical.
+Use this when uncertainty is material and approval would otherwise be speculative.
 
 Constraints:
 
-- spike is time-boxed (typically <= 1 day)
+- probe is time-boxed (typically <= 1 day)
 - starts CLI-first where feasible
-- no production merge directly from spike output
+- no production merge directly from probe output
 - before continuation, fold findings back into `spec.md` and `plan.md`
-- convert spike insights into normal task contracts before full execution
+- record touched surfaces, findings, and footguns in the spec
+- convert probe insights into normal task contracts before full execution
 
 This keeps rapid learning without weakening team governance.
+
+### Upstream intake: Spec Kit import and research
+
+Delano can accept structured upstream intent before normal discovery/planning:
+
+- `delano import-spec-kit <slug> <source-md>` imports the first supported single-file Spec Kit-style markdown shape into planned Delano contracts.
+- `delano research <project-slug> <research-slug>` creates research intake files for questions that need investigation before canonical artifacts change.
+
+Import and research are intake paths, not approval paths. Imported artifacts and research notes must still pass Delano validation, probe decisions, evidence gates, and fold-forward review before execution.
 
 ### Stage A: Discovery
 
 **Goal**
 
-- define and approve a measurable outcome and Spec
+- define a measurable outcome, create or review the planned Spec, and make the probe decision explicit
 
 **Entry criteria**
 
 - problem and owner identified
+- imported or researched intent, if present, has been reviewed
 
 **Primary components**
 
 - skill: `discovery-skill`
-- scripts: `pm/init.sh` (if needed), `pm/validate.sh`
+- scripts: `pm/init.sh`, `pm/import-spec-kit.sh`, `pm/research.sh`, `pm/validate.sh`
 
 **Exit artifacts**
 
-- approved `spec.md`
+- planned `spec.md` with uncertainty and probe decision recorded
 
 **Gate**
 
 - measurable success criteria
 - explicit non-goals
 - dependency assumptions documented
+- uncertainty rated and probe decision explicit
 
-### Stage B: Planning
+### Stage B: Prototype Probe
+
+**Goal**
+
+- retire or bound material uncertainty before spec activation
+
+**Entry criteria**
+
+- `spec.md` is still `planned`
+- `probe_required: true`
+
+**Primary components**
+
+- skill: `prototype-skill`
+- discovery artifacts from `spec.md`
+- targeted prototype commands or narrow experiments
+- `pm/validate.sh` if probe findings mutate contracts
+
+**Exit artifacts**
+
+- updated planned `spec.md`
+- probe findings and activation recommendation
+
+**Gate**
+
+- probe findings recorded
+- touched surfaces and footguns explicit
+- activation recommendation clear
+
+### Stage C: Planning
 
 **Goal**
 
@@ -595,7 +796,7 @@ This keeps rapid learning without weakening team governance.
 
 **Entry criteria**
 
-- `spec.md` approved
+- `spec.md` active
 
 **Primary components**
 
@@ -612,7 +813,7 @@ This keeps rapid learning without weakening team governance.
 - architecture decisions justified
 - rollout and rollback paths defined
 
-### Stage C: Breakdown
+### Stage D: Breakdown
 
 **Goal**
 
@@ -620,7 +821,7 @@ This keeps rapid learning without weakening team governance.
 
 **Entry criteria**
 
-- `plan.md` complete
+- planning complete and `plan.md` ready for breakdown
 
 **Primary components**
 
@@ -636,11 +837,11 @@ This keeps rapid learning without weakening team governance.
 - task size, ownership, and acceptance criteria complete
 - dependency graph acyclic
 
-### Stage D: Synchronization
+### Stage E: Synchronization
 
 **Goal**
 
-- establish parity between local contracts and remote trackers
+- inspect local and remote state, classify drift, and produce a repair plan
 
 **Entry criteria**
 
@@ -653,15 +854,17 @@ This keeps rapid learning without weakening team governance.
 
 **Exit artifacts**
 
-- updated Linear Project/Issues
-- updated `linear-map.json`
+- drift report
+- repair plan
+- updated `linear-map.json` only when an explicit approved workflow performs mapping changes
 
 **Gate**
 
 - no orphaned active tasks
 - status and dependency parity pass
+- any remote mutation is behind explicit operator or apply-gate approval
 
-### Stage E: Execution
+### Stage F: Execution
 
 **Goal**
 
@@ -686,7 +889,7 @@ This keeps rapid learning without weakening team governance.
 - updates current
 - stream boundaries respected
 
-### Stage F: Quality
+### Stage G: Quality
 
 **Goal**
 
@@ -710,7 +913,7 @@ This keeps rapid learning without weakening team governance.
 - required quality checks pass
 - acceptance criteria complete
 
-### Stage G: Closeout
+### Stage H: Closeout
 
 **Goal**
 
@@ -777,7 +980,13 @@ At minimum:
 3. escalate contested files immediately
 4. avoid force-merge conflict resolution
 
-### 10.4 Progress update location
+### 10.4 Progress update locations
+
+Native CLI updates created with `delano update add` are flat dated files under:
+
+`.project/projects/<slug>/updates/<date>-<slug>.md`
+
+For manual multi-stream coordination, teams may also use a nested stream convention:
 
 `.project/projects/<slug>/updates/<task-id>/stream-<id>.md`
 
@@ -793,15 +1002,17 @@ Required fields:
 
 ## 11) Synchronization model (Linear and GitHub)
 
-### 11.1 Idempotent sync cycle
+### 11.1 Default sync cycle
 
 1. read local contracts and registry
 2. read remote objects
 3. resolve identity map
-4. create missing objects
-5. update changed objects
-6. persist mappings
-7. run drift analysis
+4. classify drift
+5. produce repair plan
+6. require explicit operator or apply-gate approval before remote mutation
+7. persist mappings only as part of an approved repair or apply workflow
+
+The default sync posture is inspection first. Remote GitHub and Linear writes remain outside the default flow unless the operator has chosen an apply-capable workflow and accepted its plan.
 
 ### 11.2 Drift classes
 
@@ -812,9 +1023,11 @@ Required fields:
 
 ### 11.3 Drift handling by risk
 
-- low risk: auto-repair + log
-- medium risk: dry-run + operator confirmation
-- high risk: stop + explicit decision required
+- low risk: repair plan may recommend local-only cleanup or mapping updates
+- medium risk: dry-run plus operator confirmation
+- high risk: stop plus explicit decision required
+
+Do not silently create or update remote objects from handbook sync alone. The repair plan should name the intended mutation, affected objects, evidence, and rollback path.
 
 ### 11.4 GitHub role
 
@@ -918,6 +1131,7 @@ Every update should answer:
 - immutable creation timestamps
 - UTC timestamp policy
 - path privacy enforcement
+- hidden/bidirectional Unicode control enforcement
 - GitHub remote safety checks
 
 ### 14.2 Default team policy pack
@@ -966,6 +1180,12 @@ This section is designed for live planning and execution meetings.
 - Which constraints are fixed and which are negotiable?
 - Which assumptions are riskiest if wrong?
 
+### Probe decision
+
+- What uncertainty would make approval speculative if left unresolved?
+- What is the smallest probe that could retire that uncertainty?
+- What evidence would justify skipping the probe?
+
 ## 15.2 Planning framework
 
 ### Architecture fit
@@ -979,6 +1199,8 @@ This section is designed for live planning and execution meetings.
 - What external dependency can most likely block delivery?
 - Which dependency should be validated first?
 - What fallback exists if a critical dependency fails?
+- Which probe finding changed the architecture or rollout plan?
+- What uncertainty remains after the probe and how is it being managed?
 
 ### Sequencing
 
@@ -1034,7 +1256,8 @@ This section is designed for live planning and execution meetings.
 #### Stage-specific control points
 
 - Discovery: approve success metrics and non-goals
-- Planning: validate outcome-to-plan alignment
+- Discovery: approve success metrics, non-goals, and the probe decision
+- Planning: validate outcome-to-plan alignment and post-probe changes
 - Breakdown: reject ambiguous acceptance criteria
 - Synchronization: confirm cross-tool parity for active scope
 - Closeout: require outcome review, not only output completion
@@ -1056,7 +1279,7 @@ This section is designed for live planning and execution meetings.
 
 #### Stage-specific control points
 
-- Planning: approve architecture tradeoffs and reversibility notes
+- Planning: approve architecture tradeoffs, reversibility notes, and probe adequacy
 - Breakdown: validate dependency graph and conflict zones
 - Execution: enforce stream discipline and integration points
 - Quality: enforce test depth by risk tier
@@ -1074,7 +1297,7 @@ This section is designed for live planning and execution meetings.
 
 1. pick dependency-safe task from ready queue
 2. execute within stream scope
-3. update evidence and status continuously
+3. update evidence, status, and probe findings continuously when applicable
 4. run required quality checks before handoff
 
 #### Stage-specific control points
@@ -1101,10 +1324,13 @@ This section is designed for live planning and execution meetings.
 name: <project-name>
 slug: <kebab-case>
 owner: <person-or-team>
-status: draft
+status: planned
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 outcome: <measurable target>
+uncertainty: <low|medium|high>
+probe_required: <true|false>
+probe_status: <pending|skipped|completed>
 ---
 
 # Spec: <project-name>
@@ -1112,6 +1338,14 @@ outcome: <measurable target>
 ## Executive Summary
 
 ## Problem and Users
+
+## Outcome and Success Metrics
+
+## User Stories
+- US-001: As a <user>, I want <capability>, so that <outcome>.
+
+## Acceptance Scenarios
+- AC-001: Given <context>, when <action>, then <observable result>.
 
 ## Scope
 ### In Scope
@@ -1121,11 +1355,25 @@ outcome: <measurable target>
 
 ## Non-Functional Requirements
 
-## Success Metrics
+## Assumptions
+- <assumption to validate>
 
-## Risks and Assumptions
+## Needs Clarification
+- <question that must be answered before activation or execution>
+
+## Hypotheses and Unknowns
+
+## Touchpoints to Exercise
+
+## Probe Findings
+
+## Footguns Discovered
+
+## Remaining Unknowns
 
 ## Dependencies
+
+## Approval Notes
 ```
 
 ### 17.2 Delivery plan template (`plan.md`)
@@ -1138,11 +1386,34 @@ lead: <person>
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 linear_project_id:
+risk_level: <low|medium|high>
+spec_status_at_plan_time: <planned|active|complete|deferred>
 ---
 
 # Delivery Plan: <project-name>
 
+## What Changed After Probe
+
+## Technical Context
+
 ## Architecture Decisions
+
+## Policy and Contract Checks
+- [ ] `.project` remains the execution source of truth
+- [ ] Probe decision is explicit
+- [ ] Evidence gates are defined before handoff
+- [ ] External sync writes require dry-run or operator approval
+
+## Generated Artifact Map
+- `spec.md`: <source or generation notes>
+- `plan.md`: <source or generation notes>
+- `workstreams/`: <source or generation notes>
+- `tasks/`: <source or generation notes>
+
+## Complexity Exceptions
+- <exception, rationale, and owner>
+
+## Probe-Driven Architecture Changes
 
 ## Workstream Design
 
@@ -1153,12 +1424,15 @@ linear_project_id:
 ## Test Strategy
 
 ## Rollback Strategy
+
+## Remaining Delivery Risks
 ```
 
 ### 17.3 Workstream template
 
 ```markdown
 ---
+id: WS-A
 name: WS-A API Foundation
 owner: backend-team
 status: planned
@@ -1186,6 +1460,7 @@ updated: <ISO8601 UTC>
 id: T-001
 name: <task-title>
 status: ready
+workstream: WS-A
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 linear_issue_id:
@@ -1196,6 +1471,8 @@ conflicts_with: []
 parallel: true
 priority: medium
 estimate: M
+story_id:
+acceptance_criteria_ids: []
 ---
 
 # Task: <task-title>
@@ -1204,6 +1481,10 @@ estimate: M
 
 ## Acceptance Criteria
 - [ ]
+
+## Traceability
+- Story: <story_id or none>
+- Acceptance criteria: <acceptance criteria ids or none>
 
 ## Technical Notes
 
@@ -1289,7 +1570,61 @@ stream: <stream-id>
 
 ---
 
-## 18) Migration playbook (existing Delano repos)
+## 18) Runtime refresh and migration playbook
+
+### 18.1 Install and refresh behavior
+
+`delano install` is conflict-first and allowlist-based.
+
+It supports:
+
+- `--only <categories>`
+- `--exclude <categories>`
+- `--no-project-context`
+- `--no-project-state`
+- `--interactive` / `--tui`
+- `--force`
+- `--yes`
+
+Install categories are:
+
+- `agent-runtime`
+- `codex-hooks`
+- `skills`
+- `viewer`
+- `project-context`
+- `project-templates`
+- `project-registry`
+- `project-projects`
+- `handbook`
+- `legacy-installer`
+
+After install, `.project/context`, `.project/projects`, and `.project/registry` are repo-owned state. Do not force-refresh them unless replacing that local state is intentional.
+
+Recommended update-safe refreshes:
+
+```bash
+delano install --interactive
+delano install --only skills,project-templates --force --yes
+delano install --exclude project-context,project-projects,project-registry --force --yes
+delano install --no-project-state --force --yes
+```
+
+Top-level adapter entry docs such as `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `OPENCODE.md`, and `PI.md` remain opt-in. The base install payload does not install or overwrite those files.
+
+### 18.2 Codex hook trust model
+
+The package can install or merge `.codex/hooks.json` for a Codex `SessionStart` hook that injects compact open-project context.
+
+The hook is inert until:
+
+1. Codex hooks are enabled for the session or user config.
+2. The repository's `.codex/` layer is trusted.
+3. The Delano hook is approved when Codex prompts for trust.
+
+If a target repository already has valid `.codex/hooks.json`, install merges the Delano hook. Invalid or non-file hook configs are skipped without blocking the rest of the install.
+
+### 18.3 Existing Delano repo migration
 
 This section covers migration from older layouts such as:
 
@@ -1297,20 +1632,21 @@ This section covers migration from older layouts such as:
 - `.project/epics/<name>/epic.md`
 - numbered task files under epic folders
 
-### 18.1 Migration goals
+### 18.4 Migration goals
 
 - preserve historical artifacts
 - avoid destructive restructuring
 - establish new canonical path for future work
 
-### 18.2 Non-destructive migration strategy
+### 18.5 Non-destructive migration strategy
 
 1. keep existing folders intact
 2. create new canonical structure under `.project/projects/<slug>/`
-3. map old PRD/Epic/Task artifacts into Spec/Plan/Task contracts
-4. maintain old-to-new references in a migration index file
+3. normalize runtime references so `.agents` is canonical and `.claude` remains compatibility-only
+4. map old PRD/Epic/Task artifacts into Spec/Plan/Task contracts
+5. maintain old-to-new references in a migration index file
 
-### 18.3 Step-by-step migration
+### 18.6 Step-by-step migration
 
 #### Step 1: inventory
 
@@ -1326,13 +1662,13 @@ For each active epic scope:
 
 #### Step 3: map legacy artifacts
 
-- legacy PRD content -> `spec.md`
-- legacy epic content -> `plan.md`
+- legacy PRD content -> `spec.md` with uncertainty and probe fields populated
+- legacy epic content -> `plan.md` with probe delta and risk fields populated
 - legacy task files -> `tasks/*.md` with preserved IDs and links
 
 #### Step 4: map statuses
 
-- `open` -> `backlog` or `ready` depending on readiness
+- `open` -> `ready` when executable, or `deferred` when not actionable in the current delivery scope
 - `in-progress` -> `in-progress`
 - `closed` -> `done`
 
@@ -1345,16 +1681,16 @@ Add migration mapping to:
 
 #### Step 6: validation and dry-run sync
 
-Run validation and dry-run sync before mutating remote state.
+Run `bash .agents/scripts/pm/validate.sh` and a dry-run sync before mutating remote state.
 
-### 18.4 Migration acceptance criteria
+### 18.7 Migration acceptance criteria
 
 - no active task is lost
 - all active mappings preserved
 - status parity maintained
 - old artifacts remain readable for audit
 
-### 18.5 Sunset policy for legacy folders
+### 18.8 Sunset policy for legacy folders
 
 After two stable cycles:
 

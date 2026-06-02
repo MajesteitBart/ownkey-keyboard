@@ -1,7 +1,7 @@
 ---
 id: T-004
 name: Polish keyboard smartbar and actions
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["ime-smartbar", "quick-actions"]
 parallel: false
 priority: high
 estimate: M
+workstream: WS-C
 ---
 
 # Task: Polish keyboard smartbar and actions

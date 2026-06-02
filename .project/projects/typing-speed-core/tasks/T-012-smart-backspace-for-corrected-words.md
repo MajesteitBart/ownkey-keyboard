@@ -6,12 +6,13 @@ created: 2026-02-25T19:38:38Z
 updated: 2026-03-28T17:40:00Z
 linear_issue_id:
 github_issue:
-github_pr: 7
+github_pr: https://github.com/MajesteitBart/ownkey-keyboard/pull/7
 depends_on: [T-004]
 conflicts_with: []
 parallel: true
 priority: medium
 estimate: M
+workstream: WS-2
 ---
 
 # Task: Add smart backspace recovery for corrected words

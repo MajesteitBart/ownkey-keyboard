@@ -1,7 +1,7 @@
 ---
 id: T-005
 name: Define personalization learning policy and privacy guardrails
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T11:35:00Z
 linear_issue_id: a2397a74-b122-46cc-bb62-a33a11676f4d
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: false
 priority: high
 estimate: M
+workstream: WS-3
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-001, T-004
 ---
 
 # Task: Define personalization learning policy and privacy guardrails

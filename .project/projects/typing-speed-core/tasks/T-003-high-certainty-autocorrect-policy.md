@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-2
 ---
 
 # Task: Implement high-certainty autocorrect policy

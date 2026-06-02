@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: S
+workstream: WS-2
 ---
 
 # Task: Remember reverted autocorrect spellings

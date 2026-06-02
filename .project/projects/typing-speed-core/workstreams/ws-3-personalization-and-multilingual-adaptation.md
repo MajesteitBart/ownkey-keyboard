@@ -1,4 +1,5 @@
 ---
+id: WS-3
 name: WS-3 Personalization and Multilingual Adaptation
 owner: language-modeling-team
 status: planned

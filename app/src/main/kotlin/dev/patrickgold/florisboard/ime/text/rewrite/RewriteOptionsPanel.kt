@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -37,10 +36,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoFixHigh
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,11 +47,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -75,52 +76,18 @@ fun RewriteOptionsPanel(
         modifier = modifier
             .fillMaxWidth()
             .height(FlorisImeSizing.keyboardUiHeight())
-            .background(Color(0xFF202124))
+            .background(OwnkeyBrand.Key)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = if (isRewriting) "Rewriting" else "Rewrite voice",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-            )
-            if (isRewriting) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(28.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-            IconButton(onClick = { rewriteManager.closeOptions() }) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close rewrite voices",
-                    tint = Color.White,
-                )
-            }
-        }
-
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             prompts.forEach { prompt ->
-                RewriteVoiceBadge(
+                RewriteActionTile(
                     prompt = prompt,
                     enabled = !isRewriting,
                     onClick = { rewriteManager.rewriteWith(prompt) },
@@ -128,63 +95,91 @@ fun RewriteOptionsPanel(
             }
         }
 
-        Text(
-            text = "Edit voices in Settings > AI",
-            color = Color(0xFFC8C8CC),
-            fontSize = 12.sp,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-        )
+        if (isRewriting) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(
+                    color = OwnkeyBrand.SignalOrange,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun RewriteVoiceBadge(
+private fun RewriteActionTile(
     prompt: RewritePromptPreset,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(8.dp)
+    val icon = when {
+        prompt.id.startsWith("rewrite_") -> Icons.Default.Translate
+        else -> Icons.Default.AutoFixHigh
+    }
     Surface(
         modifier = Modifier
-            .widthIn(min = 102.dp, max = 164.dp)
-            .heightIn(min = 46.dp)
+            .widthIn(min = 210.dp, max = 360.dp)
+            .height(100.dp)
             .border(
                 width = 1.dp,
-                color = if (enabled) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f),
+                color = OwnkeyBrand.Bone.copy(alpha = if (enabled) 0.04f else 0.02f),
                 shape = shape,
             )
             .clickable(enabled = enabled, onClick = onClick),
-        color = if (enabled) Color(0xFF25272D) else Color(0xFF25272D).copy(alpha = 0.44f),
-        contentColor = Color.White,
+        color = OwnkeyBrand.PanelRaised.copy(alpha = if (enabled) 0.88f else 0.42f),
+        contentColor = OwnkeyBrand.Bone,
+        shadowElevation = 4.dp,
         shape = shape,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            modifier = Modifier.padding(horizontal = 26.dp, vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .background(Color.White.copy(alpha = if (enabled) 0.08f else 0.04f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AutoFixHigh,
-                    contentDescription = null,
-                    tint = if (enabled) Color(0xFFF56C1E) else Color.White.copy(alpha = 0.38f),
-                    modifier = Modifier.size(13.dp),
-                )
-            }
+            RewriteActionIcon(
+                imageVector = icon,
+                enabled = enabled,
+            )
             Text(
                 text = prompt.name,
                 modifier = Modifier.weight(1f),
-                color = if (enabled) Color.White else Color.White.copy(alpha = 0.46f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 15.sp,
-                maxLines = 2,
+                color = OwnkeyBrand.Bone.copy(alpha = if (enabled) 1f else 0.42f),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 26.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+@Composable
+private fun RewriteActionIcon(
+    imageVector: ImageVector,
+    enabled: Boolean,
+) {
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .border(
+                width = 1.dp,
+                color = OwnkeyBrand.Bone.copy(alpha = if (enabled) 0.07f else 0.03f),
+                shape = CircleShape,
+            )
+            .background(Color.Transparent, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = null,
+            tint = OwnkeyBrand.Bone.copy(alpha = if (enabled) 1f else 0.38f),
+            modifier = Modifier.size(28.dp),
+        )
     }
 }

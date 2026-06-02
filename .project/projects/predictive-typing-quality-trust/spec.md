@@ -2,10 +2,13 @@
 name: Predictive Typing Quality & Trust
 slug: predictive-typing-quality-trust
 owner: ownkey-keyboard-team
-status: draft
+status: planned
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T13:11:21Z
 outcome: Define a trust-first predictive typing roadmap that can raise top-3 suggestion acceptance by 15%, hold suggestion latency under 50 ms p95, and reduce false autocorrect pain by 30% across EN, NL, and mixed-language flows.
+uncertainty: medium
+probe_required: false
+probe_status: skipped
 ---
 
 # Spec: Predictive Typing Quality & Trust

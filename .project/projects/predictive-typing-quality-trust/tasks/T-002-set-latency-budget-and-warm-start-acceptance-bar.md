@@ -1,7 +1,7 @@
 ---
 id: T-002
 name: Set latency budget and warm-start acceptance bar
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T13:11:21Z
 linear_issue_id: 7153d4f5-e877-4d45-8b22-78421c1381b4
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: false
 priority: high
 estimate: S
+workstream: WS-1
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-001
 ---
 
 # Task: Set latency budget and warm-start acceptance bar

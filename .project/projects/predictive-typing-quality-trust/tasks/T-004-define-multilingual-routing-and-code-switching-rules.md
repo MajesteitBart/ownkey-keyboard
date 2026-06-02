@@ -1,7 +1,7 @@
 ---
 id: T-004
 name: Define multilingual routing and code-switching rules
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T11:35:00Z
 linear_issue_id: 5768e53f-4136-4e2f-9c50-a1b77db63c1e
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-3
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-001
 ---
 
 # Task: Define multilingual routing and code-switching rules

@@ -1,17 +1,18 @@
 ---
 id: T-009
 name: Improve symbol/number flow with fewer mode switches
-status: in_progress
+status: review
 created: 2026-02-25T19:38:38Z
 updated: 2026-03-28T13:20:31Z
 linear_issue_id:
 github_issue:
-github_pr: 7
+github_pr: https://github.com/MajesteitBart/ownkey-keyboard/pull/7
 depends_on: []
 conflicts_with: []
 parallel: true
 priority: medium
 estimate: M
+workstream: WS-4
 ---
 
 # Task: Improve symbol/number flow with fewer mode switches

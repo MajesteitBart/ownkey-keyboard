@@ -23,7 +23,7 @@
 - `git diff --check`
 - stale visible Voxtral umbrella label scan
 - APK badging
-- `delano validate`
+- `bash .agents/scripts/pm/validate.sh` / `delano validate`
 
 ## What Is Next
 - Review and choose the final Google Play USP angle from `play-store-usps.md`.

@@ -1,7 +1,7 @@
 ---
 id: T-002
 name: Convert brand assets for Android and store use
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["brand-assets", "store-assets"]
 parallel: true
 priority: high
 estimate: M
+workstream: WS-A
 ---
 
 # Task: Convert brand assets for Android and store use

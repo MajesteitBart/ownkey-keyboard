@@ -1,7 +1,7 @@
 ---
 id: T-008
 name: Prepare beta-readiness scorecard and go-no-go gates
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T11:35:00Z
 linear_issue_id: 78fd5fbb-74f5-4cdd-86fb-d88bc1c5bb4b
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: false
 priority: medium
 estimate: S
+workstream: WS-4
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-002, T-003, T-004, T-005, T-006
 ---
 
 # Task: Prepare beta-readiness scorecard and go-no-go gates

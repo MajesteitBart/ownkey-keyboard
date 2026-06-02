@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: false
 priority: high
 estimate: L
+workstream: WS-1
 ---
 
 # Task: Optimize top-3 prediction latency

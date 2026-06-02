@@ -1,4 +1,5 @@
 ---
+id: WS-4
 name: WS-4 Context Policy and Metrics
 owner: platform-observability-team
 status: planned

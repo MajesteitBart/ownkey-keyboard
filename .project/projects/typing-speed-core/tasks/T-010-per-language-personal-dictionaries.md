@@ -1,7 +1,7 @@
 ---
 id: T-010
 name: Split personal dictionaries per language
-status: ready
+status: blocked
 created: 2026-02-25T19:38:38Z
 updated: 2026-02-25T19:38:38Z
 linear_issue_id:
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: true
 priority: medium
 estimate: M
+workstream: WS-3
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-005
 ---
 
 # Task: Split personal dictionaries per language

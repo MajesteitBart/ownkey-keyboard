@@ -1,4 +1,5 @@
 ---
+id: WS-1
 name: WS-1 Benchmark and Latency Budget
 owner: product-performance-team
 status: planned

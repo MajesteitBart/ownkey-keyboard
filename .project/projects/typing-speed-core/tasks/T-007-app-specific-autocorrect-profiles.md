@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: medium
 estimate: M
+workstream: WS-4
 ---
 
 # Task: Implement app-specific autocorrect aggressiveness profiles

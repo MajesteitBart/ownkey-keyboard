@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: L
+workstream: WS-3
 ---
 
 # Task: Support mixed-language prediction without manual switch

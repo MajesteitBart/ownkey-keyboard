@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+const { redactObject } = require('../common/log-safety');
 
 const args = process.argv.slice(2);
 if (args.length < 2) {
@@ -24,8 +25,10 @@ for (let i = 0; i < rest.length; i++) {
   event.meta[key] = value;
 }
 
+event.meta = redactObject(event.meta);
+
 const root = process.cwd();
-const logDir = path.join(root, '.claude', 'logs');
+const logDir = path.join(root, '.agents', 'logs');
 const logFile = path.join(logDir, 'changes.jsonl');
 fs.mkdirSync(logDir, { recursive: true });
 fs.appendFileSync(logFile, JSON.stringify(event) + '\n', 'utf8');

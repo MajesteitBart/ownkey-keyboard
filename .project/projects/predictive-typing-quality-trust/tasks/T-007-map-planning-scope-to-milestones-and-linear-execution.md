@@ -1,7 +1,7 @@
 ---
 id: T-007
 name: Map planning scope to milestones and Linear execution
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T11:35:00Z
 linear_issue_id: 2ecd539a-bffb-426a-8a83-72296f2df395
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: false
 priority: high
 estimate: S
+workstream: WS-4
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-001, T-003, T-004, T-005
 ---
 
 # Task: Map planning scope to milestones and Linear execution

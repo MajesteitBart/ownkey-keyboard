@@ -23,8 +23,9 @@
 - Privacy-first behavior: avoid private-content telemetry and keep networked AI features opt-in/configured.
 
 ## Release Validation Baseline
+- This is a Gradle Android repo, not an npm app; do not use `npm test` as the default test command.
 - For settings/AI changes, run at least `:app:compileDebugKotlin`, `:app:compileReleaseKotlin`, and `:app:assembleRelease`.
 - Run `git diff --check`.
 - Scan for stale user-facing `Voxtral` umbrella labels after settings copy changes.
 - Check APK badging after release builds when metadata, icon, label, or store assets change.
-- Use `delano validate` when `.project` planning/context files change.
+- Use `bash .agents/scripts/pm/validate.sh` or `delano validate` when `.project` planning/context files change.

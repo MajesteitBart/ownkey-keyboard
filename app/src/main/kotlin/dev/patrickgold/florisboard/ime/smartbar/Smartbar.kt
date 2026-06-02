@@ -17,16 +17,10 @@
 package dev.patrickgold.florisboard.ime.smartbar
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -120,55 +114,38 @@ fun Smartbar() {
         enter = VerticalEnterTransition,
         exit = VerticalExitTransition,
     ) {
-        AnimatedContent(
-            targetState = showDictationControls,
-            transitionSpec = {
-                (fadeIn(tween(OwnkeyBrand.MotionStandardMillis)) +
-                    slideInVertically(tween(OwnkeyBrand.MotionStandardMillis)) { height -> height / 3 })
-                    .togetherWith(
-                        fadeOut(tween(OwnkeyBrand.MotionFastMillis)) +
-                            slideOutVertically(tween(OwnkeyBrand.MotionFastMillis)) { height -> -height / 4 },
-                    )
-            },
-            label = "dictation-smartbar-transition",
-        ) { showControls ->
-            if (showControls) {
-                DictationRecordingBar()
-            } else {
-                when (extendedActionsPlacement) {
-                    ExtendedActionsPlacement.ABOVE_CANDIDATES -> {
-                        SnyggColumn(FlorisImeUi.Smartbar.elementName) {
-                            SmartbarSecondaryRow()
-                            SmartbarMainRow()
-                        }
-                    }
+        when (extendedActionsPlacement) {
+            ExtendedActionsPlacement.ABOVE_CANDIDATES -> {
+                SnyggColumn(FlorisImeUi.Smartbar.elementName) {
+                    SmartbarSecondaryRow()
+                    SmartbarMainRow(showDictationControls = showDictationControls)
+                }
+            }
 
-                    ExtendedActionsPlacement.BELOW_CANDIDATES -> {
-                        SnyggColumn(FlorisImeUi.Smartbar.elementName) {
-                            SmartbarMainRow()
-                            SmartbarSecondaryRow()
-                        }
-                    }
+            ExtendedActionsPlacement.BELOW_CANDIDATES -> {
+                SnyggColumn(FlorisImeUi.Smartbar.elementName) {
+                    SmartbarMainRow(showDictationControls = showDictationControls)
+                    SmartbarSecondaryRow()
+                }
+            }
 
-                    ExtendedActionsPlacement.OVERLAY_APP_UI -> {
-                        SnyggBox(FlorisImeUi.Smartbar.elementName,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(FlorisImeSizing.smartbarHeight),
-                            allowClip = false,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(FlorisImeSizing.smartbarHeight * 2)
-                                    .absoluteOffset(y = -FlorisImeSizing.smartbarHeight),
-                                contentAlignment = Alignment.BottomStart,
-                            ) {
-                                SmartbarSecondaryRow()
-                            }
-                            SmartbarMainRow()
-                        }
+            ExtendedActionsPlacement.OVERLAY_APP_UI -> {
+                SnyggBox(FlorisImeUi.Smartbar.elementName,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(FlorisImeSizing.smartbarHeight),
+                    allowClip = false,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(FlorisImeSizing.smartbarHeight * 2)
+                            .absoluteOffset(y = -FlorisImeSizing.smartbarHeight),
+                        contentAlignment = Alignment.BottomStart,
+                    ) {
+                        SmartbarSecondaryRow()
                     }
+                    SmartbarMainRow(showDictationControls = showDictationControls)
                 }
             }
         }
@@ -176,7 +153,10 @@ fun Smartbar() {
 }
 
 @Composable
-private fun SmartbarMainRow(modifier: Modifier = Modifier) {
+private fun SmartbarMainRow(
+    modifier: Modifier = Modifier,
+    showDictationControls: Boolean = false,
+) {
     val prefs by FlorisPreferenceStore
     val context = LocalContext.current
     val keyboardManager by context.keyboardManager()
@@ -254,7 +234,14 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
             val enterTransition = if (shouldAnimate) HorizontalEnterTransition else NoEnterTransition
             val exitTransition = if (shouldAnimate) HorizontalExitTransition else NoExitTransition
             this@CenterContent.AnimatedVisibility(
-                visible = !expanded,
+                visible = showDictationControls,
+                enter = enterTransition,
+                exit = exitTransition,
+            ) {
+                DictationSmartbarContent(modifier = Modifier.fillMaxSize())
+            }
+            this@CenterContent.AnimatedVisibility(
+                visible = !showDictationControls && !expanded,
                 enter = enterTransition,
                 exit = exitTransition,
             ) {
@@ -265,7 +252,7 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
                 }
             }
             this@CenterContent.AnimatedVisibility(
-                visible = expanded,
+                visible = !showDictationControls && expanded,
                 enter = enterTransition,
                 exit = exitTransition,
             ) {
@@ -317,6 +304,11 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
     fun StickyAction() {
         val evaluator by keyboardManager.activeSmartbarEvaluator.collectAsState()
 
+        if (showDictationControls) {
+            DictationSmartbarAction()
+            return
+        }
+
         val action = when {
             actionArrangement.stickyAction != null -> {
                 actionArrangement.stickyAction
@@ -365,7 +357,14 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
         ) {
             when (smartbarLayout) {
                 SmartbarLayout.SUGGESTIONS_ONLY -> {
-                    if (shouldShowInlineSuggestionsUi) {
+                    if (showDictationControls) {
+                        DictationSmartbarContent(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                        )
+                        DictationSmartbarAction()
+                    } else if (shouldShowInlineSuggestionsUi) {
                         InlineSuggestionsUi(inlineSuggestions)
                     } else {
                         CandidatesRow()
@@ -373,7 +372,14 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
                 }
 
                 SmartbarLayout.ACTIONS_ONLY -> {
-                    if (shouldShowInlineSuggestionsUi) {
+                    if (showDictationControls) {
+                        DictationSmartbarContent(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                        )
+                        DictationSmartbarAction()
+                    } else if (shouldShowInlineSuggestionsUi) {
                         InlineSuggestionsUi(inlineSuggestions)
                     } else {
                         QuickActionsRow(FlorisImeUi.SmartbarSharedActionsRow.elementName)

@@ -1,7 +1,7 @@
 ---
 name: WS-C Keyboard Surface Polish
 owner: ownkey-keyboard-team
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 ---

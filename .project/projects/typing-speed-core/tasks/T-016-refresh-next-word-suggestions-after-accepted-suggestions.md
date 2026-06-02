@@ -6,12 +6,13 @@ created: 2026-03-28T18:35:00Z
 updated: 2026-03-28T18:35:00Z
 linear_issue_id:
 github_issue:
-github_pr: 7
+github_pr: https://github.com/MajesteitBart/ownkey-keyboard/pull/7
 depends_on: [T-014]
 conflicts_with: []
 parallel: true
 priority: high
 estimate: S
+workstream: WS-1
 ---
 
 # Task: Refresh next-word suggestions immediately after accepted suggestions

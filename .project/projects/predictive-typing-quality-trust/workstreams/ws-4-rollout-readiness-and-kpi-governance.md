@@ -1,4 +1,5 @@
 ---
+id: WS-4
 name: WS-4 Rollout Readiness and KPI Governance
 owner: delivery-observability-team
 status: planned

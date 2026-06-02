@@ -2,6 +2,7 @@
 id: T-001
 name: <task-title>
 status: ready
+workstream: WS-A
 created: <ISO8601 UTC>
 updated: <ISO8601 UTC>
 linear_issue_id:
@@ -12,6 +13,8 @@ conflicts_with: []
 parallel: true
 priority: medium
 estimate: M
+story_id:
+acceptance_criteria_ids: []
 ---
 
 # Task: <task-title>
@@ -20,6 +23,10 @@ estimate: M
 
 ## Acceptance Criteria
 - [ ]
+
+## Traceability
+- Story: <story_id or none>
+- Acceptance criteria: <acceptance criteria ids or none>
 
 ## Technical Notes
 

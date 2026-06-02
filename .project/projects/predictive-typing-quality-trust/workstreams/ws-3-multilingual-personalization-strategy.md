@@ -1,4 +1,5 @@
 ---
+id: WS-3
 name: WS-3 Multilingual Personalization Strategy
 owner: language-modeling-team
 status: planned

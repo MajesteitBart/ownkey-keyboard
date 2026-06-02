@@ -41,14 +41,19 @@ object RewritePromptPresets {
             instruction = "Rewrite the text so it is clear, concise, and grammatically correct. Preserve the original meaning.",
         ),
         RewritePromptPreset(
-            id = "formal",
-            name = "Formal",
-            instruction = "Rewrite the text in a more formal tone. Keep it natural and avoid sounding stiff.",
-        ),
-        RewritePromptPreset(
             id = "business",
             name = "Business",
             instruction = "Rewrite the text in a professional business tone suitable for a client, colleague, or stakeholder.",
+        ),
+        RewritePromptPreset(
+            id = "rewrite_dutch",
+            name = "Rewrite in Dutch",
+            instruction = "Rewrite the text in natural Dutch. Preserve the original meaning and return only Dutch text.",
+        ),
+        RewritePromptPreset(
+            id = "rewrite_english",
+            name = "Rewrite in English",
+            instruction = "Rewrite the text in natural English. Preserve the original meaning and return only English text.",
         ),
     )
 
@@ -58,7 +63,11 @@ object RewritePromptPresets {
         val decoded = runCatching {
             json.decodeFromString(ListSerializer(RewritePromptPreset.serializer()), value)
         }.getOrDefault(defaults)
-        return decoded.filter { it.name.isNotBlank() && it.instruction.isNotBlank() }.ifEmpty { defaults }
+        val validPrompts = decoded.filter { it.name.isNotBlank() && it.instruction.isNotBlank() }
+        return when {
+            validPrompts.map { it.id } == legacyDefaultIds -> defaults
+            else -> validPrompts.ifEmpty { defaults }
+        }
     }
 
     fun encode(value: List<RewritePromptPreset>): String {
@@ -72,4 +81,6 @@ object RewritePromptPresets {
             instruction = "Rewrite the text in my preferred voice.",
         )
     }
+
+    private val legacyDefaultIds = listOf("clean", "formal", "business")
 }

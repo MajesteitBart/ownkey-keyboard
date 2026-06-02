@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-2
 ---
 
 # Task: Add one-tap undo for latest autocorrect

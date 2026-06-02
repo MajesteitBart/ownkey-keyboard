@@ -1,7 +1,7 @@
 ---
 id: T-006
 name: Lock toast snackbar routing and style
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["toast-routing", "ime-overlay"]
 parallel: false
 priority: high
 estimate: M
+workstream: WS-C
 ---
 
 # Task: Lock toast snackbar routing and style

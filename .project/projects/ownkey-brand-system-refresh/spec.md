@@ -2,10 +2,13 @@
 name: Ownkey Brand System Refresh
 slug: ownkey-brand-system-refresh
 owner: ownkey-keyboard-team
-status: completed
+status: complete
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 outcome: Translate the new Ownkey brand-book reference and monkey waveform assets into app, keyboard, onboarding, and store-facing styling without weakening keyboard usability.
+uncertainty: low
+probe_required: false
+probe_status: skipped
 ---
 
 # Spec: Ownkey Brand System Refresh

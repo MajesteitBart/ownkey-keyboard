@@ -35,11 +35,9 @@ import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
 import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsChipMargin
 import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
-import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboard
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
 import dev.patrickgold.florisboard.keyboardManager
-import dev.patrickgold.florisboard.voxtralDictationManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 
 private val LocalKeyboardRowBaseHeight = compositionLocalOf { 65.dp }
@@ -83,22 +81,14 @@ object FlorisImeSizing {
     @Composable
     fun smartbarRowCountAsState(): State<Int> {
         val prefs by FlorisPreferenceStore
-        val context = LocalContext.current
-        val voxtralDictationManager by context.voxtralDictationManager()
         val smartbarEnabled by prefs.smartbar.enabled.collectAsState()
         val smartbarLayout by prefs.smartbar.layout.collectAsState()
         val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
         val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
-        val dictationState by voxtralDictationManager.stateFlow.collectAsState()
         return remember {
             derivedStateOf {
                 if (smartbarEnabled) {
-                    val showDictationControls = dictationState == VoxtralDictationManager.DictationState.LISTENING ||
-                        dictationState == VoxtralDictationManager.DictationState.PAUSED ||
-                        dictationState == VoxtralDictationManager.DictationState.TRANSCRIBING
-                    if (showDictationControls) {
-                        2
-                    } else if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded &&
+                    if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded &&
                         extendedActionsPlacement != ExtendedActionsPlacement.OVERLAY_APP_UI) {
                         2
                     } else {

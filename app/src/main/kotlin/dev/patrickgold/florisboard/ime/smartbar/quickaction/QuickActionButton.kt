@@ -23,6 +23,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -45,14 +46,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
 import dev.patrickgold.compose.tooltip.PlainTooltip
+import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
+import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
 import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
@@ -98,8 +102,9 @@ fun QuickActionButton(
     }
     val voxtralDictationManager by context.voxtralDictationManager()
     val dictationState by voxtralDictationManager.stateFlow.collectAsState()
-    val showRecordingIndicator = action is QuickAction.InsertKey &&
-        action.data.code == KeyCode.VOICE_INPUT &&
+    val isVoiceInputAction = action is QuickAction.InsertKey &&
+        action.data.code == KeyCode.VOICE_INPUT
+    val showRecordingIndicator = isVoiceInputAction &&
         dictationState == VoxtralDictationManager.DictationState.LISTENING
 
     // Need to manually cancel an action if this composable suddenly leaves the composition to prevent the key from
@@ -146,11 +151,10 @@ fun QuickActionButton(
                             }
                         }
                     }
-                },
+            },
             contentAlignment = Alignment.Center,
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Render foreground
+            val foreground: @Composable () -> Unit = {
                 when (action) {
                     is QuickAction.InsertKey -> {
                         val (imageVector, label) = remember(action, evaluator) {
@@ -183,15 +187,44 @@ fun QuickActionButton(
                         )
                     }
                 }
+            }
 
-                // Render additional info if this is a tile
-                if (type != QuickActionBarType.INTERACTIVE_BUTTON) {
-                    SnyggText(
-                        elementName = "$elementName-text",
-                        attributes = attributes,
-                        selector = selector,
-                        text = action.computeDisplayName(evaluator = evaluator),
-                    )
+            if (isVoiceInputAction && type == QuickActionBarType.INTERACTIVE_BUTTON) {
+                val voiceButtonSize = (FlorisImeSizing.smartbarHeight - 8.dp).coerceAtLeast(34.dp)
+                Box(
+                    modifier = Modifier
+                        .size(voiceButtonSize)
+                        .alpha(if (isEnabled) 1f else 0.45f)
+                        .clip(CircleShape)
+                        .background(
+                            if (isPressed) {
+                                OwnkeyBrand.ActionPressed
+                            } else {
+                                OwnkeyBrand.Action.copy(alpha = 0.72f)
+                            },
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = OwnkeyBrand.SignalOrange.copy(alpha = if (isEnabled) 0.95f else 0.34f),
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    foreground()
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    foreground()
+
+                    // Render additional info if this is a tile
+                    if (type != QuickActionBarType.INTERACTIVE_BUTTON) {
+                        SnyggText(
+                            elementName = "$elementName-text",
+                            attributes = attributes,
+                            selector = selector,
+                            text = action.computeDisplayName(evaluator = evaluator),
+                        )
+                    }
                 }
             }
             if (showRecordingIndicator && type == QuickActionBarType.INTERACTIVE_BUTTON) {

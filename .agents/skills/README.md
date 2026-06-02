@@ -5,6 +5,8 @@ Handbook-aligned skill contracts.
 Core workflow skills:
 
 - `discovery-skill`
+- `research-skill`
+- `prototype-skill`
 - `planning-skill`
 - `breakdown-skill`
 - `sync-skill`
@@ -12,6 +14,11 @@ Core workflow skills:
 - `quality-skill`
 - `closeout-skill`
 - `learning-skill`
+
+Utility skills:
+
+- `manage-context`
+- `onboarding`
 
 Each skill defines:
 - intent and trigger context

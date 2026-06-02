@@ -1,7 +1,7 @@
 ---
 id: T-005
 name: Polish dictation motion and state
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["dictation-ui", "ime-motion"]
 parallel: false
 priority: medium
 estimate: M
+workstream: WS-C
 ---
 
 # Task: Polish dictation motion and state

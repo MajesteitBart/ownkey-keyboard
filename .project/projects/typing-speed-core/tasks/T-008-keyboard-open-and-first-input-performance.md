@@ -1,7 +1,7 @@
 ---
 id: T-008
 name: Optimize keyboard open and first-input responsiveness
-status: ready
+status: blocked
 created: 2026-02-25T19:38:38Z
 updated: 2026-02-25T19:38:38Z
 linear_issue_id:
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-1
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-001
 ---
 
 # Task: Optimize keyboard open and first-input responsiveness

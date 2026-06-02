@@ -1,7 +1,7 @@
 ---
 id: T-006
 name: Define tuning surface and user-facing explainability
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T11:35:00Z
 linear_issue_id: 0268e1e8-49ef-44b7-87d1-c478a53826eb
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: false
 priority: medium
 estimate: S
+workstream: WS-2
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-003, T-005
 ---
 
 # Task: Define tuning surface and user-facing explainability

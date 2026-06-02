@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-3
 ---
 
 # Task: Implement rapid personal vocabulary learning (1-3 exposures)

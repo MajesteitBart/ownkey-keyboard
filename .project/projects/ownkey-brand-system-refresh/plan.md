@@ -1,10 +1,12 @@
 ---
 name: Ownkey Brand System Refresh
-status: completed
+status: done
 lead: ownkey-keyboard-team
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_project_id:
+risk_level: low
+spec_status_at_plan_time: complete
 ---
 
 # Delivery Plan: Ownkey Brand System Refresh

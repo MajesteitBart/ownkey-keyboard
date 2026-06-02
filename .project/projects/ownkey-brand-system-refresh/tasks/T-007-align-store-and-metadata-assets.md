@@ -1,7 +1,7 @@
 ---
 id: T-007
 name: Align store and metadata assets
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["fastlane-assets", "release-metadata"]
 parallel: true
 priority: medium
 estimate: M
+workstream: WS-D
 ---
 
 # Task: Align store and metadata assets

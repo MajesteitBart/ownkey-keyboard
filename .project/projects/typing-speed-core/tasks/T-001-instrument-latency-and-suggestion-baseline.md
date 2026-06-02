@@ -12,6 +12,7 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-1
 ---
 
 # Task: Instrument latency and suggestion baseline

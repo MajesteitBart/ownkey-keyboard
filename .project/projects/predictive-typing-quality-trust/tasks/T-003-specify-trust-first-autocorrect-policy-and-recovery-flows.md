@@ -1,7 +1,7 @@
 ---
 id: T-003
 name: Specify trust-first autocorrect policy and recovery flows
-status: ready
+status: blocked
 created: 2026-03-28T11:19:17Z
 updated: 2026-03-28T11:35:00Z
 linear_issue_id: fbc0bfe5-f4e7-486b-9db6-46bfeb3f1372
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: true
 priority: high
 estimate: M
+workstream: WS-2
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-001
 ---
 
 # Task: Specify trust-first autocorrect policy and recovery flows

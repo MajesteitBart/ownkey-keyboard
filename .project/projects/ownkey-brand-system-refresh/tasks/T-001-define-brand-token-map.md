@@ -1,7 +1,7 @@
 ---
 id: T-001
 name: Define Ownkey brand token map
-status: completed
+status: done
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:05:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["theme-tokens", "brand-assets"]
 parallel: true
 priority: high
 estimate: M
+workstream: WS-A
 ---
 
 # Task: Define Ownkey brand token map

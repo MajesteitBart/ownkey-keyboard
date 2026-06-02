@@ -32,10 +32,13 @@ cat > "$project_dir/spec.md" <<SPEC
 name: $name
 slug: $slug
 owner: $owner
-status: draft
+status: planned
 created: $now
 updated: $now
 outcome: <measurable target>
+uncertainty: <low|medium|high>
+probe_required: <true|false>
+probe_status: <pending|skipped|completed>
 ---
 
 # Spec: $name
@@ -43,6 +46,14 @@ outcome: <measurable target>
 ## Executive Summary
 
 ## Problem and Users
+
+## Outcome and Success Metrics
+
+## User Stories
+- US-001: As a <user>, I want <capability>, so that <outcome>.
+
+## Acceptance Scenarios
+- AC-001: Given <context>, when <action>, then <observable result>.
 
 ## Scope
 ### In Scope
@@ -52,11 +63,25 @@ outcome: <measurable target>
 
 ## Non-Functional Requirements
 
-## Success Metrics
+## Assumptions
+- <assumption to validate>
 
-## Risks and Assumptions
+## Needs Clarification
+- <question that must be answered before activation or execution>
+
+## Hypotheses and Unknowns
+
+## Touchpoints to Exercise
+
+## Probe Findings
+
+## Footguns Discovered
+
+## Remaining Unknowns
 
 ## Dependencies
+
+## Approval Notes
 SPEC
 
 cat > "$project_dir/plan.md" <<PLAN
@@ -67,11 +92,34 @@ lead: $lead
 created: $now
 updated: $now
 linear_project_id:
+risk_level: <low|medium|high>
+spec_status_at_plan_time: planned
 ---
 
 # Delivery Plan: $name
 
+## What Changed After Probe
+
+## Technical Context
+
 ## Architecture Decisions
+
+## Policy and Contract Checks
+- [ ] `.project` remains the execution source of truth
+- [ ] Probe decision is explicit
+- [ ] Evidence gates are defined before handoff
+- [ ] External sync writes require dry-run or operator approval
+
+## Generated Artifact Map
+- `spec.md`: <source or generation notes>
+- `plan.md`: <source or generation notes>
+- `workstreams/`: <source or generation notes>
+- `tasks/`: <source or generation notes>
+
+## Complexity Exceptions
+- <exception, rationale, and owner>
+
+## Probe-Driven Architecture Changes
 
 ## Workstream Design
 
@@ -82,6 +130,8 @@ linear_project_id:
 ## Test Strategy
 
 ## Rollback Strategy
+
+## Remaining Delivery Risks
 PLAN
 
 cat > "$project_dir/decisions.md" <<'DECISIONS'
@@ -115,4 +165,4 @@ fi
 
 echo "Created Delano project scaffold: .project/projects/$slug"
 
-"$root/.claude/scripts/pm/validate.sh"
+"$root/.agents/scripts/pm/validate.sh"

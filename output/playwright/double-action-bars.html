@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Double Action Bar Concepts</title>
+  <style>
+    :root {
+      --page: #09090b;
+      --surface: #111216;
+      --button: #222329;
+      --button-2: #26272d;
+      --stroke: rgba(255, 255, 255, 0.09);
+      --divider: rgba(255, 255, 255, 0.12);
+      --text: #f2f0ee;
+      --muted: #b9b6b4;
+      --orange: #ff681d;
+      --orange-2: #ff9a1f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255, 104, 29, 0.12), transparent 28%),
+        linear-gradient(180deg, #070708 0%, var(--page) 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .board {
+      width: 1440px;
+      height: 980px;
+      padding: 68px 76px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 58px;
+      background: #0b0c0f;
+    }
+
+    .state {
+      display: grid;
+      gap: 18px;
+    }
+
+    .state-title {
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1;
+      letter-spacing: 0;
+      font-weight: 600;
+      padding-left: 8px;
+    }
+
+    .bars {
+      width: 100%;
+      padding: 28px;
+      border-radius: 34px;
+      background: linear-gradient(180deg, #121317 0%, #101114 100%);
+      border: 1px solid rgba(255, 255, 255, 0.045);
+      box-shadow:
+        0 28px 72px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .primary {
+      height: 96px;
+      justify-content: space-between;
+    }
+
+    .secondary {
+      height: 92px;
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 96px 1fr 128px;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .group {
+      height: 88px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border-radius: 34px;
+      background: var(--button);
+      border: 1px solid var(--stroke);
+      box-shadow:
+        0 12px 22px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    }
+
+    .group.ai {
+      width: 258px;
+    }
+
+    .group.edit {
+      width: 384px;
+    }
+
+    .group.more {
+      width: 138px;
+      justify-content: center;
+    }
+
+    .icon-button {
+      width: 76px;
+      height: 76px;
+      display: grid;
+      place-items: center;
+      border-radius: 28px;
+      color: var(--text);
+    }
+
+    .icon-button.soft {
+      color: var(--muted);
+    }
+
+    .icon-button.active-soft {
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .divider {
+      width: 1px;
+      height: 46px;
+      margin: 0 4px;
+      background: var(--divider);
+    }
+
+    .side-button,
+    .mic-button {
+      height: 86px;
+      display: grid;
+      place-items: center;
+      border-radius: 31px;
+      background: var(--button);
+      border: 1px solid var(--stroke);
+      box-shadow:
+        0 12px 22px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.045);
+      color: var(--text);
+    }
+
+    .mic-button.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--orange-2) 0%, var(--orange) 100%);
+      border-color: rgba(255, 184, 70, 0.36);
+      box-shadow:
+        0 16px 28px rgba(255, 104, 29, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.26);
+    }
+
+    .suggestions,
+    .listening {
+      height: 86px;
+      border-radius: 31px;
+      background: rgba(255, 255, 255, 0.018);
+      border: 1px solid rgba(255, 255, 255, 0.035);
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .suggestion {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 450;
+      color: #efedeb;
+    }
+
+    .suggestion + .suggestion {
+      border-left: 2px solid rgba(255, 255, 255, 0.09);
+    }
+
+    .listening {
+      padding: 0 24px;
+      gap: 24px;
+      background: linear-gradient(180deg, #202127 0%, #1b1c21 100%);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 0 0 auto;
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status .muted {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .tiny-mic {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      color: var(--orange);
+      background: rgba(255, 104, 29, 0.12);
+    }
+
+    .wave {
+      flex: 1;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-width: 280px;
+    }
+
+    .wave span {
+      width: 8px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, var(--orange-2), var(--orange));
+      box-shadow: 0 0 16px rgba(255, 104, 29, 0.18);
+    }
+
+    .wave span:nth-child(1) { height: 22px; }
+    .wave span:nth-child(2) { height: 34px; }
+    .wave span:nth-child(3) { height: 44px; }
+    .wave span:nth-child(4) { height: 28px; }
+    .wave span:nth-child(5) { height: 38px; }
+    .wave span:nth-child(6) { height: 26px; }
+    .wave span:nth-child(7) { height: 46px; }
+    .wave span:nth-child(8) { height: 32px; }
+    .wave span:nth-child(9) { height: 40px; }
+    .wave span:nth-child(10) { height: 24px; }
+    .wave span:nth-child(11) { height: 36px; }
+    .wave span:nth-child(12) { height: 30px; }
+
+    .listening-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+      color: var(--muted);
+    }
+
+    svg {
+      width: 42px;
+      height: 42px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 3.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .more svg {
+      width: 46px;
+    }
+
+    .small svg {
+      width: 34px;
+      height: 34px;
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="state">
+      <div class="state-title">Typing state</div>
+      <div class="bars">
+        <div class="row primary">
+          <div class="group ai">
+            <div class="icon-button active-soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M20 34 34 20"></path>
+                <path d="M16 38 12 42"></path>
+                <path d="M28 12 36 20"></path>
+                <path d="M10 12h.1M18 8h.1M40 30h.1M36 38h.1"></path>
+              </svg>
+            </div>
+            <div class="divider"></div>
+            <div class="icon-button" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M18 18 10 26l8 8"></path>
+                <path d="M12 26h18c7 0 10 4 10 10"></path>
+              </svg>
+            </div>
+          </div>
+
+          <div class="group edit">
+            <div class="icon-button" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M18 10h12"></path>
+                <path d="M16 14h16v6H16z"></path>
+                <path d="M14 18H9v32h30V18h-5"></path>
+                <path d="M15 28h18M15 36h18"></path>
+              </svg>
+            </div>
+            <div class="divider"></div>
+            <div class="icon-button soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M14 14h20v20H14z" stroke-dasharray="3.8 4.8"></path>
+                <path d="M20 20h8v8h-8z"></path>
+              </svg>
+            </div>
+            <div class="divider"></div>
+            <div class="icon-button soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M18 16h20v24H18z"></path>
+                <path d="M10 8h20v24H10z"></path>
+              </svg>
+            </div>
+          </div>
+
+          <div class="group more">
+            <div class="icon-button soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M14 24h.1M24 24h.1M34 24h.1"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="secondary">
+          <div class="side-button small" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="m15 12 9 9 9-9"></path>
+              <path d="m15 40 9-9 9 9"></path>
+            </svg>
+          </div>
+          <div class="suggestions">
+            <div class="suggestion">you</div>
+            <div class="suggestion">the</div>
+            <div class="suggestion">to</div>
+            <div class="suggestion">'s</div>
+            <div class="suggestion">it</div>
+            <div class="suggestion">and</div>
+            <div class="suggestion">that</div>
+          </div>
+          <div class="mic-button" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 7a7 7 0 0 0-7 7v10a7 7 0 0 0 14 0V14a7 7 0 0 0-7-7Z"></path>
+              <path d="M12 23a12 12 0 0 0 24 0"></path>
+              <path d="M24 35v8"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="state">
+      <div class="state-title">Listening state</div>
+      <div class="bars">
+        <div class="row primary">
+          <div class="group ai">
+            <div class="icon-button active-soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M20 34 34 20"></path>
+                <path d="M16 38 12 42"></path>
+                <path d="M28 12 36 20"></path>
+                <path d="M10 12h.1M18 8h.1M40 30h.1M36 38h.1"></path>
+              </svg>
+            </div>
+            <div class="divider"></div>
+            <div class="icon-button" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M18 18 10 26l8 8"></path>
+                <path d="M12 26h18c7 0 10 4 10 10"></path>
+              </svg>
+            </div>
+          </div>
+
+          <div class="group edit">
+            <div class="icon-button" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M18 10h12"></path>
+                <path d="M16 14h16v6H16z"></path>
+                <path d="M14 18H9v32h30V18h-5"></path>
+                <path d="M15 28h18M15 36h18"></path>
+              </svg>
+            </div>
+            <div class="divider"></div>
+            <div class="icon-button soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M14 14h20v20H14z" stroke-dasharray="3.8 4.8"></path>
+                <path d="M20 20h8v8h-8z"></path>
+              </svg>
+            </div>
+            <div class="divider"></div>
+            <div class="icon-button soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M18 16h20v24H18z"></path>
+                <path d="M10 8h20v24H10z"></path>
+              </svg>
+            </div>
+          </div>
+
+          <div class="group more">
+            <div class="icon-button soft" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <path d="M14 24h.1M24 24h.1M34 24h.1"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="secondary">
+          <div class="side-button small" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="m15 12 9 9 9-9"></path>
+              <path d="m15 40 9-9 9 9"></path>
+            </svg>
+          </div>
+          <div class="listening">
+            <div class="status">
+              <span class="tiny-mic" aria-hidden="true">
+                <svg viewBox="0 0 48 48">
+                  <path d="M24 8a6 6 0 0 0-6 6v10a6 6 0 0 0 12 0V14a6 6 0 0 0-6-6Z"></path>
+                  <path d="M13 23a11 11 0 0 0 22 0"></path>
+                </svg>
+              </span>
+              <span>Listening <span class="muted">&middot; 00:08</span></span>
+            </div>
+            <div class="wave" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="listening-actions">
+              <div class="icon-button small" aria-hidden="true">
+                <svg viewBox="0 0 48 48">
+                  <path d="M18 12v24"></path>
+                  <path d="M30 12v24"></path>
+                </svg>
+              </div>
+              <div class="icon-button small" aria-hidden="true">
+                <svg viewBox="0 0 48 48">
+                  <path d="M15 16h18"></path>
+                  <path d="M20 16v-5h8v5"></path>
+                  <path d="M18 20v24h12V20"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="mic-button active" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 7a7 7 0 0 0-7 7v10a7 7 0 0 0 14 0V14a7 7 0 0 0-7-7Z"></path>
+              <path d="M12 23a12 12 0 0 0 24 0"></path>
+              <path d="M24 35v8"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

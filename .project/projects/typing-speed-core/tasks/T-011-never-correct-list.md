@@ -1,7 +1,7 @@
 ---
 id: T-011
 name: Add never-correct list for selected words
-status: ready
+status: blocked
 created: 2026-02-25T19:38:38Z
 updated: 2026-02-25T19:38:38Z
 linear_issue_id:
@@ -12,6 +12,9 @@ conflicts_with: []
 parallel: true
 priority: medium
 estimate: S
+workstream: WS-2
+blocked_owner: ownkey-keyboard-team
+blocked_check_back: After dependencies are done: T-003
 ---
 
 # Task: Add never-correct list for selected words

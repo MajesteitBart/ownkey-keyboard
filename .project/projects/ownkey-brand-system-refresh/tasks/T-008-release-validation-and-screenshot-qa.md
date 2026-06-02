@@ -1,7 +1,7 @@
 ---
 id: T-008
 name: Release validation and screenshot QA
-status: completed-with-caveat
+status: review
 created: 2026-05-31T16:45:00Z
 updated: 2026-05-31T17:18:00Z
 linear_issue_id:
@@ -12,6 +12,7 @@ conflicts_with: ["release-build", "visual-qa"]
 parallel: false
 priority: high
 estimate: M
+workstream: WS-D
 ---
 
 # Task: Release validation and screenshot QA
