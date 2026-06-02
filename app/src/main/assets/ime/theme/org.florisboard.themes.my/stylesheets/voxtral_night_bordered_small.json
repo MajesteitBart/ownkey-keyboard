@@ -12,6 +12,7 @@
     "--toolbar-surface": "#141518",
     "--toolbar-action-surface": "#25272d",
     "--toolbar-action-surface-pressed": "#30333a",
+    "--toolbar-pill-border": "#34363c",
     "--popup-surface": "dynamic-dark-color(surfaceContainerLow)",
     "--focused-popup-surface": "dynamic-dark-color(surfaceContainerHigh)",
     "--drag-marker": "rgb(255,0,0)",
@@ -29,7 +30,7 @@
     "--shape-chip": "rounded-corner(50%, 50%, 50%, 50%)"
   },
   "window": {
-    "background": "var(--background)",
+    "background": "var(--toolbar-surface)",
     "foreground": "var(--on-background)"
   },
   "window[windowmode=`floating`]": {
@@ -147,8 +148,14 @@
     "foreground": "var(--on-surface)"
   },
   "smartbar-extended-actions-row": {
-    "background": "var(--toolbar-surface)",
-    "foreground": "var(--on-surface)"
+    "background": "var(--toolbar-action-surface)",
+    "border-color": "var(--toolbar-pill-border)",
+    "border-width": "1dp",
+    "foreground": "var(--on-surface)",
+    "margin": "4dp 12dp",
+    "padding": "0dp 6dp",
+    "shape": "var(--shape-chip)",
+    "shadow-elevation": "1dp"
   },
   "smartbar-extended-actions-toggle": {
     "background": "var(--toolbar-action-surface)",
@@ -162,14 +169,14 @@
     "foreground": "var(--on-surface)"
   },
   "smartbar-action-key": {
-    "background": "var(--toolbar-action-surface)",
+    "background": "transparent",
     "foreground": "var(--on-surface)",
-    "margin": "4dp",
-    "shape": "rounded-corner(18dp, 18dp, 18dp, 18dp)",
-    "shadow-elevation": "1dp"
+    "margin": "0dp",
+    "shape": "rounded-corner(0dp, 0dp, 0dp, 0dp)",
+    "shadow-elevation": "0dp"
   },
   "smartbar-action-key:pressed": {
-    "background": "var(--toolbar-action-surface-pressed)",
+    "background": "transparent",
     "foreground": "var(--on-surface)"
   },
   "smartbar-action-key:disabled": {

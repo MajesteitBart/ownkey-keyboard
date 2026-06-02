@@ -65,18 +65,21 @@ data class QuickActionArrangement(
     }
 
     companion object {
+        val OwnkeyDefaultTopBarActions = listOf(
+            QuickAction.InsertKey(TextKeyData.AI_REWRITE),
+            QuickAction.InsertKey(TextKeyData.UNDO),
+            QuickAction.InsertKey(TextKeyData.CLIPBOARD_SELECT_ALL),
+            QuickAction.InsertKey(TextKeyData.CLIPBOARD_COPY),
+            QuickAction.InsertKey(TextKeyData.IME_UI_MODE_CLIPBOARD),
+            QuickAction.InsertKey(TextKeyData.IME_UI_MODE_MEDIA),
+        )
+
         val Default = QuickActionArrangement(
             stickyAction = QuickAction.InsertKey(TextKeyData.VOICE_INPUT),
-            dynamicActions = listOf(
-                QuickAction.InsertKey(TextKeyData.AI_REWRITE),
-                QuickAction.InsertKey(TextKeyData.UNDO),
-                QuickAction.InsertKey(TextKeyData.IME_UI_MODE_CLIPBOARD),
-                QuickAction.InsertKey(TextKeyData.CLIPBOARD_SELECT_ALL),
-                QuickAction.InsertKey(TextKeyData.CLIPBOARD_COPY),
+            dynamicActions = OwnkeyDefaultTopBarActions + listOf(
                 QuickAction.InsertKey(TextKeyData.SETTINGS),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_COMPACT_LAYOUT),
                 QuickAction.InsertKey(TextKeyData.REDO),
-                QuickAction.InsertKey(TextKeyData.IME_UI_MODE_MEDIA),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_FLOATING_WINDOW),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_AUTOCORRECT),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_INCOGNITO_MODE),

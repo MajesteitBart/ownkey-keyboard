@@ -941,6 +941,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                         dynamicActions = listOf(QuickAction.InsertKey(TextKeyData.AI_REWRITE)).plus(newArrangement.dynamicActions)
                     )
                 }
+                val preferredTopBarActions = QuickActionArrangement.OwnkeyDefaultTopBarActions
+                newArrangement = newArrangement.copy(
+                    dynamicActions = preferredTopBarActions
+                        .filter { it in newArrangement.dynamicActions }
+                        .plus(newArrangement.dynamicActions.filterNot { it in preferredTopBarActions })
+                )
                 val json = QuickActionJsonConfig.encodeToString(newArrangement.distinct())
                 entry.transform(rawValue = json)
             }

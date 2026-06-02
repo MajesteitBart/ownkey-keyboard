@@ -75,7 +75,7 @@ enum class QuickActionBarType {
     EDITOR_TILE;
 }
 
-internal const val QuickActionButtonAspectRatio = 1.35f
+internal const val QuickActionButtonAspectRatio = 1.1f
 
 @Composable
 fun QuickActionButton(
