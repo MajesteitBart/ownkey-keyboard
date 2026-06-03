@@ -129,6 +129,7 @@ fun Smartbar() {
             }
 
             ExtendedActionsPlacement.OVERLAY_APP_UI -> {
+                val secondaryActionRowHeight = FlorisImeSizing.keyboardRowBaseHeight
                 SnyggBox(FlorisImeUi.Smartbar.elementName,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -138,8 +139,8 @@ fun Smartbar() {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(FlorisImeSizing.smartbarHeight * 2)
-                            .absoluteOffset(y = -FlorisImeSizing.smartbarHeight),
+                            .height(FlorisImeSizing.smartbarHeight + secondaryActionRowHeight)
+                            .absoluteOffset(y = -secondaryActionRowHeight),
                         contentAlignment = Alignment.BottomStart,
                     ) {
                         SmartbarSecondaryRow()
@@ -446,7 +447,7 @@ private fun SmartbarSecondaryRow(modifier: Modifier = Modifier) {
             FlorisImeUi.SmartbarExtendedActionsRow.elementName,
             modifier = modifier
                 .fillMaxWidth()
-                .height(FlorisImeSizing.smartbarHeight)
+                .height(FlorisImeSizing.keyboardRowBaseHeight)
                 .then(if (overlayBackground.isUnspecified) Modifier else Modifier.background(overlayBackground)),
         )
     }

@@ -142,6 +142,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     FlorisImeUi.SmartbarActionKey.elementName {
         background = rgbaColor(0, 0, 0, 0f)
         foreground = rgbaColor(220, 220, 220)
+        fontSize = fontSize(22.sp)
         shape = `var`("--shape")
     }
     FlorisImeUi.SmartbarActionKey.elementName(selector = SnyggSelector.DISABLED) {
