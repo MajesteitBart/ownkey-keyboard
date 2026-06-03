@@ -22,12 +22,10 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,11 +33,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,8 +41,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.isUnspecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
@@ -79,7 +70,6 @@ import org.florisboard.lib.snygg.ui.SnyggColumn
 import org.florisboard.lib.snygg.ui.SnyggIcon
 import org.florisboard.lib.snygg.ui.SnyggIconButton
 import org.florisboard.lib.snygg.ui.SnyggRow
-import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 
 const val AnimationDuration = OwnkeyBrand.MotionStandardMillis
 
@@ -114,7 +104,9 @@ fun Smartbar() {
         exit = VerticalExitTransition,
     ) {
         when (extendedActionsPlacement) {
-            ExtendedActionsPlacement.ABOVE_CANDIDATES -> {
+            // Keep the legacy overlay preference from drawing expanded actions over the host app.
+            ExtendedActionsPlacement.ABOVE_CANDIDATES,
+            ExtendedActionsPlacement.OVERLAY_APP_UI -> {
                 SnyggColumn(FlorisImeUi.Smartbar.elementName) {
                     SmartbarSecondaryRow()
                     SmartbarMainRow(showDictationControls = showDictationControls)
@@ -125,27 +117,6 @@ fun Smartbar() {
                 SnyggColumn(FlorisImeUi.Smartbar.elementName) {
                     SmartbarMainRow(showDictationControls = showDictationControls)
                     SmartbarSecondaryRow()
-                }
-            }
-
-            ExtendedActionsPlacement.OVERLAY_APP_UI -> {
-                val secondaryActionRowHeight = FlorisImeSizing.keyboardRowBaseHeight
-                SnyggBox(FlorisImeUi.Smartbar.elementName,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(FlorisImeSizing.smartbarHeight),
-                    allowClip = false,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(FlorisImeSizing.smartbarHeight + secondaryActionRowHeight)
-                            .absoluteOffset(y = -secondaryActionRowHeight),
-                        contentAlignment = Alignment.BottomStart,
-                    ) {
-                        SmartbarSecondaryRow()
-                    }
-                    SmartbarMainRow(showDictationControls = showDictationControls)
                 }
             }
         }
@@ -201,9 +172,9 @@ private fun SmartbarMainRow(
                 if (it) 180f else 0f
             }
             val arrowIcon = if (flipToggles) {
-                Icons.AutoMirrored.Default.KeyboardArrowLeft
+                ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_left)
             } else {
-                Icons.AutoMirrored.Default.KeyboardArrowRight
+                ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_right)
             }
             val incognitoIcon = ImageVector.vectorResource(id = R.drawable.ic_incognito)
             val incognitoDisplayMode = prefs.keyboard.incognitoDisplayMode.collectAsState()
@@ -283,9 +254,9 @@ private fun SmartbarMainRow(
             SnyggIcon(
                 FlorisImeUi.SmartbarExtendedActionsToggle.elementName,
                 imageVector = if (extendedActionsExpanded) {
-                    Icons.Default.KeyboardArrowDown
+                    ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_down)
                 } else {
-                    Icons.Default.KeyboardArrowUp
+                    ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_up)
                 },
             )
         }
@@ -422,33 +393,19 @@ private fun extendedActionRowEdgePadding(
 private fun SmartbarSecondaryRow(modifier: Modifier = Modifier) {
     val prefs by FlorisPreferenceStore
     val smartbarLayout by prefs.smartbar.layout.collectAsState()
-    val windowStyle = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName)
     val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
-    val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
 
     // The action pill (rounded background, side margins, border) is drawn by QuickActionsRow
     // via the `smartbar-extended-actions-row` Snygg element. We must NOT paint a full-width
     // backdrop in the same color here, or it masks the pill's rounded corners and margins,
-    // making it read as a flat edge-to-edge bar. Only the overlay placement needs an opaque
-    // backdrop so the row stays readable over the host app's UI; use the keyboard window
-    // surface for that (darker than the pill), so the pill still stands out.
-    val overlayBackground = if (extendedActionsPlacement == ExtendedActionsPlacement.OVERLAY_APP_UI) {
-        windowStyle.background(default = Color.Black)
-    } else {
-        Color.Unspecified
-    }
+    // making it read as a flat edge-to-edge bar.
 
-    AnimatedVisibility(
-        visible = smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded,
-        enter = VerticalEnterTransition,
-        exit = VerticalExitTransition,
-    ) {
+    if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded) {
         QuickActionsRow(
             FlorisImeUi.SmartbarExtendedActionsRow.elementName,
             modifier = modifier
                 .fillMaxWidth()
-                .height(FlorisImeSizing.keyboardRowBaseHeight)
-                .then(if (overlayBackground.isUnspecified) Modifier else Modifier.background(overlayBackground)),
+                .height(FlorisImeSizing.smartbarSecondaryActionRowHeight),
         )
     }
 }

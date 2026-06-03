@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
-import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsChipMargin
 import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboard
@@ -42,6 +41,8 @@ import dev.patrickgold.jetpref.datastore.model.collectAsState
 
 private val LocalKeyboardRowBaseHeight = compositionLocalOf { 65.dp }
 private val LocalSmartbarHeight = compositionLocalOf { 40.dp }
+
+private val SmartbarSecondaryActionRowExtraHeight = 0.dp
 
 object FlorisImeSizing {
     val keyboardRowBaseHeight: Dp
@@ -53,6 +54,11 @@ object FlorisImeSizing {
         @Composable
         @ReadOnlyComposable
         get() = LocalSmartbarHeight.current
+
+    val smartbarSecondaryActionRowHeight: Dp
+        @Composable
+        @ReadOnlyComposable
+        get() = keyboardRowBaseHeight + SmartbarSecondaryActionRowExtraHeight
 
     @Composable
     fun keyboardUiHeight(): Dp {
@@ -84,12 +90,10 @@ object FlorisImeSizing {
         val smartbarEnabled by prefs.smartbar.enabled.collectAsState()
         val smartbarLayout by prefs.smartbar.layout.collectAsState()
         val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
-        val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
         return remember {
             derivedStateOf {
                 if (smartbarEnabled) {
-                    if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded &&
-                        extendedActionsPlacement != ExtendedActionsPlacement.OVERLAY_APP_UI) {
+                    if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded) {
                         2
                     } else {
                         1
@@ -107,12 +111,10 @@ object FlorisImeSizing {
         val smartbarEnabled by prefs.smartbar.enabled.collectAsState()
         val smartbarLayout by prefs.smartbar.layout.collectAsState()
         val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
-        val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
         return if (!smartbarEnabled) {
             0.dp
-        } else if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded &&
-            extendedActionsPlacement != ExtendedActionsPlacement.OVERLAY_APP_UI) {
-            smartbarHeight + keyboardRowBaseHeight
+        } else if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded) {
+            smartbarHeight + smartbarSecondaryActionRowHeight
         } else {
             smartbarHeight
         }

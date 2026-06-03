@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -50,8 +51,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
@@ -76,6 +80,10 @@ enum class QuickActionBarType {
 }
 
 internal const val QuickActionButtonAspectRatio = 1.1f
+internal const val SecondaryQuickActionButtonAspectRatio = 0.72f
+
+internal val QuickActionButtonIconSize = 24.dp
+internal val SecondaryQuickActionButtonIconSize = 30.dp
 
 @Composable
 fun QuickActionButton(
@@ -83,10 +91,14 @@ fun QuickActionButton(
     evaluator: ComputingEvaluator,
     modifier: Modifier = Modifier,
     type: QuickActionBarType = QuickActionBarType.INTERACTIVE_BUTTON,
+    aspectRatio: Float = QuickActionButtonAspectRatio,
+    fillContainer: Boolean = false,
+    iconSize: Dp = QuickActionButtonIconSize,
 ) {
     val context = LocalContext.current
     val inputFeedbackController = LocalInputFeedbackController.current
     val interactionSource = remember { MutableInteractionSource() }
+    val localIndication = LocalIndication.current
     val isPressed by interactionSource.collectIsPressedAsState()
     val isEnabled = type == QuickActionBarType.EDITOR_TILE || evaluator.evaluateEnabled(action.keyData())
     val elementName = when (type) {
@@ -117,6 +129,73 @@ fun QuickActionButton(
         }
     }
 
+    fun Modifier.quickActionInput(): Modifier {
+        return indication(interactionSource, localIndication)
+            .pointerInput(action, isEnabled) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    if (isEnabled && type != QuickActionBarType.EDITOR_TILE) {
+                        val press = PressInteraction.Press(down.position)
+                        inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                        interactionSource.tryEmit(press)
+                        action.onPointerDown(context)
+                        val up = waitForUpOrCancellation()
+                        if (up != null) {
+                            up.consume()
+                            interactionSource.tryEmit(PressInteraction.Release(press))
+                            action.onPointerUp(context)
+                        } else {
+                            interactionSource.tryEmit(PressInteraction.Cancel(press))
+                            action.onPointerCancel(context)
+                        }
+                    }
+                }
+            }
+    }
+
+    if (type == QuickActionBarType.INTERACTIVE_BUTTON && fillContainer) {
+        PlainTooltip(action.computeTooltip(evaluator), enabled = true) {
+            Box(
+                modifier = modifier.quickActionInput(),
+                contentAlignment = Alignment.Center,
+            ) {
+                when (action) {
+                    is QuickAction.InsertKey -> {
+                        val (imageVector, label) = remember(action, evaluator) {
+                            evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
+                        }
+                        if (imageVector != null) {
+                            Icon(
+                                modifier = Modifier.requiredSize(iconSize),
+                                imageVector = imageVector,
+                                contentDescription = null,
+                                tint = OwnkeyBrand.Bone,
+                            )
+                        } else if (label != null) {
+                            SnyggText(
+                                elementName = "$elementName-text",
+                                attributes = attributes,
+                                selector = selector,
+                                text = label,
+                            )
+                        }
+                    }
+
+                    is QuickAction.InsertText -> {
+                        SnyggText(
+                            elementName = "$elementName-text",
+                            attributes = attributes,
+                            selector = selector,
+                            text = action.data.firstOrNull().toString().ifBlank { "?" },
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
     PlainTooltip(action.computeTooltip(evaluator), enabled = type == QuickActionBarType.INTERACTIVE_BUTTON) {
         SnyggBox(
             elementName = elementName,
@@ -127,31 +206,12 @@ fun QuickActionButton(
                 Modifier
                     .fillMaxWidth()
                     .height(108.dp)
+            } else if (fillContainer) {
+                Modifier
             } else {
-                Modifier.aspectRatio(QuickActionButtonAspectRatio)
+                Modifier.aspectRatio(aspectRatio)
             })
-                .indication(interactionSource, LocalIndication.current)
-                .pointerInput(action, isEnabled) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        down.consume()
-                        if (isEnabled && type != QuickActionBarType.EDITOR_TILE) {
-                            val press = PressInteraction.Press(down.position)
-                            inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
-                            interactionSource.tryEmit(press)
-                            action.onPointerDown(context)
-                            val up = waitForUpOrCancellation()
-                            if (up != null) {
-                                up.consume()
-                                interactionSource.tryEmit(PressInteraction.Release(press))
-                                action.onPointerUp(context)
-                            } else {
-                                interactionSource.tryEmit(PressInteraction.Cancel(press))
-                                action.onPointerCancel(context)
-                            }
-                        }
-                    }
-            },
+                .quickActionInput(),
             contentAlignment = Alignment.Center,
         ) {
             val foreground: @Composable () -> Unit = {
@@ -161,12 +221,21 @@ fun QuickActionButton(
                             evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
                         }
                         if (imageVector != null) {
-                            SnyggBox(
-                                elementName = "$elementName-icon",
-                                attributes = attributes,
-                                selector = selector,
-                            ) {
-                                SnyggIcon(imageVector = imageVector)
+                            if (type == QuickActionBarType.INTERACTIVE_BUTTON) {
+                                Icon(
+                                    modifier = Modifier.requiredSize(iconSize),
+                                    imageVector = imageVector,
+                                    contentDescription = null,
+                                    tint = LocalContentColor.current,
+                                )
+                            } else {
+                                SnyggBox(
+                                    elementName = "$elementName-icon",
+                                    attributes = attributes,
+                                    selector = selector,
+                                ) {
+                                    SnyggIcon(imageVector = imageVector)
+                                }
                             }
                         } else if (label != null) {
                             SnyggText(

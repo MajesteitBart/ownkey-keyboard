@@ -3,7 +3,7 @@ name: WS-C Keyboard Surface Polish
 owner: ownkey-keyboard-team
 status: active
 created: 2026-05-31T16:45:00Z
-updated: 2026-06-03T09:49:26Z
+updated: 2026-06-03T11:24:05Z
 ---
 
 # Workstream: WS-C Keyboard Surface Polish

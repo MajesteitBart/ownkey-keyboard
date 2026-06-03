@@ -19,32 +19,17 @@ package dev.patrickgold.florisboard.ime.keyboard
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.automirrored.outlined.Assignment
-import androidx.compose.material.icons.automirrored.outlined.Backspace
-import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.ContentPasteGo
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.FontDownload
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardCapslock
 import androidx.compose.material.icons.filled.KeyboardHide
-import androidx.compose.material.icons.filled.KeyboardVoice
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -131,6 +116,15 @@ private fun computeLanguageDisplayName(locale: FlorisLocale, displayLanguageName
     return displayName
 }
 
+private fun String.withoutTrailingRegion(): String {
+    val regionStart = indexOf(" (")
+    return if (regionStart > 0 && endsWith(")")) substring(0, regionStart) else this
+}
+
+private fun ComputingEvaluator.tablerIcon(id: Int): ImageVector? {
+    return context()?.vectorResource(id = id)
+}
+
 fun ComputingEvaluator.computeLabel(data: KeyData): String? {
     val evaluator = this
     return if (data.type == KeyType.CHARACTER && data.code != KeyCode.SPACE && data.code != KeyCode.CJK_SPACE
@@ -144,7 +138,7 @@ fun ComputingEvaluator.computeLabel(data: KeyData): String? {
             KeyCode.SPACE, KeyCode.CJK_SPACE -> {
                 when (evaluator.keyboard.mode) {
                     KeyboardMode.CHARACTERS -> evaluator.subtype.primaryLocale.let { locale ->
-                        computeLanguageDisplayName(locale, evaluator.displayLanguageNamesIn())
+                        computeLanguageDisplayName(locale, evaluator.displayLanguageNamesIn()).withoutTrailingRegion()
                     }
                     else -> null
                 }
@@ -184,19 +178,19 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
     val evaluator = this
     return when (data.code) {
         KeyCode.ARROW_LEFT -> {
-            Icons.AutoMirrored.Filled.KeyboardArrowLeft
+            tablerIcon(R.drawable.ic_tabler_chevron_left)
         }
         KeyCode.ARROW_RIGHT -> {
-            Icons.AutoMirrored.Filled.KeyboardArrowRight
+            tablerIcon(R.drawable.ic_tabler_chevron_right)
         }
         KeyCode.ARROW_UP -> {
-            Icons.Default.KeyboardArrowUp
+            tablerIcon(R.drawable.ic_tabler_chevron_up)
         }
         KeyCode.ARROW_DOWN -> {
-            Icons.Default.KeyboardArrowDown
+            tablerIcon(R.drawable.ic_tabler_chevron_down)
         }
         KeyCode.CLIPBOARD_COPY -> {
-            Icons.Default.ContentCopy
+            tablerIcon(R.drawable.ic_tabler_copy)
         }
         KeyCode.CLIPBOARD_CUT -> {
             Icons.Default.ContentCut
@@ -205,7 +199,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             Icons.Default.ContentPasteGo
         }
         KeyCode.CLIPBOARD_SELECT_ALL -> {
-            Icons.Default.SelectAll
+            tablerIcon(R.drawable.ic_tabler_select_all)
         }
         KeyCode.CLIPBOARD_CLEAR_PRIMARY_CLIP -> {
             Icons.Default.DeleteSweep
@@ -228,29 +222,29 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             context()?.vectorResource(id = R.drawable.ic_resize)
         }
         KeyCode.VOICE_INPUT -> {
-            Icons.Default.KeyboardVoice
+            tablerIcon(R.drawable.ic_tabler_microphone)
         }
         KeyCode.IME_HIDE_UI -> {
             Icons.Default.KeyboardHide
         }
         KeyCode.DELETE -> {
-            Icons.AutoMirrored.Outlined.Backspace
+            tablerIcon(R.drawable.ic_tabler_backspace)
         }
         KeyCode.ENTER -> {
             val imeOptions = evaluator.editorInfo.imeOptions
             val inputAttributes = evaluator.editorInfo.inputAttributes
             if (imeOptions.flagNoEnterAction || inputAttributes.flagTextMultiLine) {
-                Icons.AutoMirrored.Filled.KeyboardReturn
+                tablerIcon(R.drawable.ic_tabler_corner_down_left)
             } else {
                 when (imeOptions.action) {
                     ImeOptions.Action.DONE -> Icons.Default.Done
                     ImeOptions.Action.GO -> Icons.AutoMirrored.Filled.ArrowRightAlt
                     ImeOptions.Action.NEXT -> Icons.AutoMirrored.Filled.ArrowRightAlt
-                    ImeOptions.Action.NONE -> Icons.AutoMirrored.Filled.KeyboardReturn
+                    ImeOptions.Action.NONE -> tablerIcon(R.drawable.ic_tabler_corner_down_left)
                     ImeOptions.Action.PREVIOUS -> Icons.AutoMirrored.Filled.ArrowRightAlt
-                    ImeOptions.Action.SEARCH -> Icons.Default.Search
+                    ImeOptions.Action.SEARCH -> tablerIcon(R.drawable.ic_tabler_search)
                     ImeOptions.Action.SEND -> Icons.AutoMirrored.Filled.Send
-                    ImeOptions.Action.UNSPECIFIED -> Icons.AutoMirrored.Filled.KeyboardReturn
+                    ImeOptions.Action.UNSPECIFIED -> tablerIcon(R.drawable.ic_tabler_corner_down_left)
                 }
             }
         }
@@ -258,13 +252,13 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             Icons.AutoMirrored.Default.ForwardDelete
         }
         KeyCode.IME_UI_MODE_MEDIA -> {
-            Icons.Default.SentimentSatisfiedAlt
+            tablerIcon(R.drawable.ic_tabler_mood_smile)
         }
         KeyCode.IME_UI_MODE_CLIPBOARD -> {
-            Icons.AutoMirrored.Outlined.Assignment
+            tablerIcon(R.drawable.ic_tabler_clipboard)
         }
         KeyCode.LANGUAGE_SWITCH -> {
-            Icons.Default.Language
+            tablerIcon(R.drawable.ic_tabler_world)
         }
         KeyCode.SETTINGS -> {
             Icons.Default.Settings
@@ -272,7 +266,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
                 true -> Icons.Default.KeyboardCapslock
-                else -> Icons.Default.KeyboardArrowUp
+                else -> tablerIcon(R.drawable.ic_tabler_arrow_big_up)
             }
         }
         KeyCode.SPACE, KeyCode.CJK_SPACE -> {
@@ -287,13 +281,13 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             }
         }
         KeyCode.UNDO -> {
-            Icons.AutoMirrored.Filled.Undo
+            tablerIcon(R.drawable.ic_tabler_arrow_back_up)
         }
         KeyCode.REDO -> {
-            Icons.AutoMirrored.Filled.Redo
+            tablerIcon(R.drawable.ic_tabler_arrow_forward_up)
         }
         KeyCode.TOGGLE_ACTIONS_OVERFLOW -> {
-            Icons.Default.MoreHoriz
+            tablerIcon(R.drawable.ic_tabler_dots)
         }
         KeyCode.TOGGLE_INCOGNITO_MODE -> {
             if (evaluator.state.isIncognitoMode) {
@@ -306,7 +300,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             Icons.Default.FontDownload
         }
         KeyCode.AI_REWRITE -> {
-            Icons.Default.AutoFixHigh
+            tablerIcon(R.drawable.ic_tabler_sparkles)
         }
         KeyCode.KANA_SWITCHER -> {
             if (evaluator.state.isKanaKata) {
