@@ -76,6 +76,9 @@ data class QuickActionArrangement(
 
         val Default = QuickActionArrangement(
             stickyAction = QuickAction.InsertKey(TextKeyData.VOICE_INPUT),
+            // Keep overflow-capable actions after the six core pill actions. The row renders
+            // from the start of dynamicActions, while the overflow panel reads hidden-by-width
+            // actions from the end of dynamicActions.
             dynamicActions = OwnkeyDefaultTopBarActions + listOf(
                 QuickAction.InsertKey(TextKeyData.SETTINGS),
                 QuickAction.InsertKey(TextKeyData.TOGGLE_COMPACT_LAYOUT),
@@ -95,8 +98,7 @@ data class QuickActionArrangement(
                 QuickAction.InsertKey(TextKeyData.FORWARD_DELETE),
                 QuickAction.InsertKey(TextKeyData.IME_HIDE_UI),
             ),
-            hiddenActions = listOf(
-            ),
+            hiddenActions = listOf(),
         )
     }
 
