@@ -1,11 +1,11 @@
 ---
 name: Ownkey Brand System Refresh
-status: done
+status: active
 lead: ownkey-keyboard-team
 created: 2026-05-31T16:45:00Z
-updated: 2026-05-31T17:05:00Z
+updated: 2026-06-03T09:49:26Z
 linear_project_id:
-risk_level: low
+risk_level: medium
 spec_status_at_plan_time: complete
 ---
 
@@ -21,14 +21,22 @@ spec_status_at_plan_time: complete
 ## Workstream Design
 - **WS-A Brand Assets and Tokens**: stabilize source assets, color tokens, type choices, shape scale, elevation, and motion timings.
 - **WS-B App and Onboarding Shell**: apply Ownkey identity to setup, settings, about, and transcription configuration screens.
-- **WS-C Keyboard Surface Polish**: style smartbar, dictation panel, toast/snackbar overlay, key states, and brand action affordances inside the IME.
+- **WS-C Keyboard Surface Polish**: style smartbar, secondary action bar, dictation panel, toast/snackbar overlay, key states, and brand action affordances inside the IME.
 - **WS-D Validation and Store Readiness**: screenshot review, release validation, Fastlane asset alignment, and rollout notes.
+
+## Secondary Action Bar Redesign Correction
+- Source of truth: the screenshot/current secondary action bar is the smaller one, with a tighter pill, smaller vertical hit area, and cramped icons.
+- Target: the design/reference secondary action bar is taller and more substantial. Its buttons have more vertical room, the pill reads as a proper secondary action bar, and controls are easier to hit.
+- Constraint: the secondary action bar must live inside the keyboard reserved area and must not overlap the host app/page UI.
+- Do not solve this by shrinking the bar or moving it into an overlay. Solve it by reserving the right IME height and making the bar visually and interactively closer to the design/reference.
+- Treat the candidate row, down button, mic button, and secondary action bar as one vertical composition so the keyboard remains coherent and does not hide page content.
 
 ## Milestone Strategy
 1. M1: Commit references and define implementation tokens from the brand book.
 2. M2: Refresh app/onboarding surfaces and verify navigation/readability.
 3. M3: Refresh IME surfaces, including dictation motion and toast placement.
 4. M4: Regenerate store-facing assets and complete visual QA on device/emulator.
+5. M5: Correct the secondary action bar redesign against the reference before release handoff.
 
 ## Rollout Strategy
 - Land assets and tokens first so implementation changes stay small and reviewable.
@@ -42,6 +50,7 @@ spec_status_at_plan_time: complete
 - `git diff --check`
 - SVG/XML/resource parsing checks after drawable generation.
 - Manual screenshots: onboarding, settings home, Voxtral settings, keyboard in chat, keyboard in browser/search field, dictation start/end, toast in IME, toast in settings.
+- Secondary action bar screenshot comparison against the design/reference: current bar must be larger and easier to hit than the cramped screenshot bar, remain inside reserved IME space, and leave host app/page content unobscured.
 
 ## Rollback Strategy
 - Brand assets and Delano plan are inert and can remain even if implementation rolls back.

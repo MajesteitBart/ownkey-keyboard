@@ -2,7 +2,7 @@
 name: Ownkey Brand System Refresh Decisions
 status: active
 created: 2026-05-31T16:45:00Z
-updated: 2026-06-02T00:55:00+02:00
+updated: 2026-06-03T09:49:26Z
 ---
 
 # Decisions: Ownkey Brand System Refresh
@@ -15,6 +15,7 @@ updated: 2026-06-02T00:55:00+02:00
 - Use `AI` as the user-facing settings umbrella for dictation and rewrite. Do not use `Voxtral` as the top-level settings section now that rewrite is also present.
 - Use Ownkey signal orange `#F56C1E` for voice, AI, active recording, primary keyboard actions, and brand signal moments.
 - Keep Play Store copy focused on BYOK, provider control, dictation, rewrite, encrypted local key storage, open source, and clear privacy boundaries.
+- For the secondary action bar redesign, the screenshot/current bar is the smaller cramped one and the design/reference bar is the taller usable target. The fix must make the bar larger/more substantial like the design while keeping it inside reserved IME space so it does not overlap host app/page UI.
 
 ## Pending
 - Decide whether to bundle custom fonts or map the brand book to existing Android/system typography.

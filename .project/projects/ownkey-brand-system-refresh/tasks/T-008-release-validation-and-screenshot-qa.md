@@ -7,7 +7,7 @@ updated: 2026-05-31T17:18:00Z
 linear_issue_id:
 github_issue:
 github_pr:
-depends_on: ["T-003", "T-004", "T-005", "T-006"]
+depends_on: ["T-003", "T-004", "T-005", "T-006", "T-009"]
 conflicts_with: ["release-build", "visual-qa"]
 parallel: false
 priority: high
@@ -25,6 +25,7 @@ Run build validation and visual QA before shipping a refreshed APK.
 - [x] `:app:assembleRelease` passes.
 - [x] `git diff --check` passes.
 - [ ] Screenshot review covers setup, settings, keyboard, dictation, and toast states.
+- [ ] Screenshot review confirms the secondary action bar is larger like the design/reference, not the smaller cramped screenshot/current bar, and does not overlap host app/page UI.
 - [x] APK/package ID and SHA-256 are reported in the handoff.
 
 ## Technical Notes
