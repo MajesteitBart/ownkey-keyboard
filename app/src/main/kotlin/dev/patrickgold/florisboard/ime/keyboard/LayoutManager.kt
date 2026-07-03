@@ -23,6 +23,7 @@ import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.popup.PopupMapping
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
+import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKey
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
@@ -263,6 +264,8 @@ class LayoutManager(context: Context) {
             }
         }
 
+        applySplitSpaceDuplication(computedArrangement, keyboardMode)
+
         // Add hints to keys
         if (keyboardMode == KeyboardMode.CHARACTERS && computedArrangement.isNotEmpty()) {
             val symbolsComputedArrangement = computeKeyboardAsync(KeyboardMode.SYMBOLS, subtype).await().arrangement
@@ -296,6 +299,30 @@ class LayoutManager(context: Context) {
                 flogWarning(LogTopic.LAYOUT_MANAGER) { it.toString() }
             }.getOrNull()?.mapping
         )
+    }
+
+    /**
+     * When the split layout is active, duplicates the space key of any row containing one, so that both the left
+     * and the right half of the split keyboard get their own space key. The split layout pass in
+     * [TextKeyboard.layout] places the middle gap between the two duplicated space keys.
+     */
+    private fun applySplitSpaceDuplication(computedArrangement: ArrayList<Array<TextKey>>, keyboardMode: KeyboardMode) {
+        val splitMode = prefs.keyboard.splitLayoutMode.get()
+        if (!SplitLayout.isActive(splitMode, appContext.resources.configuration, keyboardMode)) return
+        for ((index, row) in computedArrangement.withIndex()) {
+            val spaceIndex = row.indexOfFirst { key ->
+                val data = key.data.compute(DefaultComputingEvaluator)
+                data != null && (data.code == KeyCode.SPACE || data.code == KeyCode.CJK_SPACE)
+            }
+            if (spaceIndex >= 0) {
+                val newRow = buildList(row.size + 1) {
+                    addAll(row.take(spaceIndex + 1))
+                    add(TextKey(row[spaceIndex].data))
+                    addAll(row.drop(spaceIndex + 1))
+                }
+                computedArrangement[index] = newRow.toTypedArray()
+            }
+        }
     }
 
     private fun addRowHints(main: Array<TextKey>, hint: Array<TextKey>, hintType: KeyType) {

@@ -460,6 +460,9 @@
     <string name="pref__keyboard__font_size_multiplier__label" comment="Preference title">Font size multiplier</string>
     <string name="pref__keyboard__group_layout__label" comment="Preference group title">Layout</string>
     <string name="pref__keyboard__landscape_input_ui_mode__label" comment="Preference value">Landscape fullscreen input</string>
+    <string name="pref__keyboard__split_layout_mode__label" comment="Preference title">Split keyboard</string>
+    <string name="pref__keyboard__split_layout_mode__summary" comment="Preference summary">Split the keyboard into a left and right half on large screens</string>
+    <string name="pref__keyboard__split_layout_gap_percent__label" comment="Preference title">Split gap width</string>
     <string name="pref__keyboard__key_spacing__label" comment="Preference title">Key spacing factor</string>
     <string name="pref__keyboard__group_keypress__label" comment="Preference group title">Key press</string>
     <string name="pref__keyboard__popup_enabled__label" comment="Preference title">Popup Visibility</string>
@@ -494,6 +497,12 @@
     <string name="pref__suggestion__api30_inline_suggestions_enabled__label" comment="Preference title">System autofill suggestions</string>
     <string name="pref__suggestion__api30_inline_suggestions_enabled__summary" comment="Preference summary">Show inline suggestions provided by autofill services</string>
     <string name="pref__suggestion__incognito_mode__label" comment="Label of Incognito mode preference in Typing">Incognito mode</string>
+    <string name="pref__suggestion__personalized_learning__label" comment="Preference title">Personalized suggestions</string>
+    <string name="pref__suggestion__personalized_learning__summary" comment="Preference summary">Learn from your typing on this device to predict your next words and remember personal data such as e-mail addresses. Data never leaves your device</string>
+    <string name="pref__suggestion__clear_personalized_data__label" comment="Preference title">Clear learned data</string>
+    <string name="pref__suggestion__clear_personalized_data__summary" comment="Preference summary">Delete all learned word predictions and remembered personal data</string>
+    <string name="pref__suggestion__clear_personalized_data__confirm_message" comment="Dialog message">This deletes all learned word predictions and remembered personal data (such as e-mail addresses) from this device. This action cannot be undone. Continue?</string>
+    <string name="pref__suggestion__clear_personalized_data__done" comment="Toast message">Learned data cleared</string>
     <string name="pref__correction__title" comment="Preference group title">Corrections</string>
     <string name="pref__correction__auto_capitalization__label" comment="Preference title">Auto-capitalization</string>
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Capitalize words based on the current input context</string>
@@ -502,7 +511,7 @@
     <string name="pref__correction__app_specific_autocorrect_chat_aggressiveness__label" comment="Preference title">Chat app aggressiveness</string>
     <string name="pref__correction__app_specific_autocorrect_email_aggressiveness__label" comment="Preference title">Email app aggressiveness</string>
     <string name="pref__correction__auto_space_punctuation__label" comment="Preference title">Auto-space after punctuation</string>
-    <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automatically insert a space after a punctuation</string>
+    <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automatically insert a space when starting a new word after punctuation. Skips URLs, e-mail addresses, numbers and abbreviations</string>
     <string name="pref__correction__remember_caps_lock_state__label" comment="Preference title">Remember caps lock state</string>
     <string name="pref__correction__remember_caps_lock_state__summary" comment="Preference summary">Caps lock will stay on when moving to another text field</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Double-space period</string>
@@ -1114,6 +1123,11 @@
     <string name="enum__landscape_input_ui_mode__never_show" comment="Enum value label">Never show</string>
     <string name="enum__landscape_input_ui_mode__always_show" comment="Enum value label">Always show</string>
     <string name="enum__landscape_input_ui_mode__dynamically_show" comment="Enum value label">Dynamically show</string>
+
+    <string name="enum__split_layout_mode__never" comment="Enum value label">Never</string>
+    <string name="enum__split_layout_mode__auto" comment="Enum value label">Automatic</string>
+    <string name="enum__split_layout_mode__auto__description" comment="Enum value description">Splits the keyboard on large screens (unfolded foldables and tablets)</string>
+    <string name="enum__split_layout_mode__always" comment="Enum value label">Always</string>
 
     <string name="enum__shape_corner__top_start" comment="Enum value label">Top start</string>
     <string name="enum__shape_corner__top_end" comment="Enum value label">Top end</string>

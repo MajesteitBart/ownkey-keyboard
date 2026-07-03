@@ -359,6 +359,7 @@ class FlorisImeService : LifecycleInputMethodService() {
         super.onConfigurationChanged(newConfig)
         systemLocalesFlow.value = newConfig.locales
         windowController.onConfigurationChanged(newConfig)
+        keyboardManager.onConfigurationChanged()
         themeManager.configurationChangeCounter.update { it + 1 }
     }
 

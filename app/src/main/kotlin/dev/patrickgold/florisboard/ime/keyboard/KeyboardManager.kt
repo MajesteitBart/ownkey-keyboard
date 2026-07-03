@@ -145,6 +145,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     keyboardCache.clear(KeyboardMode.CHARACTERS)
                 }
             }
+            prefs.keyboard.splitLayoutMode.asFlow().collectLatestIn(scope) {
+                updateActiveEvaluators {
+                    keyboardCache.clear()
+                }
+            }
             prefs.keyboard.hintedNumberRowEnabled.asFlow().collectLatestIn(scope) {
                 updateActiveEvaluators()
             }
@@ -218,6 +223,16 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             if (computedKeyboard.mode == KeyboardMode.CHARACTERS) {
                 lastCharactersEvaluator.value = computingEvaluator
             }
+        }
+    }
+
+    /**
+     * Must be called when the system configuration changes (fold/unfold, rotation, screen size change), as cached
+     * keyboard arrangements may depend on the available screen width (e.g. split layout space key duplication).
+     */
+    fun onConfigurationChanged() {
+        updateActiveEvaluators {
+            keyboardCache.clear()
         }
     }
 

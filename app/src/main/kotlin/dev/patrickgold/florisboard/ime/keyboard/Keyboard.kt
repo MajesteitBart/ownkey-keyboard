@@ -23,6 +23,15 @@ import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboard
 
 /**
+ * Describes an active split layout for the layout pass.
+ *
+ * @property gapWidth The width of the middle gap separating the left and right key groups, in pixels.
+ */
+data class SplitLayoutSpec(
+    val gapWidth: Float,
+)
+
+/**
  * Abstract class describing a computed keyboard. The exact implementation is dependent on the subclass and the
  * structure can vary quite much between different subclasses.
  */
@@ -59,6 +68,7 @@ abstract class Keyboard {
         keyboardHeight: Float,
         desiredKey: Key,
         extendTouchBoundariesDownwards: Boolean,
+        splitSpec: SplitLayoutSpec? = null,
     )
 }
 

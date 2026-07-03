@@ -23,6 +23,8 @@ import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
 import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutMode
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
@@ -104,6 +106,20 @@ fun KeyboardScreen() = FlorisScreen {
         )
 
         PreferenceGroup(title = stringRes(R.string.pref__keyboard__group_layout__label)) {
+            ListPreference(
+                prefs.keyboard.splitLayoutMode,
+                title = stringRes(R.string.pref__keyboard__split_layout_mode__label),
+                entries = enumDisplayEntriesOf(SplitLayoutMode::class),
+            )
+            DialogSliderPreference(
+                prefs.keyboard.splitLayoutGapPercent,
+                title = stringRes(R.string.pref__keyboard__split_layout_gap_percent__label),
+                valueLabel = { stringRes(R.string.unit__percent__symbol, "v" to it) },
+                min = SplitLayout.GapPercentMin,
+                max = SplitLayout.GapPercentMax,
+                stepIncrement = 1,
+                visibleIf = { prefs.keyboard.splitLayoutMode isNotEqualTo SplitLayoutMode.NEVER },
+            )
             ListPreference(
                 prefs.keyboard.landscapeInputUiMode,
                 title = stringRes(R.string.pref__keyboard__landscape_input_ui_mode__label),

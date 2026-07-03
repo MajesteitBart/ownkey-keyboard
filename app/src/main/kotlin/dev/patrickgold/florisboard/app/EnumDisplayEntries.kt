@@ -29,6 +29,7 @@ import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutMode
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiHistory
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSkinTone
@@ -531,6 +532,23 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
             entry(
                 key = SpaceBarMode.SPACE_BAR_KEY,
                 label = stringRes(R.string.enum__space_bar_mode__space_bar_key),
+            )
+        }
+    },
+    SplitLayoutMode::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = SplitLayoutMode.NEVER,
+                label = stringRes(R.string.enum__split_layout_mode__never),
+            )
+            entry(
+                key = SplitLayoutMode.AUTO,
+                label = stringRes(R.string.enum__split_layout_mode__auto),
+                description = stringRes(R.string.enum__split_layout_mode__auto__description),
+            )
+            entry(
+                key = SplitLayoutMode.ALWAYS,
+                label = stringRes(R.string.enum__split_layout_mode__always),
             )
         }
     },

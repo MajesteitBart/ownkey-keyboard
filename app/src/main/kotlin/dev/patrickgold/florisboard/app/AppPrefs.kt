@@ -33,6 +33,8 @@ import dev.patrickgold.florisboard.ime.input.HapticVibrationMode
 import dev.patrickgold.florisboard.ime.input.InputFeedbackActivationMode
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutMode
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiHairStyle
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiHistory
@@ -551,6 +553,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "keyboard__space_bar_display_mode",
             default = SpaceBarMode.CURRENT_LANGUAGE,
         )
+        val splitLayoutMode = enum(
+            key = "keyboard__split_layout_mode",
+            default = SplitLayoutMode.AUTO,
+        )
+        val splitLayoutGapPercent = int(
+            key = "keyboard__split_layout_gap_percent",
+            default = SplitLayout.GapPercentDefault,
+        )
         val capitalizationBehavior = enum(
             key = "keyboard__capitalization_behavior",
             default = CapitalizationBehavior.CAPSLOCK_BY_DOUBLE_TAP,
@@ -739,6 +749,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val incognitoMode = enum(
             key = "suggestion__incognito_mode",
             default = IncognitoMode.DYNAMIC_ON_OFF,
+        )
+        val personalizedLearningEnabled = boolean(
+            key = "suggestion__personalized_learning_enabled",
+            default = true,
         )
         // Internal pref
         val forceIncognitoModeFromDynamic = boolean(

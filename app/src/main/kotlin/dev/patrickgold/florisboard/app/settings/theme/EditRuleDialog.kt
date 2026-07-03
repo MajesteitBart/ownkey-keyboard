@@ -78,6 +78,7 @@ import dev.patrickgold.florisboard.ime.keyboard.Key
 import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.keyboard.Keyboard
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutSpec
 import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
 import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
@@ -616,7 +617,7 @@ private fun TextKeyDataPreviewBox(
                 override fun keys() = error("not implemented")
                 override fun layout(
                     keyboardWidth: Float, keyboardHeight: Float, desiredKey: Key,
-                    extendTouchBoundariesDownwards: Boolean,
+                    extendTouchBoundariesDownwards: Boolean, splitSpec: SplitLayoutSpec?,
                 ) = error("not implemented")
             }
 

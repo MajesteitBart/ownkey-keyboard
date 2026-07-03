@@ -80,6 +80,8 @@ import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutSpec
 import dev.patrickgold.florisboard.ime.popup.ExceptionsForKeyCodes
 import dev.patrickgold.florisboard.ime.popup.PopupUiController
 import dev.patrickgold.florisboard.ime.popup.rememberPopupUiController
@@ -90,6 +92,8 @@ import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.ime.window.ImeWindowMode
+import dev.patrickgold.florisboard.ime.window.ImeWindowSpec
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.voxtralDictationManager
@@ -236,13 +240,31 @@ fun TextKeyboardLayout(
         val keyMarginH by remember { derivedStateOf { windowSpec.keyMarginH.toPx() } }
         val keyMarginV by remember { derivedStateOf { windowSpec.keyMarginV.toPx() } }
 
+        val splitLayoutMode by prefs.keyboard.splitLayoutMode.collectAsState()
+        val splitLayoutGapPercent by prefs.keyboard.splitLayoutGapPercent.collectAsState()
+        val splitSpec = remember(splitLayoutMode, splitLayoutGapPercent, configuration, keyboard, keyboardWidth, windowSpec) {
+            val isNormalDockedWindow = windowSpec.let { spec ->
+                spec is ImeWindowSpec.Fixed && spec.fixedMode == ImeWindowMode.Fixed.NORMAL
+            }
+            if (isNormalDockedWindow && SplitLayout.isActive(splitLayoutMode, configuration, keyboard.mode)) {
+                val gapPercent = splitLayoutGapPercent.coerceIn(SplitLayout.GapPercentMin, SplitLayout.GapPercentMax)
+                SplitLayoutSpec(gapWidth = keyboardWidth * gapPercent / 100.0f)
+            } else {
+                null
+            }
+        }
+
         val desiredKey = remember(
             keyboard, keyboardWidth, keyboardHeight, keyMarginH, keyMarginV,
-            keyboardRowBaseHeight, evaluator
+            keyboardRowBaseHeight, evaluator, splitSpec
         ) {
             TextKey(data = TextKeyData.UNSPECIFIED).also { desiredKey ->
                 desiredKey.touchBounds.apply {
-                    width = keyboardWidth / 10f
+                    width = if (splitSpec != null) {
+                        (keyboardWidth - splitSpec.gapWidth) / 10f
+                    } else {
+                        keyboardWidth / 10f
+                    }
                     height = when (keyboard.mode) {
                         KeyboardMode.CHARACTERS,
                         KeyboardMode.NUMERIC_ADVANCED,
@@ -255,7 +277,7 @@ fun TextKeyboardLayout(
                     }
                 }
                 desiredKey.visibleBounds.applyFrom(desiredKey.touchBounds).deflateBy(keyMarginH, keyMarginV)
-                keyboard.layout(keyboardWidth, keyboardHeight, desiredKey, true)
+                keyboard.layout(keyboardWidth, keyboardHeight, desiredKey, true, splitSpec)
             }
         }
 
