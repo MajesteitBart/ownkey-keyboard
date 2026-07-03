@@ -79,13 +79,18 @@ class TextKeyboard(
                     row, 0, row.size, posY, 0.0f, keyboardWidth, desiredKey, extendBottom,
                 )
             } else {
-                val segmentWidth = (keyboardWidth - splitSpec!!.gapWidth) / 2.0f
+                // Lay the row out as if it were a regular (unsplit) keyboard of the remaining width, then
+                // push the right half outwards by the gap width. This preserves the natural row stagger
+                // (e.g. the home row being inset by half a key), so each half reads as a cutout of the
+                // full keyboard rather than two independently justified key groups.
+                val virtualWidth = keyboardWidth - splitSpec!!.gapWidth
                 layoutRowSegment(
-                    row, 0, splitIndex, posY, 0.0f, segmentWidth, desiredKey, extendBottom,
+                    row, 0, row.size, posY, 0.0f, virtualWidth, desiredKey, extendBottom,
                 )
-                layoutRowSegment(
-                    row, splitIndex, row.size, posY, segmentWidth + splitSpec.gapWidth, segmentWidth, desiredKey, extendBottom,
-                )
+                for (i in splitIndex until row.size) {
+                    row[i].touchBounds.translateBy(splitSpec.gapWidth, 0.0f)
+                    row[i].visibleBounds.translateBy(splitSpec.gapWidth, 0.0f)
+                }
             }
         }
     }
@@ -116,7 +121,9 @@ class TextKeyboard(
         for (k in 0 until row.size - 1) {
             cumulativeWidth += row[k].flayWidthFactor
             val delta = abs(cumulativeWidth - totalWidth / 2.0f)
-            if (delta < bestDelta) {
+            // On (near-)equal distance the later boundary wins, so odd rows split left-heavy
+            // (e.g. "a s d f g | h j k l"), matching the reference design.
+            if (delta <= bestDelta + 0.001f) {
                 bestDelta = delta
                 bestIndex = k + 1
             }

@@ -126,6 +126,28 @@ class TextKeyboardSplitLayoutTest : FunSpec({
         row.last().touchBounds.right shouldBe (1000f plusOrMinus 0.01f)
     }
 
+    test("split layout preserves natural row stagger and splits odd rows left-heavy") {
+        // 9 keys (like the home row a..l): the left half gets 5 keys, and the row keeps its natural
+        // half-key inset from the unsplit layout instead of being justified flush per half.
+        val row = Array(9) { charKey() }
+        val keyboard = keyboardOf(row)
+        val segmentKeyWidth = (KEYBOARD_WIDTH - GAP_WIDTH) / 10f // = 80
+
+        keyboard.layout(
+            KEYBOARD_WIDTH, KEYBOARD_HEIGHT, desiredKey(segmentKeyWidth), false,
+            SplitLayoutSpec(gapWidth = GAP_WIDTH),
+        )
+
+        // Left-heavy split: 5 keys left, 4 keys right.
+        row[4].touchBounds.right shouldBe (440f plusOrMinus 0.01f)
+        row[5].touchBounds.left shouldBe (640f plusOrMinus 0.01f)
+        // Natural stagger: the row is inset by half a key on both visible edges.
+        row[0].touchBounds.left shouldBe 0f
+        row[0].visibleBounds.left shouldBe (40f plusOrMinus 0.01f)
+        row[8].touchBounds.right shouldBe (1000f plusOrMinus 0.01f)
+        row[8].visibleBounds.right shouldBe (960f plusOrMinus 0.01f)
+    }
+
     test("split layout keeps touch bounds non-overlapping and ordered") {
         val row = Array(9) { charKey() }
         val keyboard = keyboardOf(row)
