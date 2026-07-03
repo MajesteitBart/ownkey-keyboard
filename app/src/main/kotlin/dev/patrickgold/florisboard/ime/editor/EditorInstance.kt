@@ -48,6 +48,7 @@ import org.florisboard.lib.android.showShortToastSync
 class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     companion object {
         private const val SPACE = " "
+        private const val WORD_BOUNDARY_CHARS = ".,;:!?"
     }
 
     private val prefs by FlorisPreferenceStore
@@ -178,41 +179,100 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             punctuationRule.symbolsFollowingAutoSpace.contains(text.first())
     }
 
-    private fun shouldInsertAutoSpaceAfter(text: String): Boolean {
+    /**
+     * Determines if committing [text] should arm a deferred auto-space. Unlike the previous eager behavior (which
+     * immediately inserted a space after punctuation and broke URLs, e-mail addresses, decimals and abbreviations),
+     * the space is only inserted once the user actually starts the next word with a letter. This matches how
+     * mainstream keyboards handle spacing after punctuation while never leaving stray trailing spaces behind.
+     */
+    private fun shouldArmDeferredAutoSpace(text: String): Boolean {
         if (!prefs.correction.autoSpacePunctuation.get() || text.isEmpty()) return false
         if (activeInfo.isRawInputEditor) return false
         if (activeState.keyVariation != KeyVariation.NORMAL) return false
 
         val punctuationRule = nlpManager.getActivePunctuationRule()
-        val content = activeContent
-        val textBefore = content.getTextBeforeCursor(3).let { textBefore ->
-            if (autoSpace.isActive && textBefore.isNotEmpty() && textBefore.last() == ' ') {
-                textBefore.dropLast(1)
-            } else {
-                textBefore
-            }
+        val symbol = text.first()
+        if (!punctuationRule.symbolsPrecedingAutoSpace.contains(symbol)) return false
+
+        val textBefore = activeContent.getTextBeforeCursor(48)
+        if (textBefore.isEmpty() || !textBefore.last().isLetter()) return false
+
+        // Leave tokens alone which look like URLs, e-mail addresses, paths, version strings or numbers.
+        val currentToken = textBefore.takeLastWhile { !it.isWhitespace() }
+        if (currentToken.any { it.isDigit() || it == '@' || it == '/' || it == '\\' || it == ':' || it == '.' }) {
+            return false
         }
-        return textBefore.isNotEmpty() && !textBefore.last().isWhitespace() &&
-            content.currentWordText.all { !it.isDigit() } &&
-            punctuationRule.symbolsPrecedingAutoSpace.contains(text.first())
+        // Single letter before a period usually indicates initials or abbreviations ("e.g.", "J.K.").
+        if (symbol == '.' && currentToken.length == 1) return false
+
+        return true
+    }
+
+    /**
+     * Resolves a previously armed deferred auto-space for the char about to be committed: the space is inserted
+     * before the first letter of the next word, and the letter is capitalized if the arming punctuation terminated
+     * a sentence (mirroring what auto-capitalization would have done after an eagerly inserted space).
+     */
+    private fun resolveDeferredAutoSpace(text: String): DeferredAutoSpaceDecision {
+        if (autoSpace.isInactive || text.isEmpty()) return DeferredAutoSpaceDecision.Inactive
+        if (!prefs.correction.autoSpacePunctuation.get()) return DeferredAutoSpaceDecision.Inactive
+        if (activeInfo.isRawInputEditor) return DeferredAutoSpaceDecision.Inactive
+        if (activeState.keyVariation != KeyVariation.NORMAL) return DeferredAutoSpaceDecision.Inactive
+
+        val nextChar = text.first()
+        if (!nextChar.isLetter()) return DeferredAutoSpaceDecision.Inactive
+        val textBefore = activeContent.getTextBeforeCursor(1)
+        if (textBefore.isEmpty() || textBefore.last().isWhitespace()) return DeferredAutoSpaceDecision.Inactive
+
+        val capitalize = autoSpace.isArmedBySentenceTerminator &&
+            prefs.correction.autoCapitalization.get() &&
+            subtypeManager.activeSubtype.primaryLocale.supportsCapitalization &&
+            nextChar.isLowerCase()
+        return DeferredAutoSpaceDecision(insertSpace = true, capitalize = capitalize)
+    }
+
+    private data class DeferredAutoSpaceDecision(val insertSpace: Boolean, val capitalize: Boolean) {
+        companion object {
+            val Inactive = DeferredAutoSpaceDecision(insertSpace = false, capitalize = false)
+        }
+    }
+
+    /**
+     * Fires a text boundary notification towards the NLP layer when the given committed [text] completes a word
+     * (separator typed directly after a letter or digit). Used for on-device personalized learning; all privacy
+     * gating (incognito, password fields, user preference) happens inside [NlpManager.notifyTextBoundary].
+     */
+    private fun notifyTextBoundaryIfNeeded(text: String) {
+        val char = text.firstOrNull() ?: return
+        if (!char.isWhitespace() && char !in WORD_BOUNDARY_CHARS) return
+        val content = activeContent
+        if (content.textBeforeSelection.lastOrNull()?.isLetterOrDigit() == true) {
+            nlpManager.notifyTextBoundary(content)
+        }
     }
 
     override fun commitChar(char: String): Boolean {
+        notifyTextBoundaryIfNeeded(char)
         val isInsertAutoSpaceBeforeChar = shouldInsertAutoSpaceBefore(char)
-        val isInsertAutoSpaceAfterChar = shouldInsertAutoSpaceAfter(char)
-        val isDeletePreviousSpace = isInsertAutoSpaceAfterChar && autoSpace.isActive
-        if (isInsertAutoSpaceAfterChar) {
-            autoSpace.setActive()
+        val deferredAutoSpace = resolveDeferredAutoSpace(char)
+        if (shouldArmDeferredAutoSpace(char)) {
+            val punctuationRule = nlpManager.getActivePunctuationRule()
+            autoSpace.setActive(bySentenceTerminator = punctuationRule.symbolsTerminatingSentence.contains(char.first()))
         } else {
             autoSpace.setInactive()
         }
         val isPhantomSpaceActive = phantomSpace.determine(char)
         phantomSpace.setInactive()
+        val effectiveChar = if (deferredAutoSpace.capitalize) {
+            char.replaceFirstChar { it.titlecase(subtypeManager.activeSubtype.primaryLocale.base) }
+        } else {
+            char
+        }
         return super.commitChar(
-            char = char,
-            deletePreviousSpace = isDeletePreviousSpace,
-            insertSpaceBeforeChar = isInsertAutoSpaceBeforeChar || isPhantomSpaceActive,
-            insertSpaceAfterChar = isInsertAutoSpaceAfterChar,
+            char = effectiveChar,
+            deletePreviousSpace = false,
+            insertSpaceBeforeChar = isInsertAutoSpaceBeforeChar || isPhantomSpaceActive || deferredAutoSpace.insertSpace,
+            insertSpaceAfterChar = false,
         )
     }
 
@@ -229,6 +289,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     override fun commitText(text: String): Boolean {
+        notifyTextBoundaryIfNeeded(text)
         val isPhantomSpaceActive = phantomSpace.determine(text)
         autoSpace.setInactive()
         phantomSpace.setInactive()
@@ -264,8 +325,10 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             super.finalizeComposingText(text, cursorAdvanceAfterText = spacingDecision.cursorAdvanceAfterCommit)
         } else {
             val isPhantomSpaceActive = phantomSpace.determine(text)
+            val isDeferredAutoSpaceActive = resolveDeferredAutoSpace(text).insertSpace
+            autoSpace.setInactive()
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
-            return if (isPhantomSpaceActive) {
+            return if (isPhantomSpaceActive || isDeferredAutoSpaceActive) {
                 super.commitText("$SPACE$text")
             } else {
                 super.commitText(text)
@@ -519,6 +582,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performEnterAction(action: ImeOptions.Action): Boolean {
+        notifyTextBoundaryIfNeeded("\n")
         autoSpace.setInactive()
         phantomSpace.setInactive()
         val ic = currentInputConnection() ?: return false
@@ -571,6 +635,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         companion object {
             private const val F_IS_ACTIVE = 0x1
             private const val F_STAY_ACTIVE_NEXT_UPDATE = 0x4
+            private const val F_BY_SENTENCE_TERMINATOR = 0x8
         }
 
         private val state = AtomicInteger(0)
@@ -581,8 +646,15 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         val isInactive: Boolean
             get() = !isActive
 
-        fun setActive(stayActiveNextUpdate: Boolean = true) {
-            state.set(F_IS_ACTIVE or (if (stayActiveNextUpdate) F_STAY_ACTIVE_NEXT_UPDATE else 0))
+        val isArmedBySentenceTerminator: Boolean
+            get() = state.get() and F_BY_SENTENCE_TERMINATOR != 0
+
+        fun setActive(stayActiveNextUpdate: Boolean = true, bySentenceTerminator: Boolean = false) {
+            state.set(
+                F_IS_ACTIVE
+                    or (if (stayActiveNextUpdate) F_STAY_ACTIVE_NEXT_UPDATE else 0)
+                    or (if (bySentenceTerminator) F_BY_SENTENCE_TERMINATOR else 0)
+            )
         }
 
         fun setInactive() {
