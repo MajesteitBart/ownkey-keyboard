@@ -36,9 +36,19 @@ object RewritePromptPresets {
 
     val defaults = listOf(
         RewritePromptPreset(
-            id = "clean",
-            name = "Clean up",
-            instruction = "Rewrite the text so it is clear, concise, and grammatically correct. Preserve the original meaning.",
+            id = "improve",
+            name = "Improve writing",
+            instruction = "Rewrite the text to improve clarity, flow, and word choice. Preserve the original meaning.",
+        ),
+        RewritePromptPreset(
+            id = "grammar",
+            name = "Fix grammar",
+            instruction = "Fix spelling, grammar, and punctuation mistakes without changing the meaning or tone.",
+        ),
+        RewritePromptPreset(
+            id = "shorter",
+            name = "Make shorter",
+            instruction = "Rewrite the text to be significantly shorter while keeping the essential meaning.",
         ),
         RewritePromptPreset(
             id = "business",
@@ -46,14 +56,14 @@ object RewritePromptPresets {
             instruction = "Rewrite the text in a professional business tone suitable for a client, colleague, or stakeholder.",
         ),
         RewritePromptPreset(
+            id = "casual",
+            name = "More casual",
+            instruction = "Rewrite the text in a relaxed, friendly, casual tone.",
+        ),
+        RewritePromptPreset(
             id = "rewrite_dutch",
             name = "Rewrite in Dutch",
             instruction = "Rewrite the text in natural Dutch. Preserve the original meaning and return only Dutch text.",
-        ),
-        RewritePromptPreset(
-            id = "rewrite_english",
-            name = "Rewrite in English",
-            instruction = "Rewrite the text in natural English. Preserve the original meaning and return only English text.",
         ),
     )
 
@@ -65,7 +75,7 @@ object RewritePromptPresets {
         }.getOrDefault(defaults)
         val validPrompts = decoded.filter { it.name.isNotBlank() && it.instruction.isNotBlank() }
         return when {
-            validPrompts.map { it.id } == legacyDefaultIds -> defaults
+            validPrompts.map { it.id } in legacyDefaultIdSets -> defaults
             else -> validPrompts.ifEmpty { defaults }
         }
     }
@@ -82,5 +92,8 @@ object RewritePromptPresets {
         )
     }
 
-    private val legacyDefaultIds = listOf("clean", "formal", "business")
+    private val legacyDefaultIdSets = listOf(
+        listOf("clean", "formal", "business"),
+        listOf("clean", "business", "rewrite_dutch", "rewrite_english"),
+    )
 }

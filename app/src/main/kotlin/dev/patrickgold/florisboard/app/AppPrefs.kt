@@ -813,12 +813,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val dayThemeId = custom(
             key = "theme__day_theme_id",
-            default = extMyTheme("voxtral_night_bordered_none"),
+            default = extMyTheme("ownkey_liquid_glass"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
             key = "theme__night_theme_id",
-            default = extMyTheme("voxtral_night_bordered_none"),
+            default = extMyTheme("ownkey_liquid_glass"),
             serializer = ExtensionComponentName.Serializer,
         )
         val showKeyBorders = boolean(
@@ -831,7 +831,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val accentColor = custom(
             key = "theme__accent_color",
-            default = Color(0xFFF56C1E),
+            default = Color(0xFF0A84FF),
             serializer = ColorPreferenceSerializer,
         )
         val sunriseTime = localTime(

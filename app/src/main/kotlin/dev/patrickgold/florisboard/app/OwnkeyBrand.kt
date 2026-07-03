@@ -37,4 +37,24 @@ object OwnkeyBrand {
 
     const val MotionFastMillis = 120
     const val MotionStandardMillis = 180
+
+    /**
+     * Dark Liquid Glass design system tokens (keyboard mockup spec). One accent, everything else
+     * translucent grays; no borders, depth via inner top highlight and soft shadows.
+     */
+    object Glass {
+        val Stage = Color(0xFF12141D)
+        val Canvas = Color(0xC7242838)          // rgba(36, 40, 56, .78)
+        val Key = Color(0x8C565B6E)             // rgba(86, 91, 110, .55)
+        val KeyPressed = Color(0xA6787E94)      // rgba(120, 126, 148, .65)
+        val Ink = Color(0xFFFFFFFF)
+        val InkSoft = Color(0xB8FFFFFF)         // white 72%
+        val Hint = Color(0x6BFFFFFF)            // white 42%
+        val Accent = Color(0xFF0A84FF)
+        val AccentDim = Color(0x590A84FF)       // accent 35%
+        val Success = Color(0xFF30D158)
+        val Danger = Color(0xFFFF453A)
+        val Sheet = Color(0xEB1E2230)           // rgba(30, 34, 48, .92)
+        val CancelCapsule = Color(0x8C171A26)   // rgba(23, 26, 38, .55)
+    }
 }

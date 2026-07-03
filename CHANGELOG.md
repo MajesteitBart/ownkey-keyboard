@@ -5,6 +5,9 @@ All notable changes to this fork are documented in this file.
 ## Unreleased
 
 ### Added
+- "Ownkey Liquid Glass" keyboard theme (new default): translucent gray keys with 10dp radius, soft shadows instead of borders, and a solid blue (#0A84FF) enter key, following the Dark Liquid Glass design spec.
+- AI rewrite panel state machine per the design spec: options grid (2 columns) → generating (dimmed grid, chosen card lit, blue chip with spinner + Cancel) → result sheet (Back / Try again / Insert) → inserted confirmation, with the rewrite only committed on Insert. New default prompt set: Improve writing, Fix grammar, Make shorter, Business, More casual, Rewrite in Dutch.
+- Dictation state visuals on the mic pill: solid blue with animated waveform bars and expanding halo while listening, dim flat bars while paused, spinning arc while transcribing, green check flash on success, red mic-off on error.
 - Split keyboard layout for large screens (unfolded foldables and tablets), with never/automatic/always modes and an adjustable middle gap. The space bar is duplicated so each half gets its own.
 - On-device personalized next-word prediction: the keyboard learns your own word sequences (bigrams/trigrams) locally and uses them to predict the next word and to context-boost autocorrect candidates within sentences.
 - Personal data suggestions: e-mail addresses you type are remembered locally and offered as suggestions in e-mail fields and when typing a matching prefix.
