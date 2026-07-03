@@ -103,8 +103,19 @@ object FlorisImeSizing {
 
     @Composable
     fun smartbarUiHeight(): Dp {
-        val smartbarRowCount by smartbarRowCountAsState()
-        return smartbarHeight * smartbarRowCount
+        val prefs by FlorisPreferenceStore
+        val smartbarEnabled by prefs.smartbar.enabled.collectAsState()
+        val smartbarLayout by prefs.smartbar.layout.collectAsState()
+        val extendedActionsExpanded by prefs.smartbar.extendedActionsExpanded.collectAsState()
+        val extendedActionsPlacement by prefs.smartbar.extendedActionsPlacement.collectAsState()
+        return if (!smartbarEnabled) {
+            0.dp
+        } else if (smartbarLayout == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED && extendedActionsExpanded &&
+            extendedActionsPlacement != ExtendedActionsPlacement.OVERLAY_APP_UI) {
+            smartbarHeight + keyboardRowBaseHeight
+        } else {
+            smartbarHeight
+        }
     }
 
     @Composable
