@@ -83,7 +83,7 @@ internal const val QuickActionButtonAspectRatio = 1.1f
 internal const val SecondaryQuickActionButtonAspectRatio = 0.72f
 
 internal val QuickActionButtonIconSize = 24.dp
-internal val SecondaryQuickActionButtonIconSize = 30.dp
+internal val SecondaryQuickActionButtonIconSize = 26.dp
 
 @Composable
 fun QuickActionButton(

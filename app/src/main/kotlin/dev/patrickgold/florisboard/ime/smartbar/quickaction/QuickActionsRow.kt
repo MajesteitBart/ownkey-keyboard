@@ -41,6 +41,14 @@ import org.florisboard.lib.snygg.ui.SnyggRow
 
 internal val ToggleOverflowPanelAction = QuickAction.InsertKey(TextKeyData.TOGGLE_ACTIONS_OVERFLOW)
 
+/**
+ * Maximum number of actions shown in the secondary (extended) action pill, regardless of available width.
+ * The reference design shows six actions plus the overflow toggle; everything else lives in the overflow
+ * panel. Without this cap, wide screens (landscape, unfolded foldables, tablets) cram a dozen or more
+ * icons into the pill, which reads as cluttered.
+ */
+private const val MaxSecondaryRowActionCount = 6
+
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun QuickActionsRow(
@@ -85,7 +93,9 @@ fun QuickActionsRow(
             QuickActionButtonIconSize
         }
         val actionWidth = height * actionButtonAspectRatio
-        val numActionsToShow = ((width / actionWidth).toInt() - (if (showOverflowAction) 1 else 0)).coerceAtLeast(0)
+        val maxActionsToShow = if (isExtendedActionsRow) MaxSecondaryRowActionCount else Int.MAX_VALUE
+        val numActionsToShow = ((width / actionWidth).toInt() - (if (showOverflowAction) 1 else 0))
+            .coerceIn(0, maxActionsToShow)
         val visibleActions = dynamicActions
             .subList(0, numActionsToShow.coerceAtMost(dynamicActions.size))
 

@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.KeyboardCapslock
 import androidx.compose.material.icons.filled.KeyboardHide
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.patrickgold.florisboard.FlorisImeService
@@ -261,7 +260,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             tablerIcon(R.drawable.ic_tabler_world)
         }
         KeyCode.SETTINGS -> {
-            Icons.Default.Settings
+            tablerIcon(R.drawable.ic_tabler_settings)
         }
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
