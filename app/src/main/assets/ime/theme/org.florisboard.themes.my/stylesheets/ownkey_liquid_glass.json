@@ -143,14 +143,14 @@
                                            "shadow-elevation":  "1dp"
                                        },
     "smartbar-extended-actions-row":  {
-                                          "background":  "var(--toolbar-action-surface)",
+                                          "background":  "transparent",
                                           "border-color":  "#00000000",
                                           "border-width":  "0dp",
                                           "foreground":  "var(--on-surface)",
                                           "margin":  "3dp 10dp",
                                           "padding":  "0dp 16dp",
                                           "shape":  "var(--shape-chip)",
-                                          "shadow-elevation":  "1dp"
+                                          "shadow-elevation":  "0dp"
                                       },
     "smartbar-extended-actions-toggle":  {
                                              "background":  "var(--toolbar-action-surface)",

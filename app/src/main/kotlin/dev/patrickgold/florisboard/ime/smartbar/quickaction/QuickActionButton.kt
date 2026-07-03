@@ -191,7 +191,7 @@ fun QuickActionButton(
                                 modifier = Modifier.requiredSize(iconSize),
                                 imageVector = imageVector,
                                 contentDescription = null,
-                                tint = OwnkeyBrand.Bone,
+                                tint = OwnkeyBrand.Glass.InkSoft,
                             )
                         } else if (label != null) {
                             SnyggText(
