@@ -19,7 +19,9 @@ package dev.patrickgold.florisboard.ime.smartbar.quickaction
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -32,6 +34,7 @@ import androidx.compose.ui.platform.LocalDensity
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
+import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.snygg.ui.SnyggRow
@@ -70,7 +73,18 @@ fun QuickActionsRow(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val width = constraints.maxWidth.toDp()
         val height = constraints.maxHeight.toDp()
-        val actionWidth = height * QuickActionButtonAspectRatio
+        val isExtendedActionsRow = elementName == FlorisImeUi.SmartbarExtendedActionsRow.elementName
+        val actionButtonAspectRatio = if (isExtendedActionsRow) {
+            SecondaryQuickActionButtonAspectRatio
+        } else {
+            QuickActionButtonAspectRatio
+        }
+        val actionIconSize = if (isExtendedActionsRow) {
+            SecondaryQuickActionButtonIconSize
+        } else {
+            QuickActionButtonIconSize
+        }
+        val actionWidth = height * actionButtonAspectRatio
         val numActionsToShow = ((width / actionWidth).toInt() - (if (showOverflowAction) 1 else 0)).coerceAtLeast(0)
         val visibleActions = dynamicActions
             .subList(0, numActionsToShow.coerceAtMost(dynamicActions.size))
@@ -88,16 +102,40 @@ fun QuickActionsRow(
             elementName = elementName,
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = if (isExtendedActionsRow) Arrangement.SpaceBetween else Arrangement.SpaceEvenly,
         ) {
+            val actionModifier = Modifier
+                .width(actionWidth)
+                .fillMaxHeight()
             if (showOverflowAction && flipToggles) {
-                QuickActionButton(ToggleOverflowPanelAction, evaluator)
+                QuickActionButton(
+                    ToggleOverflowPanelAction,
+                    evaluator,
+                    modifier = actionModifier,
+                    aspectRatio = actionButtonAspectRatio,
+                    fillContainer = true,
+                    iconSize = actionIconSize,
+                )
             }
             for (action in visibleActions) {
-                QuickActionButton(action, evaluator)
+                QuickActionButton(
+                    action,
+                    evaluator,
+                    modifier = actionModifier,
+                    aspectRatio = actionButtonAspectRatio,
+                    fillContainer = true,
+                    iconSize = actionIconSize,
+                )
             }
             if (showOverflowAction && !flipToggles) {
-                QuickActionButton(ToggleOverflowPanelAction, evaluator)
+                QuickActionButton(
+                    ToggleOverflowPanelAction,
+                    evaluator,
+                    modifier = actionModifier,
+                    aspectRatio = actionButtonAspectRatio,
+                    fillContainer = true,
+                    iconSize = actionIconSize,
+                )
             }
         }
     }

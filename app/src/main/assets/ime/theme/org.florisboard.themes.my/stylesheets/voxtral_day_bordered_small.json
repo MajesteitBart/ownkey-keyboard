@@ -9,10 +9,10 @@
     "--background-variant": "dynamic-light-color(background)",
     "--surface": "dynamic-light-color(surfaceDim)",
     "--surface-variant": "dynamic-light-color(surfaceVariant)",
-    "--toolbar-surface": "dynamic-light-color(background)",
-    "--toolbar-action-surface": "dynamic-light-color(surfaceContainerLow)",
-    "--toolbar-action-surface-pressed": "dynamic-light-color(surfaceContainer)",
-    "--toolbar-pill-border": "dynamic-light-color(outlineVariant)",
+    "--toolbar-surface": "#f7f8fa",
+    "--toolbar-action-surface": "#eef1f4",
+    "--toolbar-action-surface-pressed": "#e1e5ea",
+    "--toolbar-pill-border": "#d5dbe2",
     "--popup-surface": "dynamic-light-color(surfaceContainerLow)",
     "--focused-popup-surface": "dynamic-light-color(surfaceContainerHigh)",
     "--drag-marker": "rgb(255,0,0)",
@@ -68,7 +68,7 @@
     "foreground": "var(--on-background)",
     "font-size": "22sp",
     "shape": "var(--shape)",
-    "shadow-elevation": "2dp",
+    "shadow-elevation": "0dp",
     "text-max-lines": "1"
   },
   "key:pressed": {
@@ -105,8 +105,8 @@
     "background": "transparent",
     "foreground": "var(--on-surface-variant)",
     "font-family": "monospace",
-    "font-size": "12sp",
-    "padding": "0dp 1dp 1dp 0dp",
+    "font-size": "10sp",
+    "padding": "2dp 6dp 0dp 0dp",
     "text-max-lines": "1"
   },
   "key-popup-box": {
@@ -143,8 +143,8 @@
     "border-color": "var(--toolbar-pill-border)",
     "border-width": "1dp",
     "foreground": "var(--on-surface)",
-    "margin": "4dp 12dp",
-    "padding": "0dp 6dp",
+    "margin": "3dp 10dp",
+    "padding": "0dp 16dp",
     "shape": "var(--shape-chip)",
     "shadow-elevation": "1dp"
   },
@@ -157,16 +157,28 @@
   "smartbar-action-key": {
     "background": "transparent",
     "foreground": "var(--on-surface)",
+    "font-size": "22sp",
     "margin": "0dp",
     "shape": "rounded-corner(0dp, 0dp, 0dp, 0dp)",
     "shadow-elevation": "0dp"
+  },
+  "smartbar-action-key-icon": {
+    "background": "transparent",
+    "foreground": "var(--on-surface)",
+    "font-size": "30sp",
+    "padding": "0dp"
+  },
+  "smartbar-action-key-icon:disabled": {
+    "foreground": "var(--on-surface)",
+    "font-size": "30sp",
+    "padding": "0dp"
   },
   "smartbar-action-key:pressed": {
     "background": "transparent",
     "foreground": "var(--on-surface)"
   },
   "smartbar-action-key:disabled": {
-    "foreground": "var(--on-background-disabled)"
+    "foreground": "var(--on-surface)"
   },
   "smartbar-actions-overflow": {
     "margin": "4dp"

@@ -1,0 +1,14 @@
+{
+  "uniqueId": "tabler-icons",
+  "name": "Tabler Icons",
+  "developers": [
+    {
+      "name": "Tabler",
+      "organisationUrl": "https://tabler.io"
+    }
+  ],
+  "website": "https://github.com/tabler/tabler-icons",
+  "licenses": [
+    "MIT"
+  ]
+}
