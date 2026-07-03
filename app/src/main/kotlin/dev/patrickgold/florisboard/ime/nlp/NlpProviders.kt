@@ -168,6 +168,27 @@ interface SuggestionProvider : NlpProvider {
     )
 
     /**
+     * Is called when the user has completed a word by typing a separator (space, punctuation or enter). Providers
+     * may use this event to learn from the user's typing (e.g. personal n-gram models or user-specific data such
+     * as e-mail addresses). This event is never emitted for private/incognito sessions or password fields, and is
+     * purely a notification which can safely be ignored if not needed.
+     *
+     * @param subtype Information about the current subtype, primarily used for getting the primary and secondary
+     *  language for correct dictionary selection.
+     * @param content The current content view around the input cursor, ending directly after the completed word.
+     */
+    suspend fun notifyTextBoundary(subtype: Subtype, content: EditorContent) {
+        // Default: do nothing
+    }
+
+    /**
+     * Called when the user requests that all personalized/learned typing data of this provider is deleted.
+     */
+    suspend fun clearPersonalizedData() {
+        // Default: do nothing
+    }
+
+    /**
      * Called if the user requests to prevent a certain suggested word from showing again. It is up to the actual
      * implementation to adhere to this user request, this removal is not enforced nor monitored by the NLP manager.
      *

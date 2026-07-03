@@ -25,12 +25,16 @@ import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.FREQUENCY_MAX
 import dev.patrickgold.florisboard.ime.dictionary.UserDictionaryEntry
 import dev.patrickgold.florisboard.ime.editor.EditorContent
+import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingResult
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.personal.PersonalDataStore
+import dev.patrickgold.florisboard.ime.nlp.personal.PersonalNgramStore
 import dev.patrickgold.florisboard.lib.FlorisLocale
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import kotlinx.coroutines.Dispatchers
@@ -99,6 +103,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val allowPossiblyOffensive: Boolean,
         val isPrivateSession: Boolean,
         val autocorrectPolicySignature: String,
+        val isEmailField: Boolean,
     )
 
     private data class AutocorrectPolicySnapshot(
@@ -143,6 +148,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     )
     private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
     private val mixedLanguageScoringPolicy = MixedLanguageScoringPolicy()
+    private val personalNgramStore by lazy { PersonalNgramStore(appContext) }
+    private val personalDataStore by lazy { PersonalDataStore(appContext) }
     private val suggestionCache = guardedByLock {
         object : LinkedHashMap<SuggestCacheKey, List<SuggestionCandidate>>(SuggestionCacheMaxSize, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SuggestCacheKey, List<SuggestionCandidate>>?): Boolean {
@@ -231,6 +238,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     ): List<SuggestionCandidate> {
         val autocorrectAppContext = currentAutocorrectAppContext()
         val autocorrectPolicySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(autocorrectAppContext)
+        val isEmailField = isEmailInputField()
         val cacheKey = buildSuggestCacheKey(
             subtype = subtype,
             content = content,
@@ -238,6 +246,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             allowPossiblyOffensive = allowPossiblyOffensive,
             isPrivateSession = isPrivateSession,
             autocorrectPolicySignature = autocorrectPolicySnapshot.signature,
+            isEmailField = isEmailField,
         )
         suggestionCache.withLock { cache ->
             cache[cacheKey]?.let { return it }
@@ -246,12 +255,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val primaryLocale = subtype.primaryLocale.base
         val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
         val languageContexts = getLanguageContextsForSubtype(subtype)
+        val emailCandidates = personalEmailCandidates(rawInput, content, isEmailField)
         val suggestions = if (rawInput.isBlank()) {
             suggestNextWordCandidates(
                 content = content,
                 maxCandidateCount = maxCandidateCount,
                 locale = primaryLocale,
                 languageContexts = languageContexts,
+                subtype = subtype,
             )
         } else {
             val normalizedInput = normalizeInputWord(rawInput, primaryLocale)
@@ -321,6 +332,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                         }
                     }
 
+                    applyPersonalContextBoost(
+                        aggregatedCandidates = aggregatedCandidates,
+                        content = content,
+                        normalizedInput = normalizedInput,
+                        subtype = subtype,
+                        locale = primaryLocale,
+                    )
+
                     if (aggregatedCandidates.isEmpty()) {
                         emptyList()
                     } else {
@@ -373,10 +392,46 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
 
+        val mergedSuggestions = mergePersonalEmailCandidates(
+            regular = suggestions,
+            emailCandidates = emailCandidates,
+            isEmailField = isEmailField,
+            maxCandidateCount = maxCandidateCount,
+        )
         suggestionCache.withLock { cache ->
-            cache[cacheKey] = suggestions
+            cache[cacheKey] = mergedSuggestions
         }
-        return suggestions
+        return mergedSuggestions
+    }
+
+    override suspend fun notifyTextBoundary(subtype: Subtype, content: EditorContent) {
+        val textBefore = content.textBeforeSelection
+        if (textBefore.isBlank()) return
+        // A word must end directly at the cursor, otherwise this boundary event carries no new word.
+        if (!textBefore.last().isLetterOrDigit()) return
+
+        val trailingToken = textBefore.takeLastWhile { !it.isWhitespace() }
+        if (trailingToken.contains('@')) {
+            if (NetworkUtils.isEmailAddress(trailingToken)) {
+                personalDataStore.recordEmail(trailingToken)
+                suggestionCache.withLock { it.clear() }
+            }
+            return
+        }
+        if (trailingToken.any { it.isDigit() }) return
+
+        val locale = subtype.primaryLocale.base
+        val tokens = extractWordTokens(textBefore.takeLast(SuggestionContextTailLength), locale).takeLast(4)
+        if (tokens.size < 2) return
+        val language = normalizeLanguageCode(subtype.primaryLocale.language)
+        personalNgramStore.learn(language, tokens)
+        suggestionCache.withLock { it.clear() }
+    }
+
+    override suspend fun clearPersonalizedData() {
+        personalNgramStore.clearAll()
+        personalDataStore.clearAll()
+        suggestionCache.withLock { it.clear() }
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
@@ -718,6 +773,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         maxCandidateCount: Int,
         locale: Locale,
         languageContexts: List<SubtypeLanguageContext>,
+        subtype: Subtype,
     ): List<SuggestionCandidate> {
         val textBeforeSelection = content.textBeforeSelection
         if (textBeforeSelection.isBlank() || !isNextWordBoundary(textBeforeSelection)) {
@@ -762,6 +818,28 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
                 scores[next] = scores.getOrDefault(next, 0.0) + score * languageMultiplier
                 frequencies[next] = maxOf(frequencies.getOrDefault(next, 0), model.words[next] ?: 1)
+            }
+        }
+
+        // Blend in the persistent personal n-gram model, which remembers the user's own word sequences
+        // across sessions and apps (unlike the in-field mining above, which only sees the current text).
+        val primaryLanguage = normalizeLanguageCode(subtype.primaryLocale.language)
+        val personalPredictions = personalNgramStore.predictNext(
+            language = primaryLanguage,
+            prev2 = previousPreviousWord,
+            prev1 = previousWord,
+            limit = maxCandidateCount,
+        )
+        if (personalPredictions.isNotEmpty()) {
+            val maxPersonalScore = personalPredictions.first().score.coerceAtLeast(1)
+            for (prediction in personalPredictions) {
+                if (prediction.word == previousWord) continue
+                val normalizedScore = prediction.score.toDouble() / maxPersonalScore.toDouble()
+                scores[prediction.word] = scores.getOrDefault(prediction.word, 0.0) + 6.0 + 8.0 * normalizedScore
+                val modelFrequency = nonEmptyLanguageContexts.maxOf { context ->
+                    context.model.words[prediction.word] ?: 0
+                }
+                frequencies[prediction.word] = maxOf(frequencies.getOrDefault(prediction.word, 0), modelFrequency, 1)
             }
         }
 
@@ -1054,6 +1132,93 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return normalizedInput.length >= MinLengthForTypoCorrections
     }
 
+    /**
+     * Boosts current-word candidates which the personal n-gram model has seen following the previous word in
+     * the user's own typing, making completion and autocorrect ranking context-aware within sentences.
+     */
+    private suspend fun applyPersonalContextBoost(
+        aggregatedCandidates: LinkedHashMap<String, AggregatedScoredCandidate>,
+        content: EditorContent,
+        normalizedInput: String,
+        subtype: Subtype,
+        locale: Locale,
+    ) {
+        if (aggregatedCandidates.isEmpty()) return
+        val tokens = extractWordTokens(content.textBeforeSelection.takeLast(SuggestionContextTailLength), locale)
+        if (tokens.size < 2 || tokens.last() != normalizedInput) return
+        val previousWord = tokens[tokens.size - 2]
+        val language = normalizeLanguageCode(subtype.primaryLocale.language)
+        for (entry in aggregatedCandidates.entries) {
+            val boost = personalNgramStore.continuationScore(language, previousWord, entry.key)
+            if (boost > 0.0) {
+                entry.setValue(
+                    entry.value.copy(
+                        rankingScore = entry.value.rankingScore + 0.30 * boost,
+                        confidence = (entry.value.confidence + 0.10 * boost).coerceAtMost(1.0),
+                    )
+                )
+            }
+        }
+    }
+
+    private fun isEmailInputField(): Boolean {
+        return when (editorInstance.activeInfo.inputAttributes.variation) {
+            InputAttributes.Variation.EMAIL_ADDRESS,
+            InputAttributes.Variation.WEB_EMAIL_ADDRESS -> true
+            else -> false
+        }
+    }
+
+    private suspend fun personalEmailCandidates(
+        rawInput: String,
+        content: EditorContent,
+        isEmailField: Boolean,
+    ): List<SuggestionCandidate> {
+        if (rawInput.contains('@')) return emptyList()
+        if (rawInput.isBlank()) {
+            // Offer remembered addresses proactively when focusing an empty e-mail field.
+            if (!isEmailField || content.textBeforeSelection.isNotBlank()) return emptyList()
+            return personalDataStore.emailsByRelevance(limit = 3).map { emailCandidate(it) }
+        }
+        val minPrefixLength = if (isEmailField) 1 else 3
+        if (rawInput.length < minPrefixLength) return emptyList()
+        val textBefore = content.textBeforeSelection
+        // Only suggest when the typed token starts fresh (start of field or after whitespace).
+        if (textBefore.endsWith(rawInput)) {
+            val charBefore = textBefore.dropLast(rawInput.length).lastOrNull()
+            if (charBefore != null && !charBefore.isWhitespace()) return emptyList()
+        }
+        val limit = if (isEmailField) 3 else 2
+        return personalDataStore.emailsByRelevance(prefix = rawInput.lowercase(Locale.ROOT), limit = limit)
+            .map { emailCandidate(it) }
+    }
+
+    private fun emailCandidate(address: String): SuggestionCandidate {
+        return WordSuggestionCandidate(
+            text = address,
+            confidence = 0.9,
+            isEligibleForAutoCommit = false,
+            sourceProvider = this@LatinLanguageProvider,
+        )
+    }
+
+    private fun mergePersonalEmailCandidates(
+        regular: List<SuggestionCandidate>,
+        emailCandidates: List<SuggestionCandidate>,
+        isEmailField: Boolean,
+        maxCandidateCount: Int,
+    ): List<SuggestionCandidate> {
+        if (emailCandidates.isEmpty()) return regular
+        return when {
+            isEmailField || regular.isEmpty() -> emailCandidates + regular
+            else -> buildList {
+                add(regular.first())
+                addAll(emailCandidates)
+                addAll(regular.drop(1))
+            }
+        }.take(maxCandidateCount)
+    }
+
     private fun buildSuggestCacheKey(
         subtype: Subtype,
         content: EditorContent,
@@ -1061,6 +1226,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
         autocorrectPolicySignature: String,
+        isEmailField: Boolean,
     ): SuggestCacheKey {
         val hasCurrentWordInput = content.composingText.isNotBlank() || content.currentWordText.isNotBlank()
         val textBeforeTail = if (hasCurrentWordInput) {
@@ -1078,6 +1244,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             allowPossiblyOffensive = allowPossiblyOffensive,
             isPrivateSession = isPrivateSession,
             autocorrectPolicySignature = autocorrectPolicySignature,
+            isEmailField = isEmailField,
         )
     }
 

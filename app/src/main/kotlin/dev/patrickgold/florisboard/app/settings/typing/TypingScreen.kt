@@ -16,21 +16,23 @@
 
 package dev.patrickgold.florisboard.app.settings.typing
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SpaceBar
-import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
@@ -39,16 +41,18 @@ import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
-import dev.patrickgold.florisboard.lib.compose.FlorisHyperlinkText
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.model.collectAsState
+import dev.patrickgold.florisboard.nlpManager
 import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
 import dev.patrickgold.jetpref.datastore.ui.ListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
+import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
+import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.compose.FlorisErrorCard
 import org.florisboard.lib.compose.stringRes
 
@@ -93,6 +97,39 @@ fun TypingScreen() = FlorisScreen {
                 title = stringRes(R.string.pref__suggestion__incognito_mode__label),
                 entries = enumDisplayEntriesOf(IncognitoMode::class),
             )
+            SwitchPreference(
+                prefs.suggestion.personalizedLearningEnabled,
+                title = stringRes(R.string.pref__suggestion__personalized_learning__label),
+                summary = stringRes(R.string.pref__suggestion__personalized_learning__summary),
+                enabledIf = { prefs.suggestion.enabled isEqualTo true },
+            )
+            val scope = rememberCoroutineScope()
+            val context = LocalContext.current
+            val nlpManager by context.nlpManager()
+            var showClearLearnedDataDialog by remember { mutableStateOf(false) }
+            Preference(
+                icon = Icons.Default.DeleteSweep,
+                title = stringRes(R.string.pref__suggestion__clear_personalized_data__label),
+                summary = stringRes(R.string.pref__suggestion__clear_personalized_data__summary),
+                onClick = { showClearLearnedDataDialog = true },
+            )
+            if (showClearLearnedDataDialog) {
+                JetPrefAlertDialog(
+                    title = stringRes(R.string.pref__suggestion__clear_personalized_data__label),
+                    confirmLabel = stringRes(R.string.action__yes),
+                    onConfirm = {
+                        scope.launch {
+                            nlpManager.clearPersonalizedData()
+                            context.showShortToast(R.string.pref__suggestion__clear_personalized_data__done)
+                        }
+                        showClearLearnedDataDialog = false
+                    },
+                    dismissLabel = stringRes(R.string.action__no),
+                    onDismiss = { showClearLearnedDataDialog = false },
+                ) {
+                    Text(text = stringRes(R.string.pref__suggestion__clear_personalized_data__confirm_message))
+                }
+            }
         }
 
         PreferenceGroup(title = stringRes(R.string.pref__correction__title)) {
@@ -124,30 +161,12 @@ fun TypingScreen() = FlorisScreen {
                 stepIncrement = 2,
                 enabledIf = { prefs.correction.appSpecificAutocorrectProfilesEnabled isEqualTo true },
             )
-            val isAutoSpacePunctuationEnabled by prefs.correction.autoSpacePunctuation.collectAsState()
             SwitchPreference(
                 prefs.correction.autoSpacePunctuation,
                 icon = Icons.Default.SpaceBar,
                 title = stringRes(R.string.pref__correction__auto_space_punctuation__label),
                 summary = stringRes(R.string.pref__correction__auto_space_punctuation__summary),
             )
-            if (isAutoSpacePunctuationEnabled) {
-                Card(modifier = Modifier.padding(8.dp)) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            text = """
-                                Auto-space after punctuation is an experimental feature which may break or behave
-                                unexpectedly. If you want, please give feedback about it in below linked feedback
-                                thread. This helps a lot in improving this feature. Thanks!
-                            """.trimIndent().replace('\n', ' '),
-                        )
-                        FlorisHyperlinkText(
-                            text = "Feedback thread (GitHub)",
-                            url = "https://github.com/florisboard/florisboard/discussions/1935",
-                        )
-                    }
-                }
-            }
             SwitchPreference(
                 prefs.correction.rememberCapsLockState,
                 title = stringRes(R.string.pref__correction__remember_caps_lock_state__label),

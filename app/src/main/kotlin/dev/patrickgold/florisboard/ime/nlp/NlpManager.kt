@@ -30,6 +30,7 @@ import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.han.HanShapeBasedLanguageProvider
 import dev.patrickgold.florisboard.ime.nlp.latin.LatinLanguageProvider
+import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.subtypeManager
@@ -231,6 +232,37 @@ class NlpManager(context: Context) {
                 }
             }
             TypingSpeedMetrics.recordSuggestionLatency(SystemClock.uptimeMillis() - reqTime)
+        }
+    }
+
+    /**
+     * Notifies the active suggestion provider that a word has just been completed (the user typed a separator
+     * such as space, punctuation or enter). Used for on-device personalized learning (n-gram prediction and
+     * user-specific data such as e-mail addresses). Never fires in incognito sessions, password/URI fields or
+     * when the user has disabled personalized learning.
+     */
+    fun notifyTextBoundary(content: EditorContent) {
+        if (!prefs.suggestion.personalizedLearningEnabled.get()) return
+        if (keyboardManager.activeState.isIncognitoMode) return
+        when (keyboardManager.activeState.keyVariation) {
+            KeyVariation.NORMAL, KeyVariation.EMAIL_ADDRESS -> Unit
+            else -> return
+        }
+        val subtype = subtypeManager.activeSubtype
+        scope.launch {
+            getSuggestionProvider(subtype).notifyTextBoundary(subtype, content)
+        }
+    }
+
+    /**
+     * Deletes all personalized/learned typing data (personal n-grams and remembered personal data) from all
+     * suggestion providers.
+     */
+    suspend fun clearPersonalizedData() {
+        providers.withLock { providerMap ->
+            providerMap.values.forEach { wrapper ->
+                (wrapper.provider as? SuggestionProvider)?.clearPersonalizedData()
+            }
         }
     }
 
