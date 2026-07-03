@@ -965,17 +965,6 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 entry.transform(rawValue = json)
             }
 
-            // Migrate the old default theme to the Liquid Glass default. Users who deliberately picked
-            // another theme keep their choice.
-            // Keep migration rule until: 0.7 dev cycle
-            "theme__day_theme_id", "theme__night_theme_id" -> {
-                if (entry.rawValue.endsWith(":voxtral_night_bordered_none")) {
-                    entry.reset()
-                } else {
-                    entry.keepAsIs()
-                }
-            }
-
             // Migrate theme editor fine-tuning
             // Keep migration rule until: 0.6 dev cycle
             "theme__editor_display_colors_as" -> {
