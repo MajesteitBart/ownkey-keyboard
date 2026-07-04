@@ -567,6 +567,14 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
                 key = ThemeIconStyle.FILLED,
                 label = stringRes(R.string.enum__theme_icon_style__filled),
             )
+            entry(
+                key = ThemeIconStyle.ROUNDED,
+                label = stringRes(R.string.enum__theme_icon_style__rounded),
+            )
+            entry(
+                key = ThemeIconStyle.SHARP,
+                label = stringRes(R.string.enum__theme_icon_style__sharp),
+            )
         }
     },
     SplitLayoutMode::class to DEFAULT to {

@@ -81,6 +81,7 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.app.ownkeyAccentColor
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
@@ -326,6 +327,7 @@ private fun DictationMicPill(
     isEnabled: Boolean,
 ) {
     val pillSize = (FlorisImeSizing.smartbarHeight - 8.dp).coerceAtLeast(34.dp)
+    val accentColor = ownkeyAccentColor()
 
     // The manager has no explicit success state; a transcription which returns to idle means the
     // transcript was inserted. Flash the success visual for a moment on that transition.
@@ -351,8 +353,8 @@ private fun DictationMicPill(
     val backgroundColor by animateColorAsState(
         targetValue = when {
             showSuccess -> OwnkeyBrand.Glass.Success
-            isListening -> OwnkeyBrand.Glass.Accent
-            isSilent -> OwnkeyBrand.Glass.Accent.copy(alpha = 0.30f)
+            isListening -> accentColor
+            isSilent -> accentColor.copy(alpha = 0.30f)
             isError -> OwnkeyBrand.Glass.Danger.copy(alpha = 0.22f)
             isPressed -> OwnkeyBrand.Glass.KeyPressed
             else -> OwnkeyBrand.Glass.Key
@@ -388,7 +390,7 @@ private fun DictationMicPill(
                     .size(pillSize + 8.dp)
                     .scale(0.85f + 0.30f * haloProgress)
                     .alpha((1f - haloProgress) * 0.35f)
-                    .border(width = 2.dp, color = OwnkeyBrand.Glass.Accent, shape = CircleShape),
+                    .border(width = 2.dp, color = accentColor, shape = CircleShape),
             )
         }
         Box(
@@ -436,7 +438,7 @@ private fun DictationMicPill(
             )
             Canvas(modifier = Modifier.size(pillSize + 8.dp)) {
                 drawArc(
-                    color = OwnkeyBrand.Glass.Accent,
+                    color = accentColor,
                     startAngle = spinAngle,
                     sweepAngle = 90f,
                     useCenter = false,

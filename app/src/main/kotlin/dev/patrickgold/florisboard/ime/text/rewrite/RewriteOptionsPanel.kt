@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.app.ownkeyAccentColor
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -253,13 +254,14 @@ private fun GeneratingOverlay(
     promptName: String,
     onCancel: () -> Unit,
 ) {
+    val accentColor = ownkeyAccentColor()
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Surface(
-            color = OwnkeyBrand.Glass.Accent,
+            color = accentColor,
             contentColor = OwnkeyBrand.Glass.Ink,
             shape = CircleShape,
             shadowElevation = 6.dp,
@@ -316,6 +318,7 @@ private fun ResultOverlay(
     onRetry: () -> Unit,
     onInsert: () -> Unit,
 ) {
+    val accentColor = ownkeyAccentColor()
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Bottom,
@@ -333,7 +336,7 @@ private fun ResultOverlay(
                 Text(
                     text = promptName.uppercase(Locale.getDefault()),
                     modifier = Modifier.padding(top = 5.dp, end = 14.dp),
-                    color = OwnkeyBrand.Glass.Accent,
+                    color = accentColor,
                     fontSize = 11.sp,
                     letterSpacing = 0.5.sp,
                     maxLines = 1,
@@ -392,7 +395,7 @@ private fun ResultOverlay(
                     .weight(2f)
                     .fillMaxHeight()
                     .clickable(onClick = onInsert),
-                color = OwnkeyBrand.Glass.Accent,
+                color = accentColor,
                 contentColor = OwnkeyBrand.Glass.Ink,
                 shape = CardShape,
                 shadowElevation = 4.dp,
@@ -407,6 +410,7 @@ private fun ResultOverlay(
 
 @Composable
 private fun DoneOverlay() {
+    val accentColor = ownkeyAccentColor()
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -420,7 +424,7 @@ private fun DoneOverlay() {
             modifier = Modifier
                 .size(64.dp)
                 .scale(checkScale.value)
-                .background(OwnkeyBrand.Glass.Accent, CircleShape),
+                .background(accentColor, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

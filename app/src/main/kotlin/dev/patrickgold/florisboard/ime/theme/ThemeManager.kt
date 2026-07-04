@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.jsonObject
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.io.FsDir
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
@@ -98,6 +99,10 @@ class ThemeManager(context: Context) {
         indexedThemeConfigs.collectIn(scope) {
             updateActiveTheme { cachedThemeInfos.clear() }
         }
+        prefs.theme.accentColor.asFlow().collectIn(scope) {
+            // The accent is baked into glass stylesheets at load time, so cached parses are stale.
+            updateActiveTheme { cachedThemeInfos.clear() }
+        }
         combine(
             prefs.theme.mode.asFlow(),
             prefs.theme.dayThemeId.asFlow(),
@@ -144,7 +149,7 @@ class ThemeManager(context: Context) {
             ZipUtils.unzip(appContext, themeExtRef, loadedDir).getOrThrow()
             flogInfo { "Loaded extension ${themeExt.meta.id} into $loadedDir" }
             val stylesheetFile = loadedDir.subFile(themeConfig.stylesheetPath())
-            val stylesheetJson = stylesheetFile.readText()
+            val stylesheetJson = applyUserAccent(stylesheetFile.readText(), activeName)
             SnyggStylesheet.fromJson(stylesheetJson).getOrThrow()
         }.fold(
             onSuccess = { newStylesheet ->
@@ -158,6 +163,44 @@ class ThemeManager(context: Context) {
                 )
             },
         )
+    }
+
+    /**
+     * Injects the user's accent color into the primary/secondary defines of Ownkey Glass
+     * stylesheets before parsing. The glass stylesheets are static generated assets, so this is
+     * what makes the accent color preference apply to them. Themes outside the glass style system
+     * (custom or third-party) keep their own colors untouched.
+     */
+    private fun applyUserAccent(stylesheetJson: String, themeName: ExtensionComponentName): String {
+        val isGlassTheme = themeName.componentId.startsWith("ownkey_glass") ||
+            themeName.componentId == "ownkey_liquid_glass"
+        if (!isGlassTheme) return stylesheetJson
+        val accent = prefs.theme.accentColor.get()
+        if (accent == Color.Unspecified) return stylesheetJson
+
+        val accentArgb = accent.toArgb()
+        val accentHex = String.format("#%06x", accentArgb and 0xFFFFFF)
+        val pressedArgb = ColorUtils.blendARGB(accentArgb, android.graphics.Color.BLACK, 0.12f)
+        val pressedHex = String.format("#%06x", pressedArgb and 0xFFFFFF)
+
+        return try {
+            val json = kotlinx.serialization.json.Json.parseToJsonElement(stylesheetJson).jsonObject
+            val defines = json["@defines"]?.jsonObject ?: return stylesheetJson
+            val newDefines = kotlinx.serialization.json.JsonObject(
+                defines.toMutableMap().apply {
+                    put("--primary", kotlinx.serialization.json.JsonPrimitive(accentHex))
+                    put("--primary-variant", kotlinx.serialization.json.JsonPrimitive(pressedHex))
+                    put("--secondary", kotlinx.serialization.json.JsonPrimitive(accentHex))
+                    put("--secondary-variant", kotlinx.serialization.json.JsonPrimitive(pressedHex))
+                }
+            )
+            val newJson = kotlinx.serialization.json.JsonObject(
+                json.toMutableMap().apply { put("@defines", newDefines) }
+            )
+            newJson.toString()
+        } catch (_: Exception) {
+            stylesheetJson
+        }
     }
 
     private fun evaluateActiveThemeName(): ExtensionComponentName {

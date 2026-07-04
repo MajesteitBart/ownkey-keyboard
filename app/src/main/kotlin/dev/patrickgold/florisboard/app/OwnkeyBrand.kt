@@ -16,7 +16,23 @@
 
 package dev.patrickgold.florisboard.app
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
+import dev.patrickgold.jetpref.datastore.model.collectAsState
+
+/**
+ * The user-selected accent color (Theme settings), falling back to the Liquid Glass default
+ * accent. Use this instead of [OwnkeyBrand.Glass.Accent] in composables so accent changes apply
+ * live to hardcoded surfaces like the mic pill and the AI rewrite panel.
+ */
+@Composable
+fun ownkeyAccentColor(): Color {
+    val prefs by FlorisPreferenceStore
+    val accent by prefs.theme.accentColor.collectAsState()
+    return accent.takeOrElse { OwnkeyBrand.Glass.Accent }
+}
 
 object OwnkeyBrand {
     val Key = Color(0xFF0A0B0C)

@@ -29,10 +29,12 @@ enum class ThemeGlassPreset(val styleId: String) {
 }
 
 /**
- * Icon style for keyboard and toolbar icons: thin outlined icons (Tabler) following the Liquid
- * Glass design, or the classic filled Material icons.
+ * Icon package for keyboard and toolbar icons: thin outlined icons (Tabler) following the Liquid
+ * Glass design, or the filled/rounded/sharp Material icon sets.
  */
 enum class ThemeIconStyle {
     THIN_OUTLINE,
-    FILLED;
+    FILLED,
+    ROUNDED,
+    SHARP;
 }
