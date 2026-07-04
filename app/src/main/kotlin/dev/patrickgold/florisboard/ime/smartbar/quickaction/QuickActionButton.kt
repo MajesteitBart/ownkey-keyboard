@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -77,6 +78,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
@@ -187,11 +190,13 @@ fun QuickActionButton(
                             evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
                         }
                         if (imageVector != null) {
+                            val prefs by FlorisPreferenceStore
+                            val toolbarIconColor by prefs.theme.toolbarIconColor.collectAsState()
                             Icon(
                                 modifier = Modifier.requiredSize(iconSize),
                                 imageVector = imageVector,
                                 contentDescription = null,
-                                tint = OwnkeyBrand.Glass.InkSoft,
+                                tint = toolbarIconColor.takeOrElse { OwnkeyBrand.Glass.InkSoft },
                             )
                         } else if (label != null) {
                             SnyggText(

@@ -87,11 +87,12 @@ fun QuickActionsRow(
         } else {
             QuickActionButtonAspectRatio
         }
-        val actionIconSize = if (isExtendedActionsRow) {
+        val iconSizePercent by prefs.theme.toolbarIconSizePercent.collectAsState()
+        val actionIconSize = (if (isExtendedActionsRow) {
             SecondaryQuickActionButtonIconSize
         } else {
             QuickActionButtonIconSize
-        }
+        }) * (iconSizePercent.coerceIn(50, 200) / 100f)
         val actionWidth = height * actionButtonAspectRatio
         val maxActionsToShow = if (isExtendedActionsRow) MaxSecondaryRowActionCount else Int.MAX_VALUE
         val numActionsToShow = ((width / actionWidth).toInt() - (if (showOverflowAction) 1 else 0))

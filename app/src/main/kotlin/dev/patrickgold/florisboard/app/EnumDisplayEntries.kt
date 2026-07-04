@@ -42,6 +42,8 @@ import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
+import dev.patrickgold.florisboard.ime.theme.ThemeGlassPreset
+import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.window.ImeWindowMode
@@ -532,6 +534,38 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
             entry(
                 key = SpaceBarMode.SPACE_BAR_KEY,
                 label = stringRes(R.string.enum__space_bar_mode__space_bar_key),
+            )
+        }
+    },
+    ThemeGlassPreset::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = ThemeGlassPreset.GLASS,
+                label = stringRes(R.string.enum__theme_glass_preset__glass),
+            )
+            entry(
+                key = ThemeGlassPreset.AMOLED,
+                label = stringRes(R.string.enum__theme_glass_preset__amoled),
+            )
+            entry(
+                key = ThemeGlassPreset.SLATE,
+                label = stringRes(R.string.enum__theme_glass_preset__slate),
+            )
+            entry(
+                key = ThemeGlassPreset.OCEAN,
+                label = stringRes(R.string.enum__theme_glass_preset__ocean),
+            )
+        }
+    },
+    ThemeIconStyle::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = ThemeIconStyle.THIN_OUTLINE,
+                label = stringRes(R.string.enum__theme_icon_style__thin_outline),
+            )
+            entry(
+                key = ThemeIconStyle.FILLED,
+                label = stringRes(R.string.enum__theme_icon_style__filled),
             )
         }
     },

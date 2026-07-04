@@ -57,6 +57,8 @@ import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
+import dev.patrickgold.florisboard.ime.theme.ThemeGlassPreset
+import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.theme.extMyTheme
@@ -832,6 +834,23 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val keyRadius = enum(
             key = "theme__glass_key_radius",
             default = ThemeKeyRadius.MEDIUM,
+        )
+        val glassPreset = enum(
+            key = "theme__glass_preset",
+            default = ThemeGlassPreset.GLASS,
+        )
+        val iconStyle = enum(
+            key = "theme__icon_style",
+            default = ThemeIconStyle.THIN_OUTLINE,
+        )
+        val toolbarIconSizePercent = int(
+            key = "theme__toolbar_icon_size_percent",
+            default = 100,
+        )
+        val toolbarIconColor = custom(
+            key = "theme__toolbar_icon_color",
+            default = Color.Unspecified,
+            serializer = ColorPreferenceSerializer,
         )
         val accentColor = custom(
             key = "theme__accent_color",

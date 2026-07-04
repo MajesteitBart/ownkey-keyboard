@@ -175,6 +175,19 @@
     <string name="pref__theme__show_key_borders__label" comment="Label for key borders visibility preference">Show key borders</string>
     <string name="pref__theme__show_key_borders__summary" comment="Summary for key borders visibility preference">Toggle between bordered and borderless key styling.</string>
     <string name="pref__theme__key_radius__label" comment="Label for key corner radius preference">Button corner radius</string>
+    <string name="pref__theme__glass_preset__label" comment="Label for theme preset preference">Theme preset</string>
+    <string name="pref__theme__group_icons__label" comment="Preference group title">Icons</string>
+    <string name="pref__theme__icon_style__label" comment="Label for icon style preference">Icon style</string>
+    <string name="pref__theme__toolbar_icon_size__label" comment="Label for toolbar icon size preference">Toolbar icon size</string>
+    <string name="pref__theme__toolbar_icon_color__label" comment="Label for toolbar icon color preference">Toolbar icon color</string>
+    <string name="pref__theme__custom_themes__label" comment="Preference title">Custom themes</string>
+    <string name="pref__theme__custom_themes__summary" comment="Preference summary">Create your own theme and edit every property in the theme editor</string>
+    <string name="enum__theme_glass_preset__glass" comment="Enum value label">Glass (default)</string>
+    <string name="enum__theme_glass_preset__amoled" comment="Enum value label">AMOLED black</string>
+    <string name="enum__theme_glass_preset__slate" comment="Enum value label">Slate</string>
+    <string name="enum__theme_glass_preset__ocean" comment="Enum value label">Ocean</string>
+    <string name="enum__theme_icon_style__thin_outline" comment="Enum value label">Thin outline</string>
+    <string name="enum__theme_icon_style__filled" comment="Enum value label">Filled</string>
     <string name="pref__theme__sunrise_time__label" comment="Label of the sunrise time preference">Sunrise time</string>
     <string name="pref__theme__sunset_time__label" comment="Label of the sunset time preference">Sunset time</string>
     <string name="pref__theme__day" comment="Label of the day group (day means light theme)">Day theme</string>

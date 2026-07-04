@@ -162,6 +162,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             prefs.keyboard.utilityKeyAction.asFlow().collectLatestIn(scope) {
                 updateActiveEvaluators()
             }
+            prefs.theme.iconStyle.asFlow().collectLatestIn(scope) {
+                updateActiveEvaluators()
+            }
             activeState.collectLatestIn(scope) {
                 updateActiveEvaluators()
             }

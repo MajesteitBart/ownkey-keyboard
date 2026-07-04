@@ -13,6 +13,198 @@
              },
     "themes":  [
                    {
+                       "id":  "ownkey_glass_amoled_bordered_none",
+                       "label":  "Ownkey Glass Amoled (Bordered, None radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_bordered_small",
+                       "label":  "Ownkey Glass Amoled (Bordered, Small radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_bordered_medium",
+                       "label":  "Ownkey Glass Amoled (Bordered, Medium radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_bordered_large",
+                       "label":  "Ownkey Glass Amoled (Bordered, Large radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_borderless_none",
+                       "label":  "Ownkey Glass Amoled (Borderless, None radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_borderless_small",
+                       "label":  "Ownkey Glass Amoled (Borderless, Small radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_borderless_medium",
+                       "label":  "Ownkey Glass Amoled (Borderless, Medium radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_amoled_borderless_large",
+                       "label":  "Ownkey Glass Amoled (Borderless, Large radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_bordered_none",
+                       "label":  "Ownkey Glass Slate (Bordered, None radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_bordered_small",
+                       "label":  "Ownkey Glass Slate (Bordered, Small radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_bordered_medium",
+                       "label":  "Ownkey Glass Slate (Bordered, Medium radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_bordered_large",
+                       "label":  "Ownkey Glass Slate (Bordered, Large radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_borderless_none",
+                       "label":  "Ownkey Glass Slate (Borderless, None radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_borderless_small",
+                       "label":  "Ownkey Glass Slate (Borderless, Small radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_borderless_medium",
+                       "label":  "Ownkey Glass Slate (Borderless, Medium radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_slate_borderless_large",
+                       "label":  "Ownkey Glass Slate (Borderless, Large radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_bordered_none",
+                       "label":  "Ownkey Glass Ocean (Bordered, None radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_bordered_small",
+                       "label":  "Ownkey Glass Ocean (Bordered, Small radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_bordered_medium",
+                       "label":  "Ownkey Glass Ocean (Bordered, Medium radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_bordered_large",
+                       "label":  "Ownkey Glass Ocean (Bordered, Large radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_borderless_none",
+                       "label":  "Ownkey Glass Ocean (Borderless, None radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_borderless_small",
+                       "label":  "Ownkey Glass Ocean (Borderless, Small radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_borderless_medium",
+                       "label":  "Ownkey Glass Ocean (Borderless, Medium radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
+                       "id":  "ownkey_glass_ocean_borderless_large",
+                       "label":  "Ownkey Glass Ocean (Borderless, Large radius)",
+                       "authors":  [
+                                       "Ownkey"
+                                   ],
+                       "isNight":  true
+                   },
+                   {
                        "id":  "ownkey_glass_day_bordered_none",
                        "label":  "Ownkey Glass Day (Bordered, None radius)",
                        "authors":  [

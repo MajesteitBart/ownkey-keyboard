@@ -19,21 +19,40 @@ package dev.patrickgold.florisboard.ime.keyboard
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
+import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.ContentPasteGo
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardCapslock
 import androidx.compose.material.icons.filled.KeyboardHide
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
@@ -124,6 +143,18 @@ private fun ComputingEvaluator.tablerIcon(id: Int): ImageVector? {
     return context()?.vectorResource(id = id)
 }
 
+/**
+ * Picks the thin Tabler outline icon or a filled Material icon based on the user's icon style
+ * preference (Theme settings).
+ */
+private fun ComputingEvaluator.styledIcon(tablerId: Int, filled: ImageVector): ImageVector? {
+    val prefs by FlorisPreferenceStore
+    return when (prefs.theme.iconStyle.get()) {
+        ThemeIconStyle.THIN_OUTLINE -> tablerIcon(tablerId) ?: filled
+        ThemeIconStyle.FILLED -> filled
+    }
+}
+
 fun ComputingEvaluator.computeLabel(data: KeyData): String? {
     val evaluator = this
     return if (data.type == KeyType.CHARACTER && data.code != KeyCode.SPACE && data.code != KeyCode.CJK_SPACE
@@ -177,19 +208,19 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
     val evaluator = this
     return when (data.code) {
         KeyCode.ARROW_LEFT -> {
-            tablerIcon(R.drawable.ic_tabler_chevron_left)
+            styledIcon(R.drawable.ic_tabler_chevron_left, Icons.AutoMirrored.Filled.KeyboardArrowLeft)
         }
         KeyCode.ARROW_RIGHT -> {
-            tablerIcon(R.drawable.ic_tabler_chevron_right)
+            styledIcon(R.drawable.ic_tabler_chevron_right, Icons.AutoMirrored.Filled.KeyboardArrowRight)
         }
         KeyCode.ARROW_UP -> {
-            tablerIcon(R.drawable.ic_tabler_chevron_up)
+            styledIcon(R.drawable.ic_tabler_chevron_up, Icons.Filled.KeyboardArrowUp)
         }
         KeyCode.ARROW_DOWN -> {
-            tablerIcon(R.drawable.ic_tabler_chevron_down)
+            styledIcon(R.drawable.ic_tabler_chevron_down, Icons.Filled.KeyboardArrowDown)
         }
         KeyCode.CLIPBOARD_COPY -> {
-            tablerIcon(R.drawable.ic_tabler_copy)
+            styledIcon(R.drawable.ic_tabler_copy, Icons.Filled.ContentCopy)
         }
         KeyCode.CLIPBOARD_CUT -> {
             Icons.Default.ContentCut
@@ -198,7 +229,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             Icons.Default.ContentPasteGo
         }
         KeyCode.CLIPBOARD_SELECT_ALL -> {
-            tablerIcon(R.drawable.ic_tabler_select_all)
+            styledIcon(R.drawable.ic_tabler_select_all, Icons.Filled.SelectAll)
         }
         KeyCode.CLIPBOARD_CLEAR_PRIMARY_CLIP -> {
             Icons.Default.DeleteSweep
@@ -221,29 +252,29 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             context()?.vectorResource(id = R.drawable.ic_resize)
         }
         KeyCode.VOICE_INPUT -> {
-            tablerIcon(R.drawable.ic_tabler_microphone)
+            styledIcon(R.drawable.ic_tabler_microphone, Icons.Filled.Mic)
         }
         KeyCode.IME_HIDE_UI -> {
             Icons.Default.KeyboardHide
         }
         KeyCode.DELETE -> {
-            tablerIcon(R.drawable.ic_tabler_backspace)
+            styledIcon(R.drawable.ic_tabler_backspace, Icons.AutoMirrored.Filled.Backspace)
         }
         KeyCode.ENTER -> {
             val imeOptions = evaluator.editorInfo.imeOptions
             val inputAttributes = evaluator.editorInfo.inputAttributes
             if (imeOptions.flagNoEnterAction || inputAttributes.flagTextMultiLine) {
-                tablerIcon(R.drawable.ic_tabler_corner_down_left)
+                styledIcon(R.drawable.ic_tabler_corner_down_left, Icons.AutoMirrored.Filled.KeyboardReturn)
             } else {
                 when (imeOptions.action) {
                     ImeOptions.Action.DONE -> Icons.Default.Done
                     ImeOptions.Action.GO -> Icons.AutoMirrored.Filled.ArrowRightAlt
                     ImeOptions.Action.NEXT -> Icons.AutoMirrored.Filled.ArrowRightAlt
-                    ImeOptions.Action.NONE -> tablerIcon(R.drawable.ic_tabler_corner_down_left)
+                    ImeOptions.Action.NONE -> styledIcon(R.drawable.ic_tabler_corner_down_left, Icons.AutoMirrored.Filled.KeyboardReturn)
                     ImeOptions.Action.PREVIOUS -> Icons.AutoMirrored.Filled.ArrowRightAlt
-                    ImeOptions.Action.SEARCH -> tablerIcon(R.drawable.ic_tabler_search)
+                    ImeOptions.Action.SEARCH -> styledIcon(R.drawable.ic_tabler_search, Icons.Filled.Search)
                     ImeOptions.Action.SEND -> Icons.AutoMirrored.Filled.Send
-                    ImeOptions.Action.UNSPECIFIED -> tablerIcon(R.drawable.ic_tabler_corner_down_left)
+                    ImeOptions.Action.UNSPECIFIED -> styledIcon(R.drawable.ic_tabler_corner_down_left, Icons.AutoMirrored.Filled.KeyboardReturn)
                 }
             }
         }
@@ -251,21 +282,21 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             Icons.AutoMirrored.Default.ForwardDelete
         }
         KeyCode.IME_UI_MODE_MEDIA -> {
-            tablerIcon(R.drawable.ic_tabler_mood_smile)
+            styledIcon(R.drawable.ic_tabler_mood_smile, Icons.Filled.EmojiEmotions)
         }
         KeyCode.IME_UI_MODE_CLIPBOARD -> {
-            tablerIcon(R.drawable.ic_tabler_clipboard)
+            styledIcon(R.drawable.ic_tabler_clipboard, Icons.Filled.Assignment)
         }
         KeyCode.LANGUAGE_SWITCH -> {
-            tablerIcon(R.drawable.ic_tabler_world)
+            styledIcon(R.drawable.ic_tabler_world, Icons.Filled.Language)
         }
         KeyCode.SETTINGS -> {
-            tablerIcon(R.drawable.ic_tabler_settings)
+            styledIcon(R.drawable.ic_tabler_settings, Icons.Filled.Settings)
         }
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
                 true -> Icons.Default.KeyboardCapslock
-                else -> tablerIcon(R.drawable.ic_tabler_arrow_big_up)
+                else -> styledIcon(R.drawable.ic_tabler_arrow_big_up, Icons.Filled.ArrowUpward)
             }
         }
         KeyCode.SPACE, KeyCode.CJK_SPACE -> {
@@ -280,13 +311,13 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             }
         }
         KeyCode.UNDO -> {
-            tablerIcon(R.drawable.ic_tabler_arrow_back_up)
+            styledIcon(R.drawable.ic_tabler_arrow_back_up, Icons.AutoMirrored.Filled.Undo)
         }
         KeyCode.REDO -> {
-            tablerIcon(R.drawable.ic_tabler_arrow_forward_up)
+            styledIcon(R.drawable.ic_tabler_arrow_forward_up, Icons.AutoMirrored.Filled.Redo)
         }
         KeyCode.TOGGLE_ACTIONS_OVERFLOW -> {
-            tablerIcon(R.drawable.ic_tabler_dots)
+            styledIcon(R.drawable.ic_tabler_dots, Icons.Filled.MoreHoriz)
         }
         KeyCode.TOGGLE_INCOGNITO_MODE -> {
             if (evaluator.state.isIncognitoMode) {
@@ -299,7 +330,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             Icons.Default.FontDownload
         }
         KeyCode.AI_REWRITE -> {
-            tablerIcon(R.drawable.ic_tabler_sparkles)
+            styledIcon(R.drawable.ic_tabler_sparkles, Icons.Filled.AutoAwesome)
         }
         KeyCode.KANA_SWITCHER -> {
             if (evaluator.state.isKanaKata) {

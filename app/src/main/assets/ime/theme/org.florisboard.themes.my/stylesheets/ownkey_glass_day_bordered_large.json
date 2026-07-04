@@ -79,8 +79,7 @@
                     },
     "key[code=10]":  {
                          "background":  "var(--primary)",
-                         "foreground":  "var(--on-primary)",
-                         "margin":  "0dp 6dp"
+                         "foreground":  "var(--on-primary)"
                      },
     "key[code=10]:pressed":  {
                                  "background":  "var(--primary-variant)",
@@ -90,7 +89,6 @@
                          "background":  "var(--surface)",
                          "foreground":  "#1719266b",
                          "font-size":  "15sp",
-                         "margin":  "0dp 6dp",
                          "text-overflow":  "ellipsis"
                      },
     "key[code=-201,-202,-203]":  {

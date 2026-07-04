@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +30,8 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
+import dev.patrickgold.florisboard.ime.theme.ThemeGlassPreset
+import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.theme.extMyTheme
@@ -36,6 +39,7 @@ import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ColorPickerPreference
+import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
@@ -47,10 +51,11 @@ import org.florisboard.lib.compose.stringRes
 
 private fun styleThemeId(
     isNight: Boolean,
+    preset: ThemeGlassPreset,
     showKeyBorders: Boolean,
     keyRadius: ThemeKeyRadius,
 ): ExtensionComponentName {
-    val dayNight = if (isNight) "night" else "day"
+    val palette = if (isNight) preset.styleId else "day"
     val border = if (showKeyBorders) "bordered" else "borderless"
     val radius = when (keyRadius) {
         ThemeKeyRadius.NONE -> "none"
@@ -58,7 +63,7 @@ private fun styleThemeId(
         ThemeKeyRadius.MEDIUM -> "medium"
         ThemeKeyRadius.LARGE -> "large"
     }
-    return extMyTheme("ownkey_glass_${dayNight}_${border}_$radius")
+    return extMyTheme("ownkey_glass_${palette}_${border}_$radius")
 }
 
 private fun isStyleManagedTheme(id: ExtensionComponentName): Boolean {
@@ -77,6 +82,7 @@ fun ThemeScreen() = FlorisScreen {
 
     content {
         val mode by prefs.theme.mode.collectAsState()
+        val glassPreset by prefs.theme.glassPreset.collectAsState()
         val showKeyBorders by prefs.theme.showKeyBorders.collectAsState()
         val keyRadius by prefs.theme.keyRadius.collectAsState()
         val dayThemeId by prefs.theme.dayThemeId.collectAsState()
@@ -84,11 +90,13 @@ fun ThemeScreen() = FlorisScreen {
 
         val targetDayThemeId = styleThemeId(
             isNight = false,
+            preset = glassPreset,
             showKeyBorders = showKeyBorders,
             keyRadius = keyRadius,
         )
         val targetNightThemeId = styleThemeId(
             isNight = true,
+            preset = glassPreset,
             showKeyBorders = showKeyBorders,
             keyRadius = keyRadius,
         )
@@ -128,6 +136,13 @@ fun ThemeScreen() = FlorisScreen {
             },
         )
 
+        ListPreference(
+            prefs.theme.glassPreset,
+            icon = Icons.Default.Style,
+            title = stringRes(R.string.pref__theme__glass_preset__label),
+            entries = enumDisplayEntriesOf(ThemeGlassPreset::class),
+        )
+
         SwitchPreference(
             prefs.theme.showKeyBorders,
             title = stringRes(R.string.pref__theme__show_key_borders__label),
@@ -157,6 +172,30 @@ fun ThemeScreen() = FlorisScreen {
             }
         )
 
+        PreferenceGroup(title = stringRes(R.string.pref__theme__group_icons__label)) {
+            ListPreference(
+                prefs.theme.iconStyle,
+                title = stringRes(R.string.pref__theme__icon_style__label),
+                entries = enumDisplayEntriesOf(ThemeIconStyle::class),
+            )
+            DialogSliderPreference(
+                prefs.theme.toolbarIconSizePercent,
+                title = stringRes(R.string.pref__theme__toolbar_icon_size__label),
+                valueLabel = { stringRes(R.string.unit__percent__symbol, "v" to it) },
+                min = 75,
+                max = 150,
+                stepIncrement = 5,
+            )
+            ColorPickerPreference(
+                pref = prefs.theme.toolbarIconColor,
+                title = stringRes(R.string.pref__theme__toolbar_icon_color__label),
+                defaultValueLabel = stringRes(R.string.action__default),
+                defaultColors = ColorMappings.colors,
+                showAlphaSlider = false,
+                enableAdvancedLayout = true,
+            )
+        }
+
         PreferenceGroup(title = stringRes(R.string.settings__theme_manager__title_manage)) {
             Preference(
                 icon = Icons.Default.Palette,
@@ -170,6 +209,16 @@ fun ThemeScreen() = FlorisScreen {
                 title = stringRes(R.string.settings__theme_manager__title_night),
                 onClick = {
                     navController.navigate(Routes.Settings.ThemeManager(ThemeManagerScreenAction.SELECT_NIGHT))
+                },
+            )
+            Preference(
+                icon = Icons.Default.Palette,
+                title = stringRes(R.string.pref__theme__custom_themes__label),
+                summary = stringRes(R.string.pref__theme__custom_themes__summary),
+                onClick = {
+                    navController.navigate(
+                        Routes.Ext.List(dev.patrickgold.florisboard.app.ext.ExtensionListScreenType.EXT_THEME, false)
+                    )
                 },
             )
         }
