@@ -811,23 +811,27 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "theme__mode",
             default = ThemeMode.ALWAYS_NIGHT,
         )
+        // Note: these four keys were renamed (former "theme__day_theme_id", "theme__night_theme_id",
+        // "theme__show_key_borders", "theme__key_radius") when the legacy Voxtral style system was
+        // replaced by Ownkey Glass, so every install starts from the new design once. Choices made
+        // afterwards persist normally.
         val dayThemeId = custom(
-            key = "theme__day_theme_id",
-            default = extMyTheme("ownkey_liquid_glass"),
+            key = "theme__glass_day_theme_id",
+            default = extMyTheme("ownkey_glass_day_borderless_medium"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
-            key = "theme__night_theme_id",
-            default = extMyTheme("ownkey_liquid_glass"),
+            key = "theme__glass_night_theme_id",
+            default = extMyTheme("ownkey_glass_night_borderless_medium"),
             serializer = ExtensionComponentName.Serializer,
         )
         val showKeyBorders = boolean(
-            key = "theme__show_key_borders",
-            default = true,
+            key = "theme__glass_show_key_borders",
+            default = false,
         )
         val keyRadius = enum(
-            key = "theme__key_radius",
-            default = ThemeKeyRadius.NONE,
+            key = "theme__glass_key_radius",
+            default = ThemeKeyRadius.MEDIUM,
         )
         val accentColor = custom(
             key = "theme__accent_color",

@@ -19,12 +19,15 @@ package dev.patrickgold.florisboard.app.settings.theme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.LocalNavController
+import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
@@ -34,6 +37,8 @@ import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ColorPickerPreference
 import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.jetpref.datastore.ui.Preference
+import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
 import dev.patrickgold.jetpref.datastore.ui.isMaterialYou
 import dev.patrickgold.jetpref.datastore.ui.listPrefEntries
@@ -53,7 +58,13 @@ private fun styleThemeId(
         ThemeKeyRadius.MEDIUM -> "medium"
         ThemeKeyRadius.LARGE -> "large"
     }
-    return extMyTheme("voxtral_${dayNight}_${border}_$radius")
+    return extMyTheme("ownkey_glass_${dayNight}_${border}_$radius")
+}
+
+private fun isStyleManagedTheme(id: ExtensionComponentName): Boolean {
+    return id.componentId.startsWith("ownkey_glass_") ||
+        id.componentId.startsWith("voxtral_") ||
+        id.componentId == "ownkey_liquid_glass"
 }
 
 @Composable
@@ -62,6 +73,7 @@ fun ThemeScreen() = FlorisScreen {
     previewFieldVisible = true
 
     val context = LocalContext.current
+    val navController = LocalNavController.current
 
     content {
         val mode by prefs.theme.mode.collectAsState()
@@ -85,10 +97,13 @@ fun ThemeScreen() = FlorisScreen {
             if (mode == ThemeMode.FOLLOW_TIME) {
                 prefs.theme.mode.set(ThemeMode.FOLLOW_SYSTEM)
             }
-            if (dayThemeId != targetDayThemeId) {
+            // Only themes belonging to the style system (incl. the legacy Voxtral styles, which are
+            // upgraded to Ownkey Glass here) are synced from the toggles above. Themes selected in
+            // the theme manager are the user's explicit choice and must never be overwritten.
+            if (dayThemeId != targetDayThemeId && isStyleManagedTheme(dayThemeId)) {
                 prefs.theme.dayThemeId.set(targetDayThemeId)
             }
-            if (nightThemeId != targetNightThemeId) {
+            if (nightThemeId != targetNightThemeId && isStyleManagedTheme(nightThemeId)) {
                 prefs.theme.nightThemeId.set(targetNightThemeId)
             }
         }
@@ -141,5 +156,22 @@ fun ThemeScreen() = FlorisScreen {
                 }
             }
         )
+
+        PreferenceGroup(title = stringRes(R.string.settings__theme_manager__title_manage)) {
+            Preference(
+                icon = Icons.Default.Palette,
+                title = stringRes(R.string.settings__theme_manager__title_day),
+                onClick = {
+                    navController.navigate(Routes.Settings.ThemeManager(ThemeManagerScreenAction.SELECT_DAY))
+                },
+            )
+            Preference(
+                icon = Icons.Default.Palette,
+                title = stringRes(R.string.settings__theme_manager__title_night),
+                onClick = {
+                    navController.navigate(Routes.Settings.ThemeManager(ThemeManagerScreenAction.SELECT_NIGHT))
+                },
+            )
+        }
     }
 }
