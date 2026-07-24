@@ -1,6 +1,102 @@
 {
   "version": 1,
   "skills": {
+    "gplay-cli-usage": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-cli-usage/SKILL.md",
+      "computedHash": "38093b2482711d41f6f5ea0d10de550827ade61611b8eeff61a9bed6ce7b45ff"
+    },
+    "gplay-gradle-build": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-gradle-build/SKILL.md",
+      "computedHash": "7d1808108729cbc4e565ada36433412ebecdcfda2701e3d6d4b50c07aadb49bb"
+    },
+    "gplay-iap-setup": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-iap-setup/SKILL.md",
+      "computedHash": "767d00617ffe6e99463de031f9ffc1a10d15c22a4c9f1c13985c5074883eae85"
+    },
+    "gplay-metadata-sync": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-metadata-sync/SKILL.md",
+      "computedHash": "5df7f8f9e7a1ec6982d73d1cf55d35683fd22c724b33f3bb624a8e56bfb07c9d"
+    },
+    "gplay-migrate-fastlane": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-migrate-fastlane/SKILL.md",
+      "computedHash": "6e05c1be90dad29d37cc4750daf42d4d4e06579ed8c23075b42a6eaadb867908"
+    },
+    "gplay-ppp-pricing": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-ppp-pricing/SKILL.md",
+      "computedHash": "4b6035b6cd58f59b2d3731996e29bc75ca5e28854ee43ff756a996bf271b889a"
+    },
+    "gplay-purchase-verification": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-purchase-verification/SKILL.md",
+      "computedHash": "948363fe7b7d305550ef77d438d8b69ae823935fb50cf90ffb0f59df0fa7abf0"
+    },
+    "gplay-release-flow": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-release-flow/SKILL.md",
+      "computedHash": "66a600658998c663c10ccb74a22cf9fdfdd6e478675e0f200154b54621900c40"
+    },
+    "gplay-reports-download": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-reports-download/SKILL.md",
+      "computedHash": "b6f84fbc9125ffcf44dbb971b8c2b9ee68c65bb1b225be18d421e10e825b8577"
+    },
+    "gplay-review-management": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-review-management/SKILL.md",
+      "computedHash": "277baa8ad68f84b21db969575338a012b78b9654aaea701a343a9884a7d83406"
+    },
+    "gplay-rollout-management": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-rollout-management/SKILL.md",
+      "computedHash": "7643ff879e405a796159dc3816b8d529969e74a6b44b519c47e942d6df8b193b"
+    },
+    "gplay-screenshot-automation": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-screenshot-automation/SKILL.md",
+      "computedHash": "b2d47cd15b66d2209ff64aa9af652510f524f844d3fbc6def8f6408982cb18f2"
+    },
+    "gplay-submission-checks": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-submission-checks/SKILL.md",
+      "computedHash": "4a6c953371e06029cb095788bcb26f8b34bc8acb6077ee0a821242e358a71365"
+    },
+    "gplay-testers-orchestration": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-testers-orchestration/SKILL.md",
+      "computedHash": "d9f05910096151a02023d90866e56ea4d3afcc04bc34ecb70419f4db91d0c5af"
+    },
+    "gplay-user-management": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-user-management/SKILL.md",
+      "computedHash": "1838e9e8611b9d0d2451bda8e9536c4b1bbd6c18aff2ac6d32f794d39dcb2b29"
+    },
+    "gplay-vitals-monitoring": {
+      "source": "tamtom/gplay-cli-skills",
+      "sourceType": "github",
+      "skillPath": "skills/gplay-vitals-monitoring/SKILL.md",
+      "computedHash": "470ef5d01cfaa68e3b0c1020c40f1655b1f23dc0071ce0e18e3ac324dfaa012a"
+    },
     "kotlin-backend-jpa-entity-mapping": {
       "source": "Kotlin/kotlin-agent-skills",
       "sourceType": "github",
