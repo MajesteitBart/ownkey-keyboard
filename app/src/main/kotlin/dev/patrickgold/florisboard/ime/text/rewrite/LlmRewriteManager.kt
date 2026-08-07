@@ -35,6 +35,7 @@ import org.florisboard.lib.android.showShortToastSync
 
 class LlmRewriteManager(
     context: Context,
+    private val cloudAiAvailabilityPolicy: CloudAiAvailabilityPolicy,
 ) {
     companion object {
         private const val DoneConfirmationMillis = 900L
@@ -82,7 +83,23 @@ class LlmRewriteManager(
     private var generateJob: Job? = null
     private var activeTarget: RewriteTarget? = null
 
+    init {
+        scope.launch {
+            cloudAiAvailabilityPolicy.state.collect { availability ->
+                if (availability is CloudAiAvailability.Unavailable) {
+                    generateJob?.cancel()
+                    generateJob = null
+                    activeTarget = null
+                    _uiStateFlow.value = RewriteUiState()
+                }
+            }
+        }
+    }
+
     fun rewriteWith(prompt: RewritePromptPreset) {
+        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+            return
+        }
         if (_uiStateFlow.value.step == RewriteStep.GENERATING) {
             return
         }
@@ -101,6 +118,9 @@ class LlmRewriteManager(
 
     /** Re-runs the active prompt against the originally captured text. */
     fun tryAgain() {
+        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+            return
+        }
         val state = _uiStateFlow.value
         val prompt = state.activePrompt ?: return
         val target = activeTarget ?: return
@@ -154,10 +174,30 @@ class LlmRewriteManager(
         keyboardManager.isRewriteOptionsVisible = false
     }
 
+    /**
+     * Narrow generation primitive for the voice-rewrite orchestrator. Preset targeting, preview and
+     * commit stay here; the voice session owns its own target, review, and replacement.
+     */
+    fun voiceRewriteOperation(): VoiceRewriteOperation = LlmVoiceRewriteOperation(rewriteClient)
+
+    fun isRewriteConfigured(): Boolean = secretsStore.hasApiKey()
+
+    /** Configured rewrite provider preset label, never the endpoint URL. */
+    fun rewriteProviderLabel(): String =
+        LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).label
+
     private fun generate(prompt: RewritePromptPreset, target: RewriteTarget) {
+        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+            return
+        }
         generateJob?.cancel()
         _uiStateFlow.value = RewriteUiState(step = RewriteStep.GENERATING, activePrompt = prompt)
         generateJob = scope.launch {
+            if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+                activeTarget = null
+                _uiStateFlow.value = RewriteUiState()
+                return@launch
+            }
             val rewritten = withContext(Dispatchers.IO) {
                 rewriteClient.rewrite(target.text, prompt)
             }.getOrElse { error ->

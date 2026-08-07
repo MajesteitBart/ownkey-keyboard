@@ -52,6 +52,7 @@ import dev.patrickgold.florisboard.ime.landscapeinput.ExtractedInputRootView
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.lifecycle.LifecycleInputMethodService
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
+import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.theme.WallpaperChangeReceiver
 import dev.patrickgold.florisboard.ime.window.ImeRootView
 import dev.patrickgold.florisboard.ime.window.ImeWindowController
@@ -272,8 +273,22 @@ class FlorisImeService : LifecycleInputMethodService() {
     private val subtypeManager by subtypeManager()
     private val themeManager by themeManager()
     private val voxtralDictationManager by voxtralDictationManager()
+    private val voiceRewriteUiControllerLazy = voiceRewriteUiController()
 
     val windowController = ImeWindowController(prefs, lifecycleScope)
+
+    /**
+     * Forwards one lifecycle invalidation to every voice owner before UI state is discarded, so no
+     * recorder or provider job can outlive the editor session or IME window. The voice-rewrite
+     * controller is only touched once it exists; a keyboard that never started voice rewrite must
+     * not pay for constructing it here.
+     */
+    private fun invalidateVoiceSessions(reason: AudioSessionInvalidation) {
+        voxtralDictationManager.invalidateSession(reason)
+        if (voiceRewriteUiControllerLazy.isInitialized()) {
+            voiceRewriteUiControllerLazy.value.invalidate(reason)
+        }
+    }
 
     private val activeState get() = keyboardManager.activeState
     val inputFeedbackController by lazy { InputFeedbackController.new(this) }
@@ -364,6 +379,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onDestroy() {
+        invalidateVoiceSessions(AudioSessionInvalidation.IME_TEARDOWN)
         super.onDestroy()
         unregisterReceiver(wallpaperChangeReceiver)
         FlorisImeServiceReference = WeakReference(null)
@@ -371,6 +387,7 @@ class FlorisImeService : LifecycleInputMethodService() {
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         flogInfo { "restarting=$restarting info=${info?.debugSummarize()}" }
+        invalidateVoiceSessions(AudioSessionInvalidation.INPUT_RESTART)
         super.onStartInput(info, restarting)
         if (info == null) return
         val editorInfo = FlorisEditorInfo.wrap(info)
@@ -420,12 +437,14 @@ class FlorisImeService : LifecycleInputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         flogInfo { "finishing=$finishingInput" }
+        invalidateVoiceSessions(AudioSessionInvalidation.FIELD_SWITCH)
         super.onFinishInputView(finishingInput)
         editorInstance.handleFinishInputView()
     }
 
     override fun onFinishInput() {
         flogInfo { "(no args)" }
+        invalidateVoiceSessions(AudioSessionInvalidation.FIELD_SWITCH)
         super.onFinishInput()
         editorInstance.handleFinishInput()
         NlpInlineAutofill.clearInlineSuggestions()
@@ -442,6 +461,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onWindowHidden() {
+        invalidateVoiceSessions(AudioSessionInvalidation.KEYBOARD_HIDE)
         super.onWindowHidden()
         if (windowController.onWindowHidden()) {
             flogInfo(LogTopic.IMS_EVENTS)

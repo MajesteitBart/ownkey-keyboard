@@ -115,8 +115,8 @@
     <string name="select_subtype_panel__header">Select subtype</string>
 
     <!-- Incognito mode strings -->
-    <string name="incognito_mode__toast_after_enabled">Incognito mode is now enabled\n\n{app_name} will not learn words from your input while this mode is active</string>
-    <string name="incognito_mode__toast_after_disabled">Incognito mode is now disabled by default</string>
+    <string name="incognito_mode__toast_after_enabled">Incognito mode is now enabled\n\n{app_name} will not learn words from your input, and dictation and rewrite are switched off while this mode is active</string>
+    <string name="incognito_mode__toast_after_disabled">Incognito mode is now disabled by default\n\nDictation and rewrite are available again</string>
 
     <!-- Settings UI strings -->
     <string name="settings__title" comment="Title of Settings">Settings</string>
@@ -613,8 +613,15 @@
     <string name="pref__voxtral__endpoint__label" comment="Label of the Voxtral endpoint URL text field">Endpoint URL</string>
     <string name="pref__voxtral__endpoint__summary" comment="Summary text for Voxtral endpoint URL preference">Default is Mistral. You can point this to a self-hosted OpenAI-compatible transcription endpoint.</string>
     <string name="pref__voxtral__model__label" comment="Label of the Voxtral model text field">Model</string>
-    <string name="pref__voxtral__language_hint__label" comment="Label of the Voxtral language hint text field">Language hint (optional)</string>
-    <string name="pref__voxtral__language_hint__summary" comment="Summary text for Voxtral language hint preference">Improve recognition by setting an ISO language code, for example "nl" or "en". Leave empty for auto.</string>
+    <string name="pref__voxtral__language_hint__label" comment="Label of the explicit dictation language code text field">Language code</string>
+    <string name="pref__voxtral__language_hint__group" comment="Section label for the dictation language choice">Dictation language</string>
+    <string name="pref__voxtral__language_hint__summary" comment="Summary text for the dictation language preference">This affects dictation recognition only. It is not used for rewrite instructions, which are auto-detected, and it does not decide the language a rewrite is returned in — a rewrite keeps the language of the text you selected unless you ask for another one.</string>
+    <string name="pref__voxtral__language_hint__mode_follow" comment="Dictation language option label">Follow keyboard language</string>
+    <string name="pref__voxtral__language_hint__mode_follow_summary" comment="Dictation language option description">Recommended. Dictation is recognised in the language of the active keyboard layout.</string>
+    <string name="pref__voxtral__language_hint__mode_auto" comment="Dictation language option label">Auto</string>
+    <string name="pref__voxtral__language_hint__mode_auto_summary" comment="Dictation language option description">Send no language, and let the configured provider detect it.</string>
+    <string name="pref__voxtral__language_hint__mode_explicit" comment="Dictation language option label">Specific language</string>
+    <string name="pref__voxtral__language_hint__mode_explicit_summary" comment="Dictation language option description">Always recognise dictation in one language, set as an ISO code such as "nl" or "en".</string>
     <string name="pref__voxtral__group_permissions__label" comment="Title of the Voxtral permissions preference group">Microphone access</string>
     <string name="pref__voxtral__permission__summary" comment="Summary text for Voxtral microphone permission">Required to capture voice for dictation.</string>
     <string name="pref__voxtral__permission__granted" comment="Status text shown when microphone permission is granted">Microphone permission granted.</string>
@@ -640,6 +647,92 @@
     <string name="pref__ai__rewrite_voice__add_action" comment="Button label to add a rewrite voice">Add voice</string>
     <string name="pref__ai__rewrite_voice__reset_action" comment="Button label to reset rewrite voices">Reset</string>
     <string name="pref__ai__rewrite_voice__save_action" comment="Button label to save rewrite voices">Save voices</string>
+
+    <!-- Voice rewrite (in-keyboard) UI strings -->
+    <string name="voice_rewrite__provider_custom" comment="Provider display name shown when the configured transcription endpoint is not a known provider">Custom endpoint</string>
+    <string name="voice_rewrite__card_title" comment="Title of the pinned voice instruction card in the rewrite hub">Tell Ownkey what to change</string>
+    <string name="voice_rewrite__card_summary_selection" comment="Supporting copy on the voice card when text is selected">Speak a one-off instruction · {count} characters selected</string>
+    <string name="voice_rewrite__card_summary_no_selection" comment="Supporting copy on the voice card when nothing is selected">No selection · whole field will be selected</string>
+    <string name="voice_rewrite__card_providers" comment="Provider routing detail on the voice card">Audio: {audio} · Rewrite: {rewrite}</string>
+    <string name="voice_rewrite__scope_selection" comment="Resolved target scope label">Selection · {count} characters</string>
+    <string name="voice_rewrite__scope_whole_field" comment="Resolved target scope label">Whole field · {count} characters</string>
+    <string name="voice_rewrite__coach_mark" comment="One-time coach mark teaching the dictation key shortcut">Tap to dictate · hold to rewrite</string>
+    <string name="voice_rewrite__coach_mark_dismiss" comment="Button label dismissing the coach mark">Got it</string>
+    <string name="voice_rewrite__action_voice_rewrite" comment="Accessibility action and long-press label on the dictation key">Voice rewrite</string>
+    <string name="voice_rewrite__action_start_dictation" comment="Accessibility click label on the dictation key">Start dictation</string>
+
+    <!-- Voice rewrite state copy -->
+    <string name="voice_rewrite__state_speak_an_edit">Speak an edit</string>
+    <string name="voice_rewrite__state_listening">Listening</string>
+    <string name="voice_rewrite__state_paused">Paused</string>
+    <string name="voice_rewrite__state_selecting_whole_field">Selecting whole field…</string>
+    <string name="voice_rewrite__state_understanding">Understanding instruction…</string>
+    <string name="voice_rewrite__state_rewriting">Rewriting selected text…</string>
+    <string name="voice_rewrite__state_text_replaced">Text replaced</string>
+
+    <!-- Voice rewrite recovery copy -->
+    <string name="voice_rewrite__error_select_text_manually">Select text manually</string>
+    <string name="voice_rewrite__error_nothing_to_rewrite">Nothing to rewrite</string>
+    <string name="voice_rewrite__error_secure_field">Rewrite unavailable in secure fields</string>
+    <string name="voice_rewrite__error_incognito">AI is off in incognito mode</string>
+    <string name="voice_rewrite__error_no_active_editor">Open a text field to use AI</string>
+    <string name="voice_rewrite__error_target_too_long">Text is too long to rewrite</string>
+    <string name="voice_rewrite__error_microphone_permission">Microphone access needed</string>
+    <string name="voice_rewrite__error_dictation_provider_missing">Set up voice dictation first</string>
+    <string name="voice_rewrite__error_rewrite_provider_missing">Set up rewrite first</string>
+    <string name="voice_rewrite__error_dictation_busy">Finish dictation first</string>
+    <string name="voice_rewrite__error_recorder_unavailable">Could not start the microphone</string>
+    <string name="voice_rewrite__error_no_speech">Didn\'t catch that</string>
+    <string name="voice_rewrite__error_recording_failed">Recording failed</string>
+    <string name="voice_rewrite__error_transcription_failed">Couldn\'t understand the instruction</string>
+    <string name="voice_rewrite__error_rewrite_failed">Couldn\'t rewrite the text</string>
+    <string name="voice_rewrite__error_empty_result">No rewrite was returned</string>
+    <string name="voice_rewrite__error_target_changed">The selected text changed</string>
+
+    <!-- Voice rewrite actions -->
+    <string name="voice_rewrite__action_continue">Continue</string>
+    <string name="voice_rewrite__action_open_ai_settings">Open AI settings</string>
+    <string name="voice_rewrite__action_open_incognito_setting">Open incognito setting</string>
+    <string name="voice_rewrite__action_back">Back</string>
+    <string name="voice_rewrite__action_cancel">Cancel</string>
+    <string name="voice_rewrite__action_pause">Pause recording</string>
+    <string name="voice_rewrite__action_resume">Resume recording</string>
+    <string name="voice_rewrite__action_stop">Stop recording</string>
+    <string name="voice_rewrite__action_try_again">Try again</string>
+    <string name="voice_rewrite__action_record_again">Record instruction again</string>
+    <string name="voice_rewrite__action_replace">Replace</string>
+    <string name="voice_rewrite__action_copy_result">Copy result</string>
+    <string name="voice_rewrite__action_close">Close</string>
+    <string name="voice_rewrite__result_label" comment="Accessibility label for the generated rewrite body">Rewrite result</string>
+    <string name="voice_rewrite__instruction_label" comment="Accessibility label prefix for the recognized instruction chip">Recognized instruction: {instruction}</string>
+
+    <!-- Voice rewrite first-use disclosure -->
+    <string name="voice_rewrite__disclosure_title">How voice rewrite works</string>
+    <string name="voice_rewrite__disclosure_body">Your recorded instruction goes to the dictation provider you configured. The selected text and the recognized instruction then go to the rewrite provider you configured. Ownkey does not run a relay and does not process these requests itself.</string>
+    <string name="voice_rewrite__disclosure_audio_row" comment="Audio provider row in the first-use disclosure">Audio → {provider}</string>
+    <string name="voice_rewrite__disclosure_text_row" comment="Rewrite provider row in the first-use disclosure">Text → {provider}</string>
+
+    <!-- Shared dictation and voice rewrite recording row -->
+    <string name="voice_recording__elapsed_label" comment="Accessibility label for the recording timer">Recording time {time}</string>
+    <string name="voice_recording__processing">Processing</string>
+    <string name="voice_recording__cancel_dictation">Cancel dictation</string>
+    <string name="voice_recording__pause_dictation">Pause dictation</string>
+    <string name="voice_recording__resume_dictation">Resume dictation</string>
+    <string name="voice_recording__stop_dictation">Stop and transcribe</string>
+    <string name="voice_recording__unavailable_incognito" comment="Disabled-state copy on AI controls during an incognito editor session">AI is off in incognito mode</string>
+    <string name="voice_recording__unavailable_secure" comment="Disabled-state copy on AI controls in a secure field">AI is off in secure fields</string>
+    <string name="voice_recording__unavailable_busy" comment="Disabled-state copy on the dictation key while voice rewrite owns the microphone">Finish voice rewrite first</string>
+    <string name="voice_recording__language_auto" comment="Space bar recognition-language cue when the provider auto-detects the language">Auto</string>
+
+    <!-- Preset rewrite panel copy -->
+    <string name="rewrite_panel__action_cancel">Cancel</string>
+    <string name="rewrite_panel__action_try_again">Try again</string>
+    <string name="rewrite_panel__action_insert">Insert</string>
+    <string name="rewrite_panel__action_back_to_options">Back to options</string>
+    <string name="rewrite_panel__state_inserted">Inserted</string>
+    <string name="rewrite_panel__state_rewriting" comment="Generic generating label with no named voice">Rewriting…</string>
+    <string name="rewrite_panel__state_rewriting_with_voice" comment="Generating label naming the chosen rewrite voice">Rewriting — {voice}…</string>
+
     <string name="pref__other__settings_theme__label" comment="Label of Settings theme preference in Other">Settings theme</string>
     <string name="pref__other__settings_theme__auto_amoled" comment="Possible value of Settings theme preference in Other">System default (AMOLED)</string>
     <string name="pref__other__settings_theme__light" comment="Possible value of Settings theme preference in Other">Light</string>
@@ -1110,7 +1203,7 @@
     <string name="enum__incognito_mode__force_off" comment="Enum value label">Force off</string>
     <string name="enum__incognito_mode__force_off__description" comment="Enum value description">Incognito mode will always be disabled, regardless of the target app\'s passed options. The incognito quick action in the Smartbar will not be available with this option.</string>
     <string name="enum__incognito_mode__force_on" comment="Enum value label">Force on</string>
-    <string name="enum__incognito_mode__force_on__description" comment="Enum value description">Incognito mode will always be enabled, regardless of the target app\'s passed options. The incognito quick action in the Smartbar will not be available with this option.</string>
+    <string name="enum__incognito_mode__force_on__description" comment="Enum value description">Incognito mode will always be enabled, regardless of the target app\'s passed options. The incognito quick action in the Smartbar will not be available with this option. Because incognito switches off every AI action, dictation and rewrite stay permanently unavailable while this is selected.</string>
     <string name="enum__incognito_mode__dynamic_on_off" comment="Enum value label">Dynamically on/off</string>
     <string name="enum__incognito_mode__dynamic_on_off__description" comment="Enum value description">Recommended option. Incognito mode will be dynamically enabled or disabled either through the target app\'s passed options or by manually toggling it through the incognito quick action in the Smartbar.</string>
 

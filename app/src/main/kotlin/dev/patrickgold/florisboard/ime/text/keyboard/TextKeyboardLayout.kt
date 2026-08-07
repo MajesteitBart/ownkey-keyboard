@@ -73,6 +73,10 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.glideTypingManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
+import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCue
+import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCues
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionPurpose
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.editor.OperationUnit
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
@@ -95,20 +99,28 @@ import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.ime.window.ImeWindowMode
 import dev.patrickgold.florisboard.ime.window.ImeWindowSpec
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
+import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.florisboard.voxtralDictationManager
+import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.FlorisRect
 import dev.patrickgold.florisboard.lib.Pointer
 import dev.patrickgold.florisboard.lib.PointerMap
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.lib.toIntOffset
+import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import org.florisboard.lib.android.isOrientationLandscape
 import org.florisboard.lib.compose.DisposableLifecycleEffect
+import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggIcon
@@ -388,11 +400,14 @@ private fun TextKeyButton(
             if (key.computedData.code == KeyCode.SPACE) {
                 val prefs by FlorisPreferenceStore
                 val spaceBarMode by prefs.keyboard.spaceBarMode.collectAsState()
-                when (spaceBarMode) {
-                    SpaceBarMode.NOTHING -> return@let
-                    SpaceBarMode.CURRENT_LANGUAGE -> {}
-                    SpaceBarMode.SPACE_BAR_KEY -> customLabel = "␣"
-                }
+                // While dictation is running the space bar reports the recognition language as
+                // readable text for every space-bar mode, so the cue is never colour-only and never
+                // hidden by a display preference.
+                customLabel = DictationRecognitionCues.spaceBarLabel(
+                    spaceBarMode = spaceBarMode,
+                    defaultLabel = label,
+                    recognitionCueLabel = rememberDictationRecognitionCueLabel(),
+                ) ?: return@let
             }
             SnyggText(
                 modifier = Modifier
@@ -439,14 +454,21 @@ private fun TextKeyButton(
 
 @Composable
 private fun BlinkingRecordingDot(modifier: Modifier = Modifier) {
-    val blinkAlpha by rememberInfiniteTransition().animateFloat(
-        initialValue = 1f,
-        targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 650),
-            repeatMode = RepeatMode.Reverse,
-        ),
-    )
+    // Reduced motion keeps the dot visible but stops the decorative pulse; the recording state is
+    // still carried by the space-bar language cue and the smartbar row's status text.
+    val reducedMotion = rememberReducedMotion()
+    val blinkAlpha = if (reducedMotion) {
+        1f
+    } else {
+        rememberInfiniteTransition().animateFloat(
+            initialValue = 1f,
+            targetValue = 0.2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 650),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        ).value
+    }
 
     Box(
         modifier = modifier
@@ -1072,5 +1094,37 @@ private class TextKeyboardLayoutController(
         override fun toString(): String {
             return "${TouchPointer::class.simpleName} { id=$id, index=$index, initialKey=$initialKey, activeKey=$activeKey }"
         }
+    }
+}
+
+/**
+ * Readable recognition-language label for the space bar, or `null` when no dictation session is
+ * running. Only the session owner is observed, not the 20 Hz measured level, so an active recording
+ * cannot recompose the key at sample rate.
+ */
+@Composable
+private fun rememberDictationRecognitionCueLabel(): String? {
+    val context = LocalContext.current
+    val prefs by FlorisPreferenceStore
+    val audioSessionCoordinator by context.audioSessionCoordinator()
+    val subtypeManager by context.subtypeManager()
+    val sessionOwner by remember(audioSessionCoordinator) {
+        audioSessionCoordinator.state.map { it?.owner }.distinctUntilChanged()
+    }.collectAsState(initial = null)
+    val languageHint by prefs.voxtral.languageHint.collectAsState()
+
+    val cue = DictationRecognitionCues.resolve(
+        sessionOwner = sessionOwner,
+        resolvedLanguageHint = TranscriptionLanguageHints.resolve(
+            purpose = TranscriptionPurpose.DICTATION,
+            storedLanguageHint = languageHint,
+            activeSubtypeLanguageTag = subtypeManager.activeSubtype.primaryLocale.languageTag(),
+        ),
+    )
+    return when (cue) {
+        is DictationRecognitionCue.Language ->
+            FlorisLocale.fromTag(cue.languageTag).displayLanguage().ifBlank { cue.languageTag }
+        DictationRecognitionCue.AutoDetect -> stringRes(R.string.voice_recording__language_auto)
+        null -> null
     }
 }

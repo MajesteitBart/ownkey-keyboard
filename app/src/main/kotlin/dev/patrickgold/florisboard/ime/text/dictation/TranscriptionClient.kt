@@ -16,6 +16,9 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import dev.patrickgold.florisboard.ime.text.network.withCancellableHttpConnection
+import dev.patrickgold.florisboard.lib.util.OwnkeyBatteryTraceLabels
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -34,6 +37,87 @@ interface TranscriptionClient {
      * @return A successful transcript result or a failure with the underlying error.
      */
     suspend fun transcribe(recording: AudioRecording): Result<String>
+}
+
+enum class TranscriptionPurpose {
+    DICTATION,
+    VOICE_REWRITE_INSTRUCTION,
+}
+
+/**
+ * The three reachable states of the dictation language setting.
+ *
+ * They are distinct on purpose: an empty stored value means "follow the keyboard language", which is
+ * the default, while `Auto` is an explicit choice that sends no hint and lets the provider detect
+ * the language. Neither affects rewrite instructions or the language a rewrite is returned in.
+ */
+enum class TranscriptionLanguageMode {
+    FOLLOW_KEYBOARD,
+    AUTO,
+    EXPLICIT,
+}
+
+object TranscriptionLanguageHints {
+    /** Stored value used by the explicit Auto setting; blank remains the legacy/unset value. */
+    const val AUTO = "auto"
+
+    private const val DEFAULT_EXPLICIT_LANGUAGE = "en"
+
+    fun modeOf(storedLanguageHint: String): TranscriptionLanguageMode {
+        val stored = storedLanguageHint.trim()
+        return when {
+            stored.isEmpty() -> TranscriptionLanguageMode.FOLLOW_KEYBOARD
+            stored.equals(AUTO, ignoreCase = true) -> TranscriptionLanguageMode.AUTO
+            else -> TranscriptionLanguageMode.EXPLICIT
+        }
+    }
+
+    fun storedValueFor(mode: TranscriptionLanguageMode, explicitLanguage: String): String = when (mode) {
+        TranscriptionLanguageMode.FOLLOW_KEYBOARD -> ""
+        TranscriptionLanguageMode.AUTO -> AUTO
+        TranscriptionLanguageMode.EXPLICIT -> explicitLanguage.trim()
+    }
+
+    /**
+     * Resolves a radio-button selection into a persistable value.
+     *
+     * The current stored value cannot be reused blindly when selecting [TranscriptionLanguageMode.EXPLICIT]:
+     * blank and [AUTO] are sentinels for the other two modes, so persisting either would make the UI
+     * immediately jump back and keep the explicit-language field unreachable. Prefer an existing
+     * explicit value, then the active keyboard language, with English only as a defensive fallback
+     * for the settings screen's no-subtype edge case.
+     */
+    fun storedValueForSelection(
+        mode: TranscriptionLanguageMode,
+        currentStoredLanguageHint: String,
+        activeSubtypeLanguageTag: String?,
+    ): String = when (mode) {
+        TranscriptionLanguageMode.FOLLOW_KEYBOARD,
+        TranscriptionLanguageMode.AUTO,
+        -> storedValueFor(mode, currentStoredLanguageHint)
+
+        TranscriptionLanguageMode.EXPLICIT -> listOfNotNull(
+            currentStoredLanguageHint.trim().takeIf(::isExplicitLanguage),
+            activeSubtypeLanguageTag?.trim()?.takeIf(::isExplicitLanguage),
+        ).firstOrNull() ?: DEFAULT_EXPLICIT_LANGUAGE
+    }
+
+    private fun isExplicitLanguage(value: String): Boolean =
+        value.isNotEmpty() && !value.equals(AUTO, ignoreCase = true)
+
+    fun resolve(
+        purpose: TranscriptionPurpose,
+        storedLanguageHint: String,
+        activeSubtypeLanguageTag: String?,
+    ): String? {
+        if (purpose == TranscriptionPurpose.VOICE_REWRITE_INSTRUCTION) return null
+        val stored = storedLanguageHint.trim()
+        return when {
+            stored.equals(AUTO, ignoreCase = true) -> null
+            stored.isNotEmpty() -> stored
+            else -> activeSubtypeLanguageTag?.trim()?.takeIf { it.isNotEmpty() }
+        }
+    }
 }
 
 /**
@@ -61,7 +145,7 @@ class VoxtralRelayTranscriptionClient(
     private val apiKeyProvider: () -> String,
     private val endpointUrlProvider: () -> String = { DefaultEndpointUrl },
     private val modelProvider: () -> String = { DefaultModel },
-    private val languageHintProvider: () -> String = { "" },
+    private val languageHintProvider: () -> String? = { null },
     private val connectTimeoutMs: Int = 30_000,
     private val readTimeoutMs: Int = 60_000,
     private val maxRetryAttempts: Int = 2,
@@ -76,7 +160,12 @@ class VoxtralRelayTranscriptionClient(
         val apiKey: String,
         val endpointUrl: String,
         val model: String,
-        val languageHint: String,
+        val languageHint: String?,
+    )
+
+    internal data class RequestFields(
+        val model: String,
+        val language: String?,
     )
 
     override suspend fun transcribe(recording: AudioRecording): Result<String> {
@@ -89,8 +178,12 @@ class VoxtralRelayTranscriptionClient(
 
         while (attempt < maxRetryAttempts) {
             attempt += 1
-            val result = runCatching {
-                executeRequest(preparedRequest, recording)
+            val result = try {
+                Result.success(executeRequest(preparedRequest, recording))
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Result.failure(error)
             }
             if (result.isSuccess) {
                 return result
@@ -109,6 +202,11 @@ class VoxtralRelayTranscriptionClient(
         return Result.failure(lastError ?: IllegalStateException("Unknown Voxtral transcription error"))
     }
 
+    internal fun prepareRequestFields(recording: AudioRecording): Result<RequestFields> =
+        prepareRequest(recording).map { request ->
+            RequestFields(model = request.model, language = request.languageHint)
+        }
+
     private fun prepareRequest(recording: AudioRecording): Result<PreparedRequest> {
         val apiKey = apiKeyProvider().trim()
         if (apiKey.isEmpty()) {
@@ -124,7 +222,7 @@ class VoxtralRelayTranscriptionClient(
         }
 
         val model = modelProvider().trim().ifBlank { DefaultModel }
-        val languageHint = languageHintProvider().trim()
+        val languageHint = languageHintProvider()?.trim()?.takeIf { it.isNotEmpty() }
 
         return Result.success(
             PreparedRequest(
@@ -136,23 +234,26 @@ class VoxtralRelayTranscriptionClient(
         )
     }
 
-    private fun executeRequest(preparedRequest: PreparedRequest, recording: AudioRecording): String {
+    private suspend fun executeRequest(preparedRequest: PreparedRequest, recording: AudioRecording): String {
         val boundary = "----VoxtralBoundary${System.currentTimeMillis()}"
-        val connection = (URL(preparedRequest.endpointUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doInput = true
-            doOutput = true
-            connectTimeout = connectTimeoutMs
-            readTimeout = readTimeoutMs
-            setRequestProperty("Authorization", "Bearer ${preparedRequest.apiKey}")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-        }
-
-        try {
+        return withCancellableHttpConnection(
+            traceLabel = OwnkeyBatteryTraceLabels.TranscriptionRequest,
+            openConnection = {
+                (URL(preparedRequest.endpointUrl).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    doInput = true
+                    doOutput = true
+                    connectTimeout = connectTimeoutMs
+                    readTimeout = readTimeoutMs
+                    setRequestProperty("Authorization", "Bearer ${preparedRequest.apiKey}")
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                }
+            },
+        ) { connection ->
             DataOutputStream(connection.outputStream).use { out ->
                 out.writeMultipartField(boundary, "model", preparedRequest.model)
-                if (preparedRequest.languageHint.isNotBlank()) {
+                if (!preparedRequest.languageHint.isNullOrBlank()) {
                     out.writeMultipartField(boundary, "language", preparedRequest.languageHint)
                 }
                 out.writeMultipartFile(
@@ -185,9 +286,7 @@ class VoxtralRelayTranscriptionClient(
                 throw IllegalStateException("Voxtral API returned an empty transcript.")
             }
 
-            return transcript
-        } finally {
-            connection.disconnect()
+            transcript
         }
     }
 

@@ -37,7 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -51,14 +54,23 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
+import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickAction
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButton
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsRow
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.ToggleOverflowPanelAction
+import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
+import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
+import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.audioLevelHistorySampler
+import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.nlpManager
+import dev.patrickgold.florisboard.voiceRewriteUiController
+import dev.patrickgold.florisboard.voxtralDictationManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.horizontalTween
@@ -138,6 +150,67 @@ private fun SmartbarMainRow(
 
     val shouldAnimate by prefs.smartbar.sharedActionsExpandWithAnimation.collectAsState()
 
+    val stickyAction = actionArrangement.stickyAction
+    val isVoiceStickyAction = stickyAction is QuickAction.InsertKey &&
+        stickyAction.data.code == KeyCode.VOICE_INPUT
+
+    // One audio session and one voice-rewrite surface decide the shared recording row, so ordinary
+    // dictation and voice rewrite can never render two competing sets of controls.
+    val audioSessionCoordinator by context.audioSessionCoordinator()
+    val audioLevelHistorySampler by context.audioLevelHistorySampler()
+    val voiceRewriteUiController by context.voiceRewriteUiController()
+    val voxtralDictationManager by context.voxtralDictationManager()
+    val audioSession by audioSessionCoordinator.state.collectAsState()
+    val voiceRewriteModel by voiceRewriteUiController.uiState.collectAsState()
+    val audioLevels by audioLevelHistorySampler.state.collectAsState()
+    var recordingNowMs by remember { mutableLongStateOf(0L) }
+    val recordingRowState = voiceRecordingRowState(
+        session = audioSession,
+        voiceRewrite = voiceRewriteModel,
+        nowMs = recordingNowMs,
+    )
+    LaunchedEffect(audioSession?.sessionId, audioSession?.phase) {
+        while (audioSession != null) {
+            recordingNowMs = System.currentTimeMillis()
+            delay(250L)
+        }
+    }
+    val recordingActions = remember(voxtralDictationManager, voiceRewriteUiController) {
+        object : VoiceRecordingRowActions {
+            private fun isVoiceRewrite() =
+                audioSessionCoordinator.state.value?.owner == AudioSessionOwner.VOICE_REWRITE ||
+                    voiceRewriteUiController.uiState.value.ownsRecordingRow
+
+            override fun onPauseOrResume() {
+                if (!isVoiceRewrite()) {
+                    voxtralDictationManager.togglePauseResume()
+                    return
+                }
+                if (voiceRewriteUiController.uiState.value.surface == VoiceRewriteSurface.PAUSED) {
+                    voiceRewriteUiController.resumeRecording()
+                } else {
+                    voiceRewriteUiController.pauseRecording()
+                }
+            }
+
+            override fun onCancel() {
+                if (isVoiceRewrite()) {
+                    voiceRewriteUiController.cancel()
+                } else {
+                    voxtralDictationManager.cancelDictation()
+                }
+            }
+
+            override fun onStop() {
+                if (isVoiceRewrite()) {
+                    voiceRewriteUiController.stopRecording()
+                } else {
+                    voxtralDictationManager.stopAndInsertTranscript()
+                }
+            }
+        }
+    }
+
     @Composable
     fun SharedActionsToggle() {
         SnyggIconButton(
@@ -192,6 +265,16 @@ private fun SmartbarMainRow(
                 .weight(1f)
                 .fillMaxHeight(),
         ) {
+            val activeRecordingRow = recordingRowState
+            if (activeRecordingRow != null) {
+                VoiceRecordingRowContent(
+                    state = activeRecordingRow,
+                    levels = audioLevels,
+                    actions = recordingActions,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@Box
+            }
             val enterTransition = if (shouldAnimate) HorizontalEnterTransition else NoEnterTransition
             val exitTransition = if (shouldAnimate) HorizontalExitTransition else NoExitTransition
             this@CenterContent.AnimatedVisibility(
@@ -214,6 +297,9 @@ private fun SmartbarMainRow(
                     FlorisImeUi.SmartbarSharedActionsRow.elementName,
                     modifier = modifier.fillMaxSize(),
                 )
+            }
+            if (isVoiceStickyAction) {
+                VoiceSmartbarOverlay(modifier = Modifier.align(Alignment.Center))
             }
         }
     }
@@ -248,6 +334,17 @@ private fun SmartbarMainRow(
     @Composable
     fun StickyAction() {
         val evaluator by keyboardManager.activeSmartbarEvaluator.collectAsState()
+
+        val activeRecordingRow = recordingRowState
+        if (activeRecordingRow != null) {
+            // The sticky dictation-key position becomes the stop action for whichever mode holds
+            // the recorder, so the stop control exists regardless of the configured arrangement.
+            VoiceRecordingStickyAction(
+                state = activeRecordingRow,
+                actions = recordingActions,
+            )
+            return
+        }
 
         val action = when {
             actionArrangement.stickyAction != null -> {

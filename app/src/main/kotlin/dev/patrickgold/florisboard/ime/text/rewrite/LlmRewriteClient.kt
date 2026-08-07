@@ -16,6 +16,9 @@
 
 package dev.patrickgold.florisboard.ime.text.rewrite
 
+import dev.patrickgold.florisboard.ime.text.network.withCancellableHttpConnection
+import dev.patrickgold.florisboard.lib.util.OwnkeyBatteryTraceLabels
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -49,22 +52,41 @@ class LlmRewriteClient(
         val endpointUrl: String,
         val model: String,
         val providerId: String,
-        val prompt: RewritePromptPreset,
+        val prompt: RewritePromptPreset?,
+        val voiceInstruction: String?,
         val input: String,
     )
 
     suspend fun rewrite(input: String, prompt: RewritePromptPreset): Result<String> {
-        val preparedRequest = prepareRequest(input, prompt).getOrElse { error ->
+        val preparedRequest = prepareRequest(input, prompt = prompt, voiceInstruction = null).getOrElse { error ->
             return Result.failure(error)
         }
+        return executeWithRetry(preparedRequest)
+    }
 
+    suspend fun rewriteWithVoiceInstruction(input: String, instruction: String): Result<String> {
+        val preparedRequest = prepareRequest(
+            input = input,
+            prompt = null,
+            voiceInstruction = instruction.trim().takeIf { it.isNotEmpty() },
+        ).getOrElse { error ->
+            return Result.failure(error)
+        }
+        return executeWithRetry(preparedRequest)
+    }
+
+    private suspend fun executeWithRetry(preparedRequest: PreparedRequest): Result<String> {
         var attempt = 0
         var lastError: Throwable? = null
 
         while (attempt < maxRetryAttempts) {
             attempt += 1
-            val result = runCatching {
-                executeRequest(preparedRequest)
+            val result = try {
+                Result.success(executeRequest(preparedRequest))
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Result.failure(error)
             }
             if (result.isSuccess) {
                 return result
@@ -81,7 +103,11 @@ class LlmRewriteClient(
         return Result.failure(lastError ?: IllegalStateException("Unknown LLM rewrite error"))
     }
 
-    private fun prepareRequest(input: String, prompt: RewritePromptPreset): Result<PreparedRequest> {
+    private fun prepareRequest(
+        input: String,
+        prompt: RewritePromptPreset?,
+        voiceInstruction: String?,
+    ): Result<PreparedRequest> {
         val apiKey = apiKeyProvider().trim()
         if (apiKey.isEmpty()) {
             return Result.failure(IllegalStateException("No LLM API key configured."))
@@ -108,9 +134,12 @@ class LlmRewriteClient(
         }
 
         val model = modelProvider().trim().ifBlank { providerPreset.defaultModel.ifBlank { DefaultModel } }
-        val trimmedInput = input.trim()
-        if (trimmedInput.isBlank()) {
+        val preparedInput = if (voiceInstruction != null) input else input.trim()
+        if (preparedInput.isBlank()) {
             return Result.failure(IllegalStateException("Select or type text before rewriting."))
+        }
+        if (prompt == null && voiceInstruction.isNullOrBlank()) {
+            return Result.failure(IllegalStateException("No voice rewrite instruction was provided."))
         }
 
         return Result.success(
@@ -120,38 +149,42 @@ class LlmRewriteClient(
                 model = model,
                 providerId = providerPreset.id,
                 prompt = prompt,
-                input = trimmedInput,
+                voiceInstruction = voiceInstruction,
+                input = preparedInput,
             ),
         )
     }
 
-    private fun executeRequest(request: PreparedRequest): String {
-        val connection = (URL(request.endpointUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doInput = true
-            doOutput = true
-            connectTimeout = connectTimeoutMs
-            readTimeout = readTimeoutMs
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Content-Type", "application/json")
-            when (request.providerId) {
-                LlmRewriteProviders.Anthropic -> {
-                    setRequestProperty("x-api-key", request.apiKey)
-                    setRequestProperty("anthropic-version", "2023-06-01")
-                }
+    private suspend fun executeRequest(request: PreparedRequest): String {
+        return withCancellableHttpConnection(
+            traceLabel = OwnkeyBatteryTraceLabels.RewriteRequest,
+            openConnection = {
+                (URL(request.endpointUrl).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    doInput = true
+                    doOutput = true
+                    connectTimeout = connectTimeoutMs
+                    readTimeout = readTimeoutMs
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Content-Type", "application/json")
+                    when (request.providerId) {
+                        LlmRewriteProviders.Anthropic -> {
+                            setRequestProperty("x-api-key", request.apiKey)
+                            setRequestProperty("anthropic-version", "2023-06-01")
+                        }
 
-                LlmRewriteProviders.OpenRouter -> {
-                    setRequestProperty("Authorization", "Bearer ${request.apiKey}")
-                    setRequestProperty("X-Title", "Ownkey Keyboard")
-                }
+                        LlmRewriteProviders.OpenRouter -> {
+                            setRequestProperty("Authorization", "Bearer ${request.apiKey}")
+                            setRequestProperty("X-Title", "Ownkey Keyboard")
+                        }
 
-                else -> {
-                    setRequestProperty("Authorization", "Bearer ${request.apiKey}")
+                        else -> {
+                            setRequestProperty("Authorization", "Bearer ${request.apiKey}")
+                        }
+                    }
                 }
-            }
-        }
-
-        try {
+            },
+        ) { connection ->
             val payload = buildPayload(request).toString()
             connection.outputStream.bufferedWriter(Charsets.UTF_8).use { writer ->
                 writer.write(payload)
@@ -175,9 +208,7 @@ class LlmRewriteClient(
             if (rewrittenText.isBlank()) {
                 throw IllegalStateException("LLM returned an empty rewrite.")
             }
-            return rewrittenText
-        } finally {
-            connection.disconnect()
+            rewrittenText
         }
     }
 
@@ -192,7 +223,7 @@ class LlmRewriteClient(
     private fun buildOpenAiResponsesPayload(request: PreparedRequest): JsonObject {
         return buildJsonObject {
             put("model", JsonPrimitive(request.model))
-            put("instructions", JsonPrimitive(rewriteSystemInstruction))
+            put("instructions", JsonPrimitive(systemInstruction(request)))
             put("store", JsonPrimitive(false))
             put("input", JsonPrimitive(rewriteUserInstruction(request)))
         }
@@ -203,7 +234,7 @@ class LlmRewriteClient(
             put("model", JsonPrimitive(request.model))
             put("max_tokens", JsonPrimitive(1024))
             put("temperature", JsonPrimitive(0.35))
-            put("system", JsonPrimitive(rewriteSystemInstruction))
+            put("system", JsonPrimitive(systemInstruction(request)))
             put("messages", buildJsonArray {
                 add(
                     buildJsonObject {
@@ -223,7 +254,7 @@ class LlmRewriteClient(
                 add(
                     buildJsonObject {
                         put("role", JsonPrimitive("system"))
-                        put("content", JsonPrimitive(rewriteSystemInstruction))
+                        put("content", JsonPrimitive(systemInstruction(request)))
                     },
                 )
                 add(
@@ -236,11 +267,20 @@ class LlmRewriteClient(
         }
     }
 
-    private val rewriteSystemInstruction =
+    private val presetRewriteSystemInstruction =
         "You rewrite user-provided text. Return only the rewritten text without explanation."
 
+    private fun systemInstruction(request: PreparedRequest): String = when {
+        request.voiceInstruction != null -> VoiceRewritePolicy.FixedInstruction
+        else -> presetRewriteSystemInstruction
+    }
+
     private fun rewriteUserInstruction(request: PreparedRequest): String {
-        return "Rewrite instruction:\n${request.prompt.instruction}\n\nText:\n${request.input}"
+        return if (request.voiceInstruction != null) {
+            "User edit instruction:\n${request.voiceInstruction}\n\nUser source text:\n${request.input}"
+        } else {
+            "Rewrite instruction:\n${request.prompt?.instruction.orEmpty()}\n\nText:\n${request.input}"
+        }
     }
 
     private fun extractRewrite(responseBody: String): String {
