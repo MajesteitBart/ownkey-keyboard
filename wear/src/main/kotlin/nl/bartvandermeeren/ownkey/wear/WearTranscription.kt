@@ -10,6 +10,7 @@ import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -42,6 +43,8 @@ data class RecordingSession(
     val descriptor: ParcelFileDescriptor,
     val appContext: Context,
     val usesPendingFlag: Boolean,
+    val traceCookie: Int,
+    var traceActive: Boolean = true,
 )
 
 fun startRecording(context: Context): RecordingSession? {
@@ -98,14 +101,18 @@ fun startRecording(context: Context): RecordingSession? {
             start()
         }
 
+        val startedAtEpochMs = System.currentTimeMillis()
+        val traceCookie = (startedAtEpochMs and Int.MAX_VALUE.toLong()).toInt()
+        WearBatteryTrace.beginRecording(traceCookie)
         RecordingSession(
             recorder = recorder,
             outputUri = outputUri,
             outputFileName = fileName,
-            startedAtEpochMs = System.currentTimeMillis(),
+            startedAtEpochMs = startedAtEpochMs,
             descriptor = descriptor,
             appContext = appContext,
             usesPendingFlag = usePending,
+            traceCookie = traceCookie,
         )
     } catch (_: Exception) {
         runCatching { recorder.reset() }
@@ -156,6 +163,12 @@ private fun stopRecorderInternal(session: RecordingSession) {
         runCatching { session.recorder.reset() }
         runCatching { session.recorder.release() }
         runCatching { session.descriptor.close() }
+        synchronized(session) {
+            if (session.traceActive) {
+                session.traceActive = false
+                WearBatteryTrace.endRecording(session.traceCookie)
+            }
+        }
     }
 }
 
@@ -196,14 +209,20 @@ class VoxtralWearClient(
         var lastError: Throwable? = null
         while (attempt < maxRetries) {
             attempt += 1
-            val result = runCatching {
-                performRequest(
-                    apiKey = apiKey,
-                    endpointUrl = endpointUrl,
-                    model = model,
-                    languageHint = languageHint,
-                    recording = recording,
+            val result = try {
+                Result.success(
+                    performRequest(
+                        apiKey = apiKey,
+                        endpointUrl = endpointUrl,
+                        model = model,
+                        languageHint = languageHint,
+                        recording = recording,
+                    ),
                 )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Result.failure(error)
             }
             if (result.isSuccess) {
                 return result
@@ -221,7 +240,7 @@ class VoxtralWearClient(
         return Result.failure(lastError ?: IllegalStateException("Transcriptie mislukt"))
     }
 
-    private fun performRequest(
+    private suspend fun performRequest(
         apiKey: String,
         endpointUrl: String,
         model: String,
@@ -229,18 +248,20 @@ class VoxtralWearClient(
         recording: AudioRecording,
     ): String {
         val boundary = "----OwnkeyWear${System.currentTimeMillis()}"
-        val connection = (URL(endpointUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doInput = true
-            doOutput = true
-            connectTimeout = connectTimeoutMs
-            readTimeout = readTimeoutMs
-            setRequestProperty("Authorization", "Bearer $apiKey")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-        }
-
-        try {
+        return withCancellableWearHttpConnection(
+            openConnection = {
+                (URL(endpointUrl).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    doInput = true
+                    doOutput = true
+                    connectTimeout = connectTimeoutMs
+                    readTimeout = readTimeoutMs
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                }
+            },
+        ) { connection ->
             DataOutputStream(connection.outputStream).use { out ->
                 out.writeMultipartField(boundary, "model", model)
                 if (languageHint.isNotBlank()) {
@@ -275,9 +296,7 @@ class VoxtralWearClient(
             if (transcript.isBlank()) {
                 throw IllegalStateException("Transcript is leeg")
             }
-            return transcript
-        } finally {
-            connection.disconnect()
+            transcript
         }
     }
 

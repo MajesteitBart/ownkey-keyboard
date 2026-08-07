@@ -31,9 +31,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -58,9 +59,6 @@ class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
-        // 1 minute
-        private const val INTERVAL = 60 * 1000L
-
         /**
          * Taken from ClipboardDescription.java from the AOSP
          *
@@ -116,9 +114,30 @@ class ClipboardManager(
     init {
         systemClipboardManager.addPrimaryClipChangedListener(this)
         cleanUpJob = ioScope.launch {
-            while (isActive) {
-                delay(INTERVAL)
-                enforceExpiryDate(currentHistory)
+            combine(
+                historyFlow,
+                prefs.clipboard.historyAutoCleanOldEnabled.asFlow(),
+                prefs.clipboard.historyAutoCleanOldAfter.asFlow(),
+                prefs.clipboard.historyAutoCleanSensitiveEnabled.asFlow(),
+                prefs.clipboard.historyAutoCleanSensitiveAfter.asFlow(),
+            ) { history, oldEnabled, oldAfterMinutes, sensitiveEnabled, sensitiveAfterSeconds ->
+                ClipboardCleanupPlan(
+                    history = history,
+                    policy = ClipboardCleanupPolicy(
+                        oldItemsEnabled = oldEnabled,
+                        oldItemsAfterMinutes = oldAfterMinutes,
+                        sensitiveItemsEnabled = sensitiveEnabled,
+                        sensitiveItemsAfterSeconds = sensitiveAfterSeconds,
+                    ),
+                )
+            }.collectLatest { plan ->
+                val delayMs = ClipboardCleanupScheduler.nextDelayMs(
+                    items = plan.history.all.map { it.toCleanupItem() },
+                    policy = plan.policy,
+                    nowMs = System.currentTimeMillis(),
+                ) ?: return@collectLatest
+                delay(delayMs)
+                enforceExpiryDate(plan)
             }
         }
     }
@@ -264,24 +283,25 @@ class ClipboardManager(
         }
     }
 
-    private fun enforceExpiryDate(clipHistory: ClipboardHistory) {
-        val itemsToRemove = mutableSetOf<ClipboardItem>()
-        if (prefs.clipboard.historyAutoCleanOldEnabled.get()) {
-            val nonPinnedItems = clipHistory.recent + clipHistory.other
-            val expiryTime = System.currentTimeMillis() - (prefs.clipboard.historyAutoCleanOldAfter.get() * 60 * 1000)
-            itemsToRemove.addAll(nonPinnedItems.filter { it.creationTimestampMs < expiryTime })
-        }
-        if (prefs.clipboard.historyAutoCleanSensitiveEnabled.get()) {
-            val sensitiveData = clipHistory.all.filter { it.isSensitive }
-            val expiryTime = System.currentTimeMillis() - (prefs.clipboard.historyAutoCleanSensitiveAfter.get() * 1000)
-            itemsToRemove.addAll(sensitiveData.filter { it.creationTimestampMs < expiryTime })
+    private suspend fun enforceExpiryDate(plan: ClipboardCleanupPlan) {
+        val nowMs = System.currentTimeMillis()
+        val itemsToRemove = plan.history.all.filter { item ->
+            ClipboardCleanupScheduler.isExpired(
+                item = item.toCleanupItem(),
+                policy = plan.policy,
+                nowMs = nowMs,
+            )
         }
         if (itemsToRemove.isNotEmpty()) {
-            ioScope.launch {
-                clipHistoryDao?.delete(itemsToRemove.toList())
-            }
+            clipHistoryDao?.delete(itemsToRemove)
         }
     }
+
+    private fun ClipboardItem.toCleanupItem() = ClipboardCleanupItem(
+        creationTimestampMs = creationTimestampMs,
+        isPinned = isPinned,
+        isSensitive = isSensitive,
+    )
 
     private fun moveToTheBeginning(oldItem: ClipboardItem, newItem: ClipboardItem) {
         ioScope.launch {

@@ -19,9 +19,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class OwnkeyWearImeService : InputMethodService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -38,6 +38,7 @@ class OwnkeyWearImeService : InputMethodService() {
 
     private var backspaceHeld = false
     private var backspaceRepeatJob: Job? = null
+    private var transcriptionJob: Job? = null
 
     override fun onCreateInputView(): View {
         val root = LinearLayout(this).apply {
@@ -90,12 +91,24 @@ class OwnkeyWearImeService : InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         stopBackspaceRepeat()
+        transcriptionJob?.cancel()
+        transcriptionJob = null
         session?.let {
-            runCatching { stopRecording(it) }
+            cancelRecording(it)
         }
         session = null
         isTranscribing = false
         renderUi()
+    }
+
+    override fun onDestroy() {
+        stopBackspaceRepeat()
+        transcriptionJob?.cancel()
+        transcriptionJob = null
+        session?.let { cancelRecording(it) }
+        session = null
+        scope.cancel()
+        super.onDestroy()
     }
 
     private fun onMicButtonTapped() {
@@ -128,7 +141,7 @@ class OwnkeyWearImeService : InputMethodService() {
         setStatus("Transcriberen...")
         renderUi()
 
-        scope.launch {
+        val job = scope.launch {
             val recording = stopRecording(currentSession).getOrElse { error ->
                 session = null
                 isTranscribing = false
@@ -138,15 +151,13 @@ class OwnkeyWearImeService : InputMethodService() {
             }
             session = null
 
-            val result = withContext(Dispatchers.IO) {
-                client.transcribe(
-                    apiKey = settingsStore.getApiKey().trim(),
-                    endpointUrl = settingsStore.getEndpointUrl().trim().ifBlank { VoxtralWearClient.DefaultEndpointUrl },
-                    model = settingsStore.getModel().trim().ifBlank { VoxtralWearClient.DefaultModel },
-                    languageHint = settingsStore.getLanguageHint().trim(),
-                    recording = recording,
-                )
-            }
+            val result = client.transcribe(
+                apiKey = settingsStore.getApiKey().trim(),
+                endpointUrl = settingsStore.getEndpointUrl().trim().ifBlank { VoxtralWearClient.DefaultEndpointUrl },
+                model = settingsStore.getModel().trim().ifBlank { VoxtralWearClient.DefaultModel },
+                languageHint = settingsStore.getLanguageHint().trim(),
+                recording = recording,
+            )
 
             result
                 .onSuccess { transcript ->
@@ -163,6 +174,12 @@ class OwnkeyWearImeService : InputMethodService() {
 
             isTranscribing = false
             renderUi()
+        }
+        transcriptionJob = job
+        job.invokeOnCompletion {
+            if (transcriptionJob === job) {
+                transcriptionJob = null
+            }
         }
     }
 

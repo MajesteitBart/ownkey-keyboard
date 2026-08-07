@@ -7,6 +7,7 @@
 - Setup: [`../VOXTRAL_API_SETUP.md`](../VOXTRAL_API_SETUP.md)
 - Feature scope: [`../VOXTRAL_FEATURE_SCOPE.md`](../VOXTRAL_FEATURE_SCOPE.md)
 - Plan: [`../VOXTRAL_KEYBOARD_PLAN.md`](../VOXTRAL_KEYBOARD_PLAN.md)
+- Battery profiling: [`development/battery-profiling.md`](development/battery-profiling.md)
 
 ## Key principles
 - BYOK (bring your own API keys)

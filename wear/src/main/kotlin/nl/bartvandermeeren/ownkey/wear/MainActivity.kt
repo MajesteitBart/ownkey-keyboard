@@ -50,11 +50,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,10 +69,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import nl.bartvandermeeren.ownkey.wear.ui.theme.AppPrimary
 import nl.bartvandermeeren.ownkey.wear.ui.theme.AppSurfaceStrong
 import nl.bartvandermeeren.ownkey.wear.ui.theme.OwnkeyTokens
@@ -142,10 +142,17 @@ private fun WearApp(
     }
 
     var activeSession by remember { mutableStateOf<RecordingSession?>(null) }
+    val latestActiveSession by rememberUpdatedState(activeSession)
     var preparedRecording by remember { mutableStateOf<AudioRecording?>(null) }
     var transcriptSegments by remember { mutableStateOf<List<EditableTranscriptSegment>>(emptyList()) }
     var activeReviewSessionId by rememberSaveable { mutableStateOf<String?>(null) }
     var reviewDurationMs by rememberSaveable { mutableStateOf(0L) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            latestActiveSession?.let { cancelRecording(it) }
+        }
+    }
 
     var hasMicPermission by remember {
         mutableStateOf(
@@ -403,15 +410,13 @@ private fun WearApp(
                             route = WearRoute.Processing
                             statusText = "Transcriptie bezig"
                             scope.launch {
-                                val result = withContext(Dispatchers.IO) {
-                                    client.transcribe(
-                                        apiKey = apiKey.trim(),
-                                        endpointUrl = endpointUrl.trim().ifBlank { VoxtralWearClient.DefaultEndpointUrl },
-                                        model = model.trim().ifBlank { VoxtralWearClient.DefaultModel },
-                                        languageHint = languageHint.trim(),
-                                        recording = recording,
-                                    )
-                                }
+                                val result = client.transcribe(
+                                    apiKey = apiKey.trim(),
+                                    endpointUrl = endpointUrl.trim().ifBlank { VoxtralWearClient.DefaultEndpointUrl },
+                                    model = model.trim().ifBlank { VoxtralWearClient.DefaultModel },
+                                    languageHint = languageHint.trim(),
+                                    recording = recording,
+                                )
 
                                 result
                                     .onSuccess { transcript ->
