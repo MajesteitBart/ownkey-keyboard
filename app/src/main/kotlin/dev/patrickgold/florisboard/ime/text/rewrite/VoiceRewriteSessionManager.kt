@@ -248,10 +248,9 @@ class VoiceRewriteSessionManager(
             startRecordingJob?.isActive == true
         ) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
-        if (current.phase == VoiceRewriteSessionPhase.ERROR) {
+        if (launchRewrite(current.generationId, instruction) && current.phase == VoiceRewriteSessionPhase.ERROR) {
             feedbackSessionId = feedbackController.beginStandaloneProcessing().takeUnless { it == 0L }
         }
-        launchRewrite(current.generationId, instruction)
     }
 
     fun recordInstructionAgain() {
@@ -629,9 +628,14 @@ class VoiceRewriteSessionManager(
         }
     }
 
-    private fun launchRewrite(generationId: Long, instruction: String) {
-        val target = activeTarget ?: return
-        if (availabilityPolicy.current() !is CloudAiAvailability.Available) return
+    private fun launchRewrite(generationId: Long, instruction: String): Boolean {
+        val target = activeTarget ?: return false
+        val availability = availabilityPolicy.current()
+        if (availability is CloudAiAvailability.Unavailable) {
+            cancelResources()
+            publishAvailabilityFailure(generationId, availability)
+            return false
+        }
         operationJob?.cancel()
         _state.value = VoiceRewriteSessionState(
             generationId = generationId,
@@ -674,6 +678,7 @@ class VoiceRewriteSessionManager(
                 },
             )
         }
+        return true
     }
 
     private fun publishPipelineError(generationId: Long, failure: VoiceRewritePipelineFailure) {

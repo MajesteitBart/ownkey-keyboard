@@ -165,6 +165,38 @@ class VoiceRewritePipelineTest : FunSpec({
         }
     }
 
+    test("retry rejected by a new private session never leaves mic feedback processing") {
+        runTest {
+            val rewrite = FakePipelineRewriteOperation(
+                ArrayDeque(
+                    listOf(
+                        Result.failure(IllegalStateException("rewrite failed")),
+                        Result.success("must not run"),
+                    ),
+                ),
+            )
+            val fixture = pipelineFixture(
+                scope = backgroundScope,
+                rewrite = rewrite,
+                transcriptionOperation = TranscriptionOnlyOperation(StandardTestDispatcher(testScheduler)),
+            )
+            fixture.manager.begin()
+            runCurrent()
+            fixture.manager.stopRecording()
+            runCurrent()
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.ERROR
+
+            fixture.editorSession.value = fixture.editorSession.value.copy(isIncognito = true)
+            fixture.manager.tryAgain()
+
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.WARNING
+            fixture.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.INCOGNITO
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.ERROR
+            fixture.feedbackController.state.value.errorReason shouldBe VoiceActionErrorReason.AI_UNAVAILABLE
+            rewrite.requests.size shouldBe 1
+        }
+    }
+
     test("record again keeps the target but replaces transcript and result") {
         runTest {
             val transcription = FakePipelineTranscriptionClient(
@@ -319,6 +351,7 @@ private data class PipelineFixture(
     val transcription: FakePipelineTranscriptionClient,
     val rewrite: FakePipelineRewriteOperation,
     val feedbackController: VoiceActionFeedbackController,
+    val editorSession: MutableStateFlow<CloudAiEditorSession>,
 )
 
 private fun pipelineFixture(
@@ -337,9 +370,10 @@ private fun pipelineFixture(
     transcriptionConfigured: () -> Boolean = { true },
     rewriteConfigured: () -> Boolean = { true },
 ): PipelineFixture {
+    val editorSession = MutableStateFlow(CloudAiEditorSession(7L, isIncognito = false, isSecureField = false))
     val policy = CloudAiAvailabilityPolicy(
         scope,
-        MutableStateFlow(CloudAiEditorSession(7L, isIncognito = false, isSecureField = false)),
+        editorSession,
     )
     val feedbackController = VoiceActionFeedbackController(scope)
     val manager = VoiceRewriteSessionManager(
@@ -372,7 +406,7 @@ private fun pipelineFixture(
         maxRecordingDurationMs = maxRecordingDurationMs,
         nowMs = nowMs,
     )
-    return PipelineFixture(manager, recorder, transcription, rewrite, feedbackController)
+    return PipelineFixture(manager, recorder, transcription, rewrite, feedbackController, editorSession)
 }
 
 private class FakePipelineRecorder : AudioRecorder {
