@@ -613,9 +613,13 @@ private fun DictationLanguageOptions(
         onClick = { onModeChange(TranscriptionLanguageMode.EXPLICIT) },
     )
     if (mode == TranscriptionLanguageMode.EXPLICIT) {
+        var explicitDraft by remember(storedLanguageHint) { mutableStateOf(storedLanguageHint) }
         OwnkeyOutlinedTextField(
-            value = storedLanguageHint,
-            onValueChange = onExplicitLanguageChange,
+            value = explicitDraft,
+            onValueChange = { value ->
+                explicitDraft = value
+                if (value.isNotBlank()) onExplicitLanguageChange(value)
+            },
             label = stringRes(R.string.pref__voxtral__language_hint__label),
         )
     }

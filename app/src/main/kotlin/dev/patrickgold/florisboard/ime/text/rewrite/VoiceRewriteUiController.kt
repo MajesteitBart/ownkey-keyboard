@@ -162,7 +162,6 @@ class VoiceRewriteUiController(
     }
 
     fun invalidate(reason: AudioSessionInvalidation) {
-        if (uiState.value.isHub) return
         sessionManager.invalidate(reason)
     }
 

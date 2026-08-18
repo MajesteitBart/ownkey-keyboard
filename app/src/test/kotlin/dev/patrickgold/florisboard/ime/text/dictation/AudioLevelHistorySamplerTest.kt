@@ -88,6 +88,24 @@ class AudioLevelHistorySamplerTest : FunSpec({
         }
     }
 
+    test("measured-level publications do not restart the twenty hertz poller") {
+        runTest {
+            withSampler(testScheduler) { coordinator, _ ->
+                val recorder = FakeLevelRecorder(amplitude = 0.6f)
+                coordinator.tryStart(
+                    AudioSessionOwner.DICTATION,
+                    AudioSessionMode.CONFIGURED_PROVIDER,
+                    recorder,
+                )
+                runCurrent()
+                advanceTimeBy(500L)
+                runCurrent()
+
+                (recorder.sampleCount in 10..11) shouldBe true
+            }
+        }
+    }
+
     test("pausing stops sampling and settles the bars to the dim baseline") {
         runTest {
             withSampler(testScheduler) { coordinator, sampler ->

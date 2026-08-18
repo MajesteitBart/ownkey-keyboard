@@ -104,6 +104,50 @@ class TranscriptionOperationsTest : FunSpec({
         result shouldBe OrdinaryDictationCommitResult.CommitFailed
         commitCount shouldBe 1
     }
+
+
+    test("a thrown provider exception becomes a typed failure so callers can release the lease") {
+        runTest {
+            val coordinator = AudioSessionCoordinator()
+            val lease = (coordinator.tryStart(
+                AudioSessionOwner.VOICE_REWRITE,
+                AudioSessionMode.CONFIGURED_PROVIDER,
+                OperationRecorder(),
+            ) as AudioSessionStartResult.Started).lease
+
+            val outcome = TranscriptionOnlyOperation(UnconfinedTestDispatcher(testScheduler))
+                .stopAndTranscribe(
+                    lease,
+                    object : TranscriptionClient {
+                        override suspend fun transcribe(recording: AudioRecording): Result<String> {
+                            throw IllegalStateException("provider threw")
+                        }
+                    },
+                )
+
+            outcome shouldBe TranscriptionOutcome.Failure(TranscriptionFailureReason.PROVIDER)
+            lease.complete() shouldBe true
+            coordinator.state.value shouldBe null
+        }
+    }
+
+    test("a thrown recorder exception remains a typed recording failure") {
+        runTest {
+            val coordinator = AudioSessionCoordinator()
+            val lease = (coordinator.tryStart(
+                AudioSessionOwner.VOICE_REWRITE,
+                AudioSessionMode.CONFIGURED_PROVIDER,
+                OperationRecorder(stopException = IllegalStateException("recorder threw")),
+            ) as AudioSessionStartResult.Started).lease
+
+            TranscriptionOnlyOperation(UnconfinedTestDispatcher(testScheduler)).stopAndTranscribe(
+                lease,
+                StaticTranscriptionClient(Result.success("unused")),
+            ) shouldBe TranscriptionOutcome.Failure(TranscriptionFailureReason.RECORDING)
+            lease.cancel() shouldBe true
+            coordinator.state.value shouldBe null
+        }
+    }
 })
 
 private class StaticTranscriptionClient(
@@ -114,6 +158,7 @@ private class StaticTranscriptionClient(
 
 private class OperationRecorder(
     private val stopResult: Result<AudioRecording> = Result.success(testRecording()),
+    private val stopException: Exception? = null,
 ) : AudioRecorder {
     private var active = false
 
@@ -127,6 +172,7 @@ private class OperationRecorder(
 
     override fun stopAndRead(): Result<AudioRecording> {
         active = false
+        stopException?.let { throw it }
         return stopResult
     }
 

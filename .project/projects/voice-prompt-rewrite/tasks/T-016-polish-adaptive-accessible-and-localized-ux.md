@@ -62,7 +62,7 @@ Follow existing Ownkey brand tokens and fixed IME height. Functional amplitude f
 
 - 2026-08-05T14:23:27Z: Reopened for T-018 secure-field remediation: API-key fields must publish password EditorInfo
 
-- 2026-08-05T14:19:45Z: Quality remediation: selecting Specific language now preserves an existing explicit value or seeds from the active keyboard subtype instead of persisting the blank/Auto sentinel, so the explicit field becomes reachable. Added blank, Auto, and subtype-preservation regression coverage. Replaced the newly added synchronous toast with the suspend API. Evidence: :app:testDebugUnitTest passed 273 tests with 0 failures (.agents/logs/tests/20260805T141830Z.log); :app:compileReleaseKotlin passed without the WS-D deprecation warning (.agents/logs/tests/20260805T141910Z.log); git diff --check passed.
+- 2026-08-05T14:19:45Z: Quality remediation: selecting Specific language now preserves an existing explicit value or seeds from the active keyboard subtype instead of persisting the blank/Auto sentinel, so the explicit field becomes reachable. Added blank, Auto, and subtype-preservation regression coverage. Replaced the newly added synchronous toast with the suspend API. Evidence: :app:testDebugUnitTest passed 273 tests with 0 failures; :app:compileReleaseKotlin passed without the WS-D deprecation warning; git diff --check passed.
 
 - 2026-08-05T14:17:31Z: Implementing reachable explicit-language selection and regression coverage
 

@@ -34,10 +34,12 @@ sealed interface DictationRecognitionCue {
 object DictationRecognitionCues {
     fun resolve(
         sessionOwner: AudioSessionOwner?,
+        sessionPhase: AudioSessionPhase?,
         resolvedLanguageHint: String?,
-    ): DictationRecognitionCue? = when (sessionOwner) {
-        null, AudioSessionOwner.VOICE_REWRITE -> null
-        AudioSessionOwner.DICTATION -> resolvedLanguageHint
+    ): DictationRecognitionCue? = when {
+        sessionOwner != AudioSessionOwner.DICTATION -> null
+        sessionPhase !in setOf(AudioSessionPhase.RECORDING, AudioSessionPhase.PAUSED) -> null
+        else -> resolvedLanguageHint
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?.let(DictationRecognitionCue::Language)

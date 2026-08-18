@@ -187,7 +187,7 @@ private fun remainingSeconds(
     remainingVisibleAfterMs: Long,
 ): Int? {
     if (mode != VoiceRecordingMode.VOICE_REWRITE) return null
-    if (phase != VoiceRecordingPhase.RECORDING) return null
+    if (phase !in setOf(VoiceRecordingPhase.RECORDING, VoiceRecordingPhase.PAUSED)) return null
     if (elapsedMs < remainingVisibleAfterMs) return null
     val remainingMs = (maxRecordingDurationMs - elapsedMs).coerceAtLeast(0L)
     return ((remainingMs + 999L) / 1_000L).toInt()

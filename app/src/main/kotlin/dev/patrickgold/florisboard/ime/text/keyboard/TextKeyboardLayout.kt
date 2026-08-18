@@ -1108,13 +1108,16 @@ private fun rememberDictationRecognitionCueLabel(): String? {
     val prefs by FlorisPreferenceStore
     val audioSessionCoordinator by context.audioSessionCoordinator()
     val subtypeManager by context.subtypeManager()
-    val sessionOwner by remember(audioSessionCoordinator) {
-        audioSessionCoordinator.state.map { it?.owner }.distinctUntilChanged()
+    val sessionLifecycle by remember(audioSessionCoordinator) {
+        audioSessionCoordinator.state
+            .map { session -> session?.let { it.owner to it.phase } }
+            .distinctUntilChanged()
     }.collectAsState(initial = null)
     val languageHint by prefs.voxtral.languageHint.collectAsState()
 
     val cue = DictationRecognitionCues.resolve(
-        sessionOwner = sessionOwner,
+        sessionOwner = sessionLifecycle?.first,
+        sessionPhase = sessionLifecycle?.second,
         resolvedLanguageHint = TranscriptionLanguageHints.resolve(
             purpose = TranscriptionPurpose.DICTATION,
             storedLanguageHint = languageHint,

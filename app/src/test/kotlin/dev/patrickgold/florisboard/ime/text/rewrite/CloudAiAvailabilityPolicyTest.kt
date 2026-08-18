@@ -19,14 +19,11 @@ import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CloudAiAvailabilityPolicyTest : FunSpec({
-    test("forced host-requested and user-toggled incognito share the distinct incognito reason") {
+    test("an incognito editor session has the distinct incognito reason") {
         runTest {
-            listOf("forced", "host flagNoPersonalizedLearning", "smartbar toggle").forEach { source ->
-                @Suppress("UNUSED_VARIABLE") val incognitoSource = source
-                val sessions = MutableStateFlow(activeSession(isIncognito = true))
-                val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
-                policy.current() shouldBe CloudAiAvailability.Unavailable(CloudAiUnavailableReason.INCOGNITO)
-            }
+            val sessions = MutableStateFlow(activeSession(isIncognito = true))
+            val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
+            policy.current() shouldBe CloudAiAvailability.Unavailable(CloudAiUnavailableReason.INCOGNITO)
         }
     }
 

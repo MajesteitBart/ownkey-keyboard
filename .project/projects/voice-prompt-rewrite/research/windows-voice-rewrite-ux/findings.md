@@ -20,12 +20,14 @@ How should Ownkey Android combine selected text with a spoken rewrite instructio
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/rewrite/RewriteOptionsPanel.kt`
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/rewrite/LlmRewriteClient.kt`
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/VoxtralDictationManager.kt`
-  - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/DictationRecordingBar.kt`
+  - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRow.kt`
+  - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRowModel.kt`
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/editor/EditorInstance.kt`
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/TextInputLayout.kt`
 - Follow-up Android recording-state implementation:
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/quickaction/QuickActionButton.kt`
-  - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/DictationRecordingBar.kt`
+  - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRow.kt`
+  - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRowModel.kt`
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/VoxtralDictationManager.kt`
   - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/AudioRecorder.kt`
 - [Ownkey Windows repository and README](https://github.com/MajesteitBart/ownkey-windows), inspected at commit `69923eacf2654db978b390955bcfa12e634e5de5`.
@@ -51,7 +53,7 @@ How should Ownkey Android combine selected text with a spoken rewrite instructio
 11. **Expanded layouts need composition, not stretching.** The supplied tablet screenshots show extremely wide panel cards and distant edge controls. Recording, disclosure, processing, and result states should use a centered maximum width while retaining the current two-column hub.
 12. **The live site could be loaded but not snapshotted in the shared preview.** UI conclusions about the site therefore come from its public source and repository assets, not a claimed live interaction recording.
 13. **The visible Android mic animation is not evidence of input.** `DictationWaveformBars` uses an infinite sine transition and does not consume `audioLevelFlow`, so it moves even when the person is silent.
-14. **The preferable recording composition already exists but is unwired.** `DictationRecordingBar` lays out elapsed time, a center level meter, pause/resume, cancel, and a trailing stop action, and its waveform consumes the manager's amplitude flow. No production call site currently renders it.
+14. **The preferable recording composition is shared and wired.** `VoiceRecordingRow` and `VoiceRecordingRowModel` lay out elapsed time, a center level history, pause/resume, cancel, and a trailing stop action. `Smartbar` renders the surface for ordinary dictation and voice rewrite.
 15. **The amplitude source is real but needs presentation work.** The recorder exposes `MediaRecorder.maxAmplitude` normalized to 0-1 and the manager polls it every 50 ms. Cross-device sensitivity, noise floor, smoothing, rolling history, pause, and reduced-motion behavior still need calibration and tests.
 16. **Terminal feedback is partly inferred and partly durable.** The manager exposes a persistent `ERROR` state with no timeout and no explicit success state; the mic UI infers success from transcribing-to-idle and hides it after 800 ms. Explicit terminal outcome events are safer and make a five-second error reset session-aware.
 
@@ -74,7 +76,7 @@ How should Ownkey Android combine selected text with a spoken rewrite instructio
 
 ## Post-Research Product Decision
 
-Product review approved the dictation key as the fast-path entry and expanded the safe target rule. A normal tap remains dictation. A long-press, recognized using the Android platform timeout rather than a fixed three-second delay, starts voice rewrite after haptic and visible `Speak an edit` feedback; the user may release once recording starts. If text is selected, that selection is the target. Otherwise Ownkey visibly invokes Select All and waits until a non-empty whole-field selection is confirmed before opening the microphone. The pinned rewrite-hub card remains for discovery and accessibility.
+Product review approved the dictation key as the fast-path entry and expanded the safe target rule. A normal tap remains dictation. A long-press, recognized using the Android platform timeout rather than a fixed three-second delay, starts voice rewrite after haptic and visible `Speak your instruction` feedback; the user may release once recording starts. If text is selected, that selection is the target. Otherwise Ownkey visibly invokes Select All and waits until a non-empty whole-field selection is confirmed before opening the microphone. The pinned rewrite-hub card remains for discovery and accessibility.
 
 Recording-UX review also approved restoring the first action row as the shared recording surface. The row uses a real amplitude-driven waveform in its center, pause/resume and cancel immediately to its right, and a stop-square button in the normal mic position. The button keeps its current state language but no longer acts as an artificial waveform; success is brief and error returns to idle automatically after approximately five seconds.
 
@@ -117,4 +119,4 @@ Then capture the confirmed target, transcribe the spoken instruction without com
 
 ## Confidence
 
-High on the Windows behavior and product-selected UX direction because implementation evidence and product review now agree. High on the current Android recording-state diagnosis because the visible and unwired components plus manager/recorder source agree. Medium on gesture arbitration, Select All compatibility, amplitude calibration, responsive composition, and selection/lifecycle behavior until a focused device/emulator prototype exercises representative editors and microphones.
+High on the Windows behavior and product-selected UX direction because implementation evidence and product review now agree. High on the current Android recording-state diagnosis because the shared recording components plus manager/recorder source agree. Medium on gesture arbitration, Select All compatibility, amplitude calibration, responsive composition, and selection/lifecycle behavior until a focused device/emulator prototype exercises representative editors and microphones.

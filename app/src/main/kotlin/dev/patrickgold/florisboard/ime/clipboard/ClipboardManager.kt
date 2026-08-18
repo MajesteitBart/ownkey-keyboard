@@ -27,6 +27,7 @@ import dev.patrickgold.florisboard.ime.clipboard.provider.ClipboardItem
 import dev.patrickgold.florisboard.ime.clipboard.provider.ItemType
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -131,13 +132,24 @@ class ClipboardManager(
                     ),
                 )
             }.collectLatest { plan ->
-                val delayMs = ClipboardCleanupScheduler.nextDelayMs(
-                    items = plan.history.all.map { it.toCleanupItem() },
-                    policy = plan.policy,
-                    nowMs = System.currentTimeMillis(),
-                ) ?: return@collectLatest
-                delay(delayMs)
-                enforceExpiryDate(plan)
+                while (true) {
+                    val delayMs = ClipboardCleanupScheduler.nextDelayMs(
+                        items = plan.history.all.map { it.toCleanupItem() },
+                        policy = plan.policy,
+                        nowMs = System.currentTimeMillis(),
+                    ) ?: return@collectLatest
+                    delay(delayMs)
+                    val removedItems = try {
+                        enforceExpiryDate(plan)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        delay(ClipboardCleanupScheduler.RetryDelayMs)
+                        continue
+                    }
+                    if (removedItems) return@collectLatest
+                    if (delayMs == 0L) delay(ClipboardCleanupScheduler.RetryDelayMs)
+                }
             }
         }
     }
@@ -283,7 +295,7 @@ class ClipboardManager(
         }
     }
 
-    private suspend fun enforceExpiryDate(plan: ClipboardCleanupPlan) {
+    private suspend fun enforceExpiryDate(plan: ClipboardCleanupPlan): Boolean {
         val nowMs = System.currentTimeMillis()
         val itemsToRemove = plan.history.all.filter { item ->
             ClipboardCleanupScheduler.isExpired(
@@ -292,9 +304,10 @@ class ClipboardManager(
                 nowMs = nowMs,
             )
         }
-        if (itemsToRemove.isNotEmpty()) {
-            clipHistoryDao?.delete(itemsToRemove)
-        }
+        if (itemsToRemove.isEmpty()) return false
+        val dao = clipHistoryDao ?: return false
+        dao.delete(itemsToRemove)
+        return true
     }
 
     private fun ClipboardItem.toCleanupItem() = ClipboardCleanupItem(

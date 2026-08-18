@@ -18,6 +18,7 @@ import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.filters.SdkSuppress
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import org.junit.Assume.assumeTrue
@@ -41,6 +42,7 @@ class KeyboardIdlePowerBenchmark {
 
     @Test
     fun keyboardIdle() {
+        val benchmarkApplicationId = InstrumentationRegistry.getInstrumentation().context.packageName
         assumeTrue(
             "High-precision energy metrics require supported physical power rails",
             PowerMetric.deviceSupportsHighPrecisionTracking(),
@@ -57,7 +59,9 @@ class KeyboardIdlePowerBenchmark {
                 pressHome()
                 device.executeShellCommand("ime enable $OWNKEY_IME_COMPONENT")
                 device.executeShellCommand("ime set $OWNKEY_IME_COMPONENT")
-                device.executeShellCommand("am start -W -n $BATTERY_HOST_COMPONENT")
+                device.executeShellCommand(
+                    "am start -W -n ${batteryHostComponent(benchmarkApplicationId)}",
+                )
                 check(
                     device.wait(
                         Until.hasObject(By.desc(BATTERY_HOST_INPUT_DESCRIPTION)),

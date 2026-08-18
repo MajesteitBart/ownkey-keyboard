@@ -49,7 +49,7 @@ updated: 2026-08-04T11:55:20Z
 - Specified the approved hierarchy: elapsed time, real amplitude-driven center waveform, pause/resume and cancel immediately to its right, and an orange stop-square action in the normal mic position.
 - Preserved the useful idle, triggered/recording, processing, success, and error button treatments while removing the artificial in-button waveform from active recording.
 - Specified explicit terminal outcomes, approximately 900 ms success feedback, and a session-safe five-second error-to-idle reset with immediate retry.
-- Inspected the Android source and recorded that the visible pill uses a sine animation, an unwired recording bar already contains the preferred composition, live amplitude is available, and the durable error/inferred-success model requires correction.
+- Inspected the Android source and recorded that the original visible pill used a sine animation, the recording-row reference contained the preferred composition, live amplitude was available, and the durable error/inferred-success model required correction. The shipped implementation now lives in `VoiceRecordingRow` and `VoiceRecordingRowModel`.
 
 ## 2026-08-04T11:55:20Z
 

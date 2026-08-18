@@ -63,7 +63,7 @@ private const val CoachMarkVisibleMillis = 7_000L
 /**
  * Smartbar overlay for the dictation-key accelerator.
  *
- * While voice rewrite is resolving its target it shows the `Speak an edit` mode status as visible
+ * While voice rewrite is resolving its target it shows the `Speak your instruction` mode status as visible
  * text plus a polite live region, so hold recognition is confirmed in words and not only by haptic
  * and colour. When no session is active it may instead show the one-time coach mark. The overlay
  * lives in the smartbar and never covers the key area, so ordinary typing is never blocked.

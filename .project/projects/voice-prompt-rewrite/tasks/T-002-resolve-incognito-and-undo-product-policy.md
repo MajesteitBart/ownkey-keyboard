@@ -48,11 +48,8 @@ Incognito is not equivalent to a secure/password field. The decision must accura
 
 ## Evidence Log
 
-- 2026-08-04T21:34:51Z: D-007 governs incognito; D-011 defers bespoke persistent undo and preserves preview, target revalidation, copy fallback, and host undo.
-
-- 2026-08-04T21:29:31Z: Record and reconcile accepted persistent-undo policy
-
-- 2026-08-04T21:29:31Z: Product owner decided to defer persistent undo from the first release
-
 - 2026-08-04: Task created as an external product-decision blocker.
-- 2026-08-04: Incognito policy resolved. Product review accepted D-007 — incognito disables every cloud AI action (dictation, preset rewrite, voice rewrite) with a visible disabled state and a route out of incognito. NC-001 closed; spec, plan, and task graph reconciled; enforcement assigned to T-020. This task remains blocked on the persistent-undo decision (NC-002) alone.
+- 2026-08-04: Incognito policy resolved. Product review accepted D-007 — incognito disables every cloud AI action (dictation, preset rewrite, voice rewrite) with a visible disabled state and a route out of incognito. NC-001 closed; spec, plan, and task graph reconciled; enforcement assigned to T-020. At this point the task remained blocked on the persistent-undo decision (NC-002) alone.
+- 2026-08-04T21:29:31Z: Product owner decided to defer persistent undo from the first release.
+- 2026-08-04T21:29:31Z: Recorded and reconciled the accepted persistent-undo policy.
+- 2026-08-04T21:34:51Z: D-007 governs incognito; D-011 defers bespoke persistent undo and preserves preview, target revalidation, copy fallback, and host undo. NC-001 and NC-002 are closed and the task is done.

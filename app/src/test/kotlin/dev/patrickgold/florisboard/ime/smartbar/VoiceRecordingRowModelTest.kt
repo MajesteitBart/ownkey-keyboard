@@ -109,7 +109,7 @@ class VoiceRecordingRowModelTest : FunSpec({
         processing.isCapturing shouldBe false
     }
 
-    test("voice rewrite recording uses the speak-an-edit wording and carries its target scope") {
+    test("voice rewrite recording uses the instruction wording and carries its target scope") {
         val scope = VoiceRewriteScopeLabel(VoiceRewriteTargetScope.WHOLE_FIELD, 184)
         val state = voiceRecordingRowState(
             session = session(AudioSessionOwner.VOICE_REWRITE, AudioSessionPhase.RECORDING),
@@ -185,6 +185,17 @@ class VoiceRecordingRowModelTest : FunSpec({
         remainingAt(27_500L) shouldBe 3
         remainingAt(30_000L) shouldBe 0
         remainingAt(31_000L) shouldBe 0
+
+        val paused = voiceRecordingRowState(
+            session = session(
+                owner = AudioSessionOwner.VOICE_REWRITE,
+                phase = AudioSessionPhase.PAUSED,
+                pausedAtMs = 27_000L,
+            ),
+            voiceRewrite = voiceRewriteModel(VoiceRewriteSurface.PAUSED),
+            nowMs = 60_000L,
+        )!!
+        paused.remainingSeconds shouldBe 3
     }
 
     test("ordinary dictation is never shown a deadline it does not enforce") {

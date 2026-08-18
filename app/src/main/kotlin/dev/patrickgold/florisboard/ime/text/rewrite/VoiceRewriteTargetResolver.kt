@@ -129,9 +129,6 @@ class VoiceRewriteTargetResolver(
         if (initial.selection.isSelectionMode) {
             return capture(initial, VoiceRewriteTargetScope.SELECTION)
         }
-        if (initial.selection.isNotValid) {
-            return VoiceRewriteTargetResolution.Rejected(VoiceRewriteTargetFailure.INVALID_SELECTION)
-        }
         if (initial.isKnownEmpty) {
             return VoiceRewriteTargetResolution.Rejected(VoiceRewriteTargetFailure.EMPTY_TARGET)
         }

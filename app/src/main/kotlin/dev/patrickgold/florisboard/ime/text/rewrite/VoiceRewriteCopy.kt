@@ -20,6 +20,7 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import dev.patrickgold.florisboard.R
 import org.florisboard.lib.compose.stringRes
+import org.florisboard.lib.compose.pluralsRes
 
 /**
  * The single mapping from the pure presentation model onto string resources.
@@ -91,12 +92,14 @@ fun CloudAiUnavailableReason.text(): String = stringRes(stringResId())
 
 @Composable
 fun VoiceRewriteScopeLabel.text(): String = when (scope) {
-    VoiceRewriteTargetScope.SELECTION -> stringRes(
-        R.string.voice_rewrite__scope_selection,
+    VoiceRewriteTargetScope.SELECTION -> pluralsRes(
+        R.plurals.voice_rewrite__scope_selection,
+        characterCount,
         "count" to characterCount,
     )
-    VoiceRewriteTargetScope.WHOLE_FIELD -> stringRes(
-        R.string.voice_rewrite__scope_whole_field,
+    VoiceRewriteTargetScope.WHOLE_FIELD -> pluralsRes(
+        R.plurals.voice_rewrite__scope_whole_field,
+        characterCount,
         "count" to characterCount,
     )
 }

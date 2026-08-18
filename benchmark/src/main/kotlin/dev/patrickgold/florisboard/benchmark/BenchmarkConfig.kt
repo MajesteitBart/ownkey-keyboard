@@ -13,6 +13,6 @@ package dev.patrickgold.florisboard.benchmark
 internal const val TARGET_PACKAGE = "nl.bartvandermeeren.ownkey.bench"
 internal const val OWNKEY_IME_COMPONENT =
     "$TARGET_PACKAGE/dev.patrickgold.florisboard.FlorisImeService"
-internal const val BATTERY_HOST_COMPONENT =
-    "dev.patrickgold.florisboard.benchmark/.BatteryBenchmarkActivity"
+internal fun batteryHostComponent(applicationId: String) =
+    "$applicationId/dev.patrickgold.florisboard.benchmark.BatteryBenchmarkActivity"
 internal const val BATTERY_HOST_INPUT_DESCRIPTION = "Ownkey battery benchmark input"

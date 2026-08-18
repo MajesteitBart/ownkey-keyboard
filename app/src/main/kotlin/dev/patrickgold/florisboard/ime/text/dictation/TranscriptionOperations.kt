@@ -37,9 +37,10 @@ class TranscriptionOnlyOperation(
         lease: AudioSessionLease,
         client: TranscriptionClient,
     ): TranscriptionOutcome {
+        var recordingStopped = false
         return try {
             currentCoroutineContext().ensureActive()
-            val recording = when (val stopResult = lease.stop()) {
+            val recording = when (val stopResult = withContext(ioDispatcher) { lease.stop() }) {
                 is AudioSessionStopResult.Stopped -> stopResult.recording
                 is AudioSessionStopResult.Failed -> {
                     return if (stopResult.error is CancellationException) {
@@ -52,6 +53,7 @@ class TranscriptionOnlyOperation(
                 AudioSessionStopResult.AlreadyStopped,
                 AudioSessionStopResult.Stale -> return TranscriptionOutcome.Cancelled
             }
+            recordingStopped = true
             currentCoroutineContext().ensureActive()
             val result = withContext(ioDispatcher) { client.transcribe(recording) }
             result.fold(
@@ -72,6 +74,14 @@ class TranscriptionOnlyOperation(
         } catch (_: CancellationException) {
             lease.cancel()
             TranscriptionOutcome.Cancelled
+        } catch (_: Exception) {
+            TranscriptionOutcome.Failure(
+                if (recordingStopped) {
+                    TranscriptionFailureReason.PROVIDER
+                } else {
+                    TranscriptionFailureReason.RECORDING
+                },
+            )
         }
     }
 }

@@ -15,7 +15,7 @@ probe_status: completed
 
 ## Executive Summary
 
-Add a voice-instruction path to Ownkey Android's existing rewrite experience, led by a direct shortcut on the dictation key. A normal tap continues to start dictation; a platform-timed long-press produces haptic feedback, enters `Speak an edit`, resolves the rewrite target, and starts recording a one-off instruction. If text is already selected, that selection is the target. If nothing is selected, Ownkey visibly invokes Select All and confirms the resulting whole-field selection before recording.
+Add a voice-instruction path to Ownkey Android's existing rewrite experience, led by a direct shortcut on the dictation key. A normal tap continues to start dictation; a platform-timed long-press produces haptic feedback, enters `Speak your instruction`, resolves the rewrite target, and starts recording a one-off instruction. If text is already selected, that selection is the target. If nothing is selected, Ownkey visibly invokes Select All and confirms the resulting whole-field selection before recording.
 
 The feature adapts the strongest parts of Ownkey Windows: capture the selected text at the start, use a distinct voice-editing mode, show clear listening/rewriting states, and leave the source text unchanged whenever the flow fails or is cancelled. It deliberately keeps Android's safer preview-before-replace behavior instead of copying Windows' immediate replacement.
 
@@ -60,7 +60,7 @@ Users must either accept a coarse preset, leave the host app to use another AI i
 - `LlmRewriteManager` captures selected text or falls back to the previous sentence, runs a preset, previews the result, and replaces the stored range only after `Insert`.
 - `VoxtralDictationManager` owns microphone capture and transcription but currently commits its transcript directly to the editor.
 - The visible `DictationMicPill` already communicates idle, listening, paused, processing, inferred success, and error, but its listening bars are driven by a looping sine animation rather than microphone input.
-- `DictationRecordingBar` already contains the preferred timer, center waveform, pause/resume, cancel, and stop composition and consumes `audioLevelFlow`, but it currently has no production call site.
+- `VoiceRecordingRow` and `VoiceRecordingRowModel` contain the shared timer, center waveform, pause/resume, cancel, and stop composition rendered from `Smartbar` for both voice modes.
 - `AudioRecorder.currentAmplitude()` and `VoxtralDictationManager.audioLevelFlow` provide a live signal for a truthful shared recording surface; the presentation still needs device calibration, smoothing, history, lifecycle tests, and wiring.
 - Incognito is currently a learning-suppression flag only. `EditorInstance` resolves it per session from the preference or the host app's `flagNoPersonalizedLearning`, and `NlpManager` uses it to skip personalized learning and mark provider calls as private sessions. Neither the dictation nor the rewrite package references it, and neither package gates on password/secure fields today, so both the incognito gate and the secure-field gate are new work rather than preserved behavior.
 - The supplied Android screenshots establish compact portrait and expanded tablet/split-layout baselines.
@@ -201,7 +201,7 @@ Voice rewrite has two entries that converge on the same target, recording, proce
 - A normal tap retains ordinary dictation with no behavior change.
 - A long-press uses Android's configured long-press timeout, including the user's accessibility-adjusted touch-and-hold delay. It must not use a fixed three-second timer.
 - When the long-press is recognized, Ownkey consumes the gesture so releasing the finger cannot also trigger normal dictation.
-- Recognition produces immediate haptic feedback and changes visible/semantic status to `Speak an edit`.
+- Recognition produces immediate haptic feedback and changes visible/semantic status to `Speak your instruction`.
 - Recording continues after the finger is released; the user does not need to hold the key throughout speech. The existing stop/cancel controls finish the session.
 - The shortcut opens the voice-rewrite state surface directly. Cancel/back returns to the normal keyboard when this was the entry origin.
 
@@ -452,7 +452,7 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 
 - FR-001: A normal dictation-key tap continues to invoke ordinary dictation; a recognized long-press invokes voice rewrite, and exactly one action fires per gesture.
 - FR-002: Long-press recognition uses Android's configured timeout/accessibility touch-and-hold delay rather than a fixed duration.
-- FR-003: Long-press activation provides one haptic and immediate visible/semantic `Speak an edit` feedback; recording continues after finger release.
+- FR-003: Long-press activation provides one haptic and immediate visible/semantic `Speak your instruction` feedback; recording continues after finger release.
 - FR-004: The dictation key exposes a `Voice rewrite` accessibility action and resource-backed long-click semantics.
 - FR-005: A one-time, dismissible `Tap to dictate · hold to rewrite` coach mark teaches the shortcut without blocking typing.
 - FR-006: The rewrite hub retains a pinned voice-instruction action above a scrollable two-column preset grid as the discoverable alternative entry.
@@ -561,7 +561,7 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 - The existing rewrite panel remains the correct keyboard-level container.
 - The current dictation quick action can expose mutually exclusive tap and long-press handling without delaying the normal tap beyond acceptable feedback bounds.
 - The existing recorder amplitude signal can be shared safely by ordinary dictation and voice rewrite without starting a second recorder or adding work to a typing-critical thread.
-- The currently unwired `DictationRecordingBar` is a reference composition, not an implementation constraint; it may be refactored into shared state-hoisted components rather than connected unchanged.
+- The original unwired recording-bar reference was refactored into the shared state-hoisted `VoiceRecordingRow` and `VoiceRecordingRowModel` components rather than connected unchanged.
 - Android's editor Select All action is the only supported automatic whole-field targeting mechanism; unsupported editors require manual selection.
 - Provider display names can be resolved without exposing API keys or full custom endpoint URLs in the keyboard.
 - Under D-009 dictation defaults its hint to the active keyboard subtype language, assuming users dictate in the language they type in; `Auto` remains explicitly selectable. Rewrite instructions send no hint, assuming provider auto-detection is adequate for short commands. The second assumption is the weaker of the two and is measured in T-018.
@@ -604,7 +604,8 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/VoxtralDictationManager.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/AudioRecorder.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/dictation/TranscriptionClient.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/DictationRecordingBar.kt`
+- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRow.kt`
+- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRowModel.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/Smartbar.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/quickaction/QuickActionButton.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/keyboard/KeyboardManager.kt`
@@ -642,7 +643,7 @@ Research completed before this draft established:
 - Android already has most component capabilities but not the orchestration boundary: selected target capture/result preview live in rewrite, while audio recording/transcription live in dictation and currently commit directly.
 - The attached expanded screenshots make a centered maximum-width policy necessary for recording/result states.
 - The visible dictation mic pill currently generates listening bars from an infinite sine animation, so its motion does not prove that microphone input is being received.
-- An unwired `DictationRecordingBar` already demonstrates the preferred first-row structure: timer, center level meter, pause/resume, cancel, and trailing stop. It consumes the manager's live `audioLevelFlow`, making reuse/refactoring lower risk than designing a second recording surface.
+- The original unwired recording-bar reference demonstrated the preferred first-row structure. It was refactored into the production `VoiceRecordingRow`/`VoiceRecordingRowModel` surface, with timer, measured center level history, pause/resume, cancel, and trailing stop.
 - The recorder polls `MediaRecorder.maxAmplitude` through `AudioRecorder.currentAmplitude()`, which is a viable truthful source but still needs cross-device calibration and deterministic signal-mapping tests.
 - The manager has a durable `ERROR` state but no automatic reset, while success is inferred in the UI from a processing-to-idle transition. Explicit transient terminal outcomes are needed so success is truthful and error cannot remain indefinitely.
 
@@ -696,7 +697,7 @@ None of the remaining items blocks M0 activation. Editor, gesture, visual, micro
 - How often dynamic incognito is switched on by host apps in practice, and whether the disabled-state copy is understood without the user believing the keyboard has broken.
 - How reliably each configured rewrite provider keeps the source language when the instruction is spoken in a different one.
 - Whether defaulting the transcription hint to the keyboard subtype improves recognition enough to justify the cross-language cost, measured against `Auto` on short instruction utterances, and how often users speak an instruction in a language other than their active subtype.
-- Visual validation of the coach mark, `Speak an edit` transition, whole-field scope label, pinned action, and centered expanded layout on a live device/emulator.
+- Visual validation of the coach mark, `Speak your instruction` transition, whole-field scope label, pinned action, and centered expanded layout on a live device/emulator.
 - Device-matrix calibration for silence baseline, quiet/normal speech separation, attack/release, and clipping using real microphone input.
 - Compact and expanded visual validation of timer/waveform/control balance, including the narrowest smartbar layout and reduced motion.
 - Confirmation that a five-second transient error is noticeable without delaying immediate retry or masking persistent recovery copy in the rewrite panel.

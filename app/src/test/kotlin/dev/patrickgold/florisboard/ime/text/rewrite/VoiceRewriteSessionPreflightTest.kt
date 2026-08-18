@@ -74,7 +74,16 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             fixture.manager.state.value.targetScope shouldBe VoiceRewriteTargetScope.SELECTION
             recorder.startCount shouldBe 1
             disclosure.version shouldBe 3
-            events shouldContainExactly listOf("target", "permission", "transcription-config", "rewrite-config", "recorder-start")
+            events shouldContainExactly listOf(
+                "permission",
+                "transcription-config",
+                "rewrite-config",
+                "target",
+                "permission",
+                "transcription-config",
+                "rewrite-config",
+                "recorder-start",
+            )
         }
     }
 
@@ -120,14 +129,19 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             targetFailure.manager.begin()
             runCurrent()
             targetFailure.manager.state.value.targetFailure shouldBe VoiceRewriteTargetFailure.EMPTY_TARGET
-            targetFailureEvents shouldContainExactly listOf("target")
+            targetFailureEvents shouldContainExactly listOf(
+                "permission",
+                "transcription-config",
+                "rewrite-config",
+                "target",
+            )
 
             val permissionEvents = mutableListOf<String>()
             val permission = preflightFixture(backgroundScope, permissionGranted = false, events = permissionEvents)
             permission.manager.begin()
             runCurrent()
             permission.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.MICROPHONE_PERMISSION
-            permissionEvents shouldContainExactly listOf("target", "permission")
+            permissionEvents shouldContainExactly listOf("permission")
 
             val transcriptionEvents = mutableListOf<String>()
             val transcription = preflightFixture(
@@ -139,7 +153,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             runCurrent()
             transcription.manager.state.value.failure shouldBe
                 VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED
-            transcriptionEvents shouldContainExactly listOf("target", "permission", "transcription-config")
+            transcriptionEvents shouldContainExactly listOf("permission", "transcription-config")
 
             val rewriteEvents = mutableListOf<String>()
             val rewrite = preflightFixture(backgroundScope, rewriteConfigured = false, events = rewriteEvents)
@@ -147,7 +161,6 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             runCurrent()
             rewrite.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED
             rewriteEvents shouldContainExactly listOf(
-                "target",
                 "permission",
                 "transcription-config",
                 "rewrite-config",
@@ -166,7 +179,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             fixture.manager.begin()
             runCurrent()
             fixture.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY
-            events shouldContainExactly listOf("target")
+            events shouldContainExactly emptyList()
             fixture.recorder.startCount shouldBe 0
             coordinator.invalidate(AudioSessionInvalidation.OWNER_CANCELLED)
         }

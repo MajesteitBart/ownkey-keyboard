@@ -22,6 +22,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
@@ -181,6 +182,68 @@ class VoiceRewritePipelineTest : FunSpec({
         }
     }
 
+    test("record again revalidates microphone permission and both provider configurations") {
+        runTest {
+            listOf(
+                Triple("microphone", VoiceRewritePreflightFailure.MICROPHONE_PERMISSION, 0),
+                Triple(
+                    "transcription provider",
+                    VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED,
+                    1,
+                ),
+                Triple("rewrite provider", VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED, 2),
+            ).forEach { (_, expectedFailure, revokedInput) ->
+                var permissionGranted = true
+                var transcriptionConfigured = true
+                var rewriteConfigured = true
+                val fixture = pipelineFixture(
+                    scope = backgroundScope,
+                    permissionGranted = { permissionGranted },
+                    transcriptionConfigured = { transcriptionConfigured },
+                    rewriteConfigured = { rewriteConfigured },
+                    transcriptionOperation = TranscriptionOnlyOperation(StandardTestDispatcher(testScheduler)),
+                )
+                fixture.manager.begin()
+                runCurrent()
+                fixture.manager.stopRecording()
+                runCurrent()
+                fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RESULT
+
+                when (revokedInput) {
+                    0 -> permissionGranted = false
+                    1 -> transcriptionConfigured = false
+                    2 -> rewriteConfigured = false
+                }
+                fixture.manager.recordInstructionAgain()
+
+                fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.WARNING
+                fixture.manager.state.value.failure shouldBe expectedFailure
+                fixture.recorder.startCount shouldBe 1
+            }
+        }
+    }
+
+    test("cancelled transcription leaves the session terminal instead of transcribing forever") {
+        runTest {
+            val fixture = pipelineFixture(
+                scope = backgroundScope,
+                transcription = FakePipelineTranscriptionClient(
+                    ArrayDeque(listOf(Result.failure(CancellationException("cancelled")))),
+                ),
+                transcriptionOperation = TranscriptionOnlyOperation(StandardTestDispatcher(testScheduler)),
+            )
+            fixture.manager.begin()
+            runCurrent()
+            fixture.manager.stopRecording()
+            runCurrent()
+
+            fixture.manager.state.value shouldBe VoiceRewriteSessionState(
+                generationId = 1,
+                phase = VoiceRewriteSessionPhase.CANCELLED,
+            )
+        }
+    }
+
     test("lifecycle cancellation prevents a late non-cooperative provider result from publishing") {
         runTest {
             val lateResult = CompletableDeferred<Result<String>>()
@@ -247,6 +310,9 @@ private fun pipelineFixture(
     transcriptionOperation: TranscriptionOnlyOperation = TranscriptionOnlyOperation(),
     maxRecordingDurationMs: Long = 30_000L,
     nowMs: () -> Long = { System.currentTimeMillis() },
+    permissionGranted: () -> Boolean = { true },
+    transcriptionConfigured: () -> Boolean = { true },
+    rewriteConfigured: () -> Boolean = { true },
 ): PipelineFixture {
     val policy = CloudAiAvailabilityPolicy(
         scope,
@@ -261,10 +327,13 @@ private fun pipelineFixture(
         audioSessionCoordinator = AudioSessionCoordinator(nowMs),
         audioRecorderProvider = { recorder },
         audioSessionModeProvider = { AudioSessionMode.CONFIGURED_PROVIDER },
-        microphonePermission = VoiceRewriteMicrophonePermission { true },
+        microphonePermission = VoiceRewriteMicrophonePermission { permissionGranted() },
         providerConfiguration = object : VoiceRewriteProviderConfigurationSource {
-            override fun transcriptionProvider() = VoiceRewriteProviderConfiguration(true, "Mistral")
-            override fun rewriteProvider() = VoiceRewriteProviderConfiguration(true, "OpenAI")
+            override fun transcriptionProvider() =
+                VoiceRewriteProviderConfiguration(transcriptionConfigured(), "Mistral")
+
+            override fun rewriteProvider() =
+                VoiceRewriteProviderConfiguration(rewriteConfigured(), "OpenAI")
         },
         disclosureStore = object : VoiceRewriteDisclosureStore {
             override fun acknowledgedVersion(): Int = 1

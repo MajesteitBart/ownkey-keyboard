@@ -32,7 +32,7 @@ WS-A may tune amplitude mapping, timeout bounds, compact layout, and manager bou
 ## Technical Context
 
 - `QuickActionButton.kt` owns the visible mic pill and the current pointer pipeline. Its active bars are clock-driven and it has no long-press branch.
-- `DictationRecordingBar.kt` contains an unwired timer/waveform/pause/cancel/stop composition, but its controls are below the 48 dp target requirement and its waveform scales one current level through a fixed profile rather than keeping sample history.
+- The original `DictationRecordingBar.kt` reference contained an unwired timer/waveform/pause/cancel/stop composition with undersized controls and no sample history. It was replaced by `VoiceRecordingRow.kt` and `VoiceRecordingRowModel.kt` with 48 dp controls and measured history.
 - `VoxtralDictationManager.kt` owns recording, amplitude polling, transcription, and direct editor commit. Voice rewrite requires transcription without commit, explicit terminal outcomes, session-safe reset timers, and mutual exclusion.
 - `AudioRecorder.kt` exposes `currentAmplitude()` and app-private temporary recording, providing the signal source for a truthful meter.
 - `LlmRewriteManager.kt` owns preset target capture, generation, preview, and commit, but currently falls back to the previous sentence and does not revalidate source content immediately before commit.

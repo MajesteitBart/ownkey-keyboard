@@ -40,7 +40,7 @@ Build and execute a time-boxed prototype that retires the material uncertainties
 
 ## Technical Notes
 
-Use the Delano prototype workflow when executing this task. Prototype code must be isolated or clearly marked and must not silently become production behavior. Exercise `QuickActionButton`, `EditorInstance.performClipboardSelectAll()`, `DictationRecordingBar`, `VoxtralDictationManager.audioLevelFlow`, and the IME lifecycle callbacks. The goal is evidence and architecture decisions, not feature completion.
+Use the Delano prototype workflow when executing this task. Prototype code must be isolated or clearly marked and must not silently become production behavior. Exercise `QuickActionButton`, `EditorInstance.performClipboardSelectAll()`, the recording-row reference later replaced by `VoiceRecordingRow`, `VoxtralDictationManager.audioLevelFlow`, and the IME lifecycle callbacks. The goal is evidence and architecture decisions, not feature completion.
 
 ## Definition of Done
 

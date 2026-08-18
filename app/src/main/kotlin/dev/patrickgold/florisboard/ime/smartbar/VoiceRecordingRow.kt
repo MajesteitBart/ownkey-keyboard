@@ -65,6 +65,7 @@ import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import dev.patrickgold.florisboard.ime.text.dictation.AudioLevelHistoryState
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteTargetScope
+import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.stringRes
 import java.util.Locale
 
@@ -146,9 +147,9 @@ fun VoiceRecordingRowContent(
                 iconSize = 20.dp,
                 onClick = actions::onPauseOrResume,
                 contentDescription = if (state.phase == VoiceRecordingPhase.PAUSED) {
-                    stringRes(R.string.voice_recording__resume_dictation)
+                    state.resumeContentDescription()
                 } else {
-                    stringRes(R.string.voice_recording__pause_dictation)
+                    state.pauseContentDescription()
                 },
             ) {
                 Icon(
@@ -165,7 +166,7 @@ fun VoiceRecordingRowContent(
                 size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
                 iconSize = 19.dp,
                 onClick = actions::onCancel,
-                contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
+                contentDescription = state.cancelContentDescription(),
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
@@ -221,7 +222,7 @@ fun VoiceRecordingStickyAction(
                 },
                 border = OwnkeyBrand.SignalAmber.copy(alpha = 0.34f),
                 onClick = actions::onStop,
-                contentDescription = stringRes(R.string.voice_recording__stop_dictation),
+                contentDescription = state.stopContentDescription(),
             ) {
                 Icon(
                     imageVector = Icons.Default.Stop,
@@ -299,7 +300,7 @@ private fun ProcessingStatus(
             size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
             iconSize = 19.dp,
             onClick = actions::onCancel,
-            contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
+            contentDescription = state.cancelContentDescription(),
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
@@ -353,12 +354,14 @@ private fun VoiceRecordingRowState.statusAndScopeText(): String {
     val statusText = status.label()
     val scopeText = targetScope?.let { scope ->
         when (scope.scope) {
-            VoiceRewriteTargetScope.SELECTION -> stringRes(
-                R.string.voice_rewrite__scope_selection,
+            VoiceRewriteTargetScope.SELECTION -> pluralsRes(
+                R.plurals.voice_rewrite__scope_selection,
+                scope.characterCount,
                 "count" to scope.characterCount,
             )
-            VoiceRewriteTargetScope.WHOLE_FIELD -> stringRes(
-                R.string.voice_rewrite__scope_whole_field,
+            VoiceRewriteTargetScope.WHOLE_FIELD -> pluralsRes(
+                R.plurals.voice_rewrite__scope_whole_field,
+                scope.characterCount,
                 "count" to scope.characterCount,
             )
         }
@@ -375,6 +378,42 @@ private fun VoiceRecordingStatus.label(): String = stringRes(
         VoiceRecordingStatus.PROCESSING -> R.string.voice_recording__processing
         VoiceRecordingStatus.UNDERSTANDING_INSTRUCTION -> R.string.voice_rewrite__state_understanding
         VoiceRecordingStatus.REWRITING -> R.string.voice_rewrite__state_rewriting
+    },
+)
+
+@Composable
+private fun VoiceRecordingRowState.pauseContentDescription(): String = stringRes(
+    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
+        R.string.voice_recording__pause_rewrite
+    } else {
+        R.string.voice_recording__pause_dictation
+    },
+)
+
+@Composable
+private fun VoiceRecordingRowState.resumeContentDescription(): String = stringRes(
+    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
+        R.string.voice_recording__resume_rewrite
+    } else {
+        R.string.voice_recording__resume_dictation
+    },
+)
+
+@Composable
+private fun VoiceRecordingRowState.cancelContentDescription(): String = stringRes(
+    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
+        R.string.voice_recording__cancel_rewrite
+    } else {
+        R.string.voice_recording__cancel_dictation
+    },
+)
+
+@Composable
+private fun VoiceRecordingRowState.stopContentDescription(): String = stringRes(
+    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
+        R.string.voice_recording__stop_rewrite
+    } else {
+        R.string.voice_recording__stop_dictation
     },
 )
 

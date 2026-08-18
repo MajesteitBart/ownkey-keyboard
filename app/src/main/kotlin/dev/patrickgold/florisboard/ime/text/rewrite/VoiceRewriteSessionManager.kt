@@ -141,7 +141,6 @@ class VoiceRewriteSessionManager(
     private var nextGenerationId = 0L
     private var preflightJob: Job? = null
     private var activeTarget: VoiceRewriteTargetSnapshot? = null
-    private var pendingProviders: Pair<VoiceRewriteProviderConfiguration, VoiceRewriteProviderConfiguration>? = null
     private var activeAudioLease: AudioSessionLease? = null
     private var operationJob: Job? = null
     private var autoStopJob: Job? = null
@@ -238,8 +237,6 @@ class VoiceRewriteSessionManager(
         val current = _state.value
         if (activeTarget == null || operationJob?.isActive == true) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
-        recognizedInstruction = null
-        resultText = null
         startRecording(current.generationId)
     }
 
@@ -289,14 +286,7 @@ class VoiceRewriteSessionManager(
 
     fun invalidate(reason: AudioSessionInvalidation) {
         val generationId = _state.value.generationId
-        preflightJob?.cancel()
-        preflightJob = null
-        activeAudioLease?.cancel(reason)
-        activeAudioLease = null
-        activeTarget = null
-        pendingProviders = null
-        recognizedInstruction = null
-        resultText = null
+        cancelResources(reason)
         _state.value = VoiceRewriteSessionState(
             generationId = generationId,
             phase = VoiceRewriteSessionPhase.CANCELLED,
@@ -309,21 +299,6 @@ class VoiceRewriteSessionManager(
     }
 
     private suspend fun runPreflight(generationId: Long) {
-        val targetResolution = targetSource.resolve()
-        if (!isCurrent(generationId) || _state.value.phase != VoiceRewriteSessionPhase.TARGETING) return
-        val target = when (targetResolution) {
-            is VoiceRewriteTargetResolution.Resolved -> targetResolution.snapshot
-            is VoiceRewriteTargetResolution.Rejected -> {
-                publishFailure(
-                    generationId = generationId,
-                    failure = VoiceRewritePreflightFailure.TARGET_REJECTED,
-                    targetFailure = targetResolution.reason,
-                )
-                return
-            }
-        }
-        activeTarget = target
-
         if (audioSessionCoordinator.state.value != null) {
             publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
             return
@@ -342,7 +317,21 @@ class VoiceRewriteSessionManager(
             publishFailure(generationId, VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED)
             return
         }
-        pendingProviders = transcriptionProvider to rewriteProvider
+
+        val targetResolution = targetSource.resolve()
+        if (!isCurrent(generationId) || _state.value.phase != VoiceRewriteSessionPhase.TARGETING) return
+        val target = when (targetResolution) {
+            is VoiceRewriteTargetResolution.Resolved -> targetResolution.snapshot
+            is VoiceRewriteTargetResolution.Rejected -> {
+                publishFailure(
+                    generationId = generationId,
+                    failure = VoiceRewritePreflightFailure.TARGET_REJECTED,
+                    targetFailure = targetResolution.reason,
+                )
+                return
+            }
+        }
+        activeTarget = target
 
         if (disclosureStore.acknowledgedVersion() != disclosureVersion) {
             _state.value = VoiceRewriteSessionState(
@@ -368,13 +357,30 @@ class VoiceRewriteSessionManager(
             publishAvailabilityFailure(generationId, availability)
             return
         }
-        val target = activeTarget ?: return
+        if (audioSessionCoordinator.state.value != null) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
+            return
+        }
+        if (!microphonePermission.isGranted()) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
+            return
+        }
+        if (!providerConfiguration.transcriptionProvider().isConfigured) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED)
+            return
+        }
+        if (!providerConfiguration.rewriteProvider().isConfigured) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED)
+            return
+        }
         when (val startResult = audioSessionCoordinator.tryStart(
             owner = AudioSessionOwner.VOICE_REWRITE,
             mode = audioSessionModeProvider(),
             recorder = audioRecorderProvider(),
         )) {
             is AudioSessionStartResult.Started -> {
+                recognizedInstruction = null
+                resultText = null
                 activeAudioLease = startResult.lease
                 publishRecordingState(generationId, VoiceRewriteSessionPhase.RECORDING, startResult.lease)
                 scheduleAutoStop(generationId, startResult.lease)
@@ -417,17 +423,18 @@ class VoiceRewriteSessionManager(
         )
     }
 
-    private fun cancelResources() {
+    private fun cancelResources(
+        reason: AudioSessionInvalidation = AudioSessionInvalidation.OWNER_CANCELLED,
+    ) {
         preflightJob?.cancel()
         preflightJob = null
         operationJob?.cancel()
         operationJob = null
         autoStopJob?.cancel()
         autoStopJob = null
-        activeAudioLease?.cancel()
+        activeAudioLease?.cancel(reason)
         activeAudioLease = null
         activeTarget = null
-        pendingProviders = null
         recognizedInstruction = null
         resultText = null
     }
@@ -461,7 +468,16 @@ class VoiceRewriteSessionManager(
                     TranscriptionFailureReason.PROVIDER -> VoiceRewritePipelineFailure.TRANSCRIPTION
                 },
             )
-            TranscriptionOutcome.Cancelled -> Unit
+            TranscriptionOutcome.Cancelled -> {
+                operationJob = null
+                activeTarget = null
+                recognizedInstruction = null
+                resultText = null
+                _state.value = VoiceRewriteSessionState(
+                    generationId = generationId,
+                    phase = VoiceRewriteSessionPhase.CANCELLED,
+                )
+            }
         }
     }
 

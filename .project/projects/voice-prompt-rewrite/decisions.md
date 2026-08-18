@@ -14,7 +14,7 @@ updated: 2026-08-04T17:01:03Z
 
 - **Status:** accepted
 - **Date:** 2026-08-04
-- **Decision:** A normal dictation-key tap remains ordinary dictation. A platform-timed long-press enters voice rewrite, provides haptic and visible `Speak an edit` feedback, and continues recording after finger release.
+- **Decision:** A normal dictation-key tap remains ordinary dictation. A platform-timed long-press enters voice rewrite, provides haptic and visible `Speak your instruction` feedback, and continues recording after finger release.
 - **Rationale:** This brings the Windows shortcut's immediacy to Android without adding another permanent smartbar control or changing the familiar tap action. Android's configured long-press timing is used instead of a fixed three-second delay for responsiveness and accessibility.
 
 ### D-002: Resolve a missing selection through visible Select All
@@ -72,7 +72,7 @@ updated: 2026-08-04T17:01:03Z
 - **Rationale:** The common case is editing text in place, where a silent language switch would be destructive and surprising. Translation is a legitimate but explicit intent, so it must be requested rather than inferred from the instruction's own language. Multilingual users were already a named primary user of this feature, and speaking an instruction in one's stronger language against text in another is precisely the case the voice path enables.
 - **Consequences:**
   - The rule lives in the app's fixed rewrite policy sent alongside the content, so the provider model resolves the source language. Ownkey does not add local language detection, and the rule stays separate from user content per FR-022.
-  - The dictation `Language hint` preference defaults to empty, meaning auto-detect, which suits cross-language instructions. A user who sets a specific hint to sharpen recognition narrows it, so instructions spoken in another language may transcribe poorly. Voice rewrite reuses the configured dictation language behavior rather than silently overriding a setting the user chose; the limitation is documented and validated instead.
+  - Voice-rewrite instruction transcription always sends no language hint and relies on provider auto-detection, regardless of the configured dictation language behavior. This keeps cross-language instructions possible and is validated separately from ordinary dictation's subtype/explicit/Auto modes.
   - Output-language behavior depends on provider models and cannot be asserted deterministically in unit tests. The testable contract is that the policy carries the rule and that instruction language is never used locally to select an output language; real behavior is verified in the device and provider matrix.
 
 ### D-010: Show the recognition language on the spacebar during dictation

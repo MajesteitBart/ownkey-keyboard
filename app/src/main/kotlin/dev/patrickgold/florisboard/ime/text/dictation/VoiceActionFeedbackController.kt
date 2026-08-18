@@ -56,6 +56,8 @@ class VoiceActionFeedbackController(
     private var resetJob: Job? = null
     private var transitionToken = 0L
     private var nextStandaloneSessionId = -1L
+    private var highestRetiredSessionId = 0L
+    private var lowestRetiredStandaloneSessionId = 0L
     private var disposed = false
 
     fun begin(sessionId: Long): Boolean = transition(sessionId, VoiceActionFeedbackPhase.RECORDING)
@@ -69,6 +71,7 @@ class VoiceActionFeedbackController(
     fun success(sessionId: Long): Boolean {
         if (disposed || _state.value.sessionId != sessionId) return false
         if (_state.value.phase != VoiceActionFeedbackPhase.PROCESSING) return false
+        retire(sessionId)
         publish(
             VoiceActionFeedbackState(
                 sessionId = sessionId,
@@ -82,6 +85,7 @@ class VoiceActionFeedbackController(
 
     fun error(sessionId: Long, reason: VoiceActionErrorReason): Boolean {
         if (disposed || _state.value.sessionId != sessionId) return false
+        retire(sessionId)
         publishError(sessionId, reason)
         return true
     }
@@ -89,12 +93,14 @@ class VoiceActionFeedbackController(
     fun standaloneError(reason: VoiceActionErrorReason): Long {
         if (disposed) return 0L
         val sessionId = nextStandaloneSessionId--
+        retire(sessionId)
         publishError(sessionId, reason)
         return sessionId
     }
 
     fun cancel(sessionId: Long): Boolean {
         if (disposed || _state.value.sessionId != sessionId) return false
+        retire(sessionId)
         resetJob?.cancel()
         resetJob = null
         transitionToken += 1
@@ -111,7 +117,7 @@ class VoiceActionFeedbackController(
     }
 
     private fun transition(sessionId: Long, phase: VoiceActionFeedbackPhase): Boolean {
-        if (disposed) return false
+        if (disposed || isRetired(sessionId)) return false
         val current = _state.value
         if (current.sessionId != null && current.sessionId != sessionId &&
             current.phase !in setOf(
@@ -130,6 +136,20 @@ class VoiceActionFeedbackController(
             ),
         )
         return true
+    }
+
+    private fun retire(sessionId: Long) {
+        if (sessionId > 0L) {
+            highestRetiredSessionId = maxOf(highestRetiredSessionId, sessionId)
+        } else if (sessionId < 0L) {
+            lowestRetiredStandaloneSessionId = minOf(lowestRetiredStandaloneSessionId, sessionId)
+        }
+    }
+
+    private fun isRetired(sessionId: Long): Boolean = when {
+        sessionId > 0L -> sessionId <= highestRetiredSessionId
+        sessionId < 0L -> sessionId >= lowestRetiredStandaloneSessionId
+        else -> false
     }
 
     private fun publishError(sessionId: Long, reason: VoiceActionErrorReason) {

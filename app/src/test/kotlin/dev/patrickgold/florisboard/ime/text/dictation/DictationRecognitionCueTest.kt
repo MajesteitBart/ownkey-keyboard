@@ -23,9 +23,10 @@ import io.kotest.matchers.shouldBe
 
 class DictationRecognitionCueTest : FunSpec({
     test("an active dictation session reports the language actually sent to the provider") {
-        DictationRecognitionCues.resolve(
-            sessionOwner = AudioSessionOwner.DICTATION,
-            resolvedLanguageHint = "nl",
+            DictationRecognitionCues.resolve(
+                sessionOwner = AudioSessionOwner.DICTATION,
+                sessionPhase = AudioSessionPhase.RECORDING,
+                resolvedLanguageHint = "nl",
         ) shouldBe DictationRecognitionCue.Language("nl")
     }
 
@@ -33,6 +34,7 @@ class DictationRecognitionCueTest : FunSpec({
         listOf(null, "", "   ").forEach { hint ->
             DictationRecognitionCues.resolve(
                 sessionOwner = AudioSessionOwner.DICTATION,
+                sessionPhase = AudioSessionPhase.RECORDING,
                 resolvedLanguageHint = hint,
             ) shouldBe DictationRecognitionCue.AutoDetect
         }
@@ -41,6 +43,7 @@ class DictationRecognitionCueTest : FunSpec({
     test("voice rewrite shows no recognition-language cue because it sends no hint") {
         DictationRecognitionCues.resolve(
             sessionOwner = AudioSessionOwner.VOICE_REWRITE,
+            sessionPhase = AudioSessionPhase.RECORDING,
             resolvedLanguageHint = "nl",
         ).shouldBeNull()
     }
@@ -48,6 +51,15 @@ class DictationRecognitionCueTest : FunSpec({
     test("no active session leaves the space bar alone") {
         DictationRecognitionCues.resolve(
             sessionOwner = null,
+            sessionPhase = null,
+            resolvedLanguageHint = "nl",
+        ).shouldBeNull()
+    }
+
+    test("processing suppresses the recognition cue after recording stops") {
+        DictationRecognitionCues.resolve(
+            sessionOwner = AudioSessionOwner.DICTATION,
+            sessionPhase = AudioSessionPhase.PROCESSING,
             resolvedLanguageHint = "nl",
         ).shouldBeNull()
     }

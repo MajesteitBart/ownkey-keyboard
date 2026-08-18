@@ -17,11 +17,12 @@
 package dev.patrickgold.florisboard.ime.text.dictation
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -43,24 +44,20 @@ class AudioLevelHistorySampler(
     private val _state = MutableStateFlow(reducer.initialState())
     val state: StateFlow<AudioLevelHistoryState> = _state
 
-    private var samplingJob: Job? = null
-
     init {
         scope.launch {
-            coordinator.state.collectLatest { session ->
-                samplingJob?.cancel()
-                samplingJob = null
-                when (session?.phase) {
+            coordinator.state
+                .map { session -> session?.let { it.sessionId to it.phase } }
+                .distinctUntilChanged()
+                .collectLatest { session ->
+                when (session?.second) {
                     AudioSessionPhase.RECORDING -> {
                         _state.value = reducer.resume(_state.value)
-                        val sessionId = session.sessionId
-                        val reducedMotion = reducedMotionProvider()
-                        samplingJob = scope.launch {
-                            while (isActive && coordinator.isCurrent(sessionId)) {
-                                val measured = coordinator.sampleLevel(sessionId)
-                                _state.value = reducer.sample(_state.value, measured, reducedMotion)
-                                delay(sampleIntervalMs)
-                            }
+                        val sessionId = session.first
+                        while (isActive && coordinator.isCurrent(sessionId)) {
+                            val measured = coordinator.sampleLevel(sessionId)
+                            _state.value = reducer.sample(_state.value, measured, reducedMotionProvider())
+                            delay(sampleIntervalMs)
                         }
                     }
                     // Pausing stops sampling and settles the bars to a dim low baseline rather than

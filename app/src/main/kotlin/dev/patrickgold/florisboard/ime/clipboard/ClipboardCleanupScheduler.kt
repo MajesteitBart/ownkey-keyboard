@@ -36,6 +36,8 @@ internal data class ClipboardCleanupItem(
 
 /** Pure next-expiry calculation; `null` means no cleanup wake-up needs to be scheduled. */
 internal object ClipboardCleanupScheduler {
+    const val RetryDelayMs = 60_000L
+
     fun nextDelayMs(
         items: List<ClipboardCleanupItem>,
         policy: ClipboardCleanupPolicy,

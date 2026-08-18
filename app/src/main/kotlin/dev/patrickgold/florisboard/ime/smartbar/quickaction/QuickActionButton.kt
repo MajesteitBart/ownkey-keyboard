@@ -255,7 +255,7 @@ fun QuickActionButton(
      */
     fun Modifier.voiceQuickActionInput(): Modifier {
         return indication(interactionSource, localIndication)
-            .pointerInput(action, isEnabled, longPressTimeoutMs) {
+            .pointerInput(action, isEnabled, longPressTimeoutMs, cloudAiAvailability) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     down.consume()

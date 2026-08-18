@@ -114,4 +114,24 @@ class VoiceActionFeedbackControllerTest : FunSpec({
             controller.state.value.phase shouldBe VoiceActionFeedbackPhase.RECORDING
         }
     }
+
+    test("late phase callbacks cannot revive a cancelled or terminal session") {
+        runTest {
+            val controller = VoiceActionFeedbackController(this)
+            controller.begin(30)
+            controller.cancel(30) shouldBe true
+            controller.processing(30) shouldBe false
+
+            controller.begin(31)
+            controller.processing(31)
+            controller.success(31)
+            controller.resume(31) shouldBe false
+            controller.state.value.phase shouldBe VoiceActionFeedbackPhase.SUCCESS
+
+            controller.begin(32)
+            controller.error(32, VoiceActionErrorReason.TRANSCRIPTION)
+            controller.begin(32) shouldBe false
+            controller.state.value.phase shouldBe VoiceActionFeedbackPhase.ERROR
+        }
+    }
 })

@@ -97,6 +97,7 @@ class VoiceActionGestureArbiter(
      */
     fun accessibilityVoiceRewrite(): VoiceActionGestureOutcome? {
         if (isTracking && dispatched) return null
+        if (isTracking) dispatched = true
         return VoiceActionGestureOutcome.VOICE_REWRITE
     }
 

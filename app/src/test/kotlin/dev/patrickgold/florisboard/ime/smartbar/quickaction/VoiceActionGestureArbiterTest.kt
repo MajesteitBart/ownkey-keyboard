@@ -117,6 +117,14 @@ class VoiceActionGestureArbiterTest : FunSpec({
         arbiter.accessibilityVoiceRewrite() shouldBe VoiceActionGestureOutcome.VOICE_REWRITE
     }
 
+    test("the accessibility action consumes an unresolved pointer gesture") {
+        val arbiter = VoiceActionGestureArbiter(longPressTimeoutMs = 400)
+
+        arbiter.down(atMs = 0)
+        arbiter.accessibilityVoiceRewrite() shouldBe VoiceActionGestureOutcome.VOICE_REWRITE
+        arbiter.up(atMs = 100).shouldBeNull()
+    }
+
     test("only the interactive dictation key is arbitrated; other quick actions keep key down/up") {
         val voiceKey = QuickAction.InsertKey(TextKeyData(code = KeyCode.VOICE_INPUT))
         val rewriteKey = QuickAction.InsertKey(TextKeyData(code = KeyCode.AI_REWRITE))

@@ -52,6 +52,8 @@ Prefer pure reducers and injected interfaces over application-singleton tests. I
 
 ## Evidence Log
 
+- 2026-08-18: Review remediation removed the duplicated test-only contract probe and added production-class regressions for late terminal callbacks, cancellation during transcription, re-record permission/provider revocation, sampler cadence, paused countdown visibility, recognition-cue lifecycle, accessibility/pointer exclusivity, backward-clock cleanup rescheduling, and thrown recorder failures. A forced full rerun passed 278 tests, followed by an exact final-source run of 280 tests across 40 suites with 0 failures and 0 skips.
+
 - 2026-08-05T14:14:26Z: Five deterministic cross-flow scenarios added; 271 app JVM tests across 39 suites pass with zero failures/skips; coverage seam and T-018/T-019 carry-forward documented in evidence/t017-cross-flow-automated-verification.md
 
 - 2026-08-05T14:04:18Z: Begin dependency-safe WS-E cross-flow verification

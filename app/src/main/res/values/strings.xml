@@ -651,18 +651,27 @@
     <!-- Voice rewrite (in-keyboard) UI strings -->
     <string name="voice_rewrite__provider_custom" comment="Provider display name shown when the configured transcription endpoint is not a known provider">Custom endpoint</string>
     <string name="voice_rewrite__card_title" comment="Title of the pinned voice instruction card in the rewrite hub">Tell Ownkey what to change</string>
-    <string name="voice_rewrite__card_summary_selection" comment="Supporting copy on the voice card when text is selected">Speak a one-off instruction · {count} characters selected</string>
+    <plurals name="voice_rewrite__card_summary_selection" comment="Supporting copy on the voice card when text is selected">
+        <item quantity="one">Speak a one-off instruction · {count} character selected</item>
+        <item quantity="other">Speak a one-off instruction · {count} characters selected</item>
+    </plurals>
     <string name="voice_rewrite__card_summary_no_selection" comment="Supporting copy on the voice card when nothing is selected">No selection · whole field will be selected</string>
     <string name="voice_rewrite__card_providers" comment="Provider routing detail on the voice card">Audio: {audio} · Rewrite: {rewrite}</string>
-    <string name="voice_rewrite__scope_selection" comment="Resolved target scope label">Selection · {count} characters</string>
-    <string name="voice_rewrite__scope_whole_field" comment="Resolved target scope label">Whole field · {count} characters</string>
+    <plurals name="voice_rewrite__scope_selection" comment="Resolved target scope label">
+        <item quantity="one">Selection · {count} character</item>
+        <item quantity="other">Selection · {count} characters</item>
+    </plurals>
+    <plurals name="voice_rewrite__scope_whole_field" comment="Resolved target scope label">
+        <item quantity="one">Whole field · {count} character</item>
+        <item quantity="other">Whole field · {count} characters</item>
+    </plurals>
     <string name="voice_rewrite__coach_mark" comment="One-time coach mark teaching the dictation key shortcut">Tap to dictate · hold to rewrite</string>
     <string name="voice_rewrite__coach_mark_dismiss" comment="Button label dismissing the coach mark">Got it</string>
     <string name="voice_rewrite__action_voice_rewrite" comment="Accessibility action and long-press label on the dictation key">Voice rewrite</string>
     <string name="voice_rewrite__action_start_dictation" comment="Accessibility click label on the dictation key">Start dictation</string>
 
     <!-- Voice rewrite state copy -->
-    <string name="voice_rewrite__state_speak_an_edit">Speak an edit</string>
+    <string name="voice_rewrite__state_speak_an_edit">Speak your instruction</string>
     <string name="voice_rewrite__state_listening">Listening</string>
     <string name="voice_rewrite__state_paused">Paused</string>
     <string name="voice_rewrite__state_selecting_whole_field">Selecting whole field…</string>
@@ -719,6 +728,10 @@
     <string name="voice_recording__pause_dictation">Pause dictation</string>
     <string name="voice_recording__resume_dictation">Resume dictation</string>
     <string name="voice_recording__stop_dictation">Stop and transcribe</string>
+    <string name="voice_recording__cancel_rewrite">Cancel voice rewrite</string>
+    <string name="voice_recording__pause_rewrite">Pause voice rewrite</string>
+    <string name="voice_recording__resume_rewrite">Resume voice rewrite</string>
+    <string name="voice_recording__stop_rewrite">Stop and rewrite</string>
     <string name="voice_recording__unavailable_incognito" comment="Disabled-state copy on AI controls during an incognito editor session">AI is off in incognito mode</string>
     <string name="voice_recording__unavailable_secure" comment="Disabled-state copy on AI controls in a secure field">AI is off in secure fields</string>
     <string name="voice_recording__unavailable_busy" comment="Disabled-state copy on the dictation key while voice rewrite owns the microphone">Finish voice rewrite first</string>

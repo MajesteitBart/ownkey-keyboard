@@ -76,6 +76,23 @@ class ClipboardCleanupSchedulerTest : FunSpec({
         ) shouldBe 0L
         ClipboardCleanupScheduler.isExpired(pinnedSensitive, policy, nowMs) shouldBe true
     }
+
+    test("a backward clock jump produces a new future wake-up instead of ending cleanup") {
+        val item = cleanupItem(createdAtMs = 1_000_000L, sensitive = true)
+        val policy = cleanupPolicy(sensitiveEnabled = true, sensitiveAfterSeconds = 20)
+
+        ClipboardCleanupScheduler.nextDelayMs(
+            items = listOf(item),
+            policy = policy,
+            nowMs = 1_015_000L,
+        ) shouldBe 5_000L
+        ClipboardCleanupScheduler.isExpired(item, policy, nowMs = 900_000L) shouldBe false
+        ClipboardCleanupScheduler.nextDelayMs(
+            items = listOf(item),
+            policy = policy,
+            nowMs = 900_000L,
+        ) shouldBe 120_000L
+    }
 })
 
 private fun cleanupItem(

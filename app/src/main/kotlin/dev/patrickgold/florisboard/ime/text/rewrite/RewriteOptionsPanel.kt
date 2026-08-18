@@ -95,6 +95,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.florisboard.lib.compose.stringRes
+import org.florisboard.lib.compose.pluralsRes
 import java.util.Locale
 
 private val PanelEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
@@ -266,8 +267,9 @@ private fun VoiceInstructionCard(
     val title = stringRes(R.string.voice_rewrite__card_title)
     val supportingText = when {
         unavailableText != null -> unavailableText
-        state.selectionCharacterCount != null -> stringRes(
-            R.string.voice_rewrite__card_summary_selection,
+        state.selectionCharacterCount != null -> pluralsRes(
+            R.plurals.voice_rewrite__card_summary_selection,
+            state.selectionCharacterCount,
             "count" to state.selectionCharacterCount,
         )
         else -> stringRes(R.string.voice_rewrite__card_summary_no_selection)
@@ -287,7 +289,7 @@ private fun VoiceInstructionCard(
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             .alpha(if (dimmed || !state.isAvailable) 0.45f else 1f)
-            .clickable(enabled = state.isAvailable, onClickLabel = title, onClick = onClick)
+            .clickable(enabled = state.isAvailable && !dimmed, onClickLabel = title, onClick = onClick)
             .semantics {
                 contentDescription = listOfNotNull(title, supportingText, providerText)
                     .joinToString(separator = ". ")

@@ -136,6 +136,10 @@ class VoxtralDictationManager(
     val feedbackStateFlow: StateFlow<VoiceActionFeedbackState> = feedbackController.state
 
     fun onVoiceInputKeyPressed() {
+        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+            activeLease?.let { cancelDictation() }
+            return
+        }
         val currentMode = activeSessionMode ?: resolveRoutingMode()
 
         when (currentMode) {

@@ -14,7 +14,7 @@ stream: WS-E
 - 
 
 ## Blockers
-- T-017 closed with deterministic cross-flow coverage and the current 273-test JVM suite green. T-018 found and repaired the Compose API-key secure-field contract, then recorded API 35 browser, expanded/split, and partial TalkBack evidence. The release gate remains blocked on representative physical microphone/device coverage, complete TalkBack/TTS traversal, configured provider-language checks, and light/additional custom theme rendering; T-019 was not opened because its dependency is unresolved.
+- T-017 closed with deterministic cross-flow coverage and the current 273-test JVM suite green. T-018 found and repaired the Compose API-key secure-field contract, then recorded API 35 browser, expanded/split, and partial TalkBack evidence. The release gate remains blocked on representative physical microphone/device coverage, complete TalkBack/TTS traversal, configured provider-language checks, and light/additional custom theme rendering; T-019 remains blocked because its T-018 dependency is unresolved.
 
 ## Next Actions
 - 

@@ -31,6 +31,8 @@ import kotlinx.coroutines.withContext
  * [HttpURLConnection] is not coroutine-aware. Registering [HttpURLConnection.disconnect] directly
  * on cancellation gives keyboard-hide, field-switch, and IME-teardown cancellation a way to unblock
  * an active connect/read instead of leaving the radio and an IO thread alive until the full timeout.
+ * Because disconnect is best-effort, [openConnection] must configure finite connect and read
+ * timeouts so [execute] cannot park the IO thread or leave the trace open indefinitely.
  */
 internal suspend fun <T> withCancellableHttpConnection(
     traceLabel: String,

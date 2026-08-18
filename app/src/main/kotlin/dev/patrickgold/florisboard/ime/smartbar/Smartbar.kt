@@ -60,6 +60,7 @@ import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButton
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsRow
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.ToggleOverflowPanelAction
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
+import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
@@ -170,7 +171,8 @@ private fun SmartbarMainRow(
         nowMs = recordingNowMs,
     )
     LaunchedEffect(audioSession?.sessionId, audioSession?.phase) {
-        while (audioSession != null) {
+        recordingNowMs = System.currentTimeMillis()
+        while (audioSession?.phase == AudioSessionPhase.RECORDING) {
             recordingNowMs = System.currentTimeMillis()
             delay(250L)
         }
@@ -394,7 +396,10 @@ private fun SmartbarMainRow(
         ) {
             when (smartbarLayout) {
                 SmartbarLayout.SUGGESTIONS_ONLY -> {
-                    if (shouldShowInlineSuggestionsUi) {
+                    if (recordingRowState != null) {
+                        CenterContent()
+                        StickyAction()
+                    } else if (shouldShowInlineSuggestionsUi) {
                         InlineSuggestionsUi(inlineSuggestions)
                     } else {
                         CandidatesRow()
@@ -402,7 +407,10 @@ private fun SmartbarMainRow(
                 }
 
                 SmartbarLayout.ACTIONS_ONLY -> {
-                    if (shouldShowInlineSuggestionsUi) {
+                    if (recordingRowState != null) {
+                        CenterContent()
+                        StickyAction()
+                    } else if (shouldShowInlineSuggestionsUi) {
                         InlineSuggestionsUi(inlineSuggestions)
                     } else {
                         QuickActionsRow(FlorisImeUi.SmartbarSharedActionsRow.elementName)

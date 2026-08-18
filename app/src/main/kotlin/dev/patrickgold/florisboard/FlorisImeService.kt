@@ -53,6 +53,7 @@ import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.lifecycle.LifecycleInputMethodService
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.theme.WallpaperChangeReceiver
 import dev.patrickgold.florisboard.ime.window.ImeRootView
 import dev.patrickgold.florisboard.ime.window.ImeWindowController
@@ -272,7 +273,9 @@ class FlorisImeService : LifecycleInputMethodService() {
     private val nlpManager by nlpManager()
     private val subtypeManager by subtypeManager()
     private val themeManager by themeManager()
-    private val voxtralDictationManager by voxtralDictationManager()
+    private val voxtralDictationManagerLazy: Lazy<VoxtralDictationManager> =
+        voxtralDictationManager()
+    private val voxtralDictationManager by voxtralDictationManagerLazy
     private val voiceRewriteUiControllerLazy = voiceRewriteUiController()
 
     val windowController = ImeWindowController(prefs, lifecycleScope)
@@ -284,7 +287,9 @@ class FlorisImeService : LifecycleInputMethodService() {
      * not pay for constructing it here.
      */
     private fun invalidateVoiceSessions(reason: AudioSessionInvalidation) {
-        voxtralDictationManager.invalidateSession(reason)
+        if (voxtralDictationManagerLazy.isInitialized()) {
+            voxtralDictationManagerLazy.value.invalidateSession(reason)
+        }
         if (voiceRewriteUiControllerLazy.isInitialized()) {
             voiceRewriteUiControllerLazy.value.invalidate(reason)
         }

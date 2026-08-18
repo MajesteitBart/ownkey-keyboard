@@ -16,7 +16,8 @@ Deliver the exclusive tap/hold entry, shared real-amplitude recording row, disco
 ## Owned Files/Areas
 
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/quickaction/QuickActionButton.kt`
-- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/DictationRecordingBar.kt`
+- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRow.kt`
+- `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/VoiceRecordingRowModel.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/smartbar/Smartbar.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/rewrite/RewriteOptionsPanel.kt`
 - `app/src/main/kotlin/dev/patrickgold/florisboard/ime/text/TextInputLayout.kt`

@@ -57,7 +57,7 @@ class VoiceRewriteUiModelTest : FunSpec({
         }
     }
 
-    test("recording shows the speak-an-edit mode status and owns the shared recording row") {
+    test("recording shows the instruction mode status and owns the shared recording row") {
         val model = voiceRewriteUiModel(
             state(VoiceRewriteSessionPhase.RECORDING) {
                 copy(

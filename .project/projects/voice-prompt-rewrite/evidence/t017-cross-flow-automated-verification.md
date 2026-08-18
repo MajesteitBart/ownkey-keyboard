@@ -33,10 +33,11 @@ disclosure persistence, routes, replacement/copy behavior, and virtual time.
 
 - `VoiceRewriteSessionPreflightTest` covers every ordered prerequisite, secure/incognito blocking,
   busy recorder behavior, lifecycle invalidation, and stale generations.
-- `VoiceRewriteTargetResolverTest`, `VoiceRewriteReplacementTest`, and
-  `VoiceRewriteContractProbeTest` cover synchronous/asynchronous Select All, native/Compose/messaging/
-  WebView/raw/secure/problematic editor profiles, empty/over-limit targets, and field/package/session/
-  range/source/integrity drift.
+- `VoiceRewriteTargetResolverTest`, `VoiceRewriteReplacementTest`, `VoiceRewriteSessionPreflightTest`,
+  and `VoiceRewriteCrossFlowTest` exercise the production contracts for synchronous/asynchronous
+  Select All, native/Compose/messaging/WebView/raw/secure/problematic editor profiles,
+  empty/over-limit targets, and field/package/session/range/source/integrity drift. The former
+  self-contained contract probe was removed because it duplicated simplified test-only models.
 - `AudioSessionCoordinatorTest`, `TranscriptionOperationsTest`, `VoiceRewritePipelineTest`, and
   `VoiceActionFeedbackControllerTest` cover single-recorder ownership, one transcript commit,
   provider failures, cancellation, 900 ms success, five-second error reset, immediate retry, newer
@@ -51,13 +52,21 @@ disclosure persistence, routes, replacement/copy behavior, and virtual time.
 
 ## Commands and results
 
-- Targeted cross-flow command: `gradlew.bat :app:testDebugUnitTest --tests
-  "dev.patrickgold.florisboard.ime.voice.VoiceRewriteCrossFlowTest" --no-daemon --console=plain`
-  - 5 tests passed, 0 failed.
 - Offline-safe app JVM command: `gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
   - 271 tests across 39 suites passed, 0 failed, 0 skipped.
-  - A second invocation completed successfully with every task up to date, confirming the suite has
-    no network or wall-clock dependency.
+  - Gradle class filtering is not used as evidence for these Kotest specs because this module's
+    discovery configuration reports filtered specs as absent. The full task is the reliable gate.
+- Review-remediation rerun on 2026-08-18: `gradlew.bat :app:testDebugUnitTest --rerun-tasks
+  --no-parallel --no-daemon --console=plain`
+  - 278 tests across 40 suites executed and passed, with 0 failed and 0 skipped.
+  - The rerun covers late terminal callbacks, cancellation during transcription, re-record
+    permission/provider revocation, measured-level sampling cadence, paused countdown visibility,
+    recognition-cue lifecycle, and accessibility/pointer exclusivity against production classes.
+- Final post-hardening run on 2026-08-18: `gradlew.bat :app:testDebugUnitTest --no-daemon
+  --console=plain`
+  - 280 tests across 40 suites executed and passed, with 0 failed and 0 skipped.
+  - The two additional cases cover backward-clock cleanup rescheduling and a recorder that throws
+    during stop/read.
 
 No real user content, credentials, endpoints, provider bodies, raw prompts, or absolute paths are
 present in the fixtures or this evidence.
