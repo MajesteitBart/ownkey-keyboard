@@ -34,6 +34,10 @@ enum class VoiceActionErrorReason {
     TRANSCRIPTION,
     EMPTY_AUDIO,
     EDITOR_COMMIT,
+    AI_UNAVAILABLE,
+    TARGET,
+    PROVIDER_CONFIGURATION,
+    REWRITE,
 }
 
 data class VoiceActionFeedbackState(
@@ -92,9 +96,23 @@ class VoiceActionFeedbackController(
 
     fun standaloneError(reason: VoiceActionErrorReason): Long {
         if (disposed) return 0L
+        if (_state.value.phase in setOf(
+                VoiceActionFeedbackPhase.RECORDING,
+                VoiceActionFeedbackPhase.PAUSED,
+                VoiceActionFeedbackPhase.PROCESSING,
+            )
+        ) return 0L
         val sessionId = nextStandaloneSessionId--
         retire(sessionId)
         publishError(sessionId, reason)
+        return sessionId
+    }
+
+    /** Starts processing feedback for a retry which no longer owns an audio-session lease. */
+    fun beginStandaloneProcessing(): Long {
+        if (disposed) return 0L
+        val sessionId = nextStandaloneSessionId--
+        if (!transition(sessionId, VoiceActionFeedbackPhase.PROCESSING)) return 0L
         return sessionId
     }
 

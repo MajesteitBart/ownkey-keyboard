@@ -134,4 +134,21 @@ class VoiceActionFeedbackControllerTest : FunSpec({
             controller.state.value.phase shouldBe VoiceActionFeedbackPhase.ERROR
         }
     }
+
+    test("standalone processing supports rewrite retry and active audio feedback wins over warnings") {
+        runTest {
+            val controller = VoiceActionFeedbackController(this)
+            controller.begin(40) shouldBe true
+            controller.standaloneError(VoiceActionErrorReason.AUDIO_SESSION_BUSY) shouldBe 0L
+            controller.state.value.phase shouldBe VoiceActionFeedbackPhase.RECORDING
+
+            controller.processing(40) shouldBe true
+            controller.error(40, VoiceActionErrorReason.REWRITE) shouldBe true
+            val retrySessionId = controller.beginStandaloneProcessing()
+            retrySessionId shouldBe -1L
+            controller.state.value.phase shouldBe VoiceActionFeedbackPhase.PROCESSING
+            controller.success(retrySessionId) shouldBe true
+            controller.state.value.phase shouldBe VoiceActionFeedbackPhase.SUCCESS
+        }
+    }
 })

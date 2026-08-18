@@ -18,6 +18,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioRecording
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOnlyOperation
 import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiAvailabilityPolicy
@@ -469,6 +470,7 @@ private class VoiceRewriteCrossFlowFixture(
         availabilityPolicy = availabilityPolicy,
         targetSource = VoiceRewriteTargetResolver(editor),
         audioSessionCoordinator = AudioSessionCoordinator(nowMs),
+        feedbackController = VoiceActionFeedbackController(scope),
         audioRecorderProvider = { recorder },
         audioSessionModeProvider = { AudioSessionMode.CONFIGURED_PROVIDER },
         microphonePermission = VoiceRewriteMicrophonePermission { true },

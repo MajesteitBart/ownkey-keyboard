@@ -22,6 +22,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioRecording
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -83,6 +84,7 @@ private fun controllerFixture(
         availabilityPolicy = policy,
         targetSource = { targetResolution },
         audioSessionCoordinator = AudioSessionCoordinator(),
+        feedbackController = VoiceActionFeedbackController(scope),
         audioRecorderProvider = { SilentRecorder() },
         audioSessionModeProvider = { AudioSessionMode.MOCK },
         microphonePermission = { true },

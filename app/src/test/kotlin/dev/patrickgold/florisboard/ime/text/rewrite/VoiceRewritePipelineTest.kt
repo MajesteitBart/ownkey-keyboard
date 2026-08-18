@@ -18,6 +18,9 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOnlyOperation
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionErrorReason
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -47,13 +50,16 @@ class VoiceRewritePipelineTest : FunSpec({
             fixture.manager.begin()
             runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.RECORDING
 
             advanceTimeBy(500)
             fixture.manager.recordingElapsedMs() shouldBe 500L
             fixture.manager.pauseRecording() shouldBe true
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.PAUSED
             advanceTimeBy(1_000)
             fixture.manager.recordingElapsedMs() shouldBe 500L
             fixture.manager.resumeRecording() shouldBe true
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.RECORDING
             advanceTimeBy(500)
             fixture.manager.recordingElapsedMs() shouldBe 1_000L
 
@@ -63,6 +69,7 @@ class VoiceRewritePipelineTest : FunSpec({
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RESULT
             fixture.manager.state.value.recognizedInstruction shouldBe "make it concise"
             fixture.manager.state.value.resultText shouldBe "Concise result"
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.PROCESSING
             fixture.recorder.stopCount shouldBe 1
             fixture.transcription.calls shouldBe 1
             fixture.rewrite.requests shouldContainExactly listOf("source text" to "make it concise")
@@ -114,6 +121,12 @@ class VoiceRewritePipelineTest : FunSpec({
 
                 fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.ERROR
                 fixture.manager.state.value.pipelineFailure shouldBe expectedFailure
+                fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.ERROR
+                fixture.feedbackController.state.value.errorReason shouldBe when (expectedFailure) {
+                    VoiceRewritePipelineFailure.NO_SPEECH -> VoiceActionErrorReason.EMPTY_AUDIO
+                    VoiceRewritePipelineFailure.TRANSCRIPTION -> VoiceActionErrorReason.TRANSCRIPTION
+                    else -> error("unexpected fixture failure")
+                }
                 fixture.rewrite.requests shouldContainExactly emptyList()
             }
         }
@@ -140,8 +153,10 @@ class VoiceRewritePipelineTest : FunSpec({
             runCurrent()
             fixture.manager.state.value.pipelineFailure shouldBe VoiceRewritePipelineFailure.REWRITE
             fixture.manager.state.value.recognizedInstruction shouldBe "make it concise"
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.ERROR
 
             fixture.manager.tryAgain()
+            fixture.feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.PROCESSING
             runCurrent()
             fixture.manager.state.value.resultText shouldBe "Retried result"
             fixture.recorder.startCount shouldBe 1
@@ -303,6 +318,7 @@ private data class PipelineFixture(
     val recorder: FakePipelineRecorder,
     val transcription: FakePipelineTranscriptionClient,
     val rewrite: FakePipelineRewriteOperation,
+    val feedbackController: VoiceActionFeedbackController,
 )
 
 private fun pipelineFixture(
@@ -325,6 +341,7 @@ private fun pipelineFixture(
         scope,
         MutableStateFlow(CloudAiEditorSession(7L, isIncognito = false, isSecureField = false)),
     )
+    val feedbackController = VoiceActionFeedbackController(scope)
     val manager = VoiceRewriteSessionManager(
         scope = scope,
         availabilityPolicy = policy,
@@ -332,6 +349,7 @@ private fun pipelineFixture(
             VoiceRewriteTargetResolution.Resolved(pipelineSnapshot())
         },
         audioSessionCoordinator = AudioSessionCoordinator(nowMs),
+        feedbackController = feedbackController,
         audioRecorderProvider = { recorder },
         audioSessionModeProvider = { AudioSessionMode.CONFIGURED_PROVIDER },
         microphonePermission = VoiceRewriteMicrophonePermission { permissionGranted() },
@@ -354,7 +372,7 @@ private fun pipelineFixture(
         maxRecordingDurationMs = maxRecordingDurationMs,
         nowMs = nowMs,
     )
-    return PipelineFixture(manager, recorder, transcription, rewrite)
+    return PipelineFixture(manager, recorder, transcription, rewrite, feedbackController)
 }
 
 private class FakePipelineRecorder : AudioRecorder {

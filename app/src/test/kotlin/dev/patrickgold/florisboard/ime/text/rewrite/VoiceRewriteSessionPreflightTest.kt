@@ -17,6 +17,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -72,6 +73,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             recorder.startCount shouldBe 0
 
             fixture.manager.acknowledgeDisclosure()
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.STARTING_RECORDING
             fixture.manager.acknowledgeDisclosure()
             runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
@@ -79,10 +81,10 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             recorder.startCount shouldBe 1
             disclosure.version shouldBe 3
             events shouldContainExactly listOf(
+                "target",
                 "permission",
                 "transcription-config",
                 "rewrite-config",
-                "target",
                 "permission",
                 "transcription-config",
                 "permission",
@@ -90,6 +92,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
                 "permission",
                 "permission",
                 "recorder-start",
+                "permission",
             )
         }
     }
@@ -103,6 +106,26 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
             fixture.recorder.startCount shouldBe 1
+        }
+    }
+
+    test("cancellation during recorder startup releases the newly acquired lease") {
+        runTest {
+            val recorder = FakePreflightRecorder()
+            val fixture = preflightFixture(
+                scope = backgroundScope,
+                recorder = recorder,
+                disclosureStore = FakeDisclosureStore(version = 3),
+            )
+            recorder.onStart = fixture.manager::cancel
+
+            fixture.manager.begin()
+            runCurrent()
+
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.CANCELLED
+            fixture.coordinator.state.value shouldBe null
+            recorder.startCount shouldBe 1
+            recorder.cancelCount shouldBe 1
         }
     }
 
@@ -136,19 +159,14 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             targetFailure.manager.begin()
             runCurrent()
             targetFailure.manager.state.value.targetFailure shouldBe VoiceRewriteTargetFailure.EMPTY_TARGET
-            targetFailureEvents shouldContainExactly listOf(
-                "permission",
-                "transcription-config",
-                "rewrite-config",
-                "target",
-            )
+            targetFailureEvents shouldContainExactly listOf("target")
 
             val permissionEvents = mutableListOf<String>()
             val permission = preflightFixture(backgroundScope, permissionGranted = false, events = permissionEvents)
             permission.manager.begin()
             runCurrent()
             permission.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.MICROPHONE_PERMISSION
-            permissionEvents shouldContainExactly listOf("permission")
+            permissionEvents shouldContainExactly listOf("target", "permission")
 
             val transcriptionEvents = mutableListOf<String>()
             val transcription = preflightFixture(
@@ -160,7 +178,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             runCurrent()
             transcription.manager.state.value.failure shouldBe
                 VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED
-            transcriptionEvents shouldContainExactly listOf("permission", "transcription-config")
+            transcriptionEvents shouldContainExactly listOf("target", "permission", "transcription-config")
 
             val rewriteEvents = mutableListOf<String>()
             val rewrite = preflightFixture(backgroundScope, rewriteConfigured = false, events = rewriteEvents)
@@ -168,6 +186,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             runCurrent()
             rewrite.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED
             rewriteEvents shouldContainExactly listOf(
+                "target",
                 "permission",
                 "transcription-config",
                 "rewrite-config",
@@ -186,7 +205,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
             fixture.manager.begin()
             runCurrent()
             fixture.manager.state.value.failure shouldBe VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY
-            events shouldContainExactly emptyList()
+            events shouldContainExactly listOf("target")
             fixture.recorder.startCount shouldBe 0
             coordinator.invalidate(AudioSessionInvalidation.OWNER_CANCELLED)
         }
@@ -274,6 +293,7 @@ private fun preflightFixture(
         availabilityPolicy = policy,
         targetSource = source,
         audioSessionCoordinator = coordinator,
+        feedbackController = VoiceActionFeedbackController(scope),
         audioRecorderProvider = { recorder },
         audioSessionModeProvider = { AudioSessionMode.CONFIGURED_PROVIDER },
         microphonePermission = VoiceRewriteMicrophonePermission {
@@ -309,6 +329,7 @@ private class FakeDisclosureStore(var version: Int = 0) : VoiceRewriteDisclosure
 private class FakePreflightRecorder(
     private val events: MutableList<String>? = null,
 ) : AudioRecorder {
+    var onStart: (() -> Unit)? = null
     var startCount = 0
         private set
     var cancelCount = 0
@@ -317,6 +338,7 @@ private class FakePreflightRecorder(
     override fun start(): Boolean {
         events?.add("recorder-start")
         startCount += 1
+        onStart?.invoke()
         return true
     }
 

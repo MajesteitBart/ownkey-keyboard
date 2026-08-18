@@ -150,7 +150,7 @@ class ClipboardManager(
                     if (removedItems == true) return@collectLatest
                     if (removedItems == null || delayMs == 0L) {
                         consecutiveRetries = (consecutiveRetries + 1)
-                            .coerceAtMost(ClipboardCleanupScheduler.MaxRapidRetries)
+                            .coerceAtMost(ClipboardCleanupScheduler.MaxRapidRetries + 1)
                         delay(ClipboardCleanupScheduler.retryDelayMs(consecutiveRetries))
                     } else {
                         consecutiveRetries = 0

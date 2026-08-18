@@ -27,6 +27,8 @@ import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionFailureReason
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOnlyOperation
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOutcome
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionErrorReason
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -126,6 +128,7 @@ class VoiceRewriteSessionManager(
     private val availabilityPolicy: CloudAiAvailabilityPolicy,
     private val targetSource: VoiceRewriteTargetSource,
     private val audioSessionCoordinator: AudioSessionCoordinator,
+    private val feedbackController: VoiceActionFeedbackController,
     private val audioRecorderProvider: () -> AudioRecorder,
     private val audioSessionModeProvider: () -> AudioSessionMode,
     private val microphonePermission: VoiceRewriteMicrophonePermission,
@@ -149,6 +152,7 @@ class VoiceRewriteSessionManager(
     private var startRecordingJob: Job? = null
     private var activeTarget: VoiceRewriteTargetSnapshot? = null
     private var activeAudioLease: AudioSessionLease? = null
+    private var feedbackSessionId: Long? = null
     private var operationJob: Job? = null
     private var autoStopJob: Job? = null
     private var recognizedInstruction: String? = null
@@ -203,6 +207,7 @@ class VoiceRewriteSessionManager(
         if (current.phase != VoiceRewriteSessionPhase.RECORDING || !lease.pause()) return false
         autoStopJob?.cancel()
         autoStopJob = null
+        feedbackController.pause(lease.sessionId)
         publishRecordingState(current.generationId, VoiceRewriteSessionPhase.PAUSED, lease)
         return true
     }
@@ -211,6 +216,7 @@ class VoiceRewriteSessionManager(
         val current = _state.value
         val lease = activeAudioLease ?: return false
         if (current.phase != VoiceRewriteSessionPhase.PAUSED || !lease.resume()) return false
+        feedbackController.resume(lease.sessionId)
         publishRecordingState(current.generationId, VoiceRewriteSessionPhase.RECORDING, lease)
         scheduleAutoStop(current.generationId, lease)
         return true
@@ -229,6 +235,7 @@ class VoiceRewriteSessionManager(
         autoStopJob?.cancel()
         autoStopJob = null
         _state.value = current.copy(phase = VoiceRewriteSessionPhase.TRANSCRIBING)
+        feedbackController.processing(lease.sessionId)
         operationJob = scope.launch { transcribeAndRewrite(current.generationId, lease) }
     }
 
@@ -241,6 +248,9 @@ class VoiceRewriteSessionManager(
             startRecordingJob?.isActive == true
         ) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
+        if (current.phase == VoiceRewriteSessionPhase.ERROR) {
+            feedbackSessionId = feedbackController.beginStandaloneProcessing().takeUnless { it == 0L }
+        }
         launchRewrite(current.generationId, instruction)
     }
 
@@ -252,6 +262,7 @@ class VoiceRewriteSessionManager(
             startRecordingJob?.isActive == true
         ) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
+        cancelVoiceFeedback()
         launchStartRecording(current.generationId)
     }
 
@@ -275,7 +286,10 @@ class VoiceRewriteSessionManager(
         return when (gateway.replace(target.range, reviewedResult)) {
             VoiceRewriteEditorReplaceResult.Replaced -> {
                 val generationId = current.generationId
-                cancelResources()
+                val completedFeedbackSessionId = feedbackSessionId
+                cancelResources(cancelFeedback = false)
+                completedFeedbackSessionId?.let(feedbackController::success)
+                feedbackSessionId = null
                 _state.value = VoiceRewriteSessionState(
                     generationId = generationId,
                     phase = VoiceRewriteSessionPhase.SUCCESS,
@@ -319,6 +333,31 @@ class VoiceRewriteSessionManager(
     }
 
     private suspend fun runPreflight(generationId: Long) {
+        val availability = availabilityPolicy.current()
+        if (availability is CloudAiAvailability.Unavailable) {
+            publishAvailabilityFailure(generationId, availability)
+            return
+        }
+        val targetResolution = targetSource.resolve()
+        if (!isCurrentPhase(generationId, VoiceRewriteSessionPhase.TARGETING)) return
+        val target = when (targetResolution) {
+            is VoiceRewriteTargetResolution.Resolved -> targetResolution.snapshot
+            is VoiceRewriteTargetResolution.Rejected -> {
+                publishFailure(
+                    generationId = generationId,
+                    failure = VoiceRewritePreflightFailure.TARGET_REJECTED,
+                    targetFailure = targetResolution.reason,
+                )
+                return
+            }
+        }
+        activeTarget = target
+        val availabilityAfterTarget = availabilityPolicy.current()
+        if (availabilityAfterTarget is CloudAiAvailability.Unavailable) {
+            cancelResources()
+            publishAvailabilityFailure(generationId, availabilityAfterTarget)
+            return
+        }
         if (audioSessionCoordinator.state.value != null) {
             publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
             return
@@ -344,21 +383,6 @@ class VoiceRewriteSessionManager(
             return
         }
 
-        val targetResolution = targetSource.resolve()
-        if (!isCurrent(generationId) || _state.value.phase != VoiceRewriteSessionPhase.TARGETING) return
-        val target = when (targetResolution) {
-            is VoiceRewriteTargetResolution.Resolved -> targetResolution.snapshot
-            is VoiceRewriteTargetResolution.Rejected -> {
-                publishFailure(
-                    generationId = generationId,
-                    failure = VoiceRewritePreflightFailure.TARGET_REJECTED,
-                    targetFailure = targetResolution.reason,
-                )
-                return
-            }
-        }
-        activeTarget = target
-
         if (disclosureStore.acknowledgedVersion() != disclosureVersion) {
             _state.value = VoiceRewriteSessionState(
                 generationId = generationId,
@@ -373,7 +397,7 @@ class VoiceRewriteSessionManager(
             )
             return
         }
-        startRecording(generationId)
+        launchStartRecording(generationId)
     }
 
     private fun launchStartRecording(generationId: Long) {
@@ -414,15 +438,15 @@ class VoiceRewriteSessionManager(
             audioSessionModeProvider() to audioRecorderProvider()
         }
         if (!validateRecordingStart(generationId)) return
-        when (val startResult = audioSessionCoordinator.tryStart(
-            owner = AudioSessionOwner.VOICE_REWRITE,
-            mode = audioSessionMode,
-            recorder = audioRecorder,
-        )) {
+        val startResult = startAudioSession(audioSessionMode, audioRecorder)
+        when (startResult) {
             is AudioSessionStartResult.Started -> {
+                if (!validateAcquiredRecordingStart(generationId, startResult.lease)) return
                 recognizedInstruction = null
                 resultText = null
                 activeAudioLease = startResult.lease
+                feedbackSessionId = startResult.lease.sessionId
+                feedbackController.begin(startResult.lease.sessionId)
                 publishRecordingState(generationId, VoiceRewriteSessionPhase.RECORDING, startResult.lease)
                 scheduleAutoStop(generationId, startResult.lease)
             }
@@ -435,8 +459,37 @@ class VoiceRewriteSessionManager(
         }
     }
 
+    /** Recorder startup can block in MediaRecorder.prepare/start, so acquisition never runs on the IME thread. */
+    private suspend fun startAudioSession(
+        audioSessionMode: AudioSessionMode,
+        audioRecorder: AudioRecorder,
+    ): AudioSessionStartResult {
+        var acquiredLease: AudioSessionLease? = null
+        return try {
+            withContext(configurationDispatcher) {
+                audioSessionCoordinator.tryStart(
+                    owner = AudioSessionOwner.VOICE_REWRITE,
+                    mode = audioSessionMode,
+                    recorder = audioRecorder,
+                ).also { result ->
+                    acquiredLease = (result as? AudioSessionStartResult.Started)?.lease
+                }
+            }
+        } catch (error: CancellationException) {
+            acquiredLease?.cancel()
+            throw error
+        } catch (_: Exception) {
+            acquiredLease?.cancel()
+            AudioSessionStartResult.RecorderUnavailable
+        }
+    }
+
     private fun validateRecordingStart(generationId: Long): Boolean {
-        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return false
+        if (
+            !isCurrentPhase(generationId, VoiceRewriteSessionPhase.STARTING_RECORDING) ||
+            activeAudioLease != null ||
+            activeTarget == null
+        ) return false
         val availability = availabilityPolicy.current()
         if (availability is CloudAiAvailability.Unavailable) {
             publishAvailabilityFailure(generationId, availability)
@@ -447,6 +500,30 @@ class VoiceRewriteSessionManager(
             return false
         }
         if (!microphonePermission.isGranted()) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
+            return false
+        }
+        return true
+    }
+
+    /** Revalidates mutable gates after the blocking recorder acquisition and disposes stale leases. */
+    private fun validateAcquiredRecordingStart(generationId: Long, lease: AudioSessionLease): Boolean {
+        if (
+            !isCurrentPhase(generationId, VoiceRewriteSessionPhase.STARTING_RECORDING) ||
+            activeTarget == null ||
+            !lease.isCurrent
+        ) {
+            lease.cancel()
+            return false
+        }
+        val availability = availabilityPolicy.current()
+        if (availability is CloudAiAvailability.Unavailable) {
+            lease.cancel()
+            publishAvailabilityFailure(generationId, availability)
+            return false
+        }
+        if (!microphonePermission.isGranted()) {
+            lease.cancel()
             publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
             return false
         }
@@ -480,10 +557,12 @@ class VoiceRewriteSessionManager(
             failure = failure,
             targetFailure = targetFailure,
         )
+        publishVoiceError(failure.toVoiceActionErrorReason())
     }
 
     private fun cancelResources(
         reason: AudioSessionInvalidation = AudioSessionInvalidation.OWNER_CANCELLED,
+        cancelFeedback: Boolean = true,
     ) {
         preflightJob?.cancel()
         preflightJob = null
@@ -495,6 +574,7 @@ class VoiceRewriteSessionManager(
         autoStopJob = null
         activeAudioLease?.cancel(reason)
         activeAudioLease = null
+        if (cancelFeedback) cancelVoiceFeedback()
         activeTarget = null
         recognizedInstruction = null
         resultText = null
@@ -537,6 +617,7 @@ class VoiceRewriteSessionManager(
             )
             TranscriptionOutcome.Cancelled -> {
                 operationJob = null
+                cancelVoiceFeedback()
                 activeTarget = null
                 recognizedInstruction = null
                 resultText = null
@@ -606,6 +687,7 @@ class VoiceRewriteSessionManager(
             pipelineFailure = failure,
             recognizedInstruction = recognizedInstruction,
         )
+        publishVoiceError(failure.toVoiceActionErrorReason())
     }
 
     private fun publishRecordingState(
@@ -639,6 +721,49 @@ class VoiceRewriteSessionManager(
             canCopyResult = true,
             replacementFailure = failure,
         )
+        publishVoiceError(VoiceActionErrorReason.TARGET)
+    }
+
+    private fun publishVoiceError(reason: VoiceActionErrorReason) {
+        val sessionId = feedbackSessionId
+        val published = if (sessionId != null) {
+            feedbackController.error(sessionId, reason)
+        } else {
+            false
+        }
+        if (!published) {
+            feedbackSessionId = feedbackController.standaloneError(reason).takeUnless { it == 0L }
+        }
+    }
+
+    private fun cancelVoiceFeedback() {
+        feedbackSessionId?.let(feedbackController::cancel)
+        feedbackSessionId = null
+    }
+
+    private fun VoiceRewritePreflightFailure.toVoiceActionErrorReason(): VoiceActionErrorReason = when (this) {
+        VoiceRewritePreflightFailure.NO_ACTIVE_EDITOR,
+        VoiceRewritePreflightFailure.SECURE_FIELD,
+        VoiceRewritePreflightFailure.INCOGNITO,
+        -> VoiceActionErrorReason.AI_UNAVAILABLE
+
+        VoiceRewritePreflightFailure.TARGET_REJECTED -> VoiceActionErrorReason.TARGET
+        VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY -> VoiceActionErrorReason.AUDIO_SESSION_BUSY
+        VoiceRewritePreflightFailure.MICROPHONE_PERMISSION -> VoiceActionErrorReason.MICROPHONE_PERMISSION
+        VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED,
+        VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED,
+        -> VoiceActionErrorReason.PROVIDER_CONFIGURATION
+
+        VoiceRewritePreflightFailure.RECORDER_UNAVAILABLE -> VoiceActionErrorReason.RECORDER_UNAVAILABLE
+    }
+
+    private fun VoiceRewritePipelineFailure.toVoiceActionErrorReason(): VoiceActionErrorReason = when (this) {
+        VoiceRewritePipelineFailure.NO_SPEECH -> VoiceActionErrorReason.EMPTY_AUDIO
+        VoiceRewritePipelineFailure.RECORDING -> VoiceActionErrorReason.RECORDING
+        VoiceRewritePipelineFailure.TRANSCRIPTION -> VoiceActionErrorReason.TRANSCRIPTION
+        VoiceRewritePipelineFailure.REWRITE,
+        VoiceRewritePipelineFailure.EMPTY_RESULT,
+        -> VoiceActionErrorReason.REWRITE
     }
 
     private fun scheduleAutoStop(generationId: Long, lease: AudioSessionLease) {

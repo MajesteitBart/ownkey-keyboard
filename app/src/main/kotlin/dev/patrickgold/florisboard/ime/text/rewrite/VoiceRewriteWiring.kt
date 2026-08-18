@@ -30,6 +30,7 @@ import dev.patrickgold.florisboard.ime.clipboard.ClipboardManager
 import dev.patrickgold.florisboard.ime.editor.EditorInstance
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardManager
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.lib.util.launchActivity
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +52,7 @@ fun createVoiceRewriteSessionManager(
     scope: CoroutineScope,
     availabilityPolicy: CloudAiAvailabilityPolicy,
     audioSessionCoordinator: AudioSessionCoordinator,
+    feedbackController: VoiceActionFeedbackController,
     editorInstance: EditorInstance,
     dictationManager: VoxtralDictationManager,
     rewriteManager: LlmRewriteManager,
@@ -61,6 +63,7 @@ fun createVoiceRewriteSessionManager(
         availabilityPolicy = availabilityPolicy,
         targetSource = VoiceRewriteTargetResolver(EditorInstanceVoiceRewriteGateway(editorInstance)),
         audioSessionCoordinator = audioSessionCoordinator,
+        feedbackController = feedbackController,
         audioRecorderProvider = dictationManager::voiceRewriteRecorder,
         audioSessionModeProvider = dictationManager::voiceRewriteAudioSessionMode,
         microphonePermission = {

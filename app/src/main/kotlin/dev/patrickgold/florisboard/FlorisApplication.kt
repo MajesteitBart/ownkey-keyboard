@@ -119,6 +119,7 @@ class FlorisApplication : Application() {
             scope = voiceFeedbackScope,
             availabilityPolicy = cloudAiAvailabilityPolicy.value,
             audioSessionCoordinator = audioSessionCoordinator.value,
+            feedbackController = voiceActionFeedbackController.value,
             editorInstance = editorInstance.value,
             dictationManager = voxtralDictationManager.value,
             rewriteManager = llmRewriteManager.value,

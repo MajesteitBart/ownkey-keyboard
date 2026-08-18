@@ -17,6 +17,8 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOnlyOperation
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,15 +34,18 @@ class VoiceRewriteReplacementTest : FunSpec({
     test("reviewed result is replaced only after explicit intent and emits one content-free success") {
         runTest {
             val snapshot = replacementSnapshot()
+            val feedbackController = VoiceActionFeedbackController(backgroundScope)
             val manager = completedReplacementManager(
                 scope = backgroundScope,
                 dispatcher = StandardTestDispatcher(testScheduler),
                 snapshot = snapshot,
+                feedbackController = feedbackController,
             )
             val gateway = FakeReplacementGateway(frameFor(snapshot))
 
             manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RESULT
             manager.state.value.canReplace shouldBe true
+            feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.PROCESSING
             gateway.replaceCalls shouldBe 0
             manager.replaceResult(gateway) shouldBe VoiceRewriteReplacementOutcome.Replaced
             gateway.replaceCalls shouldBe 1
@@ -50,6 +55,7 @@ class VoiceRewriteReplacementTest : FunSpec({
                 generationId = 1,
                 phase = VoiceRewriteSessionPhase.SUCCESS,
             )
+            feedbackController.state.value.phase shouldBe VoiceActionFeedbackPhase.SUCCESS
         }
     }
 
@@ -177,8 +183,9 @@ private suspend fun kotlinx.coroutines.test.TestScope.completedReplacementManage
     scope: kotlinx.coroutines.CoroutineScope,
     dispatcher: CoroutineDispatcher,
     snapshot: VoiceRewriteTargetSnapshot,
+    feedbackController: VoiceActionFeedbackController = VoiceActionFeedbackController(scope),
 ): VoiceRewriteSessionManager {
-    val manager = replacementManager(scope, dispatcher, snapshot)
+    val manager = replacementManager(scope, dispatcher, snapshot, feedbackController)
     manager.begin()
     runCurrent()
     manager.stopRecording()
@@ -190,6 +197,7 @@ private fun replacementManager(
     scope: kotlinx.coroutines.CoroutineScope,
     dispatcher: CoroutineDispatcher,
     snapshot: VoiceRewriteTargetSnapshot,
+    feedbackController: VoiceActionFeedbackController = VoiceActionFeedbackController(scope),
 ): VoiceRewriteSessionManager {
     val recorder = object : AudioRecorder {
         private var active = false
@@ -220,6 +228,7 @@ private fun replacementManager(
         ),
         targetSource = VoiceRewriteTargetSource { VoiceRewriteTargetResolution.Resolved(snapshot) },
         audioSessionCoordinator = AudioSessionCoordinator(),
+        feedbackController = feedbackController,
         audioRecorderProvider = { recorder },
         audioSessionModeProvider = { AudioSessionMode.MOCK },
         microphonePermission = VoiceRewriteMicrophonePermission { true },

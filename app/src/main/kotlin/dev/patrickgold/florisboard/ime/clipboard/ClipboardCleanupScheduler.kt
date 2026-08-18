@@ -41,7 +41,7 @@ internal object ClipboardCleanupScheduler {
     const val RecoveryDelayMs = 6 * 60 * 60 * 1_000L
 
     fun retryDelayMs(consecutiveRetries: Int): Long =
-        if (consecutiveRetries < MaxRapidRetries) RetryDelayMs else RecoveryDelayMs
+        if (consecutiveRetries <= MaxRapidRetries) RetryDelayMs else RecoveryDelayMs
 
     fun nextDelayMs(
         items: List<ClipboardCleanupItem>,
