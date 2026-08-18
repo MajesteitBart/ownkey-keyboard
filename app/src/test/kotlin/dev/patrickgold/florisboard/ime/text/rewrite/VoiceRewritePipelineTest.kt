@@ -171,8 +171,11 @@ class VoiceRewritePipelineTest : FunSpec({
             fixture.manager.state.value.resultText shouldBe "first result"
 
             fixture.manager.recordInstructionAgain()
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.STARTING_RECORDING
+            fixture.manager.tryAgain()
             runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
+            rewrite.requests shouldContainExactly listOf("source text" to "first instruction")
             fixture.manager.stopRecording()
             runCurrent()
             fixture.manager.state.value.recognizedInstruction shouldBe "second instruction"

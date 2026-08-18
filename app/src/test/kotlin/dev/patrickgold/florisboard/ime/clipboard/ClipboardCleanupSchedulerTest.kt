@@ -93,6 +93,18 @@ class ClipboardCleanupSchedulerTest : FunSpec({
             nowMs = 900_000L,
         ) shouldBe 120_000L
     }
+
+    test("rapid cleanup retries park on a long recovery delay without becoming terminal") {
+        (1 until ClipboardCleanupScheduler.MaxRapidRetries).forEach { retry ->
+            ClipboardCleanupScheduler.retryDelayMs(retry) shouldBe ClipboardCleanupScheduler.RetryDelayMs
+        }
+        ClipboardCleanupScheduler.retryDelayMs(
+            ClipboardCleanupScheduler.MaxRapidRetries,
+        ) shouldBe ClipboardCleanupScheduler.RecoveryDelayMs
+        ClipboardCleanupScheduler.retryDelayMs(
+            ClipboardCleanupScheduler.MaxRapidRetries + 1,
+        ) shouldBe ClipboardCleanupScheduler.RecoveryDelayMs
+    }
 })
 
 private fun cleanupItem(

@@ -43,6 +43,7 @@ enum class VoiceRewriteSessionPhase {
     READY,
     TARGETING,
     DISCLOSURE,
+    STARTING_RECORDING,
     RECORDING,
     PAUSED,
     TRANSCRIBING,
@@ -234,14 +235,22 @@ class VoiceRewriteSessionManager(
     fun tryAgain() {
         val current = _state.value
         val instruction = recognizedInstruction ?: return
-        if (activeTarget == null || operationJob?.isActive == true) return
+        if (
+            activeTarget == null ||
+            operationJob?.isActive == true ||
+            startRecordingJob?.isActive == true
+        ) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
         launchRewrite(current.generationId, instruction)
     }
 
     fun recordInstructionAgain() {
         val current = _state.value
-        if (activeTarget == null || operationJob?.isActive == true) return
+        if (
+            activeTarget == null ||
+            operationJob?.isActive == true ||
+            startRecordingJob?.isActive == true
+        ) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
         launchStartRecording(current.generationId)
     }
@@ -254,7 +263,8 @@ class VoiceRewriteSessionManager(
             current.phase != VoiceRewriteSessionPhase.RESULT ||
             target == null ||
             reviewedResult.isNullOrEmpty() ||
-            !current.canReplace
+            !current.canReplace ||
+            startRecordingJob?.isActive == true
         ) {
             return VoiceRewriteReplacementOutcome.Unavailable
         }
@@ -286,7 +296,11 @@ class VoiceRewriteSessionManager(
     fun copyResult(gateway: VoiceRewriteReplacementGateway): Boolean {
         val current = _state.value
         val reviewedResult = resultText ?: return false
-        if (current.phase != VoiceRewriteSessionPhase.RESULT || !current.canCopyResult) return false
+        if (
+            current.phase != VoiceRewriteSessionPhase.RESULT ||
+            !current.canCopyResult ||
+            startRecordingJob?.isActive == true
+        ) return false
         return gateway.copy(reviewedResult)
     }
 
@@ -364,28 +378,26 @@ class VoiceRewriteSessionManager(
 
     private fun launchStartRecording(generationId: Long) {
         if (startRecordingJob?.isActive == true) return
+        val current = _state.value
+        if (current.generationId != generationId || activeTarget == null) return
+        _state.value = current.copy(
+            phase = VoiceRewriteSessionPhase.STARTING_RECORDING,
+            disclosure = null,
+            failure = null,
+            targetFailure = null,
+            pipelineFailure = null,
+            canReplace = false,
+            canCopyResult = false,
+        )
         startRecordingJob = scope.launch { startRecording(generationId) }
     }
 
     private suspend fun startRecording(generationId: Long) {
-        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
-        val availability = availabilityPolicy.current()
-        if (availability is CloudAiAvailability.Unavailable) {
-            publishAvailabilityFailure(generationId, availability)
-            return
-        }
-        if (audioSessionCoordinator.state.value != null) {
-            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
-            return
-        }
-        if (!microphonePermission.isGranted()) {
-            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
-            return
-        }
+        if (!validateRecordingStart(generationId)) return
         val transcriptionProvider = withContext(configurationDispatcher) {
             providerConfiguration.transcriptionProvider()
         }
-        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
+        if (!validateRecordingStart(generationId)) return
         if (!transcriptionProvider.isConfigured) {
             publishFailure(generationId, VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED)
             return
@@ -393,20 +405,7 @@ class VoiceRewriteSessionManager(
         val rewriteProvider = withContext(configurationDispatcher) {
             providerConfiguration.rewriteProvider()
         }
-        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
-        val currentAvailability = availabilityPolicy.current()
-        if (currentAvailability is CloudAiAvailability.Unavailable) {
-            publishAvailabilityFailure(generationId, currentAvailability)
-            return
-        }
-        if (audioSessionCoordinator.state.value != null) {
-            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
-            return
-        }
-        if (!microphonePermission.isGranted()) {
-            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
-            return
-        }
+        if (!validateRecordingStart(generationId)) return
         if (!rewriteProvider.isConfigured) {
             publishFailure(generationId, VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED)
             return
@@ -414,20 +413,7 @@ class VoiceRewriteSessionManager(
         val (audioSessionMode, audioRecorder) = withContext(configurationDispatcher) {
             audioSessionModeProvider() to audioRecorderProvider()
         }
-        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
-        val latestAvailability = availabilityPolicy.current()
-        if (latestAvailability is CloudAiAvailability.Unavailable) {
-            publishAvailabilityFailure(generationId, latestAvailability)
-            return
-        }
-        if (audioSessionCoordinator.state.value != null) {
-            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
-            return
-        }
-        if (!microphonePermission.isGranted()) {
-            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
-            return
-        }
+        if (!validateRecordingStart(generationId)) return
         when (val startResult = audioSessionCoordinator.tryStart(
             owner = AudioSessionOwner.VOICE_REWRITE,
             mode = audioSessionMode,
@@ -447,6 +433,24 @@ class VoiceRewriteSessionManager(
                 publishFailure(generationId, VoiceRewritePreflightFailure.RECORDER_UNAVAILABLE)
             }
         }
+    }
+
+    private fun validateRecordingStart(generationId: Long): Boolean {
+        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return false
+        val availability = availabilityPolicy.current()
+        if (availability is CloudAiAvailability.Unavailable) {
+            publishAvailabilityFailure(generationId, availability)
+            return false
+        }
+        if (audioSessionCoordinator.state.value != null) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
+            return false
+        }
+        if (!microphonePermission.isGranted()) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
+            return false
+        }
+        return true
     }
 
     private fun publishAvailabilityFailure(
@@ -661,6 +665,7 @@ class VoiceRewriteSessionManager(
     private fun VoiceRewriteSessionPhase.isActiveSessionPhase(): Boolean = when (this) {
         VoiceRewriteSessionPhase.TARGETING,
         VoiceRewriteSessionPhase.DISCLOSURE,
+        VoiceRewriteSessionPhase.STARTING_RECORDING,
         VoiceRewriteSessionPhase.RECORDING,
         VoiceRewriteSessionPhase.PAUSED,
         VoiceRewriteSessionPhase.TRANSCRIBING,

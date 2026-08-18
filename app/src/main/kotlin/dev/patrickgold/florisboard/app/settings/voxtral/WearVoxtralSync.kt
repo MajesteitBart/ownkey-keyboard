@@ -2,6 +2,8 @@ package dev.patrickgold.florisboard.app.settings.voxtral
 
 import android.content.Context
 import com.google.android.gms.wearable.Wearable
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionPurpose
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -16,13 +18,21 @@ data class WearVoxtralConfig(
     val languageHint: String,
 )
 
+internal fun WearVoxtralConfig.normalizedForWear(): WearVoxtralConfig = copy(
+    languageHint = TranscriptionLanguageHints.resolve(
+        purpose = TranscriptionPurpose.DICTATION,
+        storedLanguageHint = languageHint,
+        activeSubtypeLanguageTag = null,
+    ).orEmpty(),
+)
+
 object WearVoxtralSync {
     fun pushConfig(
         context: Context,
         config: WearVoxtralConfig,
         onResult: (Result<Int>) -> Unit,
     ) {
-        val payload = Json.encodeToString(config).encodeToByteArray()
+        val payload = Json.encodeToString(config.normalizedForWear()).encodeToByteArray()
         val nodeClient = Wearable.getNodeClient(context)
         val messageClient = Wearable.getMessageClient(context)
 
@@ -57,7 +67,7 @@ object WearVoxtralSync {
                                 if (sent > 0) {
                                     onResult(Result.success(sent))
                                 } else {
-                                    onResult(Result.failure(lastError ?: IllegalStateException("Sync mislukt")))
+                                    onResult(Result.failure(error))
                                 }
                             }
                         }

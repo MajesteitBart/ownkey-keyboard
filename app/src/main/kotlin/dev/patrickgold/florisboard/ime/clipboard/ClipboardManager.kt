@@ -140,25 +140,18 @@ class ClipboardManager(
                         nowMs = System.currentTimeMillis(),
                     ) ?: return@collectLatest
                     delay(delayMs)
-                    val removedItems = try {
+                    val removedItems: Boolean? = try {
                         enforceExpiryDate(plan)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (_: Exception) {
-                        consecutiveRetries += 1
-                        if (consecutiveRetries >= ClipboardCleanupScheduler.MaxConsecutiveRetries) {
-                            return@collectLatest
-                        }
-                        delay(ClipboardCleanupScheduler.RetryDelayMs)
-                        continue
+                        null
                     }
-                    if (removedItems) return@collectLatest
-                    if (delayMs == 0L) {
-                        consecutiveRetries += 1
-                        if (consecutiveRetries >= ClipboardCleanupScheduler.MaxConsecutiveRetries) {
-                            return@collectLatest
-                        }
-                        delay(ClipboardCleanupScheduler.RetryDelayMs)
+                    if (removedItems == true) return@collectLatest
+                    if (removedItems == null || delayMs == 0L) {
+                        consecutiveRetries = (consecutiveRetries + 1)
+                            .coerceAtMost(ClipboardCleanupScheduler.MaxRapidRetries)
+                        delay(ClipboardCleanupScheduler.retryDelayMs(consecutiveRetries))
                     } else {
                         consecutiveRetries = 0
                     }

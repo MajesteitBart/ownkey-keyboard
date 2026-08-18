@@ -675,6 +675,7 @@
     <string name="voice_rewrite__state_listening">Listening</string>
     <string name="voice_rewrite__state_paused">Paused</string>
     <string name="voice_rewrite__state_selecting_whole_field">Selecting whole field…</string>
+    <string name="voice_rewrite__state_preparing_microphone">Preparing microphone…</string>
     <string name="voice_rewrite__state_understanding">Understanding instruction…</string>
     <string name="voice_rewrite__state_rewriting">Rewriting selected text…</string>
     <string name="voice_rewrite__state_text_replaced">Text replaced</string>

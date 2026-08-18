@@ -51,6 +51,20 @@ class VoiceRewriteUiModelTest : FunSpec({
         model.isPresetGridInteractive shouldBe false
     }
 
+    test("recording startup hides retry actions while provider and microphone checks run") {
+        val model = voiceRewriteUiModel(
+            state(VoiceRewriteSessionPhase.STARTING_RECORDING) {
+                copy(targetScope = VoiceRewriteTargetScope.SELECTION, targetCharacterCount = 12)
+            },
+            VoiceRewriteEntryOrigin.REWRITE_HUB,
+        )
+
+        model.surface shouldBe VoiceRewriteSurface.TARGETING
+        model.statusMessage shouldBe VoiceRewriteMessage.PREPARING_MICROPHONE
+        model.scopeLabel shouldBe VoiceRewriteScopeLabel(VoiceRewriteTargetScope.SELECTION, 12)
+        model.actions shouldContainExactly setOf(VoiceRewriteAction.CANCEL)
+    }
+
     test("the entry origin is carried through so cancel returns where the user came from") {
         VoiceRewriteEntryOrigin.entries.forEach { origin ->
             voiceRewriteUiModel(state(VoiceRewriteSessionPhase.RECORDING), origin).origin shouldBe origin

@@ -56,6 +56,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -618,12 +619,15 @@ private fun DictationLanguageOptions(
         OwnkeyOutlinedTextField(
             value = explicitDraft,
             onValueChange = { value ->
-                if (value.isBlank()) {
-                    explicitDraft = lastValidDraft
-                } else {
-                    explicitDraft = value
+                explicitDraft = value
+                if (value.isNotBlank()) {
                     lastValidDraft = value
                     onExplicitLanguageChange(value)
+                }
+            },
+            modifier = Modifier.onFocusChanged { focusState ->
+                if (!focusState.isFocused && explicitDraft.isBlank()) {
+                    explicitDraft = lastValidDraft
                 }
             },
             label = stringRes(R.string.pref__voxtral__language_hint__label),

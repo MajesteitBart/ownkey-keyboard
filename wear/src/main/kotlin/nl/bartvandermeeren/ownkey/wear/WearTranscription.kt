@@ -27,6 +27,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val AUTO_LANGUAGE_SENTINEL = "auto"
+
 data class AudioRecording(
     val bytes: ByteArray,
     val mimeType: String,
@@ -264,9 +266,9 @@ class VoxtralWearClient(
         ) { connection ->
             DataOutputStream(connection.outputStream).use { out ->
                 out.writeMultipartField(boundary, "model", model)
-                if (languageHint.isNotBlank()) {
-                    out.writeMultipartField(boundary, "language", languageHint)
-                }
+                languageHint.trim()
+                    .takeIf { it.isNotEmpty() && !it.equals(AUTO_LANGUAGE_SENTINEL, ignoreCase = true) }
+                    ?.let { out.writeMultipartField(boundary, "language", it) }
                 out.writeMultipartFile(
                     boundary = boundary,
                     fieldName = "file",

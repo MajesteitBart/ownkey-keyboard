@@ -34,6 +34,7 @@ fun VoiceRewriteMessage.stringResId(): Int = when (this) {
     VoiceRewriteMessage.LISTENING -> R.string.voice_rewrite__state_listening
     VoiceRewriteMessage.PAUSED -> R.string.voice_rewrite__state_paused
     VoiceRewriteMessage.SELECTING_WHOLE_FIELD -> R.string.voice_rewrite__state_selecting_whole_field
+    VoiceRewriteMessage.PREPARING_MICROPHONE -> R.string.voice_rewrite__state_preparing_microphone
     VoiceRewriteMessage.SELECT_TEXT_MANUALLY -> R.string.voice_rewrite__error_select_text_manually
     VoiceRewriteMessage.NOTHING_TO_REWRITE -> R.string.voice_rewrite__error_nothing_to_rewrite
     VoiceRewriteMessage.SECURE_FIELD -> R.string.voice_rewrite__error_secure_field

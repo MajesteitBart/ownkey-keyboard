@@ -37,7 +37,11 @@ internal data class ClipboardCleanupItem(
 /** Pure next-expiry calculation; `null` means no cleanup wake-up needs to be scheduled. */
 internal object ClipboardCleanupScheduler {
     const val RetryDelayMs = 60_000L
-    const val MaxConsecutiveRetries = 5
+    const val MaxRapidRetries = 5
+    const val RecoveryDelayMs = 6 * 60 * 60 * 1_000L
+
+    fun retryDelayMs(consecutiveRetries: Int): Long =
+        if (consecutiveRetries < MaxRapidRetries) RetryDelayMs else RecoveryDelayMs
 
     fun nextDelayMs(
         items: List<ClipboardCleanupItem>,

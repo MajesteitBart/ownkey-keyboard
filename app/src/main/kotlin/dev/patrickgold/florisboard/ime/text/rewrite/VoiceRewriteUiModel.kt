@@ -51,6 +51,7 @@ enum class VoiceRewriteMessage {
     LISTENING,
     PAUSED,
     SELECTING_WHOLE_FIELD,
+    PREPARING_MICROPHONE,
     SELECT_TEXT_MANUALLY,
     NOTHING_TO_REWRITE,
     SECURE_FIELD,
@@ -156,6 +157,15 @@ fun voiceRewriteUiModel(
                 VoiceRewriteAction.OPEN_AI_SETTINGS,
                 VoiceRewriteAction.BACK,
             ),
+            announcementId = announcementId,
+        )
+
+        VoiceRewriteSessionPhase.STARTING_RECORDING -> VoiceRewriteUiModel(
+            surface = VoiceRewriteSurface.TARGETING,
+            origin = origin,
+            statusMessage = VoiceRewriteMessage.PREPARING_MICROPHONE,
+            scopeLabel = scopeLabel,
+            actions = setOf(VoiceRewriteAction.CANCEL),
             announcementId = announcementId,
         )
 
