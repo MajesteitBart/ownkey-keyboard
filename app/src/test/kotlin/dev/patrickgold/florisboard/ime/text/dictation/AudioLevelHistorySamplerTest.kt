@@ -37,11 +37,16 @@ private val Baseline = AudioLevelHistoryConfig().baseline
 @OptIn(ExperimentalCoroutinesApi::class)
 private inline fun withSampler(
     scheduler: TestCoroutineScheduler,
+    noinline reducedMotionProvider: () -> Boolean = { false },
     block: (AudioSessionCoordinator, AudioLevelHistorySampler) -> Unit,
 ) {
     val samplerScope = TestScope(scheduler)
     val coordinator = AudioSessionCoordinator()
-    val sampler = AudioLevelHistorySampler(coordinator = coordinator, scope = samplerScope)
+    val sampler = AudioLevelHistorySampler(
+        coordinator = coordinator,
+        scope = samplerScope,
+        reducedMotionProvider = reducedMotionProvider,
+    )
     try {
         block(coordinator, sampler)
     } finally {
@@ -102,6 +107,37 @@ class AudioLevelHistorySamplerTest : FunSpec({
                 runCurrent()
 
                 (recorder.sampleCount in 10..11) shouldBe true
+            }
+        }
+    }
+
+    test("reduced-motion settings are read once per recording phase instead of on every sample") {
+        runTest {
+            var settingsReadCount = 0
+            withSampler(
+                scheduler = testScheduler,
+                reducedMotionProvider = {
+                    settingsReadCount += 1
+                    false
+                },
+            ) { coordinator, _ ->
+                val lease = (
+                    coordinator.tryStart(
+                        AudioSessionOwner.DICTATION,
+                        AudioSessionMode.CONFIGURED_PROVIDER,
+                        FakeLevelRecorder(amplitude = 0.6f),
+                    ) as AudioSessionStartResult.Started
+                    ).lease
+                runCurrent()
+                advanceTimeBy(500L)
+                runCurrent()
+                settingsReadCount shouldBe 1
+
+                lease.pause()
+                runCurrent()
+                lease.resume()
+                runCurrent()
+                settingsReadCount shouldBe 2
             }
         }
     }

@@ -27,13 +27,17 @@ import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionFailureReason
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOnlyOperation
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOutcome
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class VoiceRewriteSessionPhase {
     READY,
@@ -125,6 +129,7 @@ class VoiceRewriteSessionManager(
     private val audioSessionModeProvider: () -> AudioSessionMode,
     private val microphonePermission: VoiceRewriteMicrophonePermission,
     private val providerConfiguration: VoiceRewriteProviderConfigurationSource,
+    private val configurationDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val disclosureStore: VoiceRewriteDisclosureStore,
     private val disclosureVersion: Int,
     private val transcriptionOperation: TranscriptionOnlyOperation = TranscriptionOnlyOperation(),
@@ -140,6 +145,7 @@ class VoiceRewriteSessionManager(
 
     private var nextGenerationId = 0L
     private var preflightJob: Job? = null
+    private var startRecordingJob: Job? = null
     private var activeTarget: VoiceRewriteTargetSnapshot? = null
     private var activeAudioLease: AudioSessionLease? = null
     private var operationJob: Job? = null
@@ -178,7 +184,7 @@ class VoiceRewriteSessionManager(
         val current = _state.value
         if (current.phase != VoiceRewriteSessionPhase.DISCLOSURE || current.disclosure == null) return
         disclosureStore.acknowledge(current.disclosure.version)
-        startRecording(current.generationId)
+        launchStartRecording(current.generationId)
     }
 
     fun cancel() {
@@ -237,7 +243,7 @@ class VoiceRewriteSessionManager(
         val current = _state.value
         if (activeTarget == null || operationJob?.isActive == true) return
         if (current.phase !in setOf(VoiceRewriteSessionPhase.RESULT, VoiceRewriteSessionPhase.ERROR)) return
-        startRecording(current.generationId)
+        launchStartRecording(current.generationId)
     }
 
     fun replaceResult(gateway: VoiceRewriteReplacementGateway): VoiceRewriteReplacementOutcome {
@@ -307,12 +313,18 @@ class VoiceRewriteSessionManager(
             publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
             return
         }
-        val transcriptionProvider = providerConfiguration.transcriptionProvider()
+        val transcriptionProvider = withContext(configurationDispatcher) {
+            providerConfiguration.transcriptionProvider()
+        }
+        if (!isCurrentPhase(generationId, VoiceRewriteSessionPhase.TARGETING)) return
         if (!transcriptionProvider.isConfigured) {
             publishFailure(generationId, VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED)
             return
         }
-        val rewriteProvider = providerConfiguration.rewriteProvider()
+        val rewriteProvider = withContext(configurationDispatcher) {
+            providerConfiguration.rewriteProvider()
+        }
+        if (!isCurrentPhase(generationId, VoiceRewriteSessionPhase.TARGETING)) return
         if (!rewriteProvider.isConfigured) {
             publishFailure(generationId, VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED)
             return
@@ -350,7 +362,12 @@ class VoiceRewriteSessionManager(
         startRecording(generationId)
     }
 
-    private fun startRecording(generationId: Long) {
+    private fun launchStartRecording(generationId: Long) {
+        if (startRecordingJob?.isActive == true) return
+        startRecordingJob = scope.launch { startRecording(generationId) }
+    }
+
+    private suspend fun startRecording(generationId: Long) {
         if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
         val availability = availabilityPolicy.current()
         if (availability is CloudAiAvailability.Unavailable) {
@@ -365,18 +382,56 @@ class VoiceRewriteSessionManager(
             publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
             return
         }
-        if (!providerConfiguration.transcriptionProvider().isConfigured) {
+        val transcriptionProvider = withContext(configurationDispatcher) {
+            providerConfiguration.transcriptionProvider()
+        }
+        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
+        if (!transcriptionProvider.isConfigured) {
             publishFailure(generationId, VoiceRewritePreflightFailure.DICTATION_PROVIDER_NOT_CONFIGURED)
             return
         }
-        if (!providerConfiguration.rewriteProvider().isConfigured) {
+        val rewriteProvider = withContext(configurationDispatcher) {
+            providerConfiguration.rewriteProvider()
+        }
+        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
+        val currentAvailability = availabilityPolicy.current()
+        if (currentAvailability is CloudAiAvailability.Unavailable) {
+            publishAvailabilityFailure(generationId, currentAvailability)
+            return
+        }
+        if (audioSessionCoordinator.state.value != null) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
+            return
+        }
+        if (!microphonePermission.isGranted()) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
+            return
+        }
+        if (!rewriteProvider.isConfigured) {
             publishFailure(generationId, VoiceRewritePreflightFailure.REWRITE_PROVIDER_NOT_CONFIGURED)
+            return
+        }
+        val (audioSessionMode, audioRecorder) = withContext(configurationDispatcher) {
+            audioSessionModeProvider() to audioRecorderProvider()
+        }
+        if (!isCurrent(generationId) || activeAudioLease != null || activeTarget == null) return
+        val latestAvailability = availabilityPolicy.current()
+        if (latestAvailability is CloudAiAvailability.Unavailable) {
+            publishAvailabilityFailure(generationId, latestAvailability)
+            return
+        }
+        if (audioSessionCoordinator.state.value != null) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.AUDIO_SESSION_BUSY)
+            return
+        }
+        if (!microphonePermission.isGranted()) {
+            publishFailure(generationId, VoiceRewritePreflightFailure.MICROPHONE_PERMISSION)
             return
         }
         when (val startResult = audioSessionCoordinator.tryStart(
             owner = AudioSessionOwner.VOICE_REWRITE,
-            mode = audioSessionModeProvider(),
-            recorder = audioRecorderProvider(),
+            mode = audioSessionMode,
+            recorder = audioRecorder,
         )) {
             is AudioSessionStartResult.Started -> {
                 recognizedInstruction = null
@@ -428,6 +483,8 @@ class VoiceRewriteSessionManager(
     ) {
         preflightJob?.cancel()
         preflightJob = null
+        startRecordingJob?.cancel()
+        startRecordingJob = null
         operationJob?.cancel()
         operationJob = null
         autoStopJob?.cancel()
@@ -440,7 +497,13 @@ class VoiceRewriteSessionManager(
     }
 
     private suspend fun transcribeAndRewrite(generationId: Long, lease: AudioSessionLease) {
-        val client = instructionTranscriptionClientProvider()
+        val client = try {
+            withContext(configurationDispatcher) { instructionTranscriptionClientProvider() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            null
+        }
         if (client == null) {
             finishAudioLease(lease)
             publishPipelineError(generationId, VoiceRewritePipelineFailure.TRANSCRIPTION)
@@ -493,7 +556,15 @@ class VoiceRewriteSessionManager(
             recognizedInstruction = instruction,
         )
         operationJob = scope.launch {
-            val rewritten = rewriteOperation.rewrite(target.sourceText, instruction)
+            val rewritten = try {
+                withContext(configurationDispatcher) {
+                    rewriteOperation.rewrite(target.sourceText, instruction)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
             if (!isCurrentPhase(generationId, VoiceRewriteSessionPhase.REWRITING)) return@launch
             rewritten.fold(
                 onSuccess = { rawResult ->

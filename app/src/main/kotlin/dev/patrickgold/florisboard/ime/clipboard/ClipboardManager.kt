@@ -132,6 +132,7 @@ class ClipboardManager(
                     ),
                 )
             }.collectLatest { plan ->
+                var consecutiveRetries = 0
                 while (true) {
                     val delayMs = ClipboardCleanupScheduler.nextDelayMs(
                         items = plan.history.all.map { it.toCleanupItem() },
@@ -144,11 +145,23 @@ class ClipboardManager(
                     } catch (error: CancellationException) {
                         throw error
                     } catch (_: Exception) {
+                        consecutiveRetries += 1
+                        if (consecutiveRetries >= ClipboardCleanupScheduler.MaxConsecutiveRetries) {
+                            return@collectLatest
+                        }
                         delay(ClipboardCleanupScheduler.RetryDelayMs)
                         continue
                     }
                     if (removedItems) return@collectLatest
-                    if (delayMs == 0L) delay(ClipboardCleanupScheduler.RetryDelayMs)
+                    if (delayMs == 0L) {
+                        consecutiveRetries += 1
+                        if (consecutiveRetries >= ClipboardCleanupScheduler.MaxConsecutiveRetries) {
+                            return@collectLatest
+                        }
+                        delay(ClipboardCleanupScheduler.RetryDelayMs)
+                    } else {
+                        consecutiveRetries = 0
+                    }
                 }
             }
         }

@@ -54,9 +54,10 @@ class AudioLevelHistorySampler(
                     AudioSessionPhase.RECORDING -> {
                         _state.value = reducer.resume(_state.value)
                         val sessionId = session.first
+                        val reducedMotion = reducedMotionProvider()
                         while (isActive && coordinator.isCurrent(sessionId)) {
                             val measured = coordinator.sampleLevel(sessionId)
-                            _state.value = reducer.sample(_state.value, measured, reducedMotionProvider())
+                            _state.value = reducer.sample(_state.value, measured, reducedMotion)
                             delay(sampleIntervalMs)
                         }
                     }

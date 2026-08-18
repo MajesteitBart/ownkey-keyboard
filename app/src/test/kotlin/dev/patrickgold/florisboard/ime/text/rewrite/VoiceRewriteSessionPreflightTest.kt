@@ -21,10 +21,12 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.ContinuationInterceptor
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceRewriteSessionPreflightTest : FunSpec({
@@ -70,6 +72,7 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
 
             fixture.manager.acknowledgeDisclosure()
             fixture.manager.acknowledgeDisclosure()
+            runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
             fixture.manager.state.value.targetScope shouldBe VoiceRewriteTargetScope.SELECTION
             recorder.startCount shouldBe 1
@@ -82,6 +85,8 @@ class VoiceRewriteSessionPreflightTest : FunSpec({
                 "permission",
                 "transcription-config",
                 "rewrite-config",
+                "permission",
+                "permission",
                 "recorder-start",
             )
         }
@@ -284,6 +289,7 @@ private fun preflightFixture(
                 return VoiceRewriteProviderConfiguration(rewriteConfigured, "OpenAI")
             }
         },
+        configurationDispatcher = scope.coroutineContext[ContinuationInterceptor] as CoroutineDispatcher,
         disclosureStore = disclosureStore,
         disclosureVersion = 3,
     )

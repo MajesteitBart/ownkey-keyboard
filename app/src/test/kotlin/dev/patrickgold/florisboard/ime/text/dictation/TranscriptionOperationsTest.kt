@@ -144,7 +144,7 @@ class TranscriptionOperationsTest : FunSpec({
                 lease,
                 StaticTranscriptionClient(Result.success("unused")),
             ) shouldBe TranscriptionOutcome.Failure(TranscriptionFailureReason.RECORDING)
-            lease.cancel() shouldBe true
+            lease.cancel() shouldBe false
             coordinator.state.value shouldBe null
         }
     }

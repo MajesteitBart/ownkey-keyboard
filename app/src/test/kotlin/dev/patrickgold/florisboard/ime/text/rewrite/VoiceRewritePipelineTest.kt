@@ -24,6 +24,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.ContinuationInterceptor
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceRewritePipelineTest : FunSpec({
@@ -169,6 +171,7 @@ class VoiceRewritePipelineTest : FunSpec({
             fixture.manager.state.value.resultText shouldBe "first result"
 
             fixture.manager.recordInstructionAgain()
+            runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
             fixture.manager.stopRecording()
             runCurrent()
@@ -215,6 +218,7 @@ class VoiceRewritePipelineTest : FunSpec({
                     2 -> rewriteConfigured = false
                 }
                 fixture.manager.recordInstructionAgain()
+                runCurrent()
 
                 fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.WARNING
                 fixture.manager.state.value.failure shouldBe expectedFailure
@@ -335,6 +339,7 @@ private fun pipelineFixture(
             override fun rewriteProvider() =
                 VoiceRewriteProviderConfiguration(rewriteConfigured(), "OpenAI")
         },
+        configurationDispatcher = scope.coroutineContext[ContinuationInterceptor] as CoroutineDispatcher,
         disclosureStore = object : VoiceRewriteDisclosureStore {
             override fun acknowledgedVersion(): Int = 1
             override fun acknowledge(version: Int) = Unit

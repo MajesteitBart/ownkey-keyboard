@@ -25,11 +25,13 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.ContinuationInterceptor
 
 private class ControllerFixture(
     val controller: VoiceRewriteUiController,
@@ -88,6 +90,7 @@ private fun controllerFixture(
             override fun transcriptionProvider() = VoiceRewriteProviderConfiguration(true, "Mistral")
             override fun rewriteProvider() = VoiceRewriteProviderConfiguration(true, "OpenAI")
         },
+        configurationDispatcher = scope.coroutineContext[ContinuationInterceptor] as CoroutineDispatcher,
         disclosureStore = object : VoiceRewriteDisclosureStore {
             private var acknowledged = acknowledgedDisclosureVersion
             override fun acknowledgedVersion(): Int = acknowledged

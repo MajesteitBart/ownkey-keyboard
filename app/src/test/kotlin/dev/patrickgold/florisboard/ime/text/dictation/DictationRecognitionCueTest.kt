@@ -23,10 +23,10 @@ import io.kotest.matchers.shouldBe
 
 class DictationRecognitionCueTest : FunSpec({
     test("an active dictation session reports the language actually sent to the provider") {
-            DictationRecognitionCues.resolve(
-                sessionOwner = AudioSessionOwner.DICTATION,
-                sessionPhase = AudioSessionPhase.RECORDING,
-                resolvedLanguageHint = "nl",
+        DictationRecognitionCues.resolve(
+            sessionOwner = AudioSessionOwner.DICTATION,
+            sessionPhase = AudioSessionPhase.RECORDING,
+            resolvedLanguageHint = "nl",
         ) shouldBe DictationRecognitionCue.Language("nl")
     }
 

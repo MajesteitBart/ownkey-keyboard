@@ -83,6 +83,7 @@ class VoiceRewriteCrossFlowTest : FunSpec({
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.DISCLOSURE
             fixture.panelVisible shouldBe true
             fixture.controller.acknowledgeDisclosure()
+            runCurrent()
             fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.RECORDING
 
             fixture.controller.pauseRecording() shouldBe true
@@ -472,6 +473,7 @@ private class VoiceRewriteCrossFlowFixture(
         audioSessionModeProvider = { AudioSessionMode.CONFIGURED_PROVIDER },
         microphonePermission = VoiceRewriteMicrophonePermission { true },
         providerConfiguration = providers,
+        configurationDispatcher = dispatcher,
         disclosureStore = disclosureStore,
         disclosureVersion = 1,
         transcriptionOperation = TranscriptionOnlyOperation(dispatcher),

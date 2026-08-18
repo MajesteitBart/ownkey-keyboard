@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.ContinuationInterceptor
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceRewriteReplacementTest : FunSpec({
@@ -226,6 +227,7 @@ private fun replacementManager(
             override fun transcriptionProvider() = VoiceRewriteProviderConfiguration(true, "Audio provider")
             override fun rewriteProvider() = VoiceRewriteProviderConfiguration(true, "Rewrite provider")
         },
+        configurationDispatcher = scope.coroutineContext[ContinuationInterceptor] as CoroutineDispatcher,
         disclosureStore = object : VoiceRewriteDisclosureStore {
             override fun acknowledgedVersion(): Int = 1
             override fun acknowledge(version: Int) = Unit

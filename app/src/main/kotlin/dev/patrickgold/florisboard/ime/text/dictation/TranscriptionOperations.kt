@@ -75,6 +75,7 @@ class TranscriptionOnlyOperation(
             lease.cancel()
             TranscriptionOutcome.Cancelled
         } catch (_: Exception) {
+            if (!recordingStopped) lease.cancel()
             TranscriptionOutcome.Failure(
                 if (recordingStopped) {
                     TranscriptionFailureReason.PROVIDER
