@@ -805,6 +805,20 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "voxtral__rewrite_prompts",
             default = RewritePromptPresets.defaultJson,
         )
+        /**
+         * Locally acknowledged voice-rewrite disclosure version. It is versioned against the
+         * disclosure copy so a changed data-path explanation is shown again, while an unchanged one
+         * never re-prompts. `0` means never acknowledged.
+         */
+        val voiceRewriteDisclosureVersion = int(
+            key = "voxtral__voice_rewrite_disclosure_version",
+            default = 0,
+        )
+        /** Set once the `Tap to dictate · hold to rewrite` coach mark has been seen or dismissed. */
+        val voiceRewriteCoachMarkShown = boolean(
+            key = "voxtral__voice_rewrite_coach_mark_shown",
+            default = false,
+        )
     }
 
     val theme = Theme()

@@ -34,9 +34,15 @@ import dev.patrickgold.florisboard.ime.editor.EditorInstance
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardManager
 import dev.patrickgold.florisboard.ime.media.emoji.FlorisEmojiCompat
 import dev.patrickgold.florisboard.ime.nlp.NlpManager
+import dev.patrickgold.florisboard.ime.text.dictation.AudioLevelHistorySampler
+import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
+import dev.patrickgold.florisboard.ime.text.rewrite.createCloudAiAvailabilityPolicy
+import dev.patrickgold.florisboard.ime.text.rewrite.createVoiceRewriteSessionManager
+import dev.patrickgold.florisboard.ime.text.rewrite.createVoiceRewriteUiController
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.lib.cache.CacheManager
@@ -45,9 +51,12 @@ import dev.patrickgold.florisboard.lib.devtools.Flog
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.ext.ExtensionManager
+import dev.patrickgold.florisboard.lib.util.AndroidBatteryTraceSink
+import dev.patrickgold.florisboard.lib.util.MotionPreferences
 import dev.patrickgold.jetpref.datastore.runtime.initAndroid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
@@ -64,6 +73,7 @@ private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 class FlorisApplication : Application() {
     private val mainHandler by lazy { Handler(mainLooper) }
     private val scope = CoroutineScope(Dispatchers.Default)
+    private val voiceFeedbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val prefs by FlorisPreferenceStore
     val preferenceStoreLoaded = MutableStateFlow(false)
 
@@ -76,8 +86,58 @@ class FlorisApplication : Application() {
     val nlpManager = lazy { NlpManager(this) }
     val subtypeManager = lazy { SubtypeManager(this) }
     val themeManager = lazy { ThemeManager(this) }
-    val voxtralDictationManager = lazy { VoxtralDictationManager(this) }
-    val llmRewriteManager = lazy { LlmRewriteManager(this) }
+    val audioSessionCoordinator = lazy {
+        AudioSessionCoordinator(traceSink = AndroidBatteryTraceSink)
+    }
+    val audioLevelHistorySampler = lazy {
+        AudioLevelHistorySampler(
+            coordinator = audioSessionCoordinator.value,
+            scope = voiceFeedbackScope,
+            reducedMotionProvider = { MotionPreferences.isReducedMotionEnabled(this) },
+        )
+    }
+    val voiceActionFeedbackController = lazy { VoiceActionFeedbackController(voiceFeedbackScope) }
+    val cloudAiAvailabilityPolicy = lazy {
+        createCloudAiAvailabilityPolicy(
+            scope = voiceFeedbackScope,
+            editorInstance = editorInstance.value,
+            keyboardManager = keyboardManager.value,
+        )
+    }
+    val voxtralDictationManager = lazy {
+        VoxtralDictationManager(
+            this,
+            audioSessionCoordinator.value,
+            voiceActionFeedbackController.value,
+            cloudAiAvailabilityPolicy.value,
+        )
+    }
+    val llmRewriteManager = lazy { LlmRewriteManager(this, cloudAiAvailabilityPolicy.value) }
+    val voiceRewriteSessionManager = lazy {
+        createVoiceRewriteSessionManager(
+            context = this,
+            scope = voiceFeedbackScope,
+            availabilityPolicy = cloudAiAvailabilityPolicy.value,
+            audioSessionCoordinator = audioSessionCoordinator.value,
+            feedbackController = voiceActionFeedbackController.value,
+            editorInstance = editorInstance.value,
+            dictationManager = voxtralDictationManager.value,
+            rewriteManager = llmRewriteManager.value,
+        )
+    }
+    val voiceRewriteUiController = lazy {
+        createVoiceRewriteUiController(
+            scope = voiceFeedbackScope,
+            context = this,
+            sessionManager = voiceRewriteSessionManager.value,
+            availabilityPolicy = cloudAiAvailabilityPolicy.value,
+            dictationManager = voxtralDictationManager.value,
+            rewriteManager = llmRewriteManager.value,
+            editorInstance = editorInstance.value,
+            clipboardManager = clipboardManager.value,
+            keyboardManager = keyboardManager.value,
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -183,6 +243,18 @@ fun Context.subtypeManager() = this.florisApplication().subtypeManager
 
 fun Context.themeManager() = this.florisApplication().themeManager
 
+fun Context.audioSessionCoordinator() = this.florisApplication().audioSessionCoordinator
+
+fun Context.audioLevelHistorySampler() = this.florisApplication().audioLevelHistorySampler
+
+fun Context.voiceActionFeedbackController() = this.florisApplication().voiceActionFeedbackController
+
+fun Context.cloudAiAvailabilityPolicy() = this.florisApplication().cloudAiAvailabilityPolicy
+
 fun Context.voxtralDictationManager() = this.florisApplication().voxtralDictationManager
 
 fun Context.llmRewriteManager() = this.florisApplication().llmRewriteManager
+
+fun Context.voiceRewriteSessionManager() = this.florisApplication().voiceRewriteSessionManager
+
+fun Context.voiceRewriteUiController() = this.florisApplication().voiceRewriteUiController

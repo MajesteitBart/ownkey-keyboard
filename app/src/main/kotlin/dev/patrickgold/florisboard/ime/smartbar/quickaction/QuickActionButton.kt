@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.smartbar.quickaction
 
+import android.os.SystemClock
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -35,29 +36,25 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -68,9 +65,22 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
@@ -87,23 +97,46 @@ import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
 import dev.patrickgold.florisboard.ime.keyboard.computeLabel
-import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
+import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiAvailability
+import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEntryOrigin
+import dev.patrickgold.florisboard.ime.text.rewrite.stringResId
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
+import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showShortToast
+import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggIcon
 import org.florisboard.lib.snygg.ui.SnyggText
-import kotlin.math.PI
-import kotlin.math.sin
 
 enum class QuickActionBarType {
     INTERACTIVE_BUTTON,
     INTERACTIVE_TILE,
     EDITOR_TILE;
+}
+
+/**
+ * Only the interactive dictation key is arbitrated between tap and hold. Every other quick action,
+ * and the editor tile in the action editor, keeps the untouched key down/up pipeline.
+ */
+internal fun quickActionUsesVoiceGesture(action: QuickAction, type: QuickActionBarType): Boolean =
+    action is QuickAction.InsertKey &&
+        action.data.code == KeyCode.VOICE_INPUT &&
+        type != QuickActionBarType.EDITOR_TILE
+
+/** Swallows the remainder of a gesture whose outcome is already decided. */
+private suspend fun AwaitPointerEventScope.consumeUntilUp() {
+    var event: PointerEvent
+    do {
+        event = awaitPointerEvent()
+        event.changes.forEach { it.consume() }
+    } while (event.changes.any { it.pressed })
 }
 
 internal const val QuickActionButtonAspectRatio = 1.1f
@@ -123,6 +156,7 @@ fun QuickActionButton(
     iconSize: Dp = QuickActionButtonIconSize,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val inputFeedbackController = LocalInputFeedbackController.current
     val interactionSource = remember { MutableInteractionSource() }
     val localIndication = LocalIndication.current
@@ -139,15 +173,50 @@ fun QuickActionButton(
         !isEnabled -> SnyggSelector.DISABLED
         else -> null
     }
-    val voxtralDictationManager by context.voxtralDictationManager()
-    val dictationState by voxtralDictationManager.stateFlow.collectAsState()
     val isVoiceInputAction = action is QuickAction.InsertKey &&
         action.data.code == KeyCode.VOICE_INPUT
+    val usesVoiceGesture = quickActionUsesVoiceGesture(action, type)
+
+    // The platform long-press timeout already carries the user's accessibility touch-and-hold delay,
+    // so hold recognition never uses a product-fixed duration.
+    val longPressTimeoutMs = LocalViewConfiguration.current.longPressTimeoutMillis
+    val gestureArbiter = remember(longPressTimeoutMs) { VoiceActionGestureArbiter(longPressTimeoutMs) }
+    val voiceRewriteUiController = remember(context) { context.voiceRewriteUiController() }
+    val dictationClickLabel = stringRes(R.string.voice_rewrite__action_start_dictation)
+    val voiceRewriteLabel = stringRes(R.string.voice_rewrite__action_voice_rewrite)
+
+    // An incognito or secure editor session disables every cloud AI action. The key stays visible
+    // and answers with the specific reason instead of becoming an inert or silently failing control.
+    val cloudAiAvailability = if (usesVoiceGesture) {
+        voiceRewriteUiController.value.availability.collectAsState().value
+    } else {
+        CloudAiAvailability.Available
+    }
+    val aiUnavailableReason = (cloudAiAvailability as? CloudAiAvailability.Unavailable)?.reason
+    val aiUnavailableText = aiUnavailableReason?.let { stringRes(it.stringResId()) }
+
+    fun dispatchVoiceOutcome(outcome: VoiceActionGestureOutcome) {
+        if (aiUnavailableText != null) {
+            coroutineScope.launch { context.showShortToast(aiUnavailableText) }
+            return
+        }
+        when (outcome) {
+            VoiceActionGestureOutcome.DICTATION -> {
+                action.onPointerDown(context)
+                action.onPointerUp(context)
+            }
+            VoiceActionGestureOutcome.VOICE_REWRITE -> {
+                inputFeedbackController.keyLongPress(action.keyData())
+                voiceRewriteUiController.value.begin(VoiceRewriteEntryOrigin.DICTATION_KEY)
+            }
+        }
+    }
 
     // Need to manually cancel an action if this composable suddenly leaves the composition to prevent the key from
     // being stuck in the pressed state
     DisposableEffect(action, isEnabled) {
         onDispose {
+            gestureArbiter.reset()
             if (action is QuickAction.InsertKey) {
                 action.onPointerCancel(context)
             }
@@ -179,10 +248,98 @@ fun QuickActionButton(
             }
     }
 
+    /**
+     * Voice-only pointer pipeline. Unlike [quickActionInput] it does not send the key down before
+     * the gesture resolves, because ordinary dictation must start on a released tap while a
+     * recognized hold has to own the gesture and make the following release inert.
+     */
+    fun Modifier.voiceQuickActionInput(): Modifier {
+        return indication(interactionSource, localIndication)
+            .pointerInput(action, isEnabled, longPressTimeoutMs, cloudAiAvailability) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    if (!isEnabled) return@awaitEachGesture
+                    val press = PressInteraction.Press(down.position)
+                    inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                    interactionSource.tryEmit(press)
+                    gestureArbiter.reset()
+                    gestureArbiter.down(SystemClock.uptimeMillis())
+
+                    var released: PointerInputChange? = null
+                    var holdTimedOut = false
+                    try {
+                        withTimeout(longPressTimeoutMs) {
+                            released = waitForUpOrCancellation()
+                        }
+                    } catch (_: PointerEventTimeoutCancellationException) {
+                        holdTimedOut = true
+                    }
+
+                    when {
+                        holdTimedOut -> {
+                            gestureArbiter.advanceTo(SystemClock.uptimeMillis())
+                                ?.let(::dispatchVoiceOutcome)
+                            interactionSource.tryEmit(PressInteraction.Release(press))
+                            // Swallow the rest of the gesture so the release cannot also dictate.
+                            consumeUntilUp()
+                            gestureArbiter.reset()
+                        }
+                        released != null -> {
+                            released?.consume()
+                            interactionSource.tryEmit(PressInteraction.Release(press))
+                            gestureArbiter.up(SystemClock.uptimeMillis())?.let(::dispatchVoiceOutcome)
+                        }
+                        else -> {
+                            interactionSource.tryEmit(PressInteraction.Cancel(press))
+                            gestureArbiter.cancel(SystemClock.uptimeMillis())
+                                ?.let(::dispatchVoiceOutcome)
+                        }
+                    }
+                }
+            }
+    }
+
+    /**
+     * TalkBack never has to discover or synthesize a hold: the click starts ordinary dictation and a
+     * long-click plus an explicit `Voice rewrite` custom action both start voice rewrite.
+     */
+    val voiceActionDescription = if (usesVoiceGesture) {
+        val displayName = action.computeDisplayName(evaluator = evaluator)
+        if (aiUnavailableText == null) displayName else "$displayName. $aiUnavailableText"
+    } else {
+        ""
+    }
+
+    fun Modifier.voiceActionSemantics(): Modifier = this.semantics(mergeDescendants = true) {
+        role = Role.Button
+        contentDescription = voiceActionDescription
+        onClick(label = dictationClickLabel) {
+            dispatchVoiceOutcome(VoiceActionGestureOutcome.DICTATION)
+            true
+        }
+        onLongClick(label = voiceRewriteLabel) {
+            gestureArbiter.accessibilityVoiceRewrite()?.let(::dispatchVoiceOutcome)
+            true
+        }
+        customActions = listOf(
+            CustomAccessibilityAction(voiceRewriteLabel) {
+                gestureArbiter.accessibilityVoiceRewrite()?.let(::dispatchVoiceOutcome)
+                true
+            },
+        )
+    }
+
+    fun Modifier.actionInput(): Modifier = if (usesVoiceGesture) {
+        voiceQuickActionInput().voiceActionSemantics()
+    } else {
+        quickActionInput()
+    }
+
     if (type == QuickActionBarType.INTERACTIVE_BUTTON && fillContainer) {
         PlainTooltip(action.computeTooltip(evaluator), enabled = true) {
             Box(
-                modifier = modifier.quickActionInput(),
+                modifier = modifier.actionInput(),
                 contentAlignment = Alignment.Center,
             ) {
                 when (action) {
@@ -238,7 +395,7 @@ fun QuickActionButton(
             } else {
                 Modifier.aspectRatio(aspectRatio)
             })
-                .quickActionInput(),
+                .actionInput(),
             contentAlignment = Alignment.Center,
         ) {
             val foreground: @Composable () -> Unit = {
@@ -287,9 +444,9 @@ fun QuickActionButton(
 
             if (isVoiceInputAction && type == QuickActionBarType.INTERACTIVE_BUTTON) {
                 DictationMicPill(
-                    dictationState = dictationState,
                     isPressed = isPressed,
-                    isEnabled = isEnabled,
+                    isEnabled = isEnabled && aiUnavailableReason == null,
+                    isAiUnavailable = aiUnavailableReason != null,
                 )
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -322,51 +479,47 @@ fun QuickActionButton(
  */
 @Composable
 private fun DictationMicPill(
-    dictationState: VoxtralDictationManager.DictationState,
     isPressed: Boolean,
     isEnabled: Boolean,
+    isAiUnavailable: Boolean = false,
 ) {
+    val context = LocalContext.current
+    val voxtralDictationManager by context.voxtralDictationManager()
+    val feedbackState by voxtralDictationManager.feedbackStateFlow.collectAsState()
+    val feedbackPhase = feedbackState.phase
     val pillSize = (FlorisImeSizing.smartbarHeight - 8.dp).coerceAtLeast(34.dp)
     val accentColor = ownkeyAccentColor()
 
-    // The manager has no explicit success state; a transcription which returns to idle means the
-    // transcript was inserted. Flash the success visual for a moment on that transition.
-    var showSuccess by remember { mutableStateOf(false) }
-    var lastState by remember { mutableStateOf(dictationState) }
-    LaunchedEffect(dictationState) {
-        val cameFromTranscribing = lastState == VoxtralDictationManager.DictationState.TRANSCRIBING
-        lastState = dictationState
-        if (cameFromTranscribing && dictationState == VoxtralDictationManager.DictationState.IDLE) {
-            showSuccess = true
-            delay(800)
-            showSuccess = false
-        } else {
-            showSuccess = false
-        }
-    }
+    val showSuccess = feedbackPhase == VoiceActionFeedbackPhase.SUCCESS
+    val isListening = feedbackPhase == VoiceActionFeedbackPhase.RECORDING
+    val isSilent = feedbackPhase == VoiceActionFeedbackPhase.PAUSED
+    val isProcessing = feedbackPhase == VoiceActionFeedbackPhase.PROCESSING
+    val isError = feedbackPhase == VoiceActionFeedbackPhase.ERROR
 
-    val isListening = dictationState == VoxtralDictationManager.DictationState.LISTENING
-    val isSilent = dictationState == VoxtralDictationManager.DictationState.PAUSED
-    val isProcessing = dictationState == VoxtralDictationManager.DictationState.TRANSCRIBING
-    val isError = dictationState == VoxtralDictationManager.DictationState.ERROR && !showSuccess
+    // Reduced motion removes the decorative halo, the interpolated colour transition, the success
+    // scale, and the travelling processing arc. Every state keeps its icon, colour, and semantics.
+    val reducedMotion = rememberReducedMotion()
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
             showSuccess -> OwnkeyBrand.Glass.Success
-            isListening -> accentColor
-            isSilent -> accentColor.copy(alpha = 0.30f)
+            isListening -> OwnkeyBrand.SignalOrange
+            isSilent -> OwnkeyBrand.SignalOrange.copy(alpha = 0.55f)
             isError -> OwnkeyBrand.Glass.Danger.copy(alpha = 0.22f)
             isPressed -> OwnkeyBrand.Glass.KeyPressed
             else -> OwnkeyBrand.Glass.Key
         },
+        animationSpec = tween(durationMillis = if (reducedMotion) 0 else 300),
         label = "micPillBackground",
     )
 
     val successScale = remember { Animatable(1f) }
-    LaunchedEffect(showSuccess) {
-        if (showSuccess) {
+    LaunchedEffect(showSuccess, reducedMotion) {
+        if (showSuccess && !reducedMotion) {
             successScale.snapTo(0.8f)
             successScale.animateTo(1f, animationSpec = tween(350))
+        } else {
+            successScale.snapTo(1f)
         }
     }
 
@@ -374,7 +527,7 @@ private fun DictationMicPill(
         modifier = Modifier.size(pillSize + 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (isListening) {
+        if (isListening && !reducedMotion) {
             val haloTransition = rememberInfiniteTransition(label = "micHalo")
             val haloProgress by haloTransition.animateFloat(
                 initialValue = 0f,
@@ -403,8 +556,14 @@ private fun DictationMicPill(
             contentAlignment = Alignment.Center,
         ) {
             when {
-                isListening -> DictationWaveformBars(pillSize = pillSize, animated = true)
-                isSilent -> DictationWaveformBars(pillSize = pillSize, animated = false)
+                // The action shows what tapping it does. Microphone-level feedback belongs to the
+                // measured centre waveform in the recording row, never inside this button.
+                isListening || isSilent -> Icon(
+                    imageVector = Icons.Default.Stop,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(pillSize * 0.46f),
+                )
                 showSuccess -> Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
@@ -417,6 +576,13 @@ private fun DictationMicPill(
                     tint = OwnkeyBrand.Glass.Danger,
                     modifier = Modifier.size(pillSize * 0.46f),
                 )
+                // Visibly disabled rather than hidden, so the reason stays discoverable.
+                isAiUnavailable -> Icon(
+                    imageVector = Icons.Default.MicOff,
+                    contentDescription = null,
+                    tint = OwnkeyBrand.Glass.InkSoft,
+                    modifier = Modifier.size(pillSize * 0.46f),
+                )
                 else -> Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_tabler_microphone),
                     contentDescription = null,
@@ -426,16 +592,22 @@ private fun DictationMicPill(
             }
         }
         if (isProcessing) {
-            val spinTransition = rememberInfiniteTransition(label = "micSpin")
-            val spinAngle by spinTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 900, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart,
-                ),
-                label = "micSpinAngle",
-            )
+            // Under reduced motion the arc stays put: it still marks the processing state, but it
+            // no longer travels around the button.
+            val spinAngle = if (reducedMotion) {
+                -90f
+            } else {
+                val spinTransition = rememberInfiniteTransition(label = "micSpin")
+                spinTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 900, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart,
+                    ),
+                    label = "micSpinAngle",
+                ).value
+            }
             Canvas(modifier = Modifier.size(pillSize + 8.dp)) {
                 drawArc(
                     color = accentColor,
@@ -445,50 +617,6 @@ private fun DictationMicPill(
                     style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun DictationWaveformBars(
-    pillSize: androidx.compose.ui.unit.Dp,
-    animated: Boolean,
-) {
-    val barMaxHeight = pillSize * 0.42f
-    val barWidth = 3.5.dp
-    val phase = if (animated) {
-        val transition = rememberInfiniteTransition(label = "micBars")
-        transition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 900, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-            label = "micBarsPhase",
-        ).value
-    } else {
-        0f
-    }
-    Row(
-        modifier = Modifier.height(barMaxHeight),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(4) { index ->
-            val fraction = if (animated) {
-                val wave = sin(2.0 * PI * (phase - index * 0.166)).toFloat()
-                0.25f + 0.35f * (1f + wave)
-            } else {
-                0.16f
-            }
-            Box(
-                modifier = Modifier
-                    .width(barWidth)
-                    .height(barMaxHeight * fraction.coerceIn(0.12f, 0.95f))
-                    .alpha(if (animated) 1f else 0.7f)
-                    .background(Color.White, RoundedCornerShape(2.dp)),
-            )
         }
     }
 }

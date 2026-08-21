@@ -24,6 +24,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -35,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -54,15 +56,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.subtypeManager
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageMode
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviderPreset
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders
@@ -81,6 +89,7 @@ fun VoxtralScreen() = FlorisScreen {
     previewFieldVisible = false
 
     val context = LocalContext.current
+    val subtypeManager by context.subtypeManager()
     val voxtralSecretsStore = remember { VoxtralSecretsStore(context) }
     val llmRewriteSecretsStore = remember { LlmRewriteSecretsStore(context) }
 
@@ -172,6 +181,7 @@ fun VoxtralScreen() = FlorisScreen {
                         value = apiKeyInput,
                         onValueChange = { apiKeyInput = it },
                         label = stringRes(R.string.pref__voxtral__api_key__label),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         visualTransformation = PasswordVisualTransformation(),
                     )
                     Row(
@@ -261,15 +271,26 @@ fun VoxtralScreen() = FlorisScreen {
                         },
                         label = stringRes(R.string.pref__voxtral__model__label),
                     )
+                    SectionLabel(text = stringRes(R.string.pref__voxtral__language_hint__group))
                     StatusText(text = stringRes(R.string.pref__voxtral__language_hint__summary))
-                    OwnkeyOutlinedTextField(
-                        value = languageHint,
-                        onValueChange = { value ->
+                    DictationLanguageOptions(
+                        storedLanguageHint = languageHint,
+                        onModeChange = { mode ->
+                            coroutineScope.launch {
+                                prefsRef.voxtral.languageHint.set(
+                                    TranscriptionLanguageHints.storedValueForSelection(
+                                        mode = mode,
+                                        currentStoredLanguageHint = languageHint,
+                                        activeSubtypeLanguageTag = subtypeManager.activeSubtype.primaryLocale.languageTag(),
+                                    ),
+                                )
+                            }
+                        },
+                        onExplicitLanguageChange = { value ->
                             coroutineScope.launch {
                                 prefsRef.voxtral.languageHint.set(value)
                             }
                         },
-                        label = stringRes(R.string.pref__voxtral__language_hint__label),
                     )
                     OwnkeyButton(
                         label = stringRes(R.string.pref__voxtral__sync_wear__action),
@@ -310,6 +331,7 @@ fun VoxtralScreen() = FlorisScreen {
                         value = llmApiKeyInput,
                         onValueChange = { llmApiKeyInput = it },
                         label = stringRes(R.string.pref__ai__rewrite_key__label),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         visualTransformation = PasswordVisualTransformation(),
                     )
                     Row(
@@ -560,6 +582,109 @@ private fun PromptCard(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
+/**
+ * The three reachable dictation-language states.
+ *
+ * `Auto` is an explicit choice rather than an empty value, so provider-side detection stays
+ * available now that following the keyboard language is the default.
+ */
+@Composable
+private fun DictationLanguageOptions(
+    storedLanguageHint: String,
+    onModeChange: (TranscriptionLanguageMode) -> Unit,
+    onExplicitLanguageChange: (String) -> Unit,
+) {
+    val mode = TranscriptionLanguageHints.modeOf(storedLanguageHint)
+    ChoiceOption(
+        label = stringRes(R.string.pref__voxtral__language_hint__mode_follow),
+        summary = stringRes(R.string.pref__voxtral__language_hint__mode_follow_summary),
+        selected = mode == TranscriptionLanguageMode.FOLLOW_KEYBOARD,
+        onClick = { onModeChange(TranscriptionLanguageMode.FOLLOW_KEYBOARD) },
+    )
+    ChoiceOption(
+        label = stringRes(R.string.pref__voxtral__language_hint__mode_auto),
+        summary = stringRes(R.string.pref__voxtral__language_hint__mode_auto_summary),
+        selected = mode == TranscriptionLanguageMode.AUTO,
+        onClick = { onModeChange(TranscriptionLanguageMode.AUTO) },
+    )
+    ChoiceOption(
+        label = stringRes(R.string.pref__voxtral__language_hint__mode_explicit),
+        summary = stringRes(R.string.pref__voxtral__language_hint__mode_explicit_summary),
+        selected = mode == TranscriptionLanguageMode.EXPLICIT,
+        onClick = { onModeChange(TranscriptionLanguageMode.EXPLICIT) },
+    )
+    if (mode == TranscriptionLanguageMode.EXPLICIT) {
+        var explicitDraft by remember { mutableStateOf(storedLanguageHint) }
+        var lastValidDraft by remember { mutableStateOf(storedLanguageHint) }
+        OwnkeyOutlinedTextField(
+            value = explicitDraft,
+            onValueChange = { value ->
+                explicitDraft = value
+                if (value.isNotBlank()) {
+                    lastValidDraft = value
+                    onExplicitLanguageChange(value)
+                }
+            },
+            modifier = Modifier.onFocusChanged { focusState ->
+                if (!focusState.isFocused && explicitDraft.isBlank()) {
+                    explicitDraft = lastValidDraft
+                }
+            },
+            label = stringRes(R.string.pref__voxtral__language_hint__label),
+        )
+    }
+}
+
+@Composable
+private fun ChoiceOption(
+    label: String,
+    summary: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(18.dp)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (selected) OwnkeyBrand.SignalOrange else OwnkeyBrand.Line,
+                shape = shape,
+            )
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+        color = if (selected) OwnkeyBrand.PanelRaised else OwnkeyBrand.Action.copy(alpha = 0.52f),
+        contentColor = OwnkeyBrand.Bone,
+        shape = shape,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = null,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = OwnkeyBrand.SignalOrange,
+                    unselectedColor = OwnkeyBrand.Ash,
+                ),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = summary,
+                    color = OwnkeyBrand.Ash,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ProviderOption(
     provider: LlmRewriteProviderPreset,
@@ -618,6 +743,7 @@ private fun OwnkeyOutlinedTextField(
     enabled: Boolean = true,
     singleLine: Boolean = true,
     minLines: Int = 1,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     OutlinedTextField(
@@ -628,6 +754,7 @@ private fun OwnkeyOutlinedTextField(
         label = { Text(label) },
         singleLine = singleLine,
         minLines = minLines,
+        keyboardOptions = keyboardOptions,
         visualTransformation = visualTransformation,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = OwnkeyBrand.Bone,

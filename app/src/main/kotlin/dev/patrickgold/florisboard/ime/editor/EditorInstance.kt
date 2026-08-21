@@ -42,7 +42,10 @@ import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.nlpManager
 import dev.patrickgold.florisboard.subtypeManager
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.florisboard.lib.android.showShortToastSync
 
 class EditorInstance(context: Context) : AbstractEditorInstance(context) {
@@ -57,6 +60,11 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     private val keyboardManager by context.keyboardManager()
     private val subtypeManager by context.subtypeManager()
     private val nlpManager by context.nlpManager()
+    private val nextInputSessionId = AtomicLong(0L)
+    private val _activeInputSessionIdFlow = MutableStateFlow(0L)
+
+    val activeInputSessionIdFlow = _activeInputSessionIdFlow.asStateFlow()
+    val activeInputSessionId: Long get() = activeInputSessionIdFlow.value
 
     private val activeState get() = keyboardManager.activeState
     val autoSpace = AutoSpaceState()
@@ -65,7 +73,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
 
     private fun currentInputConnection() = FlorisImeService.currentInputConnection()
 
+    override fun handleStartInput(editorInfo: FlorisEditorInfo) {
+        super.handleStartInput(editorInfo)
+        _activeInputSessionIdFlow.value = nextInputSessionId.incrementAndGet()
+    }
+
     override fun handleStartInputView(editorInfo: FlorisEditorInfo, isRestart: Boolean) {
+        val needsInputSessionId = _activeInputSessionIdFlow.value == 0L
         if (!prefs.correction.rememberCapsLockState.get()) {
             activeState.inputShiftState = InputShiftState.UNSHIFTED
         }
@@ -127,6 +141,19 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                 editorInfo.imeOptions.flagNoPersonalizedLearning || prefs.suggestion.forceIncognitoModeFromDynamic.get()
             }
         }
+        if (needsInputSessionId) {
+            _activeInputSessionIdFlow.value = nextInputSessionId.incrementAndGet()
+        }
+    }
+
+    override fun handleFinishInputView() {
+        _activeInputSessionIdFlow.value = 0L
+        super.handleFinishInputView()
+    }
+
+    override fun handleFinishInput() {
+        _activeInputSessionIdFlow.value = 0L
+        super.handleFinishInput()
     }
 
     override fun handleSelectionUpdate(oldSelection: EditorRange, newSelection: EditorRange, composing: EditorRange) {

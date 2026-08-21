@@ -72,15 +72,15 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
     fun startupFullCompilation() = startup(CompilationMode.Full())
 
     private fun startup(compilationMode: CompilationMode) = benchmarkRule.measureRepeated(
-        packageName = "dev.patrickgold.florisboard",
+        packageName = TARGET_PACKAGE,
         metrics = listOf(StartupTimingMetric()),
         compilationMode = compilationMode,
         iterations = 10,
         startupMode = startupMode,
         setupBlock = {
             pressHome()
-            device.executeShellCommand("ime enable dev.patrickgold.florisboard/.FlorisImeService")
-            device.executeShellCommand("ime set dev.patrickgold.florisboard/.FlorisImeService")
+            device.executeShellCommand("ime enable $OWNKEY_IME_COMPONENT")
+            device.executeShellCommand("ime set $OWNKEY_IME_COMPONENT")
         }
     ) {
         startActivityAndWait()

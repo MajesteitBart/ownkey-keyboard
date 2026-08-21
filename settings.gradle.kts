@@ -44,7 +44,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 include(":app")
 include(":wear")
-//include(":benchmark")
+include(":benchmark")
 include(":lib:android")
 include(":lib:color")
 include(":lib:compose")

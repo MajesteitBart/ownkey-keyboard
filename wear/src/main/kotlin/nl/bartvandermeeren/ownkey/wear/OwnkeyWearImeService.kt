@@ -16,12 +16,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class OwnkeyWearImeService : InputMethodService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -38,6 +39,7 @@ class OwnkeyWearImeService : InputMethodService() {
 
     private var backspaceHeld = false
     private var backspaceRepeatJob: Job? = null
+    private var transcriptionJob: Job? = null
 
     override fun onCreateInputView(): View {
         val root = LinearLayout(this).apply {
@@ -90,12 +92,24 @@ class OwnkeyWearImeService : InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         stopBackspaceRepeat()
+        transcriptionJob?.cancel()
+        transcriptionJob = null
         session?.let {
-            runCatching { stopRecording(it) }
+            cancelRecording(it)
         }
         session = null
         isTranscribing = false
         renderUi()
+    }
+
+    override fun onDestroy() {
+        stopBackspaceRepeat()
+        transcriptionJob?.cancel()
+        transcriptionJob = null
+        session?.let { cancelRecording(it) }
+        session = null
+        scope.cancel()
+        super.onDestroy()
     }
 
     private fun onMicButtonTapped() {
@@ -128,41 +142,52 @@ class OwnkeyWearImeService : InputMethodService() {
         setStatus("Transcriberen...")
         renderUi()
 
-        scope.launch {
-            val recording = stopRecording(currentSession).getOrElse { error ->
+        val job = scope.launch {
+            var publishedRecording: AudioRecording? = null
+            try {
+                val recording = stopRecording(currentSession).getOrElse { error ->
+                    session = null
+                    setStatus(error.message ?: "Opname stoppen mislukt")
+                    return@launch
+                }
+                publishedRecording = recording
                 session = null
-                isTranscribing = false
-                setStatus(error.message ?: "Opname stoppen mislukt")
-                renderUi()
-                return@launch
-            }
-            session = null
 
-            val result = withContext(Dispatchers.IO) {
-                client.transcribe(
+                val result = client.transcribe(
                     apiKey = settingsStore.getApiKey().trim(),
                     endpointUrl = settingsStore.getEndpointUrl().trim().ifBlank { VoxtralWearClient.DefaultEndpointUrl },
                     model = settingsStore.getModel().trim().ifBlank { VoxtralWearClient.DefaultModel },
                     languageHint = settingsStore.getLanguageHint().trim(),
                     recording = recording,
                 )
-            }
 
-            result
-                .onSuccess { transcript ->
-                    val committed = currentInputConnection?.commitText(transcript, 1) == true
-                    if (committed) {
-                        setStatus("Ingevoegd")
-                    } else {
-                        setStatus("Kon tekst niet invoegen")
+                result
+                    .onSuccess { transcript ->
+                        val committed = currentInputConnection?.commitText(transcript, 1) == true
+                        if (committed) {
+                            setStatus("Ingevoegd")
+                        } else {
+                            setStatus("Kon tekst niet invoegen")
+                        }
                     }
+                    .onFailure { error ->
+                        setStatus(error.message ?: "Transcriptie mislukt")
+                    }
+            } catch (error: CancellationException) {
+                publishedRecording?.recordingUri?.let { recordingUri ->
+                    runCatching { contentResolver.delete(android.net.Uri.parse(recordingUri), null, null) }
                 }
-                .onFailure { error ->
-                    setStatus(error.message ?: "Transcriptie mislukt")
-                }
-
-            isTranscribing = false
-            renderUi()
+                throw error
+            } finally {
+                isTranscribing = false
+                renderUi()
+            }
+        }
+        transcriptionJob = job
+        job.invokeOnCompletion {
+            if (transcriptionJob === job) {
+                transcriptionJob = null
+            }
         }
     }
 

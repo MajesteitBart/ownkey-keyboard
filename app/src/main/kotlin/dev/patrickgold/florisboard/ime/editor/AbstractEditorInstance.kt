@@ -314,16 +314,21 @@ abstract class AbstractEditorInstance(context: Context) {
         if (content.selection == selection) return true
         val ic = currentInputConnection() ?: return false
         ic.beginBatchEdit()
-        runBlocking {
-            val newContent = content
-                .copy(localSelection = selection.translatedBy(-content.offset))
-                .generateCopy(selection = selection)
-            expectedContentQueue.push(newContent)
-            ic.setSelection(selection.start, selection.end)
-            ic.setComposingRegion(newContent.composing)
+        return try {
+            runBlocking {
+                val newContent = content
+                    .copy(localSelection = selection.translatedBy(-content.offset))
+                    .generateCopy(selection = selection)
+                val selectionApplied = ic.setSelection(selection.start, selection.end)
+                if (selectionApplied) {
+                    expectedContentQueue.push(newContent)
+                    ic.setComposingRegion(newContent.composing)
+                }
+                selectionApplied
+            }
+        } finally {
+            ic.endBatchEdit()
         }
-        ic.endBatchEdit()
-        return true
     }
 
     open fun commitChar(char: String): Boolean {
@@ -391,25 +396,30 @@ abstract class AbstractEditorInstance(context: Context) {
         val content = activeContent
         val selection = content.selection
         ic.beginBatchEdit()
-        ic.finishComposingText()
-        if (activeInfo.isRawInputEditor) {
-            ic.commitText(text, 1)
-        } else runBlocking {
-            val newSelection = EditorRange.cursor(selection.start + text.length)
-            val newContent = content.generateCopy(
-                selection = newSelection,
-                textBeforeSelection = buildString {
-                    append(content.textBeforeSelection)
-                    append(text)
-                },
-                selectedText = "",
-            )
-            expectedContentQueue.push(newContent)
-            ic.commitText(text, 1)
-            ic.setComposingRegion(newContent.composing)
+        return try {
+            ic.finishComposingText()
+            if (activeInfo.isRawInputEditor) {
+                ic.commitText(text, 1)
+            } else runBlocking {
+                val newSelection = EditorRange.cursor(selection.start + text.length)
+                val newContent = content.generateCopy(
+                    selection = newSelection,
+                    textBeforeSelection = buildString {
+                        append(content.textBeforeSelection)
+                        append(text)
+                    },
+                    selectedText = "",
+                )
+                val committed = ic.commitText(text, 1)
+                if (committed) {
+                    expectedContentQueue.push(newContent)
+                    ic.setComposingRegion(newContent.composing)
+                }
+                committed
+            }
+        } finally {
+            ic.endBatchEdit()
         }
-        ic.endBatchEdit()
-        return true
     }
 
     open fun finalizeComposingText(text: String, cursorAdvanceAfterText: Int = 0): Boolean {
