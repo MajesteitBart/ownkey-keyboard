@@ -75,9 +75,13 @@ class DictationInsertionSpacingTest : FunSpec({
         join("", "Hello", "\"world\"") shouldBe "Hello"
     }
 
-    test("a no-break space counts as existing whitespace") {
-        join("hello\u00A0", "world") shouldBe "world"
-        join("hello", "world", "\u00A0there") shouldBe " world"
+    test("every non-breaking space separator counts as existing whitespace") {
+        // No-break, narrow no-break, figure, and ideographic spaces are all separators, even
+        // though Java's whitespace test rejects the non-breaking ones.
+        listOf('\u00A0', '\u202F', '\u2007', '\u3000').forEach { separator ->
+            join("hello$separator", "world") shouldBe "world"
+            join("hello", "world", "${separator}there") shouldBe " world"
+        }
     }
 
     test("closing quotes and brackets are followed by a space") {

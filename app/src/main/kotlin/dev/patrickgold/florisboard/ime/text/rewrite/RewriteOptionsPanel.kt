@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -142,15 +143,20 @@ fun RewriteOptionsPanel(
     val prompts = remember(promptsJson) { RewritePromptPresets.decode(promptsJson) }
     val body = rewritePanelBody(step = uiState.step, surface = voiceModel.surface)
 
-    // The hub card is resolved whenever the hub is visible and the host selection changes, so the
-    // scope summary is fresh on return and after the user adjusts the selection handles. Active
-    // states never re-read live editor content; they show the session's own snapshot. Provider
-    // readiness reads the Keystore-backed secret stores, never on the typing thread.
+    // The hub card is resolved whenever the hub is visible and the host editor content changes,
+    // so the scope summary is fresh on return, after the user adjusts the selection handles, and
+    // when the field's text changes underneath an unchanged range. The editor is observed only
+    // while the hub is shown: active states never carry a live content subscription and show the
+    // session's own snapshot. Provider readiness reads the Keystore-backed secret stores, never on
+    // the typing thread.
     val editorInstance by context.editorInstance()
-    val editorContent by editorInstance.activeContentFlow.collectAsState()
-    val hubSelection = if (body == RewritePanelBody.HUB) editorContent.selection else null
+    val hubEditorContent = if (body == RewritePanelBody.HUB) {
+        editorInstance.activeContentFlow.collectAsState().value
+    } else {
+        null
+    }
     var hubCard by remember { mutableStateOf(VoiceRewriteHubCardState()) }
-    LaunchedEffect(availability, body, hubSelection) {
+    LaunchedEffect(availability, body, hubEditorContent) {
         if (body == RewritePanelBody.HUB) {
             hubCard = withContext(Dispatchers.IO) { voiceController.hubCardState() }
         }
@@ -1218,15 +1224,17 @@ private data class RailAction(
 )
 
 /**
- * Fixed action rail. Every action keeps its 48 dp target, the rail never grows into the body, and
- * the accent action, when present, is always the trailing one.
+ * Action rail. Every action keeps its 48 dp target and the accent action, when present, is always
+ * the trailing one. The rail is at least [ActionRailHeight] tall and grows to the tallest label,
+ * so a two-line label at a large font scale is never clipped; the body above yields the space.
  */
 @Composable
 private fun ActionRail(vararg actions: RailAction) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(ActionRailHeight),
+            .heightIn(min = ActionRailHeight)
+            .height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(PanelGap),
     ) {
         actions.forEach { rail ->

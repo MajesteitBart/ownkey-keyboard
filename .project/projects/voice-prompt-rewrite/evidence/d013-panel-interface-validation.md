@@ -8,7 +8,7 @@ dictation inserts its own word boundary.
 
 | Command | Result |
 | --- | --- |
-| `gradlew.bat :app:testDebugUnitTest --console=plain` | 311 passed, 0 failed, 0 skipped |
+| `gradlew.bat :app:testDebugUnitTest --console=plain` | 312 passed, 0 failed, 0 skipped |
 | `gradlew.bat :app:compileDebugKotlin` | success |
 | `gradlew.bat :app:compileReleaseKotlin` | success |
 | `git diff --check` | clean |
@@ -39,5 +39,18 @@ cursor no longer receives a space before it, the panel waveform can no longer pu
 out of the sheet, the smartbar stops ticking during a voice-rewrite recording, header controls are
 48 dp, rail labels may wrap to two lines, every voice body keeps a label and an exit even without a
 model message, and the accent ink switches to dark on light user accents. The full unit suite was
-rerun afterwards (311 passed). Candidate staleness after replacement was not reproduced in this
+rerun afterwards. Candidate staleness after replacement was not reproduced in this
 pass and remains hidden-only while the panel is open.
+
+## Second review round (2026-09-08)
+
+Pull-request review follow-ups applied and re-verified with the full unit suite (312 passed):
+the smartbar close control cancels an active voice-rewrite session and releases the recorder
+explicitly (controller test asserts the audio lease is gone); the confirmation-bound finish reads
+the session manager's state directly so a stale timer cannot reset a flow that started before the
+derived UI state caught up; every Unicode space separator counts as existing whitespace for
+dictation insertion; the hub scope summary refreshes on any host content change while the hub is
+shown and holds no editor subscription in other states; the action rail grows to fit two-line
+labels at large font scales; the spec's recording placement sections (executive summary, AC-028
+and new AC-028a, recording-instruction section, compact layout, in-scope list, approval notes)
+now match D-013, and the in-panel confirmation dwell is 1.2 seconds in spec, decision, and code.

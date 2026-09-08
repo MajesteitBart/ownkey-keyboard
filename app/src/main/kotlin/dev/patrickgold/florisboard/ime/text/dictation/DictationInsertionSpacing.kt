@@ -85,8 +85,11 @@ object DictationInsertionSpacing {
         return beforeQuote.isSpacing() || beforeQuote in OpensGroup
     }
 
-    /** Java's whitespace test excludes the no-break space, which editors do emit. */
-    private fun Char.isSpacing(): Boolean = isWhitespace() || this == '\u00A0'
+    /**
+     * Java's whitespace test excludes the non-breaking space separators (no-break, figure, and
+     * narrow no-break spaces), which editors do emit; every Unicode space separator counts here.
+     */
+    private fun Char.isSpacing(): Boolean = isWhitespace() || Character.isSpaceChar(code)
 
     private fun Char.isNoSpaceScript(): Boolean =
         isLetter() && Character.UnicodeScript.of(code) in noSpaceScripts
