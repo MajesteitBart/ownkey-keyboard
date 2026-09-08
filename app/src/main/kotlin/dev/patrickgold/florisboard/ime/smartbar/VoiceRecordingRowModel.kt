@@ -19,23 +19,14 @@ package dev.patrickgold.florisboard.ime.smartbar
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionState
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteMessage
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteScopeLabel
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteUiModel
 
 /**
- * Pure presentation contract for the shared first-action-row recording surface.
+ * Pure presentation contract for the smartbar recording row.
  *
- * Ordinary dictation and voice rewrite render the same row with the same control placement; only
- * the status wording and the rewrite target label differ. Deriving it from one immutable state means
- * the two modes cannot disagree about recording, processing, or error.
+ * Ordinary dictation is the row's only owner. Voice rewrite presents its own recording, pause, and
+ * processing inside the rewrite panel, so the row never has to decide which mode a control belongs
+ * to and rewrite controls can never be dispatched to dictation.
  */
-enum class VoiceRecordingMode {
-    DICTATION,
-    VOICE_REWRITE,
-}
-
 enum class VoiceRecordingPhase {
     RECORDING,
     PAUSED,
@@ -44,21 +35,14 @@ enum class VoiceRecordingPhase {
 
 enum class VoiceRecordingStatus {
     LISTENING,
-    SPEAK_AN_EDIT,
     PAUSED,
     PROCESSING,
-    UNDERSTANDING_INSTRUCTION,
-    REWRITING,
 }
 
 data class VoiceRecordingRowState(
-    val mode: VoiceRecordingMode,
     val phase: VoiceRecordingPhase,
     val status: VoiceRecordingStatus,
     val elapsedMs: Long,
-    val targetScope: VoiceRewriteScopeLabel? = null,
-    /** Non-null once the recording cap is close enough that the remaining time becomes visible. */
-    val remainingSeconds: Int? = null,
 ) {
     val isCapturing: Boolean
         get() = phase == VoiceRecordingPhase.RECORDING || phase == VoiceRecordingPhase.PAUSED
@@ -106,89 +90,31 @@ object RecordingRowLayoutPolicy {
     }
 }
 
-const val VOICE_RECORDING_MAX_DURATION_MS = 30_000L
-const val VOICE_RECORDING_REMAINING_VISIBLE_AFTER_MS = 25_000L
-
 /**
- * Derives the shared row from the single audio session plus the voice-rewrite surface.
+ * Derives the dictation row from the single audio session.
  *
- * The active audio session is authoritative while the recorder is held. Voice rewrite keeps the row
- * afterwards for its transcribing and rewriting states so the trailing action stays in its
- * processing treatment instead of snapping back to an idle mic mid-flow.
+ * A session held by voice rewrite yields no row: that session is presented by the rewrite panel,
+ * which is always open while it runs. The row therefore appears only for ordinary dictation and
+ * disappears the moment its lease ends, leaving the mic key's own transient success or error
+ * treatment as the single follow-up signal.
  */
 fun voiceRecordingRowState(
     session: AudioSessionState?,
-    voiceRewrite: VoiceRewriteUiModel,
     nowMs: Long,
-    maxRecordingDurationMs: Long = VOICE_RECORDING_MAX_DURATION_MS,
-    remainingVisibleAfterMs: Long = VOICE_RECORDING_REMAINING_VISIBLE_AFTER_MS,
 ): VoiceRecordingRowState? {
-    if (session != null) {
-        val mode = when (session.owner) {
-            AudioSessionOwner.DICTATION -> VoiceRecordingMode.DICTATION
-            AudioSessionOwner.VOICE_REWRITE -> VoiceRecordingMode.VOICE_REWRITE
-        }
-        val phase = when (session.phase) {
-            AudioSessionPhase.RECORDING -> VoiceRecordingPhase.RECORDING
-            AudioSessionPhase.PAUSED -> VoiceRecordingPhase.PAUSED
-            AudioSessionPhase.PROCESSING -> VoiceRecordingPhase.PROCESSING
-        }
-        val elapsedMs = session.elapsedMs(nowMs)
-        return VoiceRecordingRowState(
-            mode = mode,
-            phase = phase,
-            status = statusFor(mode, phase),
-            elapsedMs = elapsedMs,
-            targetScope = voiceRewrite.scopeLabel.takeIf { mode == VoiceRecordingMode.VOICE_REWRITE },
-            remainingSeconds = remainingSeconds(
-                mode = mode,
-                phase = phase,
-                elapsedMs = elapsedMs,
-                maxRecordingDurationMs = maxRecordingDurationMs,
-                remainingVisibleAfterMs = remainingVisibleAfterMs,
-            ),
-        )
+    if (session == null || session.owner != AudioSessionOwner.DICTATION) return null
+    val phase = when (session.phase) {
+        AudioSessionPhase.RECORDING -> VoiceRecordingPhase.RECORDING
+        AudioSessionPhase.PAUSED -> VoiceRecordingPhase.PAUSED
+        AudioSessionPhase.PROCESSING -> VoiceRecordingPhase.PROCESSING
     }
-    if (voiceRewrite.surface != VoiceRewriteSurface.PROCESSING) return null
     return VoiceRecordingRowState(
-        mode = VoiceRecordingMode.VOICE_REWRITE,
-        phase = VoiceRecordingPhase.PROCESSING,
-        status = when (voiceRewrite.statusMessage) {
-            VoiceRewriteMessage.REWRITING_SELECTED_TEXT -> VoiceRecordingStatus.REWRITING
-            else -> VoiceRecordingStatus.UNDERSTANDING_INSTRUCTION
+        phase = phase,
+        status = when (phase) {
+            VoiceRecordingPhase.RECORDING -> VoiceRecordingStatus.LISTENING
+            VoiceRecordingPhase.PAUSED -> VoiceRecordingStatus.PAUSED
+            VoiceRecordingPhase.PROCESSING -> VoiceRecordingStatus.PROCESSING
         },
-        elapsedMs = 0L,
-        targetScope = voiceRewrite.scopeLabel,
+        elapsedMs = session.elapsedMs(nowMs),
     )
-}
-
-private fun statusFor(mode: VoiceRecordingMode, phase: VoiceRecordingPhase): VoiceRecordingStatus =
-    when (phase) {
-        VoiceRecordingPhase.RECORDING -> when (mode) {
-            VoiceRecordingMode.DICTATION -> VoiceRecordingStatus.LISTENING
-            VoiceRecordingMode.VOICE_REWRITE -> VoiceRecordingStatus.SPEAK_AN_EDIT
-        }
-        VoiceRecordingPhase.PAUSED -> VoiceRecordingStatus.PAUSED
-        VoiceRecordingPhase.PROCESSING -> when (mode) {
-            VoiceRecordingMode.DICTATION -> VoiceRecordingStatus.PROCESSING
-            VoiceRecordingMode.VOICE_REWRITE -> VoiceRecordingStatus.UNDERSTANDING_INSTRUCTION
-        }
-    }
-
-/**
- * Only the voice instruction is capped, so only it counts down. Ordinary dictation keeps its
- * existing open-ended recording behaviour and must not be shown a deadline it does not enforce.
- */
-private fun remainingSeconds(
-    mode: VoiceRecordingMode,
-    phase: VoiceRecordingPhase,
-    elapsedMs: Long,
-    maxRecordingDurationMs: Long,
-    remainingVisibleAfterMs: Long,
-): Int? {
-    if (mode != VoiceRecordingMode.VOICE_REWRITE) return null
-    if (phase !in setOf(VoiceRecordingPhase.RECORDING, VoiceRecordingPhase.PAUSED)) return null
-    if (elapsedMs < remainingVisibleAfterMs) return null
-    val remainingMs = (maxRecordingDurationMs - elapsedMs).coerceAtLeast(0L)
-    return ((remainingMs + 999L) / 1_000L).toInt()
 }

@@ -141,7 +141,7 @@ class VoiceRewriteSessionManager(
     private val rewriteOperation: VoiceRewriteOperation = VoiceRewriteOperation { _, _ ->
         Result.failure(IllegalStateException("Voice rewrite operation is not configured"))
     },
-    private val maxRecordingDurationMs: Long = 30_000L,
+    private val maxRecordingDurationMs: Long = VOICE_REWRITE_MAX_RECORDING_MS,
     private val nowMs: () -> Long = { System.currentTimeMillis() },
 ) {
     private val _state = MutableStateFlow(VoiceRewriteSessionState())

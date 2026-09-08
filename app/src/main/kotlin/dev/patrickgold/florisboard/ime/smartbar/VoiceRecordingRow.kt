@@ -64,12 +64,10 @@ import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import dev.patrickgold.florisboard.ime.text.dictation.AudioLevelHistoryState
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteTargetScope
-import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.stringRes
 import java.util.Locale
 
-/** Callbacks the shared row needs; the smartbar binds them to the mode that owns the recorder. */
+/** Callbacks for the dictation row; the smartbar binds them to the dictation manager. */
 interface VoiceRecordingRowActions {
     fun onPauseOrResume()
     fun onCancel()
@@ -77,11 +75,12 @@ interface VoiceRecordingRowActions {
 }
 
 /**
- * Center content of the shared recording row.
+ * Center content of the dictation recording row.
  *
  * From leading to trailing edge it carries the active dot and elapsed timer, the flexible centred
- * measured-amplitude waveform, then pause/resume and cancel. The waveform owns audio feedback; the
- * trailing stop action lives in the sticky slot and never renders bars.
+ * measured-amplitude waveform, then pause/resume and cancel. While transcribing it shows the single
+ * processing indicator with its label; cancel then lives in the trailing action slot, so the row
+ * never shows two spinners or two cancel controls.
  */
 @Composable
 fun VoiceRecordingRowContent(
@@ -96,11 +95,8 @@ fun VoiceRecordingRowContent(
         val compact = availableWidth < 320.dp
 
         if (state.phase == VoiceRecordingPhase.PROCESSING) {
-            // The meter is replaced by labelled progress, and cancel stays available in the row
-            // because the trailing action is no longer a primary control while processing.
             ProcessingStatus(
                 state = state,
-                actions = actions,
                 modifier = Modifier
                     .fillMaxSize()
                     .widthIn(max = RecordingRowLayoutPolicy.MaxClusterWidthDp.dp)
@@ -118,8 +114,8 @@ fun VoiceRecordingRowContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp),
         ) {
-            // The status and target scope are announced once per state change. They are never
-            // merged into the timer, whose description changes on every tick.
+            // The status is announced once per state change. It is never merged into the timer,
+            // whose description changes on every tick.
             VoiceRecordingStatusAnnouncement(state)
             RecordingElapsed(
                 state = state,
@@ -127,9 +123,15 @@ fun VoiceRecordingRowContent(
             )
             SmartbarDivider()
             if (availableWidth >= 420.dp) {
-                VoiceRecordingRowStatus(
-                    state = state,
-                    modifier = Modifier.widthIn(max = 220.dp),
+                Text(
+                    text = state.status.label(),
+                    modifier = Modifier
+                        .widthIn(max = 220.dp)
+                        .clearAndSetSemantics { },
+                    color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 SmartbarDivider()
             }
@@ -146,11 +148,13 @@ fun VoiceRecordingRowContent(
                 size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
                 iconSize = 20.dp,
                 onClick = actions::onPauseOrResume,
-                contentDescription = if (state.phase == VoiceRecordingPhase.PAUSED) {
-                    state.resumeContentDescription()
-                } else {
-                    state.pauseContentDescription()
-                },
+                contentDescription = stringRes(
+                    if (state.phase == VoiceRecordingPhase.PAUSED) {
+                        R.string.voice_recording__resume_dictation
+                    } else {
+                        R.string.voice_recording__pause_dictation
+                    },
+                ),
             ) {
                 Icon(
                     imageVector = if (state.phase == VoiceRecordingPhase.PAUSED) {
@@ -166,7 +170,7 @@ fun VoiceRecordingRowContent(
                 size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
                 iconSize = 19.dp,
                 onClick = actions::onCancel,
-                contentDescription = state.cancelContentDescription(),
+                contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
@@ -179,9 +183,10 @@ fun VoiceRecordingRowContent(
 }
 
 /**
- * Trailing action in the sticky dictation-key slot. While recording or paused it is an orange
- * `Stop recording` button with a solid square; during processing it shows the existing progress
- * treatment and stops being a primary action, because cancel lives in the row instead.
+ * Trailing action in the dictation-key slot. While recording or paused it is the orange
+ * `Stop and transcribe` button with a solid square. While transcribing the slot holds the neutral
+ * cancel action: the row already carries the one processing spinner, so the slot must not add a
+ * second one.
  */
 @Composable
 fun VoiceRecordingStickyAction(
@@ -200,15 +205,18 @@ fun VoiceRecordingStickyAction(
             56.dp,
         )
         if (state.phase == VoiceRecordingPhase.PROCESSING) {
-            Box(
-                modifier = Modifier.size(buttonSize),
-                contentAlignment = Alignment.Center,
+            CircleControlButton(
+                size = buttonSize,
+                iconSize = 20.dp,
+                background = OwnkeyBrand.Glass.Key,
+                border = OwnkeyBrand.Bone.copy(alpha = 0.12f),
+                onClick = actions::onCancel,
+                contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(buttonSize * 0.52f),
-                    strokeWidth = 2.5.dp,
-                    color = OwnkeyBrand.SignalOrange,
-                    trackColor = OwnkeyBrand.Bone.copy(alpha = 0.08f),
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
                 )
             }
         } else {
@@ -222,7 +230,7 @@ fun VoiceRecordingStickyAction(
                 },
                 border = OwnkeyBrand.SignalAmber.copy(alpha = 0.34f),
                 onClick = actions::onStop,
-                contentDescription = state.stopContentDescription(),
+                contentDescription = stringRes(R.string.voice_recording__stop_dictation),
             ) {
                 Icon(
                     imageVector = Icons.Default.Stop,
@@ -240,9 +248,7 @@ private fun RecordingElapsed(
     modifier: Modifier = Modifier,
 ) {
     val paused = state.phase == VoiceRecordingPhase.PAUSED
-    val elapsedText = state.remainingSeconds
-        ?.let { remaining -> "-${remaining}s" }
-        ?: state.elapsedMs.formatElapsedMs()
+    val elapsedText = formatRecordingElapsed(state.elapsedMs)
     val elapsedDescription = stringRes(R.string.voice_recording__elapsed_label, "time" to elapsedText)
     Row(
         modifier = modifier.semantics {
@@ -261,7 +267,7 @@ private fun RecordingElapsed(
         )
         Text(
             text = elapsedText,
-            color = if (state.remainingSeconds != null) OwnkeyBrand.WarningYellow else OwnkeyBrand.Ash,
+            color = OwnkeyBrand.Ash,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -269,14 +275,14 @@ private fun RecordingElapsed(
     }
 }
 
+/** The single processing indicator for dictation: one spinner, one label, no duplicate control. */
 @Composable
 private fun ProcessingStatus(
     state: VoiceRecordingRowState,
-    actions: VoiceRecordingRowActions,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.padding(horizontal = 8.dp),
+        modifier = modifier.padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -296,49 +302,18 @@ private fun ProcessingStatus(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        RecordingIconButton(
-            size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
-            iconSize = 19.dp,
-            onClick = actions::onCancel,
-            contentDescription = state.cancelContentDescription(),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = null,
-                tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
-            )
-        }
     }
-}
-
-/**
- * Visible status text and target scope for the active row. Shown only where the row has room for it
- * without pushing an interactive control below its 48 dp target.
- */
-@Composable
-private fun VoiceRecordingRowStatus(
-    state: VoiceRecordingRowState,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = state.statusAndScopeText(),
-        modifier = modifier.clearAndSetSemantics { },
-        color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
-        fontSize = 13.sp,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
 }
 
 /**
  * Screen-reader equivalent of the waveform, which itself stays out of the accessibility tree.
  *
- * It carries the mode status and rewrite target scope as a polite live region so every state change
- * is announced exactly once, while elapsed time and per-sample level updates stay silent.
+ * It carries the dictation status as a polite live region so every state change is announced
+ * exactly once, while elapsed time and per-sample level updates stay silent.
  */
 @Composable
 private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
-    val announcement = state.statusAndScopeText()
+    val announcement = state.status.label()
     Box(
         modifier = Modifier
             .size(1.dp)
@@ -350,70 +325,11 @@ private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
 }
 
 @Composable
-private fun VoiceRecordingRowState.statusAndScopeText(): String {
-    val statusText = status.label()
-    val scopeText = targetScope?.let { scope ->
-        when (scope.scope) {
-            VoiceRewriteTargetScope.SELECTION -> pluralsRes(
-                R.plurals.voice_rewrite__scope_selection,
-                scope.characterCount,
-                "count" to scope.characterCount,
-            )
-            VoiceRewriteTargetScope.WHOLE_FIELD -> pluralsRes(
-                R.plurals.voice_rewrite__scope_whole_field,
-                scope.characterCount,
-                "count" to scope.characterCount,
-            )
-        }
-    }
-    return if (scopeText == null) statusText else "$statusText · $scopeText"
-}
-
-@Composable
 private fun VoiceRecordingStatus.label(): String = stringRes(
     when (this) {
         VoiceRecordingStatus.LISTENING -> R.string.voice_rewrite__state_listening
-        VoiceRecordingStatus.SPEAK_AN_EDIT -> R.string.voice_rewrite__state_speak_an_edit
         VoiceRecordingStatus.PAUSED -> R.string.voice_rewrite__state_paused
         VoiceRecordingStatus.PROCESSING -> R.string.voice_recording__processing
-        VoiceRecordingStatus.UNDERSTANDING_INSTRUCTION -> R.string.voice_rewrite__state_understanding
-        VoiceRecordingStatus.REWRITING -> R.string.voice_rewrite__state_rewriting
-    },
-)
-
-@Composable
-private fun VoiceRecordingRowState.pauseContentDescription(): String = stringRes(
-    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
-        R.string.voice_recording__pause_rewrite
-    } else {
-        R.string.voice_recording__pause_dictation
-    },
-)
-
-@Composable
-private fun VoiceRecordingRowState.resumeContentDescription(): String = stringRes(
-    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
-        R.string.voice_recording__resume_rewrite
-    } else {
-        R.string.voice_recording__resume_dictation
-    },
-)
-
-@Composable
-private fun VoiceRecordingRowState.cancelContentDescription(): String = stringRes(
-    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
-        R.string.voice_recording__cancel_rewrite
-    } else {
-        R.string.voice_recording__cancel_dictation
-    },
-)
-
-@Composable
-private fun VoiceRecordingRowState.stopContentDescription(): String = stringRes(
-    if (mode == VoiceRecordingMode.VOICE_REWRITE) {
-        R.string.voice_recording__stop_rewrite
-    } else {
-        R.string.voice_recording__stop_dictation
     },
 )
 
@@ -479,15 +395,19 @@ private fun CircleControlButton(
  *
  * Every bar height is a measured sample; there is no clock-driven animation, no interpolation and
  * no travelling motion, so reduced motion needs no separate rendering path and silence settles at
- * the reducer's baseline. The meter is excluded from the accessibility tree because the row's
- * status text already carries the equivalent information without per-sample chatter.
+ * the reducer's baseline. The meter is excluded from the accessibility tree because the owning
+ * surface's status text already carries the equivalent information without per-sample chatter.
+ *
+ * Shared by the dictation row and the rewrite panel's recording body so both modes show the same
+ * truthful meter without a second recorder or sampler.
  */
 @Composable
-private fun MeasuredLevelWaveform(
+fun MeasuredLevelWaveform(
     levels: List<Float>,
     barCount: Int,
     paused: Boolean,
     modifier: Modifier = Modifier,
+    color: Color = OwnkeyBrand.SignalOrange,
 ) {
     Canvas(
         modifier = modifier
@@ -495,7 +415,6 @@ private fun MeasuredLevelWaveform(
             .clearAndSetSemantics { },
     ) {
         if (levels.isEmpty() || barCount <= 0) return@Canvas
-        val color = OwnkeyBrand.SignalOrange
         val stroke = 3.4.dp.toPx()
         val centerY = size.height / 2f
         val gap = size.width / (barCount + 1)
@@ -525,8 +444,9 @@ private fun SmartbarDivider() {
     )
 }
 
-private fun Long.formatElapsedMs(): String {
-    val totalSeconds = (this / 1_000L).coerceAtLeast(0L)
+/** `mm:ss` for a recording timer; shared by the dictation row and the rewrite panel. */
+fun formatRecordingElapsed(elapsedMs: Long): String {
+    val totalSeconds = (elapsedMs / 1_000L).coerceAtLeast(0L)
     val minutes = totalSeconds / 60L
     val seconds = totalSeconds % 60L
     return String.format(Locale.US, "%02d:%02d", minutes, seconds)

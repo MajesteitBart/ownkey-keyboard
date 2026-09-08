@@ -41,6 +41,7 @@ private class ControllerFixture(
     val selectionReads: MutableList<String>,
     val providerReads: MutableList<String>,
     val settingsOpened: MutableList<String>,
+    val audioSessionCoordinator: AudioSessionCoordinator,
 )
 
 private fun availableSession() = CloudAiEditorSession(
@@ -79,11 +80,12 @@ private fun controllerFixture(
     val selectionReads = mutableListOf<String>()
     val providerReads = mutableListOf<String>()
     val settingsOpened = mutableListOf<String>()
+    val audioSessionCoordinator = AudioSessionCoordinator()
     val manager = VoiceRewriteSessionManager(
         scope = scope,
         availabilityPolicy = policy,
         targetSource = { targetResolution },
-        audioSessionCoordinator = AudioSessionCoordinator(),
+        audioSessionCoordinator = audioSessionCoordinator,
         feedbackController = VoiceActionFeedbackController(scope),
         audioRecorderProvider = { SilentRecorder() },
         audioSessionModeProvider = { AudioSessionMode.MOCK },
@@ -126,7 +128,15 @@ private fun controllerFixture(
         openAiSettingsRoute = { settingsOpened += "ai" },
         openIncognitoSettingRoute = { settingsOpened += "incognito" },
     )
-    return ControllerFixture(controller, sessions, panelVisibility, selectionReads, providerReads, settingsOpened)
+    return ControllerFixture(
+        controller,
+        sessions,
+        panelVisibility,
+        selectionReads,
+        providerReads,
+        settingsOpened,
+        audioSessionCoordinator,
+    )
 }
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceRewriteUiControllerTest : FunSpec({
@@ -142,6 +152,30 @@ class VoiceRewriteUiControllerTest : FunSpec({
             card.audioProvider shouldBe VoiceRewriteProviderConfiguration(true, "Mistral")
             card.rewriteProvider shouldBe VoiceRewriteProviderConfiguration(true, "OpenAI")
             card.providersConfigured shouldBe true
+        }
+    }
+
+    test("the live selection count follows the editor without touching provider secrets") {
+        runTest {
+            val fixture = controllerFixture(backgroundScope)
+            runCurrent()
+
+            fixture.controller.hubSelectionCharacterCount() shouldBe 184
+            fixture.selectionReads shouldBe listOf("selection")
+            fixture.providerReads.isEmpty() shouldBe true
+        }
+    }
+
+    test("the live selection count is never read while cloud AI is unavailable") {
+        runTest {
+            val fixture = controllerFixture(
+                backgroundScope,
+                session = availableSession().copy(isIncognito = true),
+            )
+            runCurrent()
+
+            fixture.controller.hubSelectionCharacterCount().shouldBeNull()
+            fixture.selectionReads.isEmpty() shouldBe true
         }
     }
 
@@ -309,6 +343,46 @@ class VoiceRewriteUiControllerTest : FunSpec({
                 fixture.panelVisibility.last() shouldBe false
                 fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.HUB
             }
+        }
+    }
+
+    test("a confirmation-bound finish is ignored once the surface it was started for is gone") {
+        runTest {
+            val fixture = controllerFixture(backgroundScope, targetResolution = resolvedTarget())
+            runCurrent()
+            fixture.controller.begin(VoiceRewriteEntryOrigin.REWRITE_HUB)
+            runCurrent()
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+
+            // A stale success timer from an earlier session must not close or reset this one.
+            val staleConfirmationId = fixture.controller.uiState.value.announcementId - 1
+            fixture.controller.finishAfterReplacement(staleConfirmationId) shouldBe false
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+            fixture.panelVisibility shouldBe listOf(true)
+
+            // Nor may a matching id finish anything but the success confirmation itself.
+            val currentId = fixture.controller.uiState.value.announcementId
+            fixture.controller.finishAfterReplacement(currentId) shouldBe false
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+        }
+    }
+
+    test("closing the panel from the smartbar cancels an active recording and releases the recorder") {
+        runTest {
+            val fixture = controllerFixture(backgroundScope, targetResolution = resolvedTarget())
+            runCurrent()
+            fixture.controller.begin(VoiceRewriteEntryOrigin.REWRITE_HUB)
+            runCurrent()
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+            (fixture.audioSessionCoordinator.state.value != null) shouldBe true
+
+            fixture.controller.dismissPanel()
+            runCurrent()
+
+            // The microphone lease is gone before the panel has even left the composition.
+            fixture.audioSessionCoordinator.state.value.shouldBeNull()
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.HUB
+            fixture.panelVisibility shouldBe listOf(true, false)
         }
     }
 

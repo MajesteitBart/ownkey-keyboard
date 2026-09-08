@@ -110,7 +110,18 @@ class VoxtralDictationManager(
         languageHintProvider = { null },
     )
     private val transcriptionOnlyOperation = TranscriptionOnlyOperation()
-    private val ordinaryDictationCommitOperation = OrdinaryDictationCommitOperation(editorInstance::commitText)
+    private val ordinaryDictationCommitOperation = OrdinaryDictationCommitOperation { transcript ->
+        // Dictation supplies its own word boundary against the text around the cursor, so a phrase
+        // dictated after `keyboard.` is inserted as ` When I…` rather than fused to the full stop.
+        val content = editorInstance.activeContent
+        editorInstance.commitText(
+            DictationInsertionSpacing.join(
+                transcript = transcript,
+                textBefore = content.textBeforeSelection,
+                textAfter = content.textAfterSelection,
+            ),
+        )
+    }
 
     private var activeSessionMode: RoutingMode? = null
     private var activeLease: AudioSessionLease? = null
@@ -205,10 +216,15 @@ class VoxtralDictationManager(
         syncRecordingSession(lease)
         _stateFlow.value = DictationState.LISTENING
 
-        if (mode == RoutingMode.MOCK_INTERNAL) {
-            appContext.showShortToastSync("Dictation started (mock mode). Tap mic again to insert text.")
-        } else {
-            appContext.showShortToastSync("Dictation started. Tap mic again to transcribe.")
+        // The smartbar recording row owns the visible `Listening` state, its timer, and the stop
+        // and cancel controls. A start toast would only duplicate it, so it remains solely as the
+        // fallback for keyboards whose smartbar is switched off and therefore have no row.
+        if (!prefs.smartbar.enabled.get()) {
+            if (mode == RoutingMode.MOCK_INTERNAL) {
+                appContext.showShortToastSync("Dictation started (mock mode). Tap mic again to insert text.")
+            } else {
+                appContext.showShortToastSync("Dictation started. Tap mic again to transcribe.")
+            }
         }
     }
 

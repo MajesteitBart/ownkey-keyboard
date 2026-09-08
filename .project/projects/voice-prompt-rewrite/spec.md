@@ -4,7 +4,7 @@ slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 status: active
 created: 2026-08-04T08:33:57Z
-updated: 2026-08-06T06:25:15Z
+updated: 2026-09-08T22:37:04Z
 outcome: At least 90% of first-time usability-test participants can rewrite selected or visibly Select-All-targeted text by long-pressing the dictation key and speaking an instruction without leaving the host app, while normal dictation and ordinary typing responsiveness remain unchanged.
 uncertainty: medium
 probe_required: true
@@ -21,7 +21,7 @@ The feature adapts the strongest parts of Ownkey Windows: capture the selected t
 
 The existing Rewrite panel retains a visible `Tell Ownkey what to change` action as the discoverable and TalkBack-friendly route to the same flow. Preset rewrites remain available and unchanged. Long-press is an accelerator, not the only way to find or operate voice rewrite, and it never changes the meaning of a normal mic tap.
 
-Ordinary dictation and voice rewrite share one recording-control language. While either mode records, the first action row carries a real microphone-level waveform in its center, followed by pause/resume and cancel controls; the existing mic position becomes an orange stop-recording button. The button retains its useful idle, triggered/recording, processing, success, and error treatments, but it no longer impersonates an audio meter. Error treatment is transient and returns to idle after approximately five seconds.
+Ordinary dictation and voice rewrite share one recording-control language across two surfaces. While ordinary dictation records, the first action row carries a real microphone-level waveform in its center, followed by pause/resume and cancel controls; the existing mic position becomes an orange stop-recording button. Voice rewrite records inside the AI rewrite panel, where the same measured waveform and the same cancel, pause/resume, and stop meanings sit in the panel body instead of the smartbar. The dictation button retains its useful idle, triggered/recording, processing, success, and error treatments, but it no longer impersonates an audio meter. Error treatment is transient and returns to idle after approximately five seconds.
 
 The network path is explicit and provider-controlled:
 
@@ -133,10 +133,11 @@ Metrics are gathered through internal tests and consented usability sessions. Th
 - AC-025: Given an expanded tablet or split-keyboard layout, when voice recording, processing, or result review is shown, then the content is centered within its maximum width and primary controls are not pinned to opposite screen edges.
 - AC-026: Given TalkBack or reduced motion is enabled, when the flow changes state, then semantic status text is announced, decorative motion is removed, measured-level feedback follows its reduced-motion contract, and every icon-only control has a specific accessible label.
 - AC-027: Given a non-incognito session and the user selects a preset instead of the voice action, when rewriting completes, then the existing preset behavior and saved prompt ordering remain functionally unchanged.
-- AC-028: Given ordinary dictation or voice rewrite enters active recording, when the first action row renders, then it shows elapsed time, a centered live waveform, pause/resume and cancel controls immediately to the waveform's right, and an orange stop button in the normal dictation-key position.
+- AC-028: Given ordinary dictation enters active recording, when the first action row renders, then it shows elapsed time, a centered live waveform, pause/resume and cancel controls immediately to the waveform's right, and an orange stop button in the normal dictation-key position.
+- AC-028a: Given voice rewrite enters active recording, when the rewrite panel body renders, then it shows the status label, the resolved scope, elapsed time, a centered live waveform, and Cancel, Pause-or-Resume, and Stop controls with at least 48 dp touch targets, and the smartbar shows no recording row.
 - AC-029: Given the recorder reports silence, quiet speech, and normal speech, when audio samples update, then the waveform settles near its baseline for silence and visibly follows the recent measured amplitude for speech without using a looping, random, or prerecorded pattern.
 - AC-030: Given recording is active, when the user pauses, then capture and elapsed time pause, the waveform settles to a dim low baseline, and the pause control becomes `Resume`; when the user cancels, captured audio is discarded; when the user taps the stop button, capture ends and processing starts exactly once.
-- AC-031: Given recording has stopped and transcription is pending, when the action row changes state, then the waveform is replaced by a labelled processing status, the mic button shows its existing processing treatment rather than a stop action, and cancel remains available outside the button.
+- AC-031: Given ordinary dictation has stopped and transcription is pending, when the action row changes state, then the waveform is replaced by one spinner with a labelled processing status, the dictation-key slot holds a neutral cancel action instead of a second processing indicator, and no other processing indicator is shown. For voice rewrite the panel body carries the single spinner and stage label with cancel in its rail, and the smartbar shows no processing state (D-013).
 - AC-032: Given dictation completes successfully, when the explicit success outcome is emitted, then the mic button shows its green success treatment for approximately 900 ms before returning to idle.
 - AC-033: Given recording, transcription, or insertion fails, when the explicit error outcome is emitted, then the mic button shows its red error treatment, announces the error once, remains available for immediate retry, and automatically returns to idle after approximately five seconds without requiring another tap.
 - AC-034: Given reduced motion is enabled, when recording is active, then the center meter still communicates measured input at a reduced update rate without looping or traveling motion, while all decorative halo and interpolated transition motion is removed.
@@ -262,9 +263,9 @@ Each failure names the missing prerequisite and offers the narrowest recovery. G
 
 Starting voice instruction captures an immutable target snapshot containing the editor session identity, host package, selected text, selection range, and a non-reversible integrity hash. The selected content is not displayed in the keyboard and is not changed.
 
-Voice rewrite and ordinary dictation use the same recording chrome so identical controls never move or change meaning between modes. The keyboard body remains stable; in Rewrite, the options grid stays visible but subdued while recording state is carried by the first action row and a concise mode/scope label.
+Voice rewrite and ordinary dictation use the same recording vocabulary in two surfaces, so identical controls never change meaning between modes. The keyboard body remains stable. Ordinary dictation carries its recording state in the first action row. Voice rewrite carries recording, paused, processing, result, recovery, and success as one state-driven body inside the AI rewrite panel; that body replaces the rewrite hub for the length of the session, so the options grid is neither visible nor subdued underneath. The panel body keeps a concise mode/scope label.
 
-#### First action row while recording
+#### First action row while ordinary dictation records
 
 From leading edge to trailing edge, the row contains:
 
@@ -275,7 +276,19 @@ From leading edge to trailing edge, the row contains:
 5. `Cancel`, which discards the recording; and
 6. the sticky dictation-key position, changed to an orange circular `Stop recording` button with a solid square icon.
 
-The waveform owns audio feedback; the trailing button owns the stop action. No waveform bars appear inside the stop button. Pause/resume and cancel sit immediately to the right of the waveform, retain at least 48 dp touch targets, and use explicit accessible labels. For voice rewrite, the row exposes `Speak your instruction` plus `Selection · <count> characters` or `Whole field · <count> characters` as visible or screen-reader status without displacing the controls. Ordinary dictation uses the same row with `Listening` semantics and no rewrite target label.
+The waveform owns audio feedback; the trailing button owns the stop action. No waveform bars appear inside the stop button. Pause/resume and cancel sit immediately to the right of the waveform, retain at least 48 dp touch targets, and use explicit accessible labels. The row uses `Listening` semantics and carries no rewrite target label. While transcribing, it shows one spinner plus a label and the dictation-key slot holds a neutral `Cancel`.
+
+#### Rewrite panel body while voice rewrite records
+
+The panel body shows, in order:
+
+1. a status label, `Speak your instruction` or `Paused`;
+2. the resolved scope, `Selection · <count> characters` or `Whole field · <count> characters`;
+3. the elapsed timer, including the end-of-cap countdown;
+4. the same measured, visually centered waveform; and
+5. a control rail of `Cancel`, `Pause`/`Resume`, and `Stop`.
+
+Rail controls retain at least 48 dp touch targets and explicit accessible labels. `Stop` is a neutral high-contrast button carrying the solid stop-square glyph rather than the orange dictation treatment; the filled accent is reserved for `Replace` and the replaced confirmation. While the panel owns the session the smartbar renders no recording row: it hides suggestions and the voice key and shows one labelled `Close AI rewrite` control in the key slot.
 
 #### Audio-reactive waveform contract
 
@@ -288,6 +301,8 @@ The waveform owns audio feedback; the trailing button owns the stop action. No w
 - Reduced-motion mode retains the functional level signal at a lower update rate with no scrolling/interpolation, halo, or decorative looping motion.
 
 #### Dictation-button state contract
+
+This table governs the dictation key during ordinary dictation. Voice rewrite does not repurpose that key; its recording, pause, cancel, and stop controls live in the panel rail described above.
 
 | State | Button treatment | Tap action | Duration / exit |
 | --- | --- | --- | --- |
@@ -312,17 +327,18 @@ Long-press is the primary accelerator; the visible voice card and accessibility 
 
 ### 4. Understanding and Rewriting
 
-After `Stop`, controls transition in place instead of resizing the keyboard.
+After `Stop`, the panel body transitions in place instead of resizing the keyboard. The dictation key is not involved: the smartbar still shows only the `Close AI rewrite` control while the panel owns the session, so the panel body is the single processing indicator.
 
 1. `Understanding instruction…`
-   - The center waveform is replaced by labelled processing status; it is not repurposed into fake audio motion.
-   - The dictation-key button uses its existing processing treatment.
-   - `Cancel` remains available.
+   - The waveform is replaced by one spinner and the stage label; it is not repurposed into fake audio motion.
+   - `Cancel` is the only rail action.
    - Only the audio request is active.
 2. `Rewriting selected text…`
-   - The recognized instruction appears in a compact quoted chip, truncated to two lines visually but available in full to TalkBack.
+   - The recognized instruction appears under a `Heard` label, truncated to two lines visually, expandable on tap, and available in full to TalkBack.
    - The second network request sends the captured selection and instruction to the configured rewrite endpoint.
    - `Cancel` remains available and aborts the pending request where supported.
+
+Ordinary dictation keeps its own single indicator in the smartbar row: the waveform is replaced by one spinner and a `Processing` label, and the dictation-key slot holds a neutral `Cancel` instead of a second spinner (AC-031, FR-048).
 
 The transcription is data for the rewrite pipeline; it is never committed into the host editor. A cancelled or failed rewrite may keep the transcript only in memory for the current valid editor session so `Try again` does not require a second audio request.
 
@@ -338,7 +354,7 @@ The result uses the existing sheet-over-grid visual language, with voice-specifi
 
 The original selection remains unchanged until `Replace` is tapped. At that moment Ownkey revalidates editor identity, package, selection range, and original target content. If all match, it selects the stored range and commits the result as one replacement operation. If any check fails, replacement is blocked and the result sheet changes to a safe fallback with `Copy result` and `Close`.
 
-After successful replacement, show `Text replaced` with a check for approximately 900 ms, close the rewrite panel, and return to the normal keyboard. The existing keyboard/host undo behavior remains available. Under D-011, the first delivery creates no bespoke persistent undo chip or stored recovery payload.
+After successful replacement, show `Text replaced` with a check for approximately 1.2 seconds, close the rewrite panel, and return to the normal keyboard. The existing keyboard/host undo behavior remains available. Under D-011, the first delivery creates no bespoke persistent undo chip or stored recovery payload.
 
 ### 6. Error and Recovery Matrix
 
@@ -370,8 +386,9 @@ The shared mic button's red error treatment is a transient acknowledgement, not 
 - Keep the existing keyboard and smartbar height; opening Rewrite must not move the host app more than it does today.
 - Pin the voice card at the top of the keyboard-body panel.
 - Render presets in two columns below it with vertical scrolling and a minimum 48 dp card touch target.
-- During recording, use the first action row for timer, center waveform, pause/resume, cancel, and the trailing stop button. The center meter shrinks before controls lose their 48 dp targets; on the narrowest supported width it may reduce its bar count, but it must not move back into the stop button.
-- During processing, replace the center waveform with a short labelled status, retain a separate cancel action, and keep the mic button's processing treatment.
+- During ordinary dictation recording, use the first action row for timer, center waveform, pause/resume, cancel, and the trailing stop button. The center meter shrinks before controls lose their 48 dp targets; on the narrowest supported width it may reduce its bar count, but it must not move back into the stop button.
+- The voice-rewrite recording body scrolls or shrinks its waveform before the control rail loses its 48 dp targets, and it never pushes the rail out of the panel.
+- During ordinary dictation processing, replace the center waveform with one spinner and a short labelled status and put the cancel action in the dictation-key slot; never show a second spinner. During voice-rewrite processing the panel body carries the single spinner, stage label, and cancel.
 - During result review, keep the action rail fixed; only the result body scrolls.
 - On short landscape heights, supporting copy may collapse to one line, but the title, provider state, and primary action remain visible.
 
@@ -418,7 +435,7 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 - Long-press on the normal dictation key as the direct voice-rewrite accelerator, with tap behavior preserved for dictation.
 - Platform-configured long-press timing, gesture disambiguation, haptic/state feedback, a one-time coach mark, and an explicit TalkBack action.
 - Existing-selection capture or visible Select All when no selection exists, followed by target integrity verification.
-- A shared ordinary-dictation/voice-rewrite recording row with elapsed time, a centered measured-amplitude waveform, pause/resume and cancel to its right, a trailing stop button, and a 30-second cap.
+- A dictation recording row with elapsed time, a centered measured-amplitude waveform, pause/resume and cancel to its right, and a trailing stop button, plus an in-panel voice-rewrite recording body; both share the measured waveform and the 30-second cap.
 - Preservation of the mic button's idle, triggered/recording, processing, success, and error visual language, with explicit terminal outcomes and automatic error-to-idle reset after approximately five seconds.
 - Transcription through the configured Ownkey dictation provider without inserting the transcript.
 - Rewrite through the configured rewrite provider using the captured text plus recognized instruction.
@@ -507,13 +524,13 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 
 ### Shared Recording Feedback
 
-- FR-042: Ordinary dictation and voice rewrite use one shared first-action-row recording composition and preserve mode-specific labels without changing control placement or meaning.
+- FR-042: Ordinary dictation uses the first-action-row recording composition. Voice rewrite presents its recording, pause, and processing inside the AI rewrite panel with the same measured waveform, control meanings, and 48 dp targets, so each workflow has one visible owner (refined by D-013 on 2026-09-08).
 - FR-043: The active row orders elapsed time, a flexible centered waveform, pause/resume, cancel, and the trailing dictation-key action; interactive controls retain at least 48 dp touch targets at every supported width.
 - FR-044: While recording or paused, the dictation-key action is an orange `Stop recording` control with a solid stop-square icon and contains no waveform animation.
 - FR-045: The active waveform is driven exclusively by measured recorder amplitude and must not use an autonomous animation, random source, or prerecorded data to imply input.
 - FR-046: Waveform rendering maintains a bounded recent-level history, applies noise-floor and perceptual/smoothing transforms, settles to a minimum baseline during silence, and avoids full-scale clipping during ordinary speech.
 - FR-047: Pausing stops level sampling, excludes paused time from elapsed time, changes the control to `Resume`, and presents a dim low baseline; mock/no-input capture also remains at the baseline.
-- FR-048: Processing replaces the center level meter with labelled progress, retains a separate cancel action, and changes the dictation-key button from stop to its existing processing treatment.
+- FR-048: Ordinary dictation processing replaces the center level meter with one spinner and labelled progress and changes the dictation-key slot from stop to a neutral cancel action, so exactly one processing indicator is visible. Voice-rewrite processing shows its single spinner, stage label, and cancel inside the panel body; the smartbar shows no processing state (refined by D-013 on 2026-09-08).
 - FR-049: A successful terminal outcome is explicit, shows the existing green check treatment for approximately 900 ms, and then returns the button to idle.
 - FR-050: An error terminal outcome is explicit, shows the existing red treatment for approximately five seconds, announces the specific failure once, permits immediate retry, and then returns the button to idle automatically.
 - FR-051: Transient success/error reset jobs are session-scoped; a new action, newer outcome, keyboard hide, or component disposal cancels the older reset so it cannot overwrite newer state.
@@ -653,7 +670,7 @@ Product direction recorded after research review:
 - Activation follows Android's configured long-press timing rather than a fixed three-second delay, and recording continues after finger release.
 - When no text is selected, Ownkey visibly invokes Select All and confirms the whole-field target before microphone or network work.
 - The pinned Rewrite-panel voice action remains as the discoverable and accessibility route to the same flow.
-- The first action row is the approved recording surface for both dictation and voice rewrite: measured waveform in the center, pause/resume and cancel to its right, and a stop square in the trailing mic button.
+- The first action row is the approved recording surface for ordinary dictation: measured waveform in the center, pause/resume and cancel to its right, and a stop square in the trailing mic button. This approval was refined on 2026-09-08 by D-013, which moved voice-rewrite recording into the AI rewrite panel body while keeping the same waveform, control meanings, and 48 dp targets.
 - The existing button state language is retained, with success shown briefly and error automatically returning to idle after approximately five seconds.
 
 T-018 must verify the remaining physical-device, editor, TalkBack, and rendered-layout evidence before release; those checks are not removed by accepting simulated evidence at the M0 architecture gate.
@@ -724,5 +741,6 @@ None of the remaining items blocks M0 activation. Editor, gesture, visual, micro
 - Updated on 2026-08-04 after product review to split transcription language behavior by path (D-009): dictation defaults to the active keyboard subtype language with `Auto` kept explicitly selectable, while rewrite instructions send no hint. The spacebar marks the recognition language during dictation only (D-010). This changes ordinary dictation request construction, so the out-of-scope carve-out and settings surface were reconciled in the same pass.
 - Updated on 2026-08-04 after product review to fix the output-language rule (D-008): the result stays in the source text's language unless the instruction explicitly requests another, closing the previously untraceable US-004.
 - Updated on 2026-08-04 after product review to disable every cloud AI action in incognito mode (D-007), closing NC-001. This deliberately changes ordinary dictation and preset rewrite availability, so their scope carve-outs, AC-027, and the incognito copy were reconciled in the same pass.
-- Product direction is approved for the long-press accelerator, visible Select All, retained voice card, shared recording row, real input-driven waveform, stop-square action, transient terminal feedback, preview-before-replace, the incognito AI gate, and D-011's first-release deferral of bespoke persistent undo.
+- Product direction is approved for the long-press accelerator, visible Select All, retained voice card, the dictation recording row and in-panel voice-rewrite recording (D-013), real input-driven waveform, stop-square action, transient terminal feedback, preview-before-replace, the incognito AI gate, and D-011's first-release deferral of bespoke persistent undo.
+- Updated on 2026-09-08 after the dictation and rewrite interface review (D-013): voice rewrite recording, processing, review, recovery, and success render as one state-driven body inside the AI rewrite panel; the smartbar recording row is dictation-only and the smartbar hides suggestions while the panel is open. FR-042 was refined in the same pass.
 - T-001 completed on 2026-08-04 with nine passing contract tests and three API 35 emulator editor surfaces. Product-owner authorization accepts deterministic simulated-device coverage for the M0 activation gate while preserving real-device, real-microphone, and TalkBack checks in T-018.

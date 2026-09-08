@@ -61,12 +61,12 @@ import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsRow
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.ToggleOverflowPanelAction
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.audioLevelHistorySampler
 import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.florisboard.nlpManager
 import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
@@ -155,61 +155,49 @@ private fun SmartbarMainRow(
     val isVoiceStickyAction = stickyAction is QuickAction.InsertKey &&
         stickyAction.data.code == KeyCode.VOICE_INPUT
 
-    // One audio session and one voice-rewrite surface decide the shared recording row, so ordinary
-    // dictation and voice rewrite can never render two competing sets of controls.
+    // The single audio session decides the dictation recording row. Voice rewrite never renders
+    // here: the rewrite panel owns its recording, so the row's controls always mean dictation.
     val audioSessionCoordinator by context.audioSessionCoordinator()
     val audioLevelHistorySampler by context.audioLevelHistorySampler()
-    val voiceRewriteUiController by context.voiceRewriteUiController()
     val voxtralDictationManager by context.voxtralDictationManager()
     val audioSession by audioSessionCoordinator.state.collectAsState()
-    val voiceRewriteModel by voiceRewriteUiController.uiState.collectAsState()
     val audioLevels by audioLevelHistorySampler.state.collectAsState()
     var recordingNowMs by remember { mutableLongStateOf(0L) }
     val recordingRowState = voiceRecordingRowState(
         session = audioSession,
-        voiceRewrite = voiceRewriteModel,
         nowMs = recordingNowMs,
     )
     LaunchedEffect(audioSession?.sessionId, audioSession?.phase) {
         recordingNowMs = System.currentTimeMillis()
-        while (audioSession?.phase == AudioSessionPhase.RECORDING) {
+        // Only a dictation session drives this row's timer; the rewrite panel keeps its own clock,
+        // so a voice-rewrite recording must not recompose the smartbar four times a second.
+        while (
+            audioSession?.owner == AudioSessionOwner.DICTATION &&
+            audioSession?.phase == AudioSessionPhase.RECORDING
+        ) {
             recordingNowMs = System.currentTimeMillis()
             delay(250L)
         }
     }
-    val recordingActions = remember(voxtralDictationManager, voiceRewriteUiController) {
+    val recordingActions = remember(voxtralDictationManager) {
         object : VoiceRecordingRowActions {
-            private fun isVoiceRewrite() =
-                audioSessionCoordinator.state.value?.owner == AudioSessionOwner.VOICE_REWRITE ||
-                    voiceRewriteUiController.uiState.value.ownsRecordingRow
+            override fun onPauseOrResume() = voxtralDictationManager.togglePauseResume()
+            override fun onCancel() = voxtralDictationManager.cancelDictation()
+            override fun onStop() = voxtralDictationManager.stopAndInsertTranscript()
+        }
+    }
 
-            override fun onPauseOrResume() {
-                if (!isVoiceRewrite()) {
-                    voxtralDictationManager.togglePauseResume()
-                    return
-                }
-                if (voiceRewriteUiController.uiState.value.surface == VoiceRewriteSurface.PAUSED) {
-                    voiceRewriteUiController.resumeRecording()
-                } else {
-                    voiceRewriteUiController.pauseRecording()
-                }
-            }
-
-            override fun onCancel() {
-                if (isVoiceRewrite()) {
-                    voiceRewriteUiController.cancel()
-                } else {
-                    voxtralDictationManager.cancelDictation()
-                }
-            }
-
-            override fun onStop() {
-                if (isVoiceRewrite()) {
-                    voiceRewriteUiController.stopRecording()
-                } else {
-                    voxtralDictationManager.stopAndInsertTranscript()
-                }
-            }
+    // While the AI rewrite panel is open the panel owns the editor's next action: suggestions and
+    // the voice key are hidden, and the key slot holds the panel's single close affordance.
+    // Closing cancels any voice-rewrite session and the preset flow explicitly, so no recorder or
+    // provider job can outlive the panel even for the frame before it leaves the composition.
+    val rewritePanelVisible = keyboardManager.isRewriteOptionsVisible
+    val voiceRewriteUiController by context.voiceRewriteUiController()
+    val llmRewriteManager by context.llmRewriteManager()
+    val closeRewritePanel = remember(voiceRewriteUiController, llmRewriteManager) {
+        {
+            voiceRewriteUiController.dismissPanel()
+            llmRewriteManager.closeOptions()
         }
     }
 
@@ -277,6 +265,12 @@ private fun SmartbarMainRow(
                 )
                 return@Box
             }
+            // Suggestions are replaced by the panel title, but an expanded shared-actions row is
+            // still the user's toolbar and its toggle keeps working while the panel is open.
+            if (rewritePanelVisible && !expanded) {
+                RewritePanelSmartbarTitle(modifier = Modifier.fillMaxSize())
+                return@Box
+            }
             val enterTransition = if (shouldAnimate) HorizontalEnterTransition else NoEnterTransition
             val exitTransition = if (shouldAnimate) HorizontalExitTransition else NoExitTransition
             this@CenterContent.AnimatedVisibility(
@@ -300,7 +294,7 @@ private fun SmartbarMainRow(
                     modifier = modifier.fillMaxSize(),
                 )
             }
-            if (isVoiceStickyAction) {
+            if (isVoiceStickyAction && !rewritePanelVisible) {
                 VoiceSmartbarOverlay(modifier = Modifier.align(Alignment.Center))
             }
         }
@@ -339,12 +333,16 @@ private fun SmartbarMainRow(
 
         val activeRecordingRow = recordingRowState
         if (activeRecordingRow != null) {
-            // The sticky dictation-key position becomes the stop action for whichever mode holds
-            // the recorder, so the stop control exists regardless of the configured arrangement.
+            // The sticky dictation-key position becomes the stop (or, while transcribing, cancel)
+            // action for dictation, so the control exists regardless of the configured arrangement.
             VoiceRecordingStickyAction(
                 state = activeRecordingRow,
                 actions = recordingActions,
             )
+            return
+        }
+        if (rewritePanelVisible) {
+            RewritePanelCloseAction(onClose = closeRewritePanel)
             return
         }
 
@@ -396,7 +394,7 @@ private fun SmartbarMainRow(
         ) {
             when (smartbarLayout) {
                 SmartbarLayout.SUGGESTIONS_ONLY -> {
-                    if (recordingRowState != null) {
+                    if (recordingRowState != null || rewritePanelVisible) {
                         CenterContent()
                         StickyAction()
                     } else if (shouldShowInlineSuggestionsUi) {
@@ -407,7 +405,7 @@ private fun SmartbarMainRow(
                 }
 
                 SmartbarLayout.ACTIONS_ONLY -> {
-                    if (recordingRowState != null) {
+                    if (recordingRowState != null || rewritePanelVisible) {
                         CenterContent()
                         StickyAction()
                     } else if (shouldShowInlineSuggestionsUi) {

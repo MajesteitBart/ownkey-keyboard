@@ -110,11 +110,6 @@ data class VoiceRewriteUiModel(
 ) {
     val isHub: Boolean get() = surface == VoiceRewriteSurface.HUB
     val isPresetGridInteractive: Boolean get() = surface == VoiceRewriteSurface.HUB
-    /** True while the session owns the smartbar recording row. */
-    val ownsRecordingRow: Boolean
-        get() = surface == VoiceRewriteSurface.RECORDING ||
-            surface == VoiceRewriteSurface.PAUSED ||
-            surface == VoiceRewriteSurface.PROCESSING
 }
 
 /**
@@ -221,9 +216,10 @@ fun voiceRewriteUiModel(
             scopeLabel = scopeLabel,
             recognizedInstruction = state.recognizedInstruction,
             resultText = state.resultText,
+            // Close leaves without touching the editor; Replace is the only committing action.
             actions = if (state.canReplace) {
                 setOf(
-                    VoiceRewriteAction.BACK,
+                    VoiceRewriteAction.CLOSE,
                     VoiceRewriteAction.TRY_AGAIN,
                     VoiceRewriteAction.RECORD_AGAIN,
                     VoiceRewriteAction.REPLACE,

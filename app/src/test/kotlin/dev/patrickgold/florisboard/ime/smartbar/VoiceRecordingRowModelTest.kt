@@ -20,12 +20,6 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionState
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEntryOrigin
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteMessage
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteScopeLabel
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteTargetScope
-import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteUiModel
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -46,42 +40,19 @@ private fun session(
     pausedDurationMs = pausedDurationMs,
 )
 
-private fun hubModel() = VoiceRewriteUiModel(
-    surface = VoiceRewriteSurface.HUB,
-    origin = VoiceRewriteEntryOrigin.DICTATION_KEY,
-)
-
-private fun voiceRewriteModel(
-    surface: VoiceRewriteSurface,
-    statusMessage: VoiceRewriteMessage? = null,
-    scope: VoiceRewriteScopeLabel? = null,
-) = VoiceRewriteUiModel(
-    surface = surface,
-    origin = VoiceRewriteEntryOrigin.DICTATION_KEY,
-    statusMessage = statusMessage,
-    scopeLabel = scope,
-)
-
 class VoiceRecordingRowModelTest : FunSpec({
-    test("no audio session and an idle rewrite hub leave the ordinary smartbar untouched") {
-        voiceRecordingRowState(
-            session = null,
-            voiceRewrite = hubModel(),
-            nowMs = 0L,
-        ).shouldBeNull()
+    test("no audio session leaves the ordinary smartbar untouched") {
+        voiceRecordingRowState(session = null, nowMs = 0L).shouldBeNull()
     }
 
-    test("dictation recording, pausing and processing drive the same row with listening wording") {
+    test("dictation recording, pausing and processing drive the row with one status each") {
         val recording = voiceRecordingRowState(
             session = session(AudioSessionOwner.DICTATION, AudioSessionPhase.RECORDING),
-            voiceRewrite = hubModel(),
             nowMs = 4_000L,
         )!!
-        recording.mode shouldBe VoiceRecordingMode.DICTATION
         recording.phase shouldBe VoiceRecordingPhase.RECORDING
         recording.status shouldBe VoiceRecordingStatus.LISTENING
         recording.elapsedMs shouldBe 4_000L
-        recording.targetScope.shouldBeNull()
         recording.isCapturing shouldBe true
 
         val paused = voiceRecordingRowState(
@@ -90,18 +61,15 @@ class VoiceRecordingRowModelTest : FunSpec({
                 AudioSessionPhase.PAUSED,
                 pausedAtMs = 3_000L,
             ),
-            voiceRewrite = hubModel(),
             nowMs = 9_000L,
         )!!
         paused.phase shouldBe VoiceRecordingPhase.PAUSED
         paused.status shouldBe VoiceRecordingStatus.PAUSED
         // Paused time is excluded from the elapsed timer.
         paused.elapsedMs shouldBe 3_000L
-        paused.remainingSeconds.shouldBeNull()
 
         val processing = voiceRecordingRowState(
             session = session(AudioSessionOwner.DICTATION, AudioSessionPhase.PROCESSING),
-            voiceRewrite = hubModel(),
             nowMs = 5_000L,
         )!!
         processing.phase shouldBe VoiceRecordingPhase.PROCESSING
@@ -109,102 +77,12 @@ class VoiceRecordingRowModelTest : FunSpec({
         processing.isCapturing shouldBe false
     }
 
-    test("voice rewrite recording uses the instruction wording and carries its target scope") {
-        val scope = VoiceRewriteScopeLabel(VoiceRewriteTargetScope.WHOLE_FIELD, 184)
-        val state = voiceRecordingRowState(
-            session = session(AudioSessionOwner.VOICE_REWRITE, AudioSessionPhase.RECORDING),
-            voiceRewrite = voiceRewriteModel(VoiceRewriteSurface.RECORDING, scope = scope),
-            nowMs = 1_500L,
-        )!!
-
-        state.mode shouldBe VoiceRecordingMode.VOICE_REWRITE
-        state.status shouldBe VoiceRecordingStatus.SPEAK_AN_EDIT
-        state.targetScope shouldBe scope
-    }
-
-    test("the rewrite target label never leaks into an ordinary dictation row") {
-        val state = voiceRecordingRowState(
-            session = session(AudioSessionOwner.DICTATION, AudioSessionPhase.RECORDING),
-            voiceRewrite = voiceRewriteModel(
-                VoiceRewriteSurface.RECORDING,
-                scope = VoiceRewriteScopeLabel(VoiceRewriteTargetScope.SELECTION, 12),
-            ),
-            nowMs = 0L,
-        )!!
-
-        state.targetScope.shouldBeNull()
-    }
-
-    test("voice rewrite keeps the row through transcription and rewriting after the lease ends") {
-        val transcribing = voiceRecordingRowState(
-            session = null,
-            voiceRewrite = voiceRewriteModel(
-                VoiceRewriteSurface.PROCESSING,
-                statusMessage = VoiceRewriteMessage.UNDERSTANDING_INSTRUCTION,
-            ),
-            nowMs = 0L,
-        )!!
-        transcribing.phase shouldBe VoiceRecordingPhase.PROCESSING
-        transcribing.status shouldBe VoiceRecordingStatus.UNDERSTANDING_INSTRUCTION
-
-        val rewriting = voiceRecordingRowState(
-            session = null,
-            voiceRewrite = voiceRewriteModel(
-                VoiceRewriteSurface.PROCESSING,
-                statusMessage = VoiceRewriteMessage.REWRITING_SELECTED_TEXT,
-            ),
-            nowMs = 0L,
-        )!!
-        rewriting.status shouldBe VoiceRecordingStatus.REWRITING
-    }
-
-    test("cancellation, disposal and terminal states drop the row for both modes") {
-        listOf(
-            VoiceRewriteSurface.HUB,
-            VoiceRewriteSurface.RESULT,
-            VoiceRewriteSurface.RECOVERY,
-            VoiceRewriteSurface.SUCCESS,
-        ).forEach { surface ->
+    test("a voice rewrite session never produces a smartbar row because the panel owns it") {
+        AudioSessionPhase.entries.forEach { phase ->
             voiceRecordingRowState(
-                session = null,
-                voiceRewrite = voiceRewriteModel(surface),
-                nowMs = 0L,
+                session = session(AudioSessionOwner.VOICE_REWRITE, phase, pausedAtMs = 0L),
+                nowMs = 1_500L,
             ).shouldBeNull()
-        }
-    }
-
-    test("the capped voice instruction shows remaining time only in the last five seconds") {
-        fun remainingAt(elapsedMs: Long) = voiceRecordingRowState(
-            session = session(AudioSessionOwner.VOICE_REWRITE, AudioSessionPhase.RECORDING),
-            voiceRewrite = voiceRewriteModel(VoiceRewriteSurface.RECORDING),
-            nowMs = elapsedMs,
-        )!!.remainingSeconds
-
-        remainingAt(24_999L).shouldBeNull()
-        remainingAt(25_000L) shouldBe 5
-        remainingAt(27_500L) shouldBe 3
-        remainingAt(30_000L) shouldBe 0
-        remainingAt(31_000L) shouldBe 0
-
-        val paused = voiceRecordingRowState(
-            session = session(
-                owner = AudioSessionOwner.VOICE_REWRITE,
-                phase = AudioSessionPhase.PAUSED,
-                pausedAtMs = 27_000L,
-            ),
-            voiceRewrite = voiceRewriteModel(VoiceRewriteSurface.PAUSED),
-            nowMs = 60_000L,
-        )!!
-        paused.remainingSeconds shouldBe 3
-    }
-
-    test("ordinary dictation is never shown a deadline it does not enforce") {
-        listOf(0L, 25_000L, 31_000L).forEach { elapsedMs ->
-            voiceRecordingRowState(
-                session = session(AudioSessionOwner.DICTATION, AudioSessionPhase.RECORDING),
-                voiceRewrite = hubModel(),
-                nowMs = elapsedMs,
-            )!!.remainingSeconds.shouldBeNull()
         }
     }
 

@@ -23,6 +23,12 @@ data class LlmRewriteProviderPreset(
     val endpointUrl: String,
     val defaultModel: String,
     val isCustom: Boolean = false,
+    /**
+     * Provider identity without the API variant, for the keyboard's compact summaries and the
+     * data-sharing disclosure. Both OpenAI presets send data to OpenAI; the protocol difference
+     * stays a configuration detail in settings.
+     */
+    val providerName: String = label,
 )
 
 object LlmRewriteProviders {
@@ -40,6 +46,7 @@ object LlmRewriteProviders {
             summary = "Best fit for GPT-5.5 and newer OpenAI models.",
             endpointUrl = "https://api.openai.com/v1/responses",
             defaultModel = "gpt-5.5",
+            providerName = "OpenAI",
         ),
         LlmRewriteProviderPreset(
             id = OpenAiChatCompletions,
@@ -47,6 +54,7 @@ object LlmRewriteProviders {
             summary = "Chat-compatible OpenAI endpoint for lower-cost rewrite models.",
             endpointUrl = "https://api.openai.com/v1/chat/completions",
             defaultModel = "gpt-5.4-mini",
+            providerName = "OpenAI",
         ),
         LlmRewriteProviderPreset(
             id = Anthropic,
@@ -76,6 +84,7 @@ object LlmRewriteProviders {
             endpointUrl = "",
             defaultModel = "",
             isCustom = true,
+            providerName = "Custom endpoint",
         ),
     )
 

@@ -38,9 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,10 +60,10 @@ private const val CoachMarkVisibleMillis = 7_000L
 /**
  * Smartbar overlay for the dictation-key accelerator.
  *
- * While voice rewrite is resolving its target it shows the `Speak your instruction` mode status as visible
- * text plus a polite live region, so hold recognition is confirmed in words and not only by haptic
- * and colour. When no session is active it may instead show the one-time coach mark. The overlay
- * lives in the smartbar and never covers the key area, so ordinary typing is never blocked.
+ * It only ever shows the one-time coach mark while no voice-rewrite session is active. Every
+ * session state, including targeting and the first-use disclosure, is presented by the rewrite
+ * panel, which is the single owner of voice-rewrite status; the smartbar never repeats it. The
+ * overlay lives in the smartbar and never covers the key area, so ordinary typing is never blocked.
  */
 @Composable
 fun VoiceSmartbarOverlay(
@@ -76,53 +73,8 @@ fun VoiceSmartbarOverlay(
     val uiController = remember(context) { context.voiceRewriteUiController() }
     val model by uiController.value.uiState.collectAsState()
 
-    when (model.surface) {
-        VoiceRewriteSurface.TARGETING,
-        VoiceRewriteSurface.DISCLOSURE,
-        -> VoiceModeStatusPill(
-            modifier = modifier,
-            label = stringRes(R.string.voice_rewrite__state_speak_an_edit),
-        )
-
-        VoiceRewriteSurface.HUB -> VoiceRewriteCoachMark(modifier = modifier)
-
-        else -> Unit
-    }
-}
-
-@Composable
-private fun VoiceModeStatusPill(
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-        color = OwnkeyBrand.Glass.Sheet,
-        contentColor = OwnkeyBrand.Glass.Ink,
-        shape = RoundedCornerShape(999.dp),
-        shadowElevation = 4.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_tabler_microphone),
-                contentDescription = null,
-                tint = ownkeyAccentColor(),
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                text = label,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+    if (model.surface == VoiceRewriteSurface.HUB) {
+        VoiceRewriteCoachMark(modifier = modifier)
     }
 }
 

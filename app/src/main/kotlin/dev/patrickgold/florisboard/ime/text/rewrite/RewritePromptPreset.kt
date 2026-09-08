@@ -96,4 +96,41 @@ object RewritePromptPresets {
         listOf("clean", "formal", "business"),
         listOf("clean", "business", "rewrite_dutch", "rewrite_english"),
     )
+
+    private val qualityPresetIds = setOf("improve", "grammar", "shorter", "clean")
+    private val tonePresetIds = setOf("business", "casual", "formal")
+
+    /**
+     * Hub rows in display order. Each group holds up to [columns] presets per row so a long custom
+     * list wraps into further rows instead of squeezing every card into one line.
+     */
+    fun hubRows(
+        prompts: List<RewritePromptPreset>,
+        columns: Int = HubColumns,
+    ): List<RewritePresetRow> {
+        val grouped = prompts.groupBy { it.group() }
+        return RewritePresetGroup.entries.flatMap { group ->
+            grouped[group].orEmpty().chunked(columns).map { RewritePresetRow(group, it) }
+        }
+    }
+
+    fun RewritePromptPreset.group(): RewritePresetGroup = when {
+        id in qualityPresetIds -> RewritePresetGroup.QUALITY
+        id in tonePresetIds || id.startsWith("rewrite_") || id.contains("translate") -> RewritePresetGroup.TONE
+        else -> RewritePresetGroup.CUSTOM
+    }
+
+    const val HubColumns = 3
 }
+
+/** Quality/length presets and tone/language presets are visually separate rows in the hub. */
+enum class RewritePresetGroup {
+    QUALITY,
+    TONE,
+    CUSTOM,
+}
+
+data class RewritePresetRow(
+    val group: RewritePresetGroup,
+    val prompts: List<RewritePromptPreset>,
+)

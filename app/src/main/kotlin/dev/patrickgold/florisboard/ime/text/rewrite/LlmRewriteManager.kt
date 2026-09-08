@@ -38,7 +38,8 @@ class LlmRewriteManager(
     private val cloudAiAvailabilityPolicy: CloudAiAvailabilityPolicy,
 ) {
     companion object {
-        private const val DoneConfirmationMillis = 900L
+        /** Same dwell as the voice flow's `Text replaced` confirmation, so both feel like one panel. */
+        private const val DoneConfirmationMillis = 1_200L
     }
 
     /**
@@ -182,9 +183,9 @@ class LlmRewriteManager(
 
     fun isRewriteConfigured(): Boolean = secretsStore.hasApiKey()
 
-    /** Configured rewrite provider preset label, never the endpoint URL. */
+    /** Configured rewrite provider name without the API variant, never the endpoint URL. */
     fun rewriteProviderLabel(): String =
-        LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).label
+        LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).providerName
 
     private fun generate(prompt: RewritePromptPreset, target: RewriteTarget) {
         if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
