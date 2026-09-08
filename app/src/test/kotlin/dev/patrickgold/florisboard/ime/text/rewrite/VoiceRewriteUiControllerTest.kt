@@ -155,6 +155,30 @@ class VoiceRewriteUiControllerTest : FunSpec({
         }
     }
 
+    test("the live selection count follows the editor without touching provider secrets") {
+        runTest {
+            val fixture = controllerFixture(backgroundScope)
+            runCurrent()
+
+            fixture.controller.hubSelectionCharacterCount() shouldBe 184
+            fixture.selectionReads shouldBe listOf("selection")
+            fixture.providerReads.isEmpty() shouldBe true
+        }
+    }
+
+    test("the live selection count is never read while cloud AI is unavailable") {
+        runTest {
+            val fixture = controllerFixture(
+                backgroundScope,
+                session = availableSession().copy(isIncognito = true),
+            )
+            runCurrent()
+
+            fixture.controller.hubSelectionCharacterCount().shouldBeNull()
+            fixture.selectionReads.isEmpty() shouldBe true
+        }
+    }
+
     test("no selection produces the whole-field intent copy rather than a character count") {
         runTest {
             val fixture = controllerFixture(backgroundScope, selectionCharacterCount = null)

@@ -8,7 +8,7 @@ dictation inserts its own word boundary.
 
 | Command | Result |
 | --- | --- |
-| `gradlew.bat :app:testDebugUnitTest --console=plain` | 312 passed, 0 failed, 0 skipped |
+| `gradlew.bat :app:testDebugUnitTest --console=plain` | 314 passed, 0 failed, 0 skipped |
 | `gradlew.bat :app:compileDebugKotlin` | success |
 | `gradlew.bat :app:compileReleaseKotlin` | success |
 | `git diff --check` | clean |
@@ -54,3 +54,12 @@ shown and holds no editor subscription in other states; the action rail grows to
 labels at large font scales; the spec's recording placement sections (executive summary, AC-028
 and new AC-028a, recording-instruction section, compact layout, in-scope list, approval notes)
 now match D-013, and the in-panel confirmation dwell is 1.2 seconds in spec, decision, and code.
+
+## Third review round (2026-09-08)
+
+Provider readiness is resolved only when the hub appears or availability changes; the hub's
+selection count now follows host content changes through a cheap main-thread snapshot read that
+touches no secret store and is never read while cloud AI is unavailable (two controller tests).
+The spec's processing contract (section 4, AC-031, compact-layout rule, FR-048) now states that
+ordinary dictation shows one spinner with cancel in the dictation-key slot and that voice-rewrite
+processing lives entirely in the panel body. Full unit suite rerun: 314 passed.

@@ -4,7 +4,7 @@ slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 status: active
 created: 2026-08-04T08:33:57Z
-updated: 2026-09-08T22:06:48Z
+updated: 2026-09-08T22:37:04Z
 outcome: At least 90% of first-time usability-test participants can rewrite selected or visibly Select-All-targeted text by long-pressing the dictation key and speaking an instruction without leaving the host app, while normal dictation and ordinary typing responsiveness remain unchanged.
 uncertainty: medium
 probe_required: true
@@ -137,7 +137,7 @@ Metrics are gathered through internal tests and consented usability sessions. Th
 - AC-028a: Given voice rewrite enters active recording, when the rewrite panel body renders, then it shows the status label, the resolved scope, elapsed time, a centered live waveform, and Cancel, Pause-or-Resume, and Stop controls with at least 48 dp touch targets, and the smartbar shows no recording row.
 - AC-029: Given the recorder reports silence, quiet speech, and normal speech, when audio samples update, then the waveform settles near its baseline for silence and visibly follows the recent measured amplitude for speech without using a looping, random, or prerecorded pattern.
 - AC-030: Given recording is active, when the user pauses, then capture and elapsed time pause, the waveform settles to a dim low baseline, and the pause control becomes `Resume`; when the user cancels, captured audio is discarded; when the user taps the stop button, capture ends and processing starts exactly once.
-- AC-031: Given recording has stopped and transcription is pending, when the action row changes state, then the waveform is replaced by a labelled processing status, the mic button shows its existing processing treatment rather than a stop action, and cancel remains available outside the button.
+- AC-031: Given ordinary dictation has stopped and transcription is pending, when the action row changes state, then the waveform is replaced by one spinner with a labelled processing status, the dictation-key slot holds a neutral cancel action instead of a second processing indicator, and no other processing indicator is shown. For voice rewrite the panel body carries the single spinner and stage label with cancel in its rail, and the smartbar shows no processing state (D-013).
 - AC-032: Given dictation completes successfully, when the explicit success outcome is emitted, then the mic button shows its green success treatment for approximately 900 ms before returning to idle.
 - AC-033: Given recording, transcription, or insertion fails, when the explicit error outcome is emitted, then the mic button shows its red error treatment, announces the error once, remains available for immediate retry, and automatically returns to idle after approximately five seconds without requiring another tap.
 - AC-034: Given reduced motion is enabled, when recording is active, then the center meter still communicates measured input at a reduced update rate without looping or traveling motion, while all decorative halo and interpolated transition motion is removed.
@@ -327,17 +327,18 @@ Long-press is the primary accelerator; the visible voice card and accessibility 
 
 ### 4. Understanding and Rewriting
 
-After `Stop`, controls transition in place instead of resizing the keyboard.
+After `Stop`, the panel body transitions in place instead of resizing the keyboard. The dictation key is not involved: the smartbar still shows only the `Close AI rewrite` control while the panel owns the session, so the panel body is the single processing indicator.
 
 1. `Understanding instruction…`
-   - The center waveform is replaced by labelled processing status; it is not repurposed into fake audio motion.
-   - The dictation-key button uses its existing processing treatment.
-   - `Cancel` remains available.
+   - The waveform is replaced by one spinner and the stage label; it is not repurposed into fake audio motion.
+   - `Cancel` is the only rail action.
    - Only the audio request is active.
 2. `Rewriting selected text…`
-   - The recognized instruction appears in a compact quoted chip, truncated to two lines visually but available in full to TalkBack.
+   - The recognized instruction appears under a `Heard` label, truncated to two lines visually, expandable on tap, and available in full to TalkBack.
    - The second network request sends the captured selection and instruction to the configured rewrite endpoint.
    - `Cancel` remains available and aborts the pending request where supported.
+
+Ordinary dictation keeps its own single indicator in the smartbar row: the waveform is replaced by one spinner and a `Processing` label, and the dictation-key slot holds a neutral `Cancel` instead of a second spinner (AC-031, FR-048).
 
 The transcription is data for the rewrite pipeline; it is never committed into the host editor. A cancelled or failed rewrite may keep the transcript only in memory for the current valid editor session so `Try again` does not require a second audio request.
 
@@ -387,7 +388,7 @@ The shared mic button's red error treatment is a transient acknowledgement, not 
 - Render presets in two columns below it with vertical scrolling and a minimum 48 dp card touch target.
 - During ordinary dictation recording, use the first action row for timer, center waveform, pause/resume, cancel, and the trailing stop button. The center meter shrinks before controls lose their 48 dp targets; on the narrowest supported width it may reduce its bar count, but it must not move back into the stop button.
 - The voice-rewrite recording body scrolls or shrinks its waveform before the control rail loses its 48 dp targets, and it never pushes the rail out of the panel.
-- During processing, replace the center waveform with a short labelled status, retain a separate cancel action, and keep the mic button's processing treatment.
+- During ordinary dictation processing, replace the center waveform with one spinner and a short labelled status and put the cancel action in the dictation-key slot; never show a second spinner. During voice-rewrite processing the panel body carries the single spinner, stage label, and cancel.
 - During result review, keep the action rail fixed; only the result body scrolls.
 - On short landscape heights, supporting copy may collapse to one line, but the title, provider state, and primary action remain visible.
 
@@ -529,7 +530,7 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 - FR-045: The active waveform is driven exclusively by measured recorder amplitude and must not use an autonomous animation, random source, or prerecorded data to imply input.
 - FR-046: Waveform rendering maintains a bounded recent-level history, applies noise-floor and perceptual/smoothing transforms, settles to a minimum baseline during silence, and avoids full-scale clipping during ordinary speech.
 - FR-047: Pausing stops level sampling, excludes paused time from elapsed time, changes the control to `Resume`, and presents a dim low baseline; mock/no-input capture also remains at the baseline.
-- FR-048: Processing replaces the center level meter with labelled progress, retains a separate cancel action, and changes the dictation-key button from stop to its existing processing treatment.
+- FR-048: Ordinary dictation processing replaces the center level meter with one spinner and labelled progress and changes the dictation-key slot from stop to a neutral cancel action, so exactly one processing indicator is visible. Voice-rewrite processing shows its single spinner, stage label, and cancel inside the panel body; the smartbar shows no processing state (refined by D-013 on 2026-09-08).
 - FR-049: A successful terminal outcome is explicit, shows the existing green check treatment for approximately 900 ms, and then returns the button to idle.
 - FR-050: An error terminal outcome is explicit, shows the existing red treatment for approximately five seconds, announces the specific failure once, permits immediate retry, and then returns the button to idle automatically.
 - FR-051: Transient success/error reset jobs are session-scoped; a new action, newer outcome, keyboard hide, or component disposal cancels the older reset so it cannot overwrite newer state.

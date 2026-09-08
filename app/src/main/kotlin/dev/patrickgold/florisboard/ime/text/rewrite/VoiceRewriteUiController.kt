@@ -82,6 +82,17 @@ class VoiceRewriteUiController(
         )
     }
 
+    /**
+     * Live selection count for the hub card. It is cheap and main-thread safe (a cached editor
+     * snapshot, no secret store), so the hub can follow host content changes without re-resolving
+     * provider readiness on every keystroke. Editor content is still never read while cloud AI is
+     * unavailable.
+     */
+    fun hubSelectionCharacterCount(): Int? {
+        if (availabilityPolicy.current() !is CloudAiAvailability.Available) return null
+        return selectionCharacterCount()
+    }
+
     private val _origin = MutableStateFlow(VoiceRewriteEntryOrigin.DICTATION_KEY)
 
     val uiState: StateFlow<VoiceRewriteUiModel> = combine(

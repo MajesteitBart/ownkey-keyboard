@@ -143,22 +143,28 @@ fun RewriteOptionsPanel(
     val prompts = remember(promptsJson) { RewritePromptPresets.decode(promptsJson) }
     val body = rewritePanelBody(step = uiState.step, surface = voiceModel.surface)
 
-    // The hub card is resolved whenever the hub is visible and the host editor content changes,
-    // so the scope summary is fresh on return, after the user adjusts the selection handles, and
-    // when the field's text changes underneath an unchanged range. The editor is observed only
-    // while the hub is shown: active states never carry a live content subscription and show the
-    // session's own snapshot. Provider readiness reads the Keystore-backed secret stores, never on
-    // the typing thread.
+    // Provider readiness and availability are resolved when the hub becomes visible or
+    // availability changes; that reads the Keystore-backed secret stores, never on the typing
+    // thread and never per keystroke. The selection count is the only part that follows the host
+    // editor, and it is read from the cached editor snapshot on every content change while the hub
+    // is shown. Active states carry no editor subscription and show the session's own snapshot.
     val editorInstance by context.editorInstance()
+    var hubCard by remember { mutableStateOf(VoiceRewriteHubCardState()) }
+    LaunchedEffect(availability, body) {
+        if (body == RewritePanelBody.HUB) {
+            hubCard = withContext(Dispatchers.IO) { voiceController.hubCardState() }
+        }
+    }
     val hubEditorContent = if (body == RewritePanelBody.HUB) {
         editorInstance.activeContentFlow.collectAsState().value
     } else {
         null
     }
-    var hubCard by remember { mutableStateOf(VoiceRewriteHubCardState()) }
-    LaunchedEffect(availability, body, hubEditorContent) {
-        if (body == RewritePanelBody.HUB) {
-            hubCard = withContext(Dispatchers.IO) { voiceController.hubCardState() }
+    val liveHubCard = remember(hubCard, hubEditorContent) {
+        if (hubEditorContent == null || !hubCard.isAvailable) {
+            hubCard
+        } else {
+            hubCard.copy(selectionCharacterCount = voiceController.hubSelectionCharacterCount())
         }
     }
 
@@ -182,7 +188,7 @@ fun RewriteOptionsPanel(
             when (visibleBody) {
                 RewritePanelBody.HUB -> HubBody(
                     prompts = prompts,
-                    hubCard = hubCard,
+                    hubCard = liveHubCard,
                     onVoice = { voiceController.begin(VoiceRewriteEntryOrigin.REWRITE_HUB) },
                     onPreset = { prompt -> rewriteManager.rewriteWith(prompt) },
                 )
