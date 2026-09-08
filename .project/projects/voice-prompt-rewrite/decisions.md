@@ -3,7 +3,7 @@ name: Voice-Prompt Rewrite
 slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 created: 2026-08-04T08:33:57Z
-updated: 2026-08-04T17:01:03Z
+updated: 2026-09-08T21:40:07Z
 ---
 
 # Decisions: Voice-Prompt Rewrite
@@ -125,6 +125,18 @@ updated: 2026-08-04T17:01:03Z
   - Probe artifacts distinguish observed emulator behavior from simulated contract coverage.
   - T-018 failures block release and require repair or reopening of the affected contract.
   - No physical-device, microphone-calibration, or TalkBack claim is made by closing T-001.
+
+### D-013: Voice rewrite recording lives in the rewrite panel
+
+- **Status:** accepted
+- **Date:** 2026-09-08
+- **Decision:** Ordinary dictation keeps the smartbar recording row and is its only owner. Voice rewrite presents recording, pause, processing, review, recovery, and success as one state-driven body inside the AI rewrite panel, which is always open while a session runs. While the panel is open the smartbar hides suggestions and the voice key and shows one labelled close control. The measured-amplitude waveform, recorder arbitration, and the 30-second cap are shared; only the presentation moved.
+- **Rationale:** The Samsung Notes demonstration showed a result sheet competing with a dimmed hub, the same rewrite status rendered in the smartbar row and in the panel, and up to three spinners at once. One visible owner per workflow makes it obvious whether the user is dictating text or recording an instruction, and removes the routing branch that decided per control which mode owned the row.
+- **Consequences:**
+  - Refines D-005: the shared row composition now applies to ordinary dictation only, and voice rewrite reuses the presentational waveform rather than the row. FR-042 in the spec is superseded on the placement of rewrite controls; their meaning and 48 dp targets are unchanged.
+  - Cancel, Stop, Pause, Resume, Try again, navigation, and Close use neutral surfaces; Stop stays prominent through a high-contrast fill and its stop-square glyph. The filled accent is reserved for the committing action of a state and the replaced confirmation.
+  - The `Text replaced` confirmation dwells about 1.2 seconds inside the panel and its timer is bound to that confirmation, so it cannot close a newer session.
+  - Dictation shows one processing spinner; the key slot holds Cancel while transcribing. The dictation start toast remains only for keyboards whose smartbar is switched off.
 
 ## Superseded Decisions
 - None.

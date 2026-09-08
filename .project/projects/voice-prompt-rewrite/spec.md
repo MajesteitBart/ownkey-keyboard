@@ -4,7 +4,7 @@ slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 status: active
 created: 2026-08-04T08:33:57Z
-updated: 2026-08-06T06:25:15Z
+updated: 2026-09-08T21:40:07Z
 outcome: At least 90% of first-time usability-test participants can rewrite selected or visibly Select-All-targeted text by long-pressing the dictation key and speaking an instruction without leaving the host app, while normal dictation and ordinary typing responsiveness remain unchanged.
 uncertainty: medium
 probe_required: true
@@ -507,7 +507,7 @@ Color is supplemental. Every state must have visible text and semantics. The wav
 
 ### Shared Recording Feedback
 
-- FR-042: Ordinary dictation and voice rewrite use one shared first-action-row recording composition and preserve mode-specific labels without changing control placement or meaning.
+- FR-042: Ordinary dictation uses the first-action-row recording composition. Voice rewrite presents its recording, pause, and processing inside the AI rewrite panel with the same measured waveform, control meanings, and 48 dp targets, so each workflow has one visible owner (refined by D-013 on 2026-09-08).
 - FR-043: The active row orders elapsed time, a flexible centered waveform, pause/resume, cancel, and the trailing dictation-key action; interactive controls retain at least 48 dp touch targets at every supported width.
 - FR-044: While recording or paused, the dictation-key action is an orange `Stop recording` control with a solid stop-square icon and contains no waveform animation.
 - FR-045: The active waveform is driven exclusively by measured recorder amplitude and must not use an autonomous animation, random source, or prerecorded data to imply input.
@@ -725,4 +725,5 @@ None of the remaining items blocks M0 activation. Editor, gesture, visual, micro
 - Updated on 2026-08-04 after product review to fix the output-language rule (D-008): the result stays in the source text's language unless the instruction explicitly requests another, closing the previously untraceable US-004.
 - Updated on 2026-08-04 after product review to disable every cloud AI action in incognito mode (D-007), closing NC-001. This deliberately changes ordinary dictation and preset rewrite availability, so their scope carve-outs, AC-027, and the incognito copy were reconciled in the same pass.
 - Product direction is approved for the long-press accelerator, visible Select All, retained voice card, shared recording row, real input-driven waveform, stop-square action, transient terminal feedback, preview-before-replace, the incognito AI gate, and D-011's first-release deferral of bespoke persistent undo.
+- Updated on 2026-09-08 after the dictation and rewrite interface review (D-013): voice rewrite recording, processing, review, recovery, and success render as one state-driven body inside the AI rewrite panel; the smartbar recording row is dictation-only and the smartbar hides suggestions while the panel is open. FR-042 was refined in the same pass.
 - T-001 completed on 2026-08-04 with nine passing contract tests and three API 35 emulator editor surfaces. Product-owner authorization accepts deterministic simulated-device coverage for the M0 activation gate while preserving real-device, real-microphone, and TalkBack checks in T-018.
