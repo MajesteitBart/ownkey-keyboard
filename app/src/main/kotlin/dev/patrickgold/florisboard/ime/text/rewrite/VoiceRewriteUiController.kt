@@ -153,6 +153,20 @@ class VoiceRewriteUiController(
         setPanelVisible(false)
     }
 
+    /**
+     * Session-scoped variant for the panel's auto-close timer. The timer captured the confirmation
+     * it was started for; if a newer flow has since replaced that surface, the stale timer must not
+     * close or reset it. Returns whether the flow was finished.
+     */
+    fun finishAfterReplacement(confirmationId: Long): Boolean {
+        val current = uiState.value
+        if (current.surface != VoiceRewriteSurface.SUCCESS || current.announcementId != confirmationId) {
+            return false
+        }
+        finishAfterReplacement()
+        return true
+    }
+
     /** Back inside the panel keeps the hub open; back from the accelerator closes the panel. */
     fun back() {
         sessionManager.reset()

@@ -182,9 +182,9 @@ class LlmRewriteManager(
 
     fun isRewriteConfigured(): Boolean = secretsStore.hasApiKey()
 
-    /** Configured rewrite provider preset label, never the endpoint URL. */
+    /** Configured rewrite provider name without the API variant, never the endpoint URL. */
     fun rewriteProviderLabel(): String =
-        LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).label
+        LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).providerName
 
     private fun generate(prompt: RewritePromptPreset, target: RewriteTarget) {
         if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {

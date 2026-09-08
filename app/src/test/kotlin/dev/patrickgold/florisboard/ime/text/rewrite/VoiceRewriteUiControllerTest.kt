@@ -312,6 +312,27 @@ class VoiceRewriteUiControllerTest : FunSpec({
         }
     }
 
+    test("a confirmation-bound finish is ignored once the surface it was started for is gone") {
+        runTest {
+            val fixture = controllerFixture(backgroundScope, targetResolution = resolvedTarget())
+            runCurrent()
+            fixture.controller.begin(VoiceRewriteEntryOrigin.REWRITE_HUB)
+            runCurrent()
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+
+            // A stale success timer from an earlier session must not close or reset this one.
+            val staleConfirmationId = fixture.controller.uiState.value.announcementId - 1
+            fixture.controller.finishAfterReplacement(staleConfirmationId) shouldBe false
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+            fixture.panelVisibility shouldBe listOf(true)
+
+            // Nor may a matching id finish anything but the success confirmation itself.
+            val currentId = fixture.controller.uiState.value.announcementId
+            fixture.controller.finishAfterReplacement(currentId) shouldBe false
+            fixture.controller.uiState.value.surface shouldBe VoiceRewriteSurface.RECORDING
+        }
+    }
+
     test("a lifecycle invalidation cancels an active session but never disturbs an idle hub") {
         runTest {
             val active = controllerFixture(backgroundScope, targetResolution = resolvedTarget())

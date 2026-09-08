@@ -110,11 +110,14 @@ data class VoiceRewriteUiModel(
 ) {
     val isHub: Boolean get() = surface == VoiceRewriteSurface.HUB
     val isPresetGridInteractive: Boolean get() = surface == VoiceRewriteSurface.HUB
-    /** True while the session owns the smartbar recording row. */
-    val ownsRecordingRow: Boolean
-        get() = surface == VoiceRewriteSurface.RECORDING ||
-            surface == VoiceRewriteSurface.PAUSED ||
-            surface == VoiceRewriteSurface.PROCESSING
+
+    /**
+     * True while the rewrite panel presents the live microphone session. Voice rewrite never renders
+     * in the smartbar recording row: the panel owns recording, pause, and processing, so ordinary
+     * dictation is the row's only owner and rewrite controls cannot be routed to it.
+     */
+    val isCapturing: Boolean
+        get() = surface == VoiceRewriteSurface.RECORDING || surface == VoiceRewriteSurface.PAUSED
 }
 
 /**
@@ -221,9 +224,10 @@ fun voiceRewriteUiModel(
             scopeLabel = scopeLabel,
             recognizedInstruction = state.recognizedInstruction,
             resultText = state.resultText,
+            // Close leaves without touching the editor; Replace is the only committing action.
             actions = if (state.canReplace) {
                 setOf(
-                    VoiceRewriteAction.BACK,
+                    VoiceRewriteAction.CLOSE,
                     VoiceRewriteAction.TRY_AGAIN,
                     VoiceRewriteAction.RECORD_AGAIN,
                     VoiceRewriteAction.REPLACE,

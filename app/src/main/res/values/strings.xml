@@ -652,10 +652,10 @@
     <string name="voice_rewrite__provider_custom" comment="Provider display name shown when the configured transcription endpoint is not a known provider">Custom endpoint</string>
     <string name="voice_rewrite__card_title" comment="Title of the pinned voice instruction card in the rewrite hub">Tell Ownkey what to change</string>
     <plurals name="voice_rewrite__card_summary_selection" comment="Supporting copy on the voice card when text is selected">
-        <item quantity="one">Speak a one-off instruction · {count} character selected</item>
-        <item quantity="other">Speak a one-off instruction · {count} characters selected</item>
+        <item quantity="one">{count} character selected · review before replacing</item>
+        <item quantity="other">{count} characters selected · review before replacing</item>
     </plurals>
-    <string name="voice_rewrite__card_summary_no_selection" comment="Supporting copy on the voice card when nothing is selected">No selection · whole field will be selected</string>
+    <string name="voice_rewrite__card_summary_no_selection" comment="Supporting copy on the voice card when nothing is selected">No selection · the whole field will be used</string>
     <string name="voice_rewrite__card_providers" comment="Provider routing detail on the voice card">Audio: {audio} · Rewrite: {rewrite}</string>
     <plurals name="voice_rewrite__scope_selection" comment="Resolved target scope label">
         <item quantity="one">Selection · {count} character</item>
@@ -705,16 +705,23 @@
     <string name="voice_rewrite__action_open_incognito_setting">Open incognito setting</string>
     <string name="voice_rewrite__action_back">Back</string>
     <string name="voice_rewrite__action_cancel">Cancel</string>
-    <string name="voice_rewrite__action_pause">Pause recording</string>
-    <string name="voice_rewrite__action_resume">Resume recording</string>
-    <string name="voice_rewrite__action_stop">Stop recording</string>
+    <string name="voice_rewrite__action_pause" comment="Short visible label; the accessible description is voice_recording__pause_rewrite">Pause</string>
+    <string name="voice_rewrite__action_resume" comment="Short visible label; the accessible description is voice_recording__resume_rewrite">Resume</string>
+    <string name="voice_rewrite__action_stop" comment="Short visible label; the accessible description is voice_recording__stop_rewrite">Stop</string>
     <string name="voice_rewrite__action_try_again">Try again</string>
-    <string name="voice_rewrite__action_record_again">Record instruction again</string>
+    <string name="voice_rewrite__action_record_again" comment="Recovery action that records a replacement instruction">Record again</string>
     <string name="voice_rewrite__action_replace">Replace</string>
     <string name="voice_rewrite__action_copy_result">Copy result</string>
     <string name="voice_rewrite__action_close">Close</string>
+    <string name="voice_rewrite__action_edit_instruction" comment="Result-view affordance that records a replacement instruction for the same text">Edit instruction</string>
+    <string name="voice_rewrite__action_edit_instruction_description" comment="Accessible description of the edit instruction affordance">Records a new instruction for the same text.</string>
+    <string name="voice_rewrite__sheet_title" comment="Small title above every voice rewrite session state in the panel">Voice rewrite</string>
+    <string name="voice_rewrite__heard_label" comment="Label above the recognized spoken instruction">Heard</string>
+    <string name="voice_rewrite__heard_show_full" comment="Click label expanding a long recognized instruction">Show full instruction</string>
+    <string name="voice_rewrite__heard_show_less" comment="Click label collapsing an expanded recognized instruction">Show less</string>
+    <string name="voice_rewrite__state_copied" comment="Transient label on the copy action after the result was copied">Copied</string>
     <string name="voice_rewrite__result_label" comment="Accessibility label for the generated rewrite body">Rewrite result</string>
-    <string name="voice_rewrite__instruction_label" comment="Accessibility label prefix for the recognized instruction chip">Recognized instruction: {instruction}</string>
+    <string name="voice_rewrite__instruction_label" comment="Accessibility label prefix for the recognized instruction">Heard: {instruction}</string>
 
     <!-- Voice rewrite first-use disclosure -->
     <string name="voice_rewrite__disclosure_title">How voice rewrite works</string>
@@ -722,7 +729,7 @@
     <string name="voice_rewrite__disclosure_audio_row" comment="Audio provider row in the first-use disclosure">Audio → {provider}</string>
     <string name="voice_rewrite__disclosure_text_row" comment="Rewrite provider row in the first-use disclosure">Text → {provider}</string>
 
-    <!-- Shared dictation and voice rewrite recording row -->
+    <!-- Dictation recording row and voice rewrite recording controls -->
     <string name="voice_recording__elapsed_label" comment="Accessibility label for the recording timer">Recording time {time}</string>
     <string name="voice_recording__processing">Processing</string>
     <string name="voice_recording__cancel_dictation">Cancel dictation</string>
@@ -739,13 +746,17 @@
     <string name="voice_recording__language_auto" comment="Space bar recognition-language cue when the provider auto-detects the language">Auto</string>
 
     <!-- Preset rewrite panel copy -->
-    <string name="rewrite_panel__action_cancel">Cancel</string>
     <string name="rewrite_panel__action_try_again">Try again</string>
     <string name="rewrite_panel__action_insert">Insert</string>
     <string name="rewrite_panel__action_back_to_options">Back to options</string>
     <string name="rewrite_panel__state_inserted">Inserted</string>
     <string name="rewrite_panel__state_rewriting" comment="Generic generating label with no named voice">Rewriting…</string>
     <string name="rewrite_panel__state_rewriting_with_voice" comment="Generating label naming the chosen rewrite voice">Rewriting — {voice}…</string>
+    <string name="rewrite_panel__smartbar_title" comment="Quiet smartbar title while the AI rewrite panel replaces the keyboard">AI rewrite</string>
+    <string name="rewrite_panel__action_close" comment="Accessible label of the smartbar control that closes the AI rewrite panel">Close AI rewrite</string>
+    <string name="rewrite_panel__group_quality" comment="Caption above the quality and length rewrite presets">Quality &amp; length</string>
+    <string name="rewrite_panel__group_tone" comment="Caption above the tone and language rewrite presets">Tone &amp; language</string>
+    <string name="rewrite_panel__group_custom" comment="Caption above user-defined rewrite presets">Custom</string>
 
     <string name="pref__other__settings_theme__label" comment="Label of Settings theme preference in Other">Settings theme</string>
     <string name="pref__other__settings_theme__auto_amoled" comment="Possible value of Settings theme preference in Other">System default (AMOLED)</string>

@@ -34,7 +34,7 @@ class VoiceRewriteUiModelTest : FunSpec({
 
             model.surface shouldBe VoiceRewriteSurface.HUB
             model.isPresetGridInteractive shouldBe true
-            model.ownsRecordingRow shouldBe false
+            model.isCapturing shouldBe false
             model.statusMessage.shouldBeNull()
         }
     }
@@ -71,7 +71,7 @@ class VoiceRewriteUiModelTest : FunSpec({
         }
     }
 
-    test("recording shows the instruction mode status and owns the shared recording row") {
+    test("recording shows the instruction mode status and presents the microphone in the panel") {
         val model = voiceRewriteUiModel(
             state(VoiceRewriteSessionPhase.RECORDING) {
                 copy(
@@ -85,7 +85,7 @@ class VoiceRewriteUiModelTest : FunSpec({
         model.surface shouldBe VoiceRewriteSurface.RECORDING
         model.statusMessage shouldBe VoiceRewriteMessage.SPEAK_AN_EDIT
         model.scopeLabel shouldBe VoiceRewriteScopeLabel(VoiceRewriteTargetScope.WHOLE_FIELD, 184)
-        model.ownsRecordingRow shouldBe true
+        model.isCapturing shouldBe true
         model.actions shouldContainExactly setOf(
             VoiceRewriteAction.PAUSE,
             VoiceRewriteAction.CANCEL,
@@ -101,12 +101,24 @@ class VoiceRewriteUiModelTest : FunSpec({
 
         model.surface shouldBe VoiceRewriteSurface.PAUSED
         model.statusMessage shouldBe VoiceRewriteMessage.PAUSED
-        model.ownsRecordingRow shouldBe true
+        model.isCapturing shouldBe true
         model.actions shouldContainExactly setOf(
             VoiceRewriteAction.RESUME,
             VoiceRewriteAction.CANCEL,
             VoiceRewriteAction.STOP,
         )
+    }
+
+    test("only the live microphone states count as capturing; processing and review do not") {
+        VoiceRewriteSessionPhase.entries.forEach { phase ->
+            val model = voiceRewriteUiModel(
+                state(phase) { copy(resultText = "x", canReplace = true) },
+                VoiceRewriteEntryOrigin.DICTATION_KEY,
+            )
+            model.isCapturing shouldBe (
+                phase == VoiceRewriteSessionPhase.RECORDING || phase == VoiceRewriteSessionPhase.PAUSED
+                )
+        }
     }
 
     test("first use names both providers and requires an explicit continue before recording") {
@@ -252,7 +264,7 @@ class VoiceRewriteUiModelTest : FunSpec({
         model.actions shouldContainExactly setOf(VoiceRewriteAction.CANCEL)
     }
 
-    test("a reviewable result offers back, try again, record again and replace") {
+    test("a reviewable result offers close, try again, record again and replace") {
         val model = voiceRewriteUiModel(
             state(VoiceRewriteSessionPhase.RESULT) {
                 copy(
@@ -268,11 +280,46 @@ class VoiceRewriteUiModelTest : FunSpec({
         model.resultText shouldBe "Shorter text."
         model.statusMessage.shouldBeNull()
         model.actions shouldContainExactly setOf(
-            VoiceRewriteAction.BACK,
+            VoiceRewriteAction.CLOSE,
             VoiceRewriteAction.TRY_AGAIN,
             VoiceRewriteAction.RECORD_AGAIN,
             VoiceRewriteAction.REPLACE,
         )
+        // Replace is the only committing action; everything else leaves the editor untouched.
+        model.actions.count { it == VoiceRewriteAction.REPLACE } shouldBe 1
+    }
+
+    test("every surface exposes a way out so no state can strand the user") {
+        val exits = setOf(
+            VoiceRewriteAction.CANCEL,
+            VoiceRewriteAction.CLOSE,
+            VoiceRewriteAction.BACK,
+        )
+        val cases = listOf(
+            state(VoiceRewriteSessionPhase.TARGETING),
+            state(VoiceRewriteSessionPhase.STARTING_RECORDING),
+            state(VoiceRewriteSessionPhase.DISCLOSURE) {
+                copy(disclosure = VoiceRewriteProviderDisclosure(1, "Mistral", "OpenAI"))
+            },
+            state(VoiceRewriteSessionPhase.RECORDING),
+            state(VoiceRewriteSessionPhase.PAUSED),
+            state(VoiceRewriteSessionPhase.TRANSCRIBING),
+            state(VoiceRewriteSessionPhase.REWRITING) { copy(recognizedInstruction = "x") },
+            state(VoiceRewriteSessionPhase.RESULT) { copy(resultText = "x", canReplace = true) },
+            state(VoiceRewriteSessionPhase.RESULT) {
+                copy(
+                    resultText = "x",
+                    canCopyResult = true,
+                    replacementFailure = VoiceRewriteTargetVerificationFailure.SOURCE_CHANGED,
+                )
+            },
+            state(VoiceRewriteSessionPhase.WARNING) { copy(failure = VoiceRewritePreflightFailure.INCOGNITO) },
+            state(VoiceRewriteSessionPhase.ERROR) { copy(pipelineFailure = VoiceRewritePipelineFailure.NO_SPEECH) },
+        )
+        cases.forEach { sessionState ->
+            val model = voiceRewriteUiModel(sessionState, VoiceRewriteEntryOrigin.DICTATION_KEY)
+            model.actions.any { it in exits } shouldBe true
+        }
     }
 
     test("a changed target keeps the result but replaces the rail with copy and close") {
