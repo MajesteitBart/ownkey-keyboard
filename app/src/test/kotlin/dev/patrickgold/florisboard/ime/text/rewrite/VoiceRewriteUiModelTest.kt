@@ -34,7 +34,6 @@ class VoiceRewriteUiModelTest : FunSpec({
 
             model.surface shouldBe VoiceRewriteSurface.HUB
             model.isPresetGridInteractive shouldBe true
-            model.isCapturing shouldBe false
             model.statusMessage.shouldBeNull()
         }
     }
@@ -85,7 +84,6 @@ class VoiceRewriteUiModelTest : FunSpec({
         model.surface shouldBe VoiceRewriteSurface.RECORDING
         model.statusMessage shouldBe VoiceRewriteMessage.SPEAK_AN_EDIT
         model.scopeLabel shouldBe VoiceRewriteScopeLabel(VoiceRewriteTargetScope.WHOLE_FIELD, 184)
-        model.isCapturing shouldBe true
         model.actions shouldContainExactly setOf(
             VoiceRewriteAction.PAUSE,
             VoiceRewriteAction.CANCEL,
@@ -101,24 +99,11 @@ class VoiceRewriteUiModelTest : FunSpec({
 
         model.surface shouldBe VoiceRewriteSurface.PAUSED
         model.statusMessage shouldBe VoiceRewriteMessage.PAUSED
-        model.isCapturing shouldBe true
         model.actions shouldContainExactly setOf(
             VoiceRewriteAction.RESUME,
             VoiceRewriteAction.CANCEL,
             VoiceRewriteAction.STOP,
         )
-    }
-
-    test("only the live microphone states count as capturing; processing and review do not") {
-        VoiceRewriteSessionPhase.entries.forEach { phase ->
-            val model = voiceRewriteUiModel(
-                state(phase) { copy(resultText = "x", canReplace = true) },
-                VoiceRewriteEntryOrigin.DICTATION_KEY,
-            )
-            model.isCapturing shouldBe (
-                phase == VoiceRewriteSessionPhase.RECORDING || phase == VoiceRewriteSessionPhase.PAUSED
-                )
-        }
     }
 
     test("first use names both providers and requires an explicit continue before recording") {

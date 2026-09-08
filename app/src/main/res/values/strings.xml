@@ -701,8 +701,8 @@
 
     <!-- Voice rewrite actions -->
     <string name="voice_rewrite__action_continue">Continue</string>
-    <string name="voice_rewrite__action_open_ai_settings">Open AI settings</string>
-    <string name="voice_rewrite__action_open_incognito_setting">Open incognito setting</string>
+    <string name="voice_rewrite__action_open_ai_settings" comment="Rail action opening the AI settings screen; kept short so three rail actions fit on narrow phones">AI settings</string>
+    <string name="voice_rewrite__action_open_incognito_setting" comment="Rail action opening the incognito typing setting">Incognito setting</string>
     <string name="voice_rewrite__action_back">Back</string>
     <string name="voice_rewrite__action_cancel">Cancel</string>
     <string name="voice_rewrite__action_pause" comment="Short visible label; the accessible description is voice_recording__pause_rewrite">Pause</string>

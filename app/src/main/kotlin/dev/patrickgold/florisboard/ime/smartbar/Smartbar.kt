@@ -59,6 +59,7 @@ import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAsp
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButton
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsRow
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.ToggleOverflowPanelAction
+import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
@@ -166,7 +167,12 @@ private fun SmartbarMainRow(
     )
     LaunchedEffect(audioSession?.sessionId, audioSession?.phase) {
         recordingNowMs = System.currentTimeMillis()
-        while (audioSession?.phase == AudioSessionPhase.RECORDING) {
+        // Only a dictation session drives this row's timer; the rewrite panel keeps its own clock,
+        // so a voice-rewrite recording must not recompose the smartbar four times a second.
+        while (
+            audioSession?.owner == AudioSessionOwner.DICTATION &&
+            audioSession?.phase == AudioSessionPhase.RECORDING
+        ) {
             recordingNowMs = System.currentTimeMillis()
             delay(250L)
         }
@@ -247,7 +253,9 @@ private fun SmartbarMainRow(
                 )
                 return@Box
             }
-            if (rewritePanelVisible) {
+            // Suggestions are replaced by the panel title, but an expanded shared-actions row is
+            // still the user's toolbar and its toggle keeps working while the panel is open.
+            if (rewritePanelVisible && !expanded) {
                 RewritePanelSmartbarTitle(modifier = Modifier.fillMaxSize())
                 return@Box
             }

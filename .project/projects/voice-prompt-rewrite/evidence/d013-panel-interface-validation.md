@@ -8,7 +8,7 @@ dictation inserts its own word boundary.
 
 | Command | Result |
 | --- | --- |
-| `gradlew.bat :app:testDebugUnitTest --console=plain` | 310 passed, 0 failed, 0 skipped |
+| `gradlew.bat :app:testDebugUnitTest --console=plain` | 311 passed, 0 failed, 0 skipped |
 | `gradlew.bat :app:compileDebugKotlin` | success |
 | `gradlew.bat :app:compileReleaseKotlin` | success |
 | `git diff --check` | clean |
@@ -31,3 +31,13 @@ recording to processing to result to success, pause/resume, long instruction and
 each stage, recovery variants, rapid close/reopen after success), Samsung Notes and other editors,
 dark/light themes, large font scale, narrow portrait, landscape and tablet/split layouts, and
 TalkBack focus and announcements remain pending and should be exercised before release.
+
+## Review follow-ups (2026-09-08)
+
+An independent code review of the diff was applied before merge: a straight quote after the
+cursor no longer receives a space before it, the panel waveform can no longer push the action rail
+out of the sheet, the smartbar stops ticking during a voice-rewrite recording, header controls are
+48 dp, rail labels may wrap to two lines, every voice body keeps a label and an exit even without a
+model message, and the accent ink switches to dark on light user accents. The full unit suite was
+rerun afterwards (311 passed). Candidate staleness after replacement was not reproduced in this
+pass and remains hidden-only while the panel is open.

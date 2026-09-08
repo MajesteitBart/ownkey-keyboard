@@ -68,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
@@ -86,6 +87,7 @@ import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.app.ownkeyAccentColor
 import dev.patrickgold.florisboard.audioLevelHistorySampler
 import dev.patrickgold.florisboard.audioSessionCoordinator
+import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.smartbar.MeasuredLevelWaveform
 import dev.patrickgold.florisboard.ime.smartbar.formatRecordingElapsed
@@ -109,7 +111,7 @@ private val CardShape = RoundedCornerShape(10.dp)
 private val PresetRowHeight = 50.dp
 private val MinTouchTarget = 48.dp
 private val ActionRailHeight = 52.dp
-private val HeaderControlSize = 44.dp
+private val HeaderControlSize = MinTouchTarget
 
 /** Expanded layouts centre the content instead of stretching it to the screen edges. */
 private val HubMaxWidth = 1_200.dp
@@ -140,12 +142,15 @@ fun RewriteOptionsPanel(
     val prompts = remember(promptsJson) { RewritePromptPresets.decode(promptsJson) }
     val body = rewritePanelBody(step = uiState.step, surface = voiceModel.surface)
 
-    // The hub card is resolved whenever the hub becomes visible again, so the selection scope is
-    // fresh on return. Active states never re-read live editor content; they show the session's
-    // own snapshot. Provider readiness reads the Keystore-backed secret stores, never on the
-    // typing thread.
+    // The hub card is resolved whenever the hub is visible and the host selection changes, so the
+    // scope summary is fresh on return and after the user adjusts the selection handles. Active
+    // states never re-read live editor content; they show the session's own snapshot. Provider
+    // readiness reads the Keystore-backed secret stores, never on the typing thread.
+    val editorInstance by context.editorInstance()
+    val editorContent by editorInstance.activeContentFlow.collectAsState()
+    val hubSelection = if (body == RewritePanelBody.HUB) editorContent.selection else null
     var hubCard by remember { mutableStateOf(VoiceRewriteHubCardState()) }
-    LaunchedEffect(availability, body) {
+    LaunchedEffect(availability, body, hubSelection) {
         if (body == RewritePanelBody.HUB) {
             hubCard = withContext(Dispatchers.IO) { voiceController.hubCardState() }
         }
@@ -486,7 +491,8 @@ private fun BoxScope.VoiceTargetingBody(
     model: VoiceRewriteUiModel,
     onCancel: () -> Unit,
 ) {
-    val message = model.statusMessage ?: return
+    // Every body keeps a label and a way out even if the model carries no message.
+    val message = model.statusMessage ?: VoiceRewriteMessage.SELECTING_WHOLE_FIELD
     SessionSheet {
         SheetEyebrow(text = stringRes(R.string.voice_rewrite__sheet_title))
         Column(
@@ -508,7 +514,7 @@ private fun BoxScope.VoiceDisclosureBody(
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val disclosure = model.disclosure ?: return
+    val disclosure = model.disclosure
     SessionSheet {
         Text(
             text = stringRes(R.string.voice_rewrite__disclosure_title),
@@ -531,20 +537,22 @@ private fun BoxScope.VoiceDisclosureBody(
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
             )
-            Text(
-                text = stringRes(
-                    R.string.voice_rewrite__disclosure_audio_row,
-                    "provider" to disclosure.audioProviderName,
-                ),
-                fontSize = 13.sp,
-            )
-            Text(
-                text = stringRes(
-                    R.string.voice_rewrite__disclosure_text_row,
-                    "provider" to disclosure.rewriteProviderName,
-                ),
-                fontSize = 13.sp,
-            )
+            if (disclosure != null) {
+                Text(
+                    text = stringRes(
+                        R.string.voice_rewrite__disclosure_audio_row,
+                        "provider" to disclosure.audioProviderName,
+                    ),
+                    fontSize = 13.sp,
+                )
+                Text(
+                    text = stringRes(
+                        R.string.voice_rewrite__disclosure_text_row,
+                        "provider" to disclosure.rewriteProviderName,
+                    ),
+                    fontSize = 13.sp,
+                )
+            }
         }
         ActionRail(
             RailAction(VoiceRewriteAction.BACK, onBack),
@@ -611,14 +619,15 @@ private fun BoxScope.VoiceCaptureBody(
             }
             RecordingTimer(clock = clock, paused = paused)
         }
+        // The waveform takes whatever height remains and gives it all up under pressure, so the
+        // action rail below can never be pushed out of the sheet.
         MeasuredLevelWaveform(
             levels = levels.levels,
             barCount = levels.levels.size,
             paused = paused,
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .heightIn(min = 28.dp),
+                .fillMaxWidth(),
             color = ownkeyAccentColor(),
         )
         ActionRail(
@@ -694,7 +703,7 @@ private fun BoxScope.VoiceProcessingBody(
     model: VoiceRewriteUiModel,
     onCancel: () -> Unit,
 ) {
-    val message = model.statusMessage ?: return
+    val message = model.statusMessage ?: VoiceRewriteMessage.UNDERSTANDING_INSTRUCTION
     SessionSheet {
         SheetEyebrow(text = stringRes(R.string.voice_rewrite__sheet_title))
         Column(
@@ -722,10 +731,34 @@ private fun BoxScope.VoiceResultBody(
     model: VoiceRewriteUiModel,
     controller: VoiceRewriteUiController,
 ) {
-    val resultText = model.resultText ?: return
+    val resultText = model.resultText
     val canReplace = VoiceRewriteAction.REPLACE in model.actions
     val closeLabel = VoiceRewriteAction.CLOSE.label()
+    val resultLabel = stringRes(R.string.voice_rewrite__result_label)
     var copied by remember { mutableStateOf(false) }
+
+    if (resultText == null) {
+        // The session never publishes a result surface without text; if it ever did, the user
+        // still gets a labelled state and a way out rather than an empty sheet.
+        SessionSheet {
+            SheetEyebrow(text = stringRes(R.string.voice_rewrite__sheet_title))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                StatusLine(
+                    text = VoiceRewriteMessage.EMPTY_RESULT.text(),
+                    spinner = false,
+                    icon = Icons.Outlined.ErrorOutline,
+                    color = OwnkeyBrand.WarningYellow,
+                )
+            }
+            ActionRail(RailAction(VoiceRewriteAction.CLOSE, { controller.close() }))
+        }
+        return
+    }
 
     SessionSheet {
         Row(
@@ -764,7 +797,7 @@ private fun BoxScope.VoiceResultBody(
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .semantics { contentDescription = resultText },
+                .semantics { contentDescription = "$resultLabel. $resultText" },
             fontSize = 16.sp,
             lineHeight = 23.sp,
         )
@@ -796,7 +829,7 @@ private fun BoxScope.VoiceRecoveryBody(
     model: VoiceRewriteUiModel,
     controller: VoiceRewriteUiController,
 ) {
-    val message = model.statusMessage ?: return
+    val message = model.statusMessage ?: VoiceRewriteMessage.REWRITE_FAILED
     SessionSheet {
         SheetEyebrow(text = stringRes(R.string.voice_rewrite__sheet_title))
         Column(
@@ -897,6 +930,7 @@ private fun BoxScope.PresetResultBody(
     onInsert: () -> Unit,
 ) {
     val backLabel = stringRes(R.string.rewrite_panel__action_back_to_options)
+    val resultLabel = stringRes(R.string.voice_rewrite__result_label)
     SessionSheet {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -919,7 +953,7 @@ private fun BoxScope.PresetResultBody(
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .semantics { contentDescription = resultText },
+                .semantics { contentDescription = "$resultLabel. $resultText" },
             fontSize = 16.sp,
             lineHeight = 23.sp,
         )
@@ -958,6 +992,7 @@ private fun BoxScope.ReplacedConfirmation(text: String) {
             checkScale.animateTo(1f, animationSpec = tween(300, easing = PanelEasing))
         }
     }
+    val accent = ownkeyAccentColor()
     SessionSheet {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -971,13 +1006,13 @@ private fun BoxScope.ReplacedConfirmation(text: String) {
                         scaleX = checkScale.value
                         scaleY = checkScale.value
                     }
-                    .background(ownkeyAccentColor(), CircleShape),
+                    .background(accent, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = OwnkeyBrand.Glass.Ink,
+                    tint = accentForeground(accent),
                     modifier = Modifier.size(30.dp),
                 )
             }
@@ -1210,10 +1245,11 @@ private fun RailButton(
 ) {
     val label = rail.label ?: rail.action.label()
     val description = rail.description ?: label
+    val accent = ownkeyAccentColor()
     val (background, foreground) = when (rail.emphasis) {
         RailEmphasis.NEUTRAL -> OwnkeyBrand.Glass.Key to OwnkeyBrand.Glass.Ink
         RailEmphasis.STRONG -> OwnkeyBrand.Glass.Ink to OwnkeyBrand.Glass.Stage
-        RailEmphasis.ACCENT -> ownkeyAccentColor() to OwnkeyBrand.Glass.Ink
+        RailEmphasis.ACCENT -> accent to accentForeground(accent)
     }
     Surface(
         modifier = modifier
@@ -1245,13 +1281,25 @@ private fun RailButton(
                     modifier = Modifier.size(18.dp),
                 )
             }
+            // Two lines keep longer labels readable on narrow phones instead of ellipsizing
+            // them to a stub; the rail height has room for both.
             Text(
                 text = label,
                 fontSize = 14.sp,
+                lineHeight = 17.sp,
                 fontWeight = if (rail.emphasis == RailEmphasis.NEUTRAL) FontWeight.Normal else FontWeight.Medium,
-                maxLines = 1,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
     }
 }
+
+/**
+ * Ink on the user-configurable accent. White stays the brand default on dark accents; a light
+ * accent (yellow, mint, pale blue) switches to dark ink so Replace and the replaced check remain
+ * readable instead of washing out.
+ */
+private fun accentForeground(accent: Color): Color =
+    if (accent.luminance() > 0.4f) OwnkeyBrand.Glass.Stage else OwnkeyBrand.Glass.Ink

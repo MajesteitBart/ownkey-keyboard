@@ -69,6 +69,17 @@ class DictationInsertionSpacingTest : FunSpec({
         join("“", "quoted") shouldBe "quoted"
     }
 
+    test("a straight quote after the cursor is treated as closing, so no space is added before it") {
+        join("He said \"hi", "there", "\"") shouldBe " there"
+        join("John", "ny", "'s car") shouldBe " ny"
+        join("", "Hello", "\"world\"") shouldBe "Hello"
+    }
+
+    test("a no-break space counts as existing whitespace") {
+        join("hello\u00A0", "world") shouldBe "world"
+        join("hello", "world", "\u00A0there") shouldBe " world"
+    }
+
     test("closing quotes and brackets are followed by a space") {
         join("he said \"hi\"", "then left") shouldBe " then left"
         join("(note)", "done") shouldBe " done"

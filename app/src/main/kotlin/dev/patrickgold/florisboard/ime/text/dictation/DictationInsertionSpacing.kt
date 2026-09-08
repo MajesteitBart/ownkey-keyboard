@@ -23,16 +23,17 @@ package dev.patrickgold.florisboard.ime.text.dictation
  * boundary: `keyboard.` followed by `When I` becomes `keyboard. When I`, not `keyboard.When I`.
  * The rules are deliberately narrow. A space is added only between two things that are visibly
  * word-like on both sides; existing whitespace, punctuation that attaches to its neighbour,
- * opening brackets or quotes, and scripts that do not separate words with spaces all yield no
- * change. When the surrounding text is unavailable it looks empty, and empty context adds nothing,
- * so the fallback is the previous behaviour rather than a guessed space.
+ * opening brackets or quotes, a straight quote after the cursor (far more often closing than
+ * opening), and scripts that do not separate words with spaces all yield no change. When the
+ * surrounding text is unavailable it looks empty, and empty context adds nothing, so the fallback
+ * is the previous behaviour rather than a guessed space.
  *
  * Only the transcript is ever modified; the surrounding text is read, never edited.
  */
 object DictationInsertionSpacing {
     private const val AttachesToPrevious = ".,;:!?)]}»”’…%"
     private const val OpensGroup = "([{«“‘"
-    private const val AmbiguousQuotes = "\"'"
+    private const val StraightQuotes = "\"'"
 
     private val noSpaceScripts = setOf(
         Character.UnicodeScript.HAN,
@@ -55,10 +56,10 @@ object DictationInsertionSpacing {
         val previous = textBefore.last()
         val first = transcript.first()
         return when {
-            previous.isWhitespace() || first.isWhitespace() -> ""
+            previous.isSpacing() || first.isSpacing() -> ""
             first in AttachesToPrevious -> ""
             previous in OpensGroup -> ""
-            previous in AmbiguousQuotes && isOpeningQuote(textBefore) -> ""
+            previous in StraightQuotes && isOpeningQuote(textBefore) -> ""
             previous.isNoSpaceScript() || first.isNoSpaceScript() -> ""
             else -> " "
         }
@@ -69,10 +70,9 @@ object DictationInsertionSpacing {
         val last = transcript.last()
         val next = textAfter.first()
         return when {
-            last.isWhitespace() || next.isWhitespace() -> ""
-            next in AttachesToPrevious -> ""
+            last.isSpacing() || next.isSpacing() -> ""
+            next in AttachesToPrevious || next in StraightQuotes -> ""
             last in OpensGroup -> ""
-            next in AmbiguousQuotes || next in OpensGroup && last.isLetterOrDigit() -> " "
             last.isNoSpaceScript() || next.isNoSpaceScript() -> ""
             else -> " "
         }
@@ -82,8 +82,11 @@ object DictationInsertionSpacing {
     private fun isOpeningQuote(textBefore: String): Boolean {
         if (textBefore.length == 1) return true
         val beforeQuote = textBefore[textBefore.length - 2]
-        return beforeQuote.isWhitespace() || beforeQuote in OpensGroup
+        return beforeQuote.isSpacing() || beforeQuote in OpensGroup
     }
+
+    /** Java's whitespace test excludes the no-break space, which editors do emit. */
+    private fun Char.isSpacing(): Boolean = isWhitespace() || this == '\u00A0'
 
     private fun Char.isNoSpaceScript(): Boolean =
         isLetter() && Character.UnicodeScript.of(code) in noSpaceScripts
