@@ -3,7 +3,7 @@ name: Voice-Prompt Rewrite
 slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 created: 2026-08-04T08:33:57Z
-updated: 2026-09-08T21:40:07Z
+updated: 2026-09-08T22:07:16Z
 ---
 
 # Decisions: Voice-Prompt Rewrite
@@ -135,7 +135,8 @@ updated: 2026-09-08T21:40:07Z
 - **Consequences:**
   - Refines D-005: the shared row composition now applies to ordinary dictation only, and voice rewrite reuses the presentational waveform rather than the row. FR-042 in the spec is superseded on the placement of rewrite controls; their meaning and 48 dp targets are unchanged.
   - Cancel, Stop, Pause, Resume, Try again, navigation, and Close use neutral surfaces; Stop stays prominent through a high-contrast fill and its stop-square glyph. The filled accent is reserved for the committing action of a state and the replaced confirmation.
-  - The `Text replaced` confirmation dwells about 1.2 seconds inside the panel and its timer is bound to that confirmation, so it cannot close a newer session.
+  - The in-panel `Text replaced` and `Inserted` confirmations dwell about 1.2 seconds (the plan's figure; previously 900 ms in the spec's replacement flow) and the timer is bound to that confirmation, so it cannot close a newer session. D-006 is unchanged: the mic button's own green success acknowledgement for ordinary dictation still lasts about 900 ms.
+  - The smartbar close control cancels an active voice-rewrite session and releases the recorder explicitly before hiding the panel, in addition to the panel's disposal safeguard.
   - Dictation shows one processing spinner; the key slot holds Cancel while transcribing. The dictation start toast remains only for keyboards whose smartbar is switched off.
 
 ## Superseded Decisions

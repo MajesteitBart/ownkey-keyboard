@@ -38,7 +38,8 @@ class LlmRewriteManager(
     private val cloudAiAvailabilityPolicy: CloudAiAvailabilityPolicy,
 ) {
     companion object {
-        private const val DoneConfirmationMillis = 900L
+        /** Same dwell as the voice flow's `Text replaced` confirmation, so both feel like one panel. */
+        private const val DoneConfirmationMillis = 1_200L
     }
 
     /**

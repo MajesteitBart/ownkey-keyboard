@@ -21,10 +21,12 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
 class RewritePanelBodyTest : FunSpec({
-    test("the hub is the only body that shows the voice card and presets") {
-        rewritePanelBody(RewriteStep.OPTIONS, VoiceRewriteSurface.HUB) shouldBe RewritePanelBody.HUB
-        RewritePanelBody.entries.filter { it != RewritePanelBody.HUB }.forEach { body ->
-            (body == RewritePanelBody.HUB) shouldBe false
+    test("the hub renders only while no preset step and no voice session is in progress") {
+        RewriteStep.entries.forEach { step ->
+            VoiceRewriteSurface.entries.forEach { surface ->
+                val isIdle = step == RewriteStep.OPTIONS && surface == VoiceRewriteSurface.HUB
+                (rewritePanelBody(step, surface) == RewritePanelBody.HUB) shouldBe isIdle
+            }
         }
     }
 

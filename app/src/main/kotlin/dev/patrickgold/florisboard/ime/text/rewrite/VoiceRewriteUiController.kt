@@ -157,14 +157,30 @@ class VoiceRewriteUiController(
      * Session-scoped variant for the panel's auto-close timer. The timer captured the confirmation
      * it was started for; if a newer flow has since replaced that surface, the stale timer must not
      * close or reset it. Returns whether the flow was finished.
+     *
+     * The check reads the session manager's state directly rather than the derived [uiState],
+     * which is published by a collector and can lag a synchronous [begin] by a dispatch. Reading
+     * the source of truth and resetting it happen in one call on the same thread, so a flow that
+     * started in that gap cannot be mistaken for the finished confirmation.
      */
     fun finishAfterReplacement(confirmationId: Long): Boolean {
-        val current = uiState.value
+        val current = voiceRewriteUiModel(sessionManager.state.value, _origin.value)
         if (current.surface != VoiceRewriteSurface.SUCCESS || current.announcementId != confirmationId) {
             return false
         }
         finishAfterReplacement()
         return true
+    }
+
+    /**
+     * Dismisses the panel from the smartbar's close control. An active recording, transcription,
+     * or rewrite is cancelled and the recorder lease released here, explicitly, rather than only
+     * when the panel later leaves the composition; the microphone must never keep running behind
+     * a panel the user has just closed.
+     */
+    fun dismissPanel() {
+        sessionManager.invalidate(AudioSessionInvalidation.OWNER_CANCELLED)
+        setPanelVisible(false)
     }
 
     /** Back inside the panel keeps the hub open; back from the accelerator closes the panel. */

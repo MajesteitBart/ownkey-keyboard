@@ -66,7 +66,9 @@ import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.audioLevelHistorySampler
 import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.florisboard.nlpManager
+import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.delay
@@ -187,7 +189,17 @@ private fun SmartbarMainRow(
 
     // While the AI rewrite panel is open the panel owns the editor's next action: suggestions and
     // the voice key are hidden, and the key slot holds the panel's single close affordance.
+    // Closing cancels any voice-rewrite session and the preset flow explicitly, so no recorder or
+    // provider job can outlive the panel even for the frame before it leaves the composition.
     val rewritePanelVisible = keyboardManager.isRewriteOptionsVisible
+    val voiceRewriteUiController by context.voiceRewriteUiController()
+    val llmRewriteManager by context.llmRewriteManager()
+    val closeRewritePanel = remember(voiceRewriteUiController, llmRewriteManager) {
+        {
+            voiceRewriteUiController.dismissPanel()
+            llmRewriteManager.closeOptions()
+        }
+    }
 
     @Composable
     fun SharedActionsToggle() {
@@ -330,7 +342,7 @@ private fun SmartbarMainRow(
             return
         }
         if (rewritePanelVisible) {
-            RewritePanelCloseAction(onClose = { keyboardManager.isRewriteOptionsVisible = false })
+            RewritePanelCloseAction(onClose = closeRewritePanel)
             return
         }
 
