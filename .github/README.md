@@ -29,6 +29,6 @@ bash .github/scripts/test-publish-ci-debug.sh
 ```
 
 These cover first publication, staged replacement of existing assets, recovery of
-an unpublished draft, stale and divergent commits, and network/API/upload failures
-without writing to GitHub. APK replacements upload before the old assets are renamed
+an unpublished draft, stale and divergent commits, and network/API/upload/lease failures
+without writing to GitHub. APK replacements upload and claim the tag before old assets are renamed
 to backups; backups are deleted only after the tag and published release are updated.

@@ -22,10 +22,10 @@ git() {
     rev-parse) printf 'previous\n' ;;
     merge-base)
       case "$scenario:$3:$4" in
-        stale:built:previous | update:previous:built | draft:previous:built | upload-error:previous:built | api-error:previous:built) return 0 ;;
+        stale:built:previous | update:previous:built | draft:previous:built | upload-error:previous:built | lease-error:previous:built | api-error:previous:built) return 0 ;;
         *) return 1 ;;
       esac ;;
-    push) return 0 ;;
+    push) if [[ "$scenario" == lease-error ]]; then return 1; fi ;;
     *) echo "Unexpected git call" >&2; return 1 ;;
   esac
 }
@@ -47,7 +47,7 @@ gh() {
   return 0
 }
 
-for scenario in create update draft stale diverged network-error api-error upload-error; do
+for scenario in create update draft stale diverged network-error api-error upload-error lease-error; do
   : > "$fixture/calls"
   set +e
   (source "$script_dir/publish-ci-debug.sh") > "$fixture/output" 2>&1
@@ -73,10 +73,18 @@ for scenario in create update draft stale diverged network-error api-error uploa
       edit_line=$(grep -n 'gh release edit' "$fixture/calls" | cut -d: -f1)
       delete_line=$(grep -n -- '--method DELETE' "$fixture/calls" | head -1 | cut -d: -f1)
       test "$delete_line" -gt "$edit_line"
+      push_line=$(grep -n 'git push' "$fixture/calls" | cut -d: -f1)
+      rename_line=$(grep -n -- '--method PATCH' "$fixture/calls" | head -1 | cut -d: -f1)
+      test "$push_line" -lt "$rename_line"
       ;;
     upload-error)
       test "$result" != 0
       ! grep -Eq 'git push|--method PATCH|--method DELETE|gh release edit' "$fixture/calls"
+      ;;
+    lease-error)
+      test "$result" != 0
+      grep -q 'git push' "$fixture/calls"
+      ! grep -Eq -- '--method PATCH|--method DELETE|gh release edit' "$fixture/calls"
       ;;
     stale)
       test "$result" = 0

@@ -56,6 +56,9 @@ if [[ -n "$release_id" ]]; then
   cp "$PHONE_APK" "$package_dir/$phone_stage"
   cp "$WEAR_APK" "$package_dir/$wear_stage"
   gh release upload "$tag" "$package_dir/$phone_stage" "$package_dir/$wear_stage" --repo "$repo"
+  # Claim the tag before replacing public names. A rejected lease leaves the other
+  # publisher's APKs and notes untouched; our staging files are safe to discard later.
+  git push origin "$BUILD_COMMIT:refs/tags/$tag" "--force-with-lease=refs/tags/$tag:$previous"
 
   replace_asset() {
     local staged=$1 stable=$2 old_id new_id
@@ -73,7 +76,6 @@ if [[ -n "$release_id" ]]; then
   }
   replace_asset "$phone_stage" ownkey-phone-ci-debug.apk
   replace_asset "$wear_stage" ownkey-wear-ci-debug.apk
-  git push origin "$BUILD_COMMIT:refs/tags/$tag" "--force-with-lease=refs/tags/$tag:$previous"
   gh release edit "$tag" --title "Ownkey CI debug" --notes-file "$package_dir/notes.md" --draft=false --prerelease --latest=false --repo "$repo"
 
   # Clean up backups and abandoned staged files only after successful publication.
