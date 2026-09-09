@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -64,6 +65,9 @@ import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ProvideKeyboardRowBaseHeight
 import dev.patrickgold.florisboard.ime.media.MediaInputLayout
 import dev.patrickgold.florisboard.ime.sheet.BottomSheetWindow
+import dev.patrickgold.florisboard.ime.smartbar.quickaction.LocalVoiceActionHintState
+import dev.patrickgold.florisboard.ime.smartbar.quickaction.VoiceActionHintOverlay
+import dev.patrickgold.florisboard.ime.smartbar.quickaction.VoiceActionHintState
 import dev.patrickgold.florisboard.ime.text.TextInputLayout
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
@@ -104,6 +108,10 @@ fun ImeRootWindow() {
         }
     }
 
+    // The dictation key reports its bounds here and the hint is drawn above it from this root, so
+    // it can sit above the keyboard without a popup window and without stealing host-app touches.
+    val voiceActionHint = remember { VoiceActionHintState() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -120,11 +128,14 @@ fun ImeRootWindow() {
                 windowController.updateRootInsets(newInsets)
             },
     ) {
-        DevtoolsOverlay()
-        ImeWindow()
-        BottomSheetWindow()
-        ImeSystemUi()
-        OwnkeyToastOverlay()
+        CompositionLocalProvider(LocalVoiceActionHintState provides voiceActionHint) {
+            DevtoolsOverlay()
+            ImeWindow()
+            VoiceActionHintOverlay(voiceActionHint)
+            BottomSheetWindow()
+            ImeSystemUi()
+            OwnkeyToastOverlay()
+        }
     }
 }
 

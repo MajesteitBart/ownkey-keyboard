@@ -13,6 +13,7 @@ package dev.patrickgold.florisboard.ime.text.dictation
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.comparables.shouldBeGreaterThan
+import io.kotest.matchers.floats.plusOrMinus
 import io.kotest.matchers.floats.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
 
@@ -76,5 +77,69 @@ class AudioLevelHistoryReducerTest : FunSpec({
         var state = reducer.initialState()
         repeat(40) { state = reducer.sample(state, 0f) }
         state.levels.distinct() shouldContainExactly listOf(reducer.config.baseline)
+    }
+
+    test("adjacent bars keep the contrast of the syllables they measured") {
+        val reducer = AudioLevelHistoryReducer()
+        var state = reducer.initialState()
+        // Alternating loud and quiet windows, the coarse shape of speech at the sampling rate.
+        repeat(reducer.config.historySize) { index ->
+            state = reducer.sample(state, if (index % 2 == 0) 0.7f else 0.02f)
+        }
+
+        val steps = state.levels.zipWithNext { previous, next -> kotlin.math.abs(next - previous) }
+        // Every neighbouring pair differs clearly: the history is a waveform, not a smeared hump.
+        steps.all { it > 0.3f } shouldBe true
+        state.levels.max() shouldBeLessThanOrEqual 1f
+    }
+
+    test("the loudest recent input fills the meter whatever gain the microphone chain applies") {
+        val reducer = AudioLevelHistoryReducer()
+        // A phone whose gain control hands a shout over at a fifth of full scale.
+        var quietDevice = reducer.initialState()
+        repeat(12) { quietDevice = reducer.sample(quietDevice, 0.2f) }
+        // A phone that reports the same shout at full scale.
+        var loudDevice = reducer.initialState()
+        repeat(12) { loudDevice = reducer.sample(loudDevice, 1f) }
+
+        val target = reducer.config.baseline + reducer.config.peakTarget * (1f - reducer.config.baseline)
+        quietDevice.smoothedLevel shouldBe (target plusOrMinus 0.01f)
+        loudDevice.smoothedLevel shouldBe (target plusOrMinus 0.01f)
+    }
+
+    test("after a shout, ordinary speech keeps its proportion below it and silence goes flat") {
+        val reducer = AudioLevelHistoryReducer()
+        var state = reducer.initialState()
+        repeat(12) { state = reducer.sample(state, 1f) }
+        val shout = state.smoothedLevel
+        repeat(12) { state = reducer.sample(state, 0.3f) }
+        val speech = state.smoothedLevel
+
+        speech shouldBeGreaterThan reducer.config.baseline
+        (speech < shout * 0.75f) shouldBe true
+        // Silence is gated before scaling, so the rolling peak cannot lift room noise or nothing.
+        repeat(40) { state = reducer.sample(state, 0.01f) }
+        state.levels.all { it < reducer.config.baseline + 0.001f } shouldBe true
+    }
+
+    test("a whisper is not amplified into a shout: the peak never drops below its floor") {
+        val reducer = AudioLevelHistoryReducer()
+        var state = reducer.initialState()
+        repeat(24) { state = reducer.sample(state, 0.04f) }
+
+        state.peak shouldBe reducer.config.peakFloor
+        (state.smoothedLevel < 0.4f) shouldBe true
+    }
+
+    test("a loud syllable decays within a couple of bars instead of trailing across the meter") {
+        val reducer = AudioLevelHistoryReducer()
+        var state = reducer.initialState()
+        state = reducer.sample(state, 0.9f)
+        val peak = state.smoothedLevel
+        repeat(2) { state = reducer.sample(state, 0.02f) }
+
+        // After two quiet windows less than a quarter of the peak's rise above baseline remains.
+        val remaining = state.smoothedLevel - reducer.config.baseline
+        (remaining < (peak - reducer.config.baseline) * 0.25f) shouldBe true
     }
 })

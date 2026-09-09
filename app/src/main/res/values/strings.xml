@@ -669,6 +669,7 @@
     <string name="voice_rewrite__coach_mark_dismiss" comment="Button label dismissing the coach mark">Got it</string>
     <string name="voice_rewrite__action_voice_rewrite" comment="Accessibility action and long-press label on the dictation key">Voice rewrite</string>
     <string name="voice_rewrite__action_start_dictation" comment="Accessibility click label on the dictation key">Start dictation</string>
+    <string name="voice_rewrite__hold_hint" comment="Short hint shown above the dictation key while it is pressed; keep it to a few words">Hold to rewrite</string>
 
     <!-- Voice rewrite state copy -->
     <string name="voice_rewrite__state_speak_an_edit">Speak your instruction</string>

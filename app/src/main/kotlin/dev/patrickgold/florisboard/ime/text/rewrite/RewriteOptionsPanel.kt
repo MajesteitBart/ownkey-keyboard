@@ -94,6 +94,7 @@ import dev.patrickgold.florisboard.ime.smartbar.MeasuredLevelWaveform
 import dev.patrickgold.florisboard.ime.smartbar.formatRecordingElapsed
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
+import dev.patrickgold.florisboard.ime.text.dictation.StationaryLevelBars
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.florisboard.voiceRewriteUiController
@@ -589,7 +590,8 @@ private fun BoxScope.VoiceCaptureBody(
     val audioSessionCoordinator by context.audioSessionCoordinator()
     val audioLevelHistorySampler by context.audioLevelHistorySampler()
     val audioSession by audioSessionCoordinator.state.collectAsState()
-    val levels by audioLevelHistorySampler.state.collectAsState()
+    // Read only in the waveform's draw pass, so level samples never recompose the panel.
+    val levels = audioLevelHistorySampler.state.collectAsState()
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(audioSession?.sessionId, audioSession?.phase) {
         nowMs = System.currentTimeMillis()
@@ -634,13 +636,15 @@ private fun BoxScope.VoiceCaptureBody(
         // The waveform takes whatever height remains and gives it all up under pressure, so the
         // action rail below can never be pushed out of the sheet.
         MeasuredLevelWaveform(
-            levels = levels.levels,
-            barCount = levels.levels.size,
+            levels = levels,
+            barCount = StationaryLevelBars.BarCount,
             paused = paused,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
             color = ownkeyAccentColor(),
+            barWidth = 5.dp,
+            barPitch = 9.dp,
         )
         ActionRail(
             RailAction(

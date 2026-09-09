@@ -161,7 +161,9 @@ private fun SmartbarMainRow(
     val audioLevelHistorySampler by context.audioLevelHistorySampler()
     val voxtralDictationManager by context.voxtralDictationManager()
     val audioSession by audioSessionCoordinator.state.collectAsState()
-    val audioLevels by audioLevelHistorySampler.state.collectAsState()
+    // Kept as State and read only inside the waveform's draw pass, so the twenty samples a second
+    // published while recording redraw one canvas instead of recomposing the whole smartbar.
+    val audioLevels = audioLevelHistorySampler.state.collectAsState()
     var recordingNowMs by remember { mutableLongStateOf(0L) }
     val recordingRowState = voiceRecordingRowState(
         session = audioSession,

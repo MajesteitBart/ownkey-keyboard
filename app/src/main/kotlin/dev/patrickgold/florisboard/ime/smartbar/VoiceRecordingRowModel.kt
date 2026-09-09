@@ -19,6 +19,7 @@ package dev.patrickgold.florisboard.ime.smartbar
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionState
+import dev.patrickgold.florisboard.ime.text.dictation.StationaryLevelBars
 
 /**
  * Pure presentation contract for the smartbar recording row.
@@ -56,35 +57,39 @@ data class RecordingRowLayout(
 )
 
 /**
- * Width policy approved by the T-001 probe.
+ * Width policy for the dictation row.
  *
  * Interactive controls keep their 48 dp targets at every supported width and the cluster is capped
  * so a tablet or split keyboard centres one control group instead of stranding actions at opposite
- * screen edges. The waveform is the only element that flexes: it reduces its bar count rather than
- * pushing a control off the row or moving back into the stop button.
+ * screen edges. The waveform is the only element that flexes, and it flexes in one direction only:
+ * it never grows past [MaxWaveformWidthDp], so a landscape phone, an unfolded foldable, or a tablet
+ * shows the same small mark as a phone, and on a cramped row it drops its outer bars rather than
+ * pushing a control off the row. Bars sit on a fixed [BarPitchDp] grid in stationary slots, so the
+ * meter reads as the Ownkey mark breathing with the voice rather than a strip stretched to
+ * whatever width was left over.
  */
 object RecordingRowLayoutPolicy {
     const val MaxClusterWidthDp = 840
     const val ControlSizeDp = 48
-    const val MinBarCount = 6
-    const val MaxBarCount = 18
+    const val MinBarCount = StationaryLevelBars.MinBarCount
+    const val MaxBarCount = StationaryLevelBars.BarCount
+    const val BarWidthDp = 4
+    const val BarPitchDp = 7
+    const val MaxWaveformWidthDp = MaxBarCount * BarPitchDp
 
-    private const val TrailingActionWidthDp = 53
     private const val TimerWidthDp = 62
-    private const val GapsAndDividersDp = 26
-    private const val DpPerBar = 8
+
+    /** Five 8 dp gaps, two 1 dp dividers, and the row's 12 dp of horizontal padding. */
+    private const val GapsDividersAndPaddingDp = 54
 
     fun resolve(availableWidthDp: Int): RecordingRowLayout {
-        val clusterWidthDp = availableWidthDp.coerceAtMost(MaxClusterWidthDp).coerceAtLeast(0)
-        val waveformWidthDp = (
-            clusterWidthDp - TrailingActionWidthDp - TimerWidthDp -
-                ControlSizeDp * 2 - GapsAndDividersDp
-            ).coerceAtLeast(1)
-        val barCount = (waveformWidthDp / DpPerBar).coerceIn(MinBarCount, MaxBarCount)
+        val clusterWidthDp = availableWidthDp.coerceIn(0, MaxClusterWidthDp)
+        val freeWidthDp = clusterWidthDp - TimerWidthDp - ControlSizeDp * 2 - GapsDividersAndPaddingDp
+        val barCount = (freeWidthDp / BarPitchDp).coerceIn(MinBarCount, MaxBarCount)
         return RecordingRowLayout(
             clusterWidthDp = clusterWidthDp,
             controlSizeDp = ControlSizeDp,
-            waveformWidthDp = waveformWidthDp,
+            waveformWidthDp = barCount * BarPitchDp,
             barCount = barCount,
         )
     }

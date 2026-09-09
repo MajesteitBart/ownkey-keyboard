@@ -86,6 +86,25 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
         if (prefs.inputFeedback.hapticFeatGestureMovingSwipe.get()) performHapticFeedback(data, 0.05)
     }
 
+    /**
+     * Press feedback for the dictation key.
+     *
+     * The key confirms a gesture rather than typing a character, so, like a messaging app's
+     * hold-to-record button, its haptic follows the platform touch-feedback setting instead of the
+     * keyboard's typing vibration preferences, which are off by default and tuned to be faint.
+     * Audio feedback still follows the key-press preference so it matches the rest of the row.
+     */
+    fun voiceActionPress() {
+        if (prefs.inputFeedback.audioFeatKeyPress.get()) performAudioFeedback(TextKeyData.UNSPECIFIED, 1.0)
+        performSystemHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    /** One distinct confirmation when a hold on the dictation key becomes voice rewrite. */
+    fun voiceActionHoldRecognized() {
+        if (prefs.inputFeedback.audioFeatKeyLongPress.get()) performAudioFeedback(TextKeyData.UNSPECIFIED, 0.7)
+        performSystemHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+    }
+
     private fun systemPref(id: String): Boolean {
         if (contentResolver == null) return false
         return Settings.System.getInt(contentResolver, id, 0) != 0
@@ -110,6 +129,15 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
                 audioManager.playSoundEffect(effect, volume.toFloat())
             }
         }
+    }
+
+    /**
+     * A platform haptic that ignores the decor view's own flag but still honours the system-wide
+     * touch-feedback setting, so a user who turned haptics off at the OS level feels nothing.
+     */
+    private fun performSystemHapticFeedback(constant: Int) {
+        val view = ims.window?.window?.decorView ?: return
+        view.performHapticFeedback(constant, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING)
     }
 
     private fun performHapticFeedback(data: KeyData, factor: Double) {

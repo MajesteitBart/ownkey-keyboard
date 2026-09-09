@@ -22,6 +22,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -60,6 +61,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.takeOrElse
@@ -70,6 +73,8 @@ import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.vectorResource
@@ -107,6 +112,7 @@ import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.compose.stringRes
@@ -185,6 +191,13 @@ fun QuickActionButton(
     val dictationClickLabel = stringRes(R.string.voice_rewrite__action_start_dictation)
     val voiceRewriteLabel = stringRes(R.string.voice_rewrite__action_voice_rewrite)
 
+    // Press feedback for the voice gesture: the hold hint drawn by the IME root, and a ring that
+    // fills over the platform hold timeout so the moment the key becomes voice rewrite is visible
+    // before it is felt. Under reduced motion the ring is not animated; the hint still shows.
+    val hintState = if (usesVoiceGesture) LocalVoiceActionHintState.current else null
+    val reducedMotion = if (usesVoiceGesture) rememberReducedMotion() else false
+    val holdProgress = remember { Animatable(0f) }
+
     // An incognito or secure editor session disables every cloud AI action. The key stays visible
     // and answers with the specific reason instead of becoming an inert or silently failing control.
     val cloudAiAvailability = if (usesVoiceGesture) {
@@ -206,7 +219,7 @@ fun QuickActionButton(
                 action.onPointerUp(context)
             }
             VoiceActionGestureOutcome.VOICE_REWRITE -> {
-                inputFeedbackController.keyLongPress(action.keyData())
+                inputFeedbackController.voiceActionHoldRecognized()
                 voiceRewriteUiController.value.begin(VoiceRewriteEntryOrigin.DICTATION_KEY)
             }
         }
@@ -255,46 +268,80 @@ fun QuickActionButton(
      */
     fun Modifier.voiceQuickActionInput(): Modifier {
         return indication(interactionSource, localIndication)
-            .pointerInput(action, isEnabled, longPressTimeoutMs, cloudAiAvailability) {
+            .pointerInput(action, isEnabled, longPressTimeoutMs, cloudAiAvailability, reducedMotion) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     down.consume()
                     if (!isEnabled) return@awaitEachGesture
                     val press = PressInteraction.Press(down.position)
-                    inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED)
+                    inputFeedbackController.voiceActionPress()
                     interactionSource.tryEmit(press)
                     gestureArbiter.reset()
                     gestureArbiter.down(SystemClock.uptimeMillis())
-
-                    var released: PointerInputChange? = null
-                    var holdTimedOut = false
-                    try {
-                        withTimeout(longPressTimeoutMs) {
-                            released = waitForUpOrCancellation()
+                    // An unavailable key answers with its reason on release, so it neither teaches
+                    // the hold nor pretends the ring will lead anywhere.
+                    val teachesHold = aiUnavailableText == null
+                    var holdAnimation: Job? = null
+                    if (teachesHold) {
+                        hintState?.show()
+                        if (!reducedMotion) {
+                            holdAnimation = coroutineScope.launch {
+                                holdProgress.snapTo(0f)
+                                holdProgress.animateTo(
+                                    targetValue = 1f,
+                                    animationSpec = tween(
+                                        durationMillis = longPressTimeoutMs.toInt(),
+                                        easing = LinearEasing,
+                                    ),
+                                )
+                            }
                         }
-                    } catch (_: PointerEventTimeoutCancellationException) {
-                        holdTimedOut = true
                     }
 
-                    when {
-                        holdTimedOut -> {
-                            gestureArbiter.advanceTo(SystemClock.uptimeMillis())
-                                ?.let(::dispatchVoiceOutcome)
-                            interactionSource.tryEmit(PressInteraction.Release(press))
-                            // Swallow the rest of the gesture so the release cannot also dictate.
-                            consumeUntilUp()
-                            gestureArbiter.reset()
+                    val hintRequestId = if (teachesHold) hintState?.request?.id else null
+                    try {
+                        var released: PointerInputChange? = null
+                        var holdTimedOut = false
+                        try {
+                            withTimeout(longPressTimeoutMs) {
+                                released = waitForUpOrCancellation()
+                            }
+                        } catch (_: PointerEventTimeoutCancellationException) {
+                            holdTimedOut = true
                         }
-                        released != null -> {
-                            released?.consume()
-                            interactionSource.tryEmit(PressInteraction.Release(press))
-                            gestureArbiter.up(SystemClock.uptimeMillis())?.let(::dispatchVoiceOutcome)
+
+                        when {
+                            holdTimedOut -> {
+                                hintState?.hide()
+                                gestureArbiter.advanceTo(SystemClock.uptimeMillis())
+                                    ?.let(::dispatchVoiceOutcome)
+                                interactionSource.tryEmit(PressInteraction.Release(press))
+                                // Swallow the rest of the gesture so the release cannot also dictate.
+                                consumeUntilUp()
+                                gestureArbiter.reset()
+                            }
+                            released != null -> {
+                                released?.consume()
+                                // A tap keeps the hint up briefly: it teaches the hold for next time.
+                                hintState?.linger()
+                                interactionSource.tryEmit(PressInteraction.Release(press))
+                                gestureArbiter.up(SystemClock.uptimeMillis())?.let(::dispatchVoiceOutcome)
+                            }
+                            else -> {
+                                hintState?.hide()
+                                interactionSource.tryEmit(PressInteraction.Cancel(press))
+                                gestureArbiter.cancel(SystemClock.uptimeMillis())
+                                    ?.let(::dispatchVoiceOutcome)
+                            }
                         }
-                        else -> {
-                            interactionSource.tryEmit(PressInteraction.Cancel(press))
-                            gestureArbiter.cancel(SystemClock.uptimeMillis())
-                                ?.let(::dispatchVoiceOutcome)
-                        }
+                    } finally {
+                        // Pointer input can be cancelled by disposal or a policy/config change,
+                        // without waitForUpOrCancellation returning. Keep cleanup on that path too.
+                        holdAnimation?.cancel()
+                        hintState?.cancelPress(hintRequestId)
+                        interactionSource.tryEmit(PressInteraction.Cancel(press))
+                        gestureArbiter.reset()
+                        coroutineScope.launch { holdProgress.snapTo(0f) }
                     }
                 }
             }
@@ -331,13 +378,19 @@ fun QuickActionButton(
     }
 
     fun Modifier.actionInput(): Modifier = if (usesVoiceGesture) {
-        voiceQuickActionInput().voiceActionSemantics()
+        voiceQuickActionInput()
+            .voiceActionSemantics()
+            .onGloballyPositioned { coords -> hintState?.updateAnchor(coords.boundsInRoot()) }
     } else {
         quickActionInput()
     }
 
+    // The voice key has its own press hint, so the generic long-press tooltip stays off it: a hold
+    // must open voice rewrite, not a label.
+    val showsGenericTooltip = !usesVoiceGesture
+
     if (type == QuickActionBarType.INTERACTIVE_BUTTON && fillContainer) {
-        PlainTooltip(action.computeTooltip(evaluator), enabled = true) {
+        PlainTooltip(action.computeTooltip(evaluator), enabled = showsGenericTooltip) {
             Box(
                 modifier = modifier.actionInput(),
                 contentAlignment = Alignment.Center,
@@ -380,7 +433,10 @@ fun QuickActionButton(
         return
     }
 
-    PlainTooltip(action.computeTooltip(evaluator), enabled = type == QuickActionBarType.INTERACTIVE_BUTTON) {
+    PlainTooltip(
+        action.computeTooltip(evaluator),
+        enabled = type == QuickActionBarType.INTERACTIVE_BUTTON && showsGenericTooltip,
+    ) {
         SnyggBox(
             elementName = elementName,
             attributes = attributes,
@@ -447,6 +503,7 @@ fun QuickActionButton(
                     isPressed = isPressed,
                     isEnabled = isEnabled && aiUnavailableReason == null,
                     isAiUnavailable = aiUnavailableReason != null,
+                    holdProgress = { holdProgress.value },
                 )
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -476,12 +533,16 @@ fun QuickActionButton(
  * - transcribing: back to glass with a thin accent arc spinning around the pill
  * - success (transcript inserted): solid green with a check icon, shown briefly, then back to idle
  * - error: red tint with a mic-off icon
+ *
+ * While pressed the pill grows slightly and, as the finger stays down, [holdProgress] fills an
+ * accent ring around it that completes exactly when the hold becomes voice rewrite.
  */
 @Composable
 private fun DictationMicPill(
     isPressed: Boolean,
     isEnabled: Boolean,
     isAiUnavailable: Boolean = false,
+    holdProgress: () -> Float = { 0f },
 ) {
     val context = LocalContext.current
     val voxtralDictationManager by context.voxtralDictationManager()
@@ -523,10 +584,35 @@ private fun DictationMicPill(
         }
     }
 
+    // A press grows the pill under the finger, the way a hold-to-record button does, instead of
+    // shrinking it away from the touch.
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 1.08f else 1f,
+        animationSpec = tween(durationMillis = if (reducedMotion) 0 else OwnkeyBrand.MotionFastMillis),
+        label = "micPillPress",
+    )
+
     Box(
         modifier = Modifier.size(pillSize + 8.dp),
         contentAlignment = Alignment.Center,
     ) {
+        // The hold ring reads its progress at draw time, so the smartbar does not recompose on
+        // every frame of the hold.
+        Canvas(modifier = Modifier.size(pillSize + 8.dp)) {
+            val progress = holdProgress().coerceIn(0f, 1f)
+            if (progress > 0f) {
+                val ringStroke = 2.5.dp.toPx()
+                drawArc(
+                    color = accentColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * progress,
+                    useCenter = false,
+                    topLeft = Offset(ringStroke / 2f, ringStroke / 2f),
+                    size = Size(size.width - ringStroke, size.height - ringStroke),
+                    style = Stroke(width = ringStroke, cap = StrokeCap.Round),
+                )
+            }
+        }
         if (isListening && !reducedMotion) {
             val haloTransition = rememberInfiniteTransition(label = "micHalo")
             val haloProgress by haloTransition.animateFloat(
@@ -549,7 +635,7 @@ private fun DictationMicPill(
         Box(
             modifier = Modifier
                 .size(pillSize)
-                .scale(if (showSuccess) successScale.value else if (isPressed) 0.96f else 1f)
+                .scale(if (showSuccess) successScale.value else pressScale)
                 .alpha(if (isEnabled) 1f else 0.45f)
                 .clip(CircleShape)
                 .background(backgroundColor),
