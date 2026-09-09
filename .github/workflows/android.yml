@@ -41,7 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          # Concurrency keeps only one pending run. Even an old rerun that takes that
+          # slot must build the current main tip rather than displacing a newer merge.
+          ref: ${{ github.event_name == 'pull_request_target' && 'refs/heads/main' || github.sha }}
           submodules: recursive
           fetch-depth: 0
 

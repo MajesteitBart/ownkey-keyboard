@@ -35,7 +35,7 @@ trap 'rm -rf "$package_dir"' EXIT
 cp "$PHONE_APK" "$package_dir/ownkey-phone-ci-debug.apk"
 cp "$WEAR_APK" "$package_dir/ownkey-wear-ci-debug.apk"
 cat > "$package_dir/notes.md" <<EOF
-Automated CI debug prerelease from merged pull requests to \`main\`.
+Automated CI debug prerelease from \`main\`, refreshed after PR merges.
 Version: \`$VERSION\`
 Commit: \`$BUILD_COMMIT\`
 Includes: Phone + Wear debug APKs
