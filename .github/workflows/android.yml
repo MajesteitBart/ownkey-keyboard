@@ -35,7 +35,7 @@ jobs:
     if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     concurrency:
-      group: android-${{ github.event_name == 'pull_request_target' && 'ci-debug' || github.ref }}
+      group: android-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name == 'pull_request_target' && 'ci-debug' || github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
     steps:

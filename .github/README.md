@@ -15,6 +15,8 @@ a prerelease and never becomes the latest stable release. Concurrent merge build
 are serialized. Each surviving run checks out `main` when it starts, so an old
 rerun that replaces a newer pending run still builds the latest code. Older built
 commits cannot replace a newer published build.
+Manual runs have separate concurrency groups so requesting multiple variants never
+discards an earlier pending manual build.
 
 Production-signed `android-v*` releases remain a separate manual publishing process.
 CI's release variant can fall back to a debug signing key, so its output must not
