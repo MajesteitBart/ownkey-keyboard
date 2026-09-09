@@ -47,11 +47,45 @@ EOF
 # Query through a successful API response rather than treating every error as "not found".
 release_id=$(gh api --paginate "repos/$repo/releases?per_page=100" \
   --jq '.[] | select(.tag_name == "ci-debug") | .id')
-git push origin "$BUILD_COMMIT:refs/tags/$tag" "--force-with-lease=refs/tags/$tag:$previous"
 if [[ -n "$release_id" ]]; then
-  gh release upload "$tag" "$package_dir/ownkey-phone-ci-debug.apk" "$package_dir/ownkey-wear-ci-debug.apk" --clobber --repo "$repo"
-  gh release edit "$tag" --title "Ownkey CI debug" --notes-file "$package_dir/notes.md" --prerelease --latest=false --repo "$repo"
+  # Upload both replacements before touching the existing APKs or tag. Unique names
+  # let retries proceed even if a failed upload left a partial asset behind.
+  suffix="$GITHUB_RUN_ID-$(basename "$package_dir")"
+  phone_stage="ownkey-ci-staging-phone-$suffix.apk"
+  wear_stage="ownkey-ci-staging-wear-$suffix.apk"
+  cp "$PHONE_APK" "$package_dir/$phone_stage"
+  cp "$WEAR_APK" "$package_dir/$wear_stage"
+  gh release upload "$tag" "$package_dir/$phone_stage" "$package_dir/$wear_stage" --repo "$repo"
+
+  replace_asset() {
+    local staged=$1 stable=$2 old_id new_id
+    new_id=$(gh api --paginate "repos/$repo/releases/$release_id/assets?per_page=100" \
+      --jq ".[] | select(.name == \"$staged\" and .state == \"uploaded\") | .id")
+    : "${new_id:?Replacement APK is not uploaded}"
+    old_id=$(gh api --paginate "repos/$repo/releases/$release_id/assets?per_page=100" \
+      --jq ".[] | select(.name == \"$stable\") | .id")
+    if [[ -n "$old_id" ]]; then
+      # Keep the previous bytes recoverable until both new names, tag and notes are ready.
+      gh api --method PATCH "repos/$repo/releases/assets/$old_id" \
+        -f "name=ownkey-ci-previous-$suffix-$stable" > /dev/null
+    fi
+    gh api --method PATCH "repos/$repo/releases/assets/$new_id" -f "name=$stable" > /dev/null
+  }
+  replace_asset "$phone_stage" ownkey-phone-ci-debug.apk
+  replace_asset "$wear_stage" ownkey-wear-ci-debug.apk
+  git push origin "$BUILD_COMMIT:refs/tags/$tag" "--force-with-lease=refs/tags/$tag:$previous"
+  gh release edit "$tag" --title "Ownkey CI debug" --notes-file "$package_dir/notes.md" --draft=false --prerelease --latest=false --repo "$repo"
+
+  # Clean up backups and abandoned staged files only after successful publication.
+  obsolete_ids=$(gh api --paginate "repos/$repo/releases/$release_id/assets?per_page=100" \
+    --jq '.[] | select(.name | startswith("ownkey-ci-staging-") or startswith("ownkey-ci-previous-")) | .id')
+  while IFS= read -r asset_id; do
+    if [[ -n "$asset_id" ]]; then
+      gh api --method DELETE "repos/$repo/releases/assets/$asset_id"
+    fi
+  done <<< "$obsolete_ids"
 else
+  git push origin "$BUILD_COMMIT:refs/tags/$tag" "--force-with-lease=refs/tags/$tag:$previous"
   gh release create "$tag" "$package_dir/ownkey-phone-ci-debug.apk" "$package_dir/ownkey-wear-ci-debug.apk" \
     --verify-tag --title "Ownkey CI debug" --notes-file "$package_dir/notes.md" --prerelease --latest=false --repo "$repo"
 fi

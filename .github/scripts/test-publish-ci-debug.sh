@@ -22,7 +22,7 @@ git() {
     rev-parse) printf 'previous\n' ;;
     merge-base)
       case "$scenario:$3:$4" in
-        stale:built:previous | update:previous:built | api-error:previous:built) return 0 ;;
+        stale:built:previous | update:previous:built | draft:previous:built | upload-error:previous:built | api-error:previous:built) return 0 ;;
         *) return 1 ;;
       esac ;;
     push) return 0 ;;
@@ -33,12 +33,21 @@ gh() {
   printf 'gh %s\n' "$*" >> "$fixture/calls"
   if [[ "$1" == api ]]; then
     if [[ "$scenario" == api-error ]]; then return 1; fi
-    if [[ "$scenario" != create ]]; then printf '123\n'; fi
+    case "$*" in
+      *--method*) return 0 ;;
+      *startswith*) printf '101\n102\n' ;;
+      *ownkey-ci-staging-phone*) printf '201\n' ;;
+      *ownkey-ci-staging-wear*) printf '202\n' ;;
+      *ownkey-phone-ci-debug*) printf '101\n' ;;
+      *ownkey-wear-ci-debug*) printf '102\n' ;;
+      *) if [[ "$scenario" != create ]]; then printf '123\n'; fi ;;
+    esac
   fi
+  if [[ "$scenario:$1:$2" == upload-error:release:upload ]]; then return 1; fi
   return 0
 }
 
-for scenario in create update stale diverged network-error api-error; do
+for scenario in create update draft stale diverged network-error api-error upload-error; do
   : > "$fixture/calls"
   set +e
   (source "$script_dir/publish-ci-debug.sh") > "$fixture/output" 2>&1
@@ -51,12 +60,23 @@ for scenario in create update stale diverged network-error api-error; do
       grep -q -- '--force-with-lease=refs/tags/ci-debug:$' "$fixture/calls"
       grep -q -- '--prerelease --latest=false' "$fixture/calls"
       ;;
-    update)
+    update | draft)
       test "$result" = 0
-      grep -q 'gh release upload ci-debug.*ownkey-phone-ci-debug.apk.*ownkey-wear-ci-debug.apk.*--clobber' "$fixture/calls"
+      grep -q 'gh release upload ci-debug.*ownkey-ci-staging-phone.*ownkey-ci-staging-wear' "$fixture/calls"
+      ! grep -q -- '--clobber' "$fixture/calls"
       grep -q 'gh release edit ci-debug' "$fixture/calls"
+      grep -q -- '--draft=false --prerelease --latest=false' "$fixture/calls"
       grep -q -- '--force-with-lease=refs/tags/ci-debug:previous' "$fixture/calls"
       ! grep -q 'gh release create' "$fixture/calls"
+      # Existing assets are retained as backups; deletion is strictly after publication.
+      grep -q 'name=ownkey-ci-previous-' "$fixture/calls"
+      edit_line=$(grep -n 'gh release edit' "$fixture/calls" | cut -d: -f1)
+      delete_line=$(grep -n -- '--method DELETE' "$fixture/calls" | head -1 | cut -d: -f1)
+      test "$delete_line" -gt "$edit_line"
+      ;;
+    upload-error)
+      test "$result" != 0
+      ! grep -Eq 'git push|--method PATCH|--method DELETE|gh release edit' "$fixture/calls"
       ;;
     stale)
       test "$result" = 0

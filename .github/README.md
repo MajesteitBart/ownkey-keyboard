@@ -28,5 +28,7 @@ Run the publisher's mocked regression checks locally with:
 bash .github/scripts/test-publish-ci-debug.sh
 ```
 
-These cover first publication, replacement of existing assets, stale and divergent
-commits, and network/API failures without writing to GitHub.
+These cover first publication, staged replacement of existing assets, recovery of
+an unpublished draft, stale and divergent commits, and network/API/upload failures
+without writing to GitHub. APK replacements upload before the old assets are renamed
+to backups; backups are deleted only after the tag and published release are updated.
