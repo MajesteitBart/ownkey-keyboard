@@ -395,7 +395,14 @@ fun QuickActionButton(
                 modifier = modifier.actionInput(),
                 contentAlignment = Alignment.Center,
             ) {
-                when (action) {
+                if (isVoiceInputAction) {
+                    DictationMicPill(
+                        isPressed = isPressed,
+                        isEnabled = isEnabled && aiUnavailableReason == null,
+                        isAiUnavailable = aiUnavailableReason != null,
+                        holdProgress = { holdProgress.value },
+                    )
+                } else when (action) {
                     is QuickAction.InsertKey -> {
                         val (imageVector, label) = remember(action, evaluator) {
                             evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
