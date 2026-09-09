@@ -3,7 +3,7 @@ name: Voice-Prompt Rewrite
 slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 created: 2026-08-04T08:33:57Z
-updated: 2026-09-08T22:07:16Z
+updated: 2026-09-09T07:48:24Z
 ---
 
 # Decisions: Voice-Prompt Rewrite
@@ -138,6 +138,31 @@ updated: 2026-09-08T22:07:16Z
   - The in-panel `Text replaced` and `Inserted` confirmations dwell about 1.2 seconds (the plan's figure; previously 900 ms in the spec's replacement flow) and the timer is bound to that confirmation, so it cannot close a newer session. D-006 is unchanged: the mic button's own green success acknowledgement for ordinary dictation still lasts about 900 ms.
   - The smartbar close control cancels an active voice-rewrite session and releases the recorder explicitly before hiding the panel, in addition to the panel's disposal safeguard.
   - Dictation shows one processing spinner; the key slot holds Cancel while transcribing. The dictation start toast remains only for keyboards whose smartbar is switched off.
+
+### D-014: Waveform reads as a waveform and the dictation key answers every press
+
+- **Status:** accepted
+- **Date:** 2026-09-09
+- **Decision:** The measured-level meter keeps its 18-sample, 20 Hz, noise-floored history from T-001 but smooths it far less (attack 0.9, release 0.55, exponent 0.75 instead of a square root), draws bars on a fixed 3 dp / 6 dp grid, and never grows past 108 dp; the row centres its whole control cluster around it. The dictation key gives a platform press haptic on touch, grows slightly, fills an accent ring over the platform hold timeout, gives a distinct long-press haptic when the hold becomes voice rewrite, and shows a short `Hold to rewrite` bubble above itself while pressed and for about 1.4 s after a tap. Both haptics follow the system touch-feedback setting rather than the keyboard's typing-vibration preferences.
+- **Rationale:** On a phone and on an unfolded foldable the previous meter stretched across the free width, and its 200 ms release turned each syllable into a hump travelling along the row, so it read as a stretched blob rather than audio. The key gave no felt or seen response on devices where keyboard haptics are off (the default) and taught the hold only once, through the coach mark.
+- **Consequences:**
+  - Refines T-007's calibration and the T-001 width policy; every bar is still a measured sample and silence still settles to the baseline stubs. Reduced motion keeps the stationary 5 Hz level and gets no ring animation.
+  - The hint is drawn by the IME root from the key's reported bounds, inside the IME window and outside its touchable region, so it needs no popup window and cannot intercept host-app touches. It is absent from the accessibility tree; TalkBack keeps the explicit voice rewrite action.
+  - The generic long-press tooltip is disabled on the voice key only; a hold there opens voice rewrite.
+  - An unavailable key (incognito, secure field, busy microphone) still answers with its reason and shows neither the hint nor the ring.
+
+### D-015: The meter is the Ownkey mark breathing in place, not a scrolling history
+
+- **Status:** accepted
+- **Date:** 2026-09-09
+- **Decision:** The dictation row and the rewrite sheet draw nine stationary bars in the silhouette of the Ownkey waveform mark (the same centre-peaked, asymmetric profile the Windows overlay uses). Each bar keeps a fixed slot and a fixed lag into the reducer's 18-sample history, and its height is its share of the mark scaled by the level measured that many samples ago. The row shows the mark at 4 dp bars on a 7 dp pitch (63 dp wide); a cramped row drops outer bars down to five. Silence is a flat row of minimum stubs; the silhouette exists only while someone speaks. The level itself is scaled against a rolling peak of the measured input (target 0.92, floor 0.2, decay 0.994 per sample), as the Windows overlay does, so the loudest recent speech fills the meter whatever gain the phone's microphone chain applies. Level state is read only in the canvas draw pass.
+- **Rationale:** The product owner reviewed the scrolling history on device: a good meter has static bars that grow and shrink, and the scrolling strip read as a shape crawling sideways. The Windows overlay already presents the mark this way. Before changing the meter the earlier battery findings were re-read: an amplitude poll that ran while idle (May 2026), a looping sine animation on the mic key (July 2026), a poller restarted by every level publication and per-sample settings reads (August 2026 reviews), and the clipboard wake-up (T-021). The stationary mapping is a pure function of the existing sampler state, adds no clock, and removes a per-sample recomposition of the whole smartbar, so it reintroduces none of them.
+- **Consequences:**
+  - Supersedes D-014's bar grid, bar count, and 108 dp cap; D-014's smoothing constants and key feedback stand. The spec's audio-reactive waveform contract is reconciled on the same date.
+  - Every bar is still a measured recent sample; there is no clock-driven, random, or prerecorded motion, and the sampler still runs only while recording. Reduced motion keeps the stationary 5 Hz level, which now breathes the whole mark evenly.
+  - The rolling peak is itself only ever a measured value, is gated by the noise floor before scaling, and never drops below its floor, so silence divides to exactly zero and a whisper cannot be amplified into a shout. On-device review showed a shout arriving at roughly a fifth of full scale on a Samsung phone and a resting silhouette that read as stuck while silent; both are what this scaling and the flat baseline correct.
+  - Neighbouring slots read samples at least two apart, so adjacent bars never rise together and no ripple travels outward from the centre.
+  - The unused Windows idle animations (breathe, bounce, ripple) are deliberately not ported: they are CSS keyframe loops, which is exactly the class of motion the Android meter must not run.
 
 ## Superseded Decisions
 - None.

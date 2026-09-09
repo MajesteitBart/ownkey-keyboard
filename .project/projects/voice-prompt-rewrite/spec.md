@@ -4,7 +4,7 @@ slug: voice-prompt-rewrite
 owner: ownkey-keyboard-team
 status: active
 created: 2026-08-04T08:33:57Z
-updated: 2026-09-08T22:37:04Z
+updated: 2026-09-09T07:48:24Z
 outcome: At least 90% of first-time usability-test participants can rewrite selected or visibly Select-All-targeted text by long-pressing the dictation key and speaking an instruction without leaving the host app, while normal dictation and ordinary typing responsiveness remain unchanged.
 uncertainty: medium
 probe_required: true
@@ -293,9 +293,9 @@ Rail controls retain at least 48 dp touch targets and explicit accessible labels
 #### Audio-reactive waveform contract
 
 - Bar heights are derived only from the active recorder's measured amplitude. A clock-driven sine wave, random values, or prerecorded pattern is not acceptable for active recording.
-- Maintain a short rolling history of approximately 16-20 samples over 0.8-1.0 seconds so adjacent bars represent recent input rather than multiplying one value by a fixed decorative profile.
-- Sample at approximately 20 Hz, then apply a small noise floor, a perceptual square-root or logarithmic mapping, fast attack, and slower release. Initial tuning targets are 60-80 ms attack and 160-240 ms release; the device probe may tune these ranges without changing the truthful-input requirement.
-- Silence settles to a quiet, uniform minimum-height baseline. Louder speech increases bar height without clipping the entire row. Debug/mock capture that has no measured input remains at the silence baseline and never fakes activity.
+- Maintain a short rolling history of approximately 16-20 samples over 0.8-1.0 seconds. Bars are stationary: each bar has a fixed slot, a full height taken from the Ownkey waveform mark, and a fixed lag into that history, so it grows and shrinks in place with a real recent sample. Neighbouring bars never share or neighbour a lag, so they neither move in lockstep nor scroll sideways (D-015; previously the history scrolled across the bars).
+- Sample at approximately 20 Hz, then apply a small noise floor, a perceptual power mapping, scaling against a rolling peak of the measured input so the loudest recent speech fills the meter on any device's microphone gain, fast attack, and a short release. The meter redraws only when a sample is published and runs no clock of its own; the earlier idle amplitude poll and looping mic animation must not return (D-014, D-015).
+- Silence settles to a flat, uniform minimum-height baseline and holds still; the mark's silhouette exists only while someone speaks. Louder speech increases bar height without clipping the entire row. Debug/mock capture that has no measured input remains at the flat baseline and never fakes activity.
 - Pausing stops sampling, freezes the elapsed timer, and settles the bars to a dim low baseline rather than preserving a loud shape that could imply continued listening.
 - The waveform is excluded from the accessibility tree. `Listening`, `Paused`, elapsed time on demand, and terminal state changes provide equivalent semantic information without announcing every level update.
 - Reduced-motion mode retains the functional level signal at a lower update rate with no scrolling/interpolation, halo, or decorative looping motion.

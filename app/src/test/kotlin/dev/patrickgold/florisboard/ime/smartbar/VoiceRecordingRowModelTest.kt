@@ -20,6 +20,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionOwner
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionState
+import dev.patrickgold.florisboard.ime.text.dictation.StationaryLevelBars
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -87,12 +88,15 @@ class VoiceRecordingRowModelTest : FunSpec({
     }
 
     test("every supported width keeps 48 dp controls and a bounded truthful waveform") {
-        listOf(320, 360, 411, 640, 840, 1_200).forEach { widthDp ->
+        // The row receives the smartbar's centre width, which on a 320 dp phone is roughly 230 dp.
+        listOf(230, 280, 320, 360, 411, 640, 840, 1_200).forEach { widthDp ->
             val layout = RecordingRowLayoutPolicy.resolve(widthDp)
 
             layout.controlSizeDp shouldBe RecordingRowLayoutPolicy.ControlSizeDp
             (layout.waveformWidthDp > 0) shouldBe true
             (layout.barCount in RecordingRowLayoutPolicy.MinBarCount..RecordingRowLayoutPolicy.MaxBarCount) shouldBe true
+            layout.waveformWidthDp shouldBe layout.barCount * RecordingRowLayoutPolicy.BarPitchDp
+            (layout.waveformWidthDp <= RecordingRowLayoutPolicy.MaxWaveformWidthDp) shouldBe true
             (layout.clusterWidthDp <= RecordingRowLayoutPolicy.MaxClusterWidthDp) shouldBe true
         }
     }
@@ -100,12 +104,23 @@ class VoiceRecordingRowModelTest : FunSpec({
     test("a tablet and a split keyboard centre one identical control cluster") {
         val tablet = RecordingRowLayoutPolicy.resolve(1_200)
         val split = RecordingRowLayoutPolicy.resolve(1_200)
-        val compact = RecordingRowLayoutPolicy.resolve(320)
+        // The centre width a 320 dp phone leaves once the toggle and the key slot are placed.
+        val compact = RecordingRowLayoutPolicy.resolve(230)
 
         split shouldBe tablet
         tablet.clusterWidthDp shouldBe RecordingRowLayoutPolicy.MaxClusterWidthDp
         // The waveform is the only element that gives up space on the narrowest supported width.
         (compact.barCount < tablet.barCount) shouldBe true
         compact.controlSizeDp shouldBe tablet.controlSizeDp
+    }
+
+    test("a wide row never stretches the waveform past its narrow cap") {
+        listOf(280, 360, 640, 840, 1_200, 2_000).forEach { widthDp ->
+            val layout = RecordingRowLayoutPolicy.resolve(widthDp)
+
+            layout.barCount shouldBe RecordingRowLayoutPolicy.MaxBarCount
+            layout.waveformWidthDp shouldBe RecordingRowLayoutPolicy.MaxWaveformWidthDp
+        }
+        RecordingRowLayoutPolicy.MaxBarCount shouldBe StationaryLevelBars.BarCount
     }
 })

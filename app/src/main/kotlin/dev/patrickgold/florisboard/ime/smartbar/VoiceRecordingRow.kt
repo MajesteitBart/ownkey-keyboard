@@ -42,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -64,6 +65,7 @@ import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import dev.patrickgold.florisboard.ime.text.dictation.AudioLevelHistoryState
+import dev.patrickgold.florisboard.ime.text.dictation.StationaryLevelBars
 import org.florisboard.lib.compose.stringRes
 import java.util.Locale
 
@@ -85,7 +87,7 @@ interface VoiceRecordingRowActions {
 @Composable
 fun VoiceRecordingRowContent(
     state: VoiceRecordingRowState,
-    levels: AudioLevelHistoryState,
+    levels: State<AudioLevelHistoryState>,
     actions: VoiceRecordingRowActions,
     modifier: Modifier = Modifier,
 ) {
@@ -105,6 +107,8 @@ fun VoiceRecordingRowContent(
             return@BoxWithConstraints
         }
 
+        // The waveform has a fixed width, so the cluster is centred as a whole instead of letting
+        // the meter stretch across whatever a wide row leaves over.
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -112,7 +116,10 @@ fun VoiceRecordingRowContent(
                 .align(Alignment.Center)
                 .padding(horizontal = if (compact) 2.dp else 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(
+                space = if (compact) 4.dp else 8.dp,
+                alignment = Alignment.CenterHorizontally,
+            ),
         ) {
             // The status is announced once per state change. It is never merged into the timer,
             // whose description changes on every tick.
@@ -126,6 +133,8 @@ fun VoiceRecordingRowContent(
                 Text(
                     text = state.status.label(),
                     modifier = Modifier
+                        // The label may use only the space left after the fixed meter and controls.
+                        .weight(1f, fill = false)
                         .widthIn(max = 220.dp)
                         .clearAndSetSemantics { },
                     color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
@@ -136,12 +145,12 @@ fun VoiceRecordingRowContent(
                 SmartbarDivider()
             }
             MeasuredLevelWaveform(
-                levels = levels.levels,
+                levels = levels,
                 barCount = layout.barCount,
                 paused = state.phase == VoiceRecordingPhase.PAUSED,
                 modifier = Modifier
-                    .weight(1f)
-                    .height(if (compact) 24.dp else 28.dp),
+                    .width(layout.waveformWidthDp.dp)
+                    .height(if (compact) 28.dp else 32.dp),
             )
             SmartbarDivider()
             RecordingIconButton(
@@ -390,39 +399,55 @@ private fun CircleControlButton(
     }
 }
 
+/** Tallest bar the meter draws, so a tall host such as the rewrite sheet does not stretch it. */
+private val MaxWaveformBarHeight = 40.dp
+
 /**
- * Draws the bounded recent-level history produced by the shared reducer.
+ * Draws the Ownkey waveform mark breathing with the measured level history.
  *
- * Every bar height is a measured sample; there is no clock-driven animation, no interpolation and
- * no travelling motion, so reduced motion needs no separate rendering path and silence settles at
- * the reducer's baseline. The meter is excluded from the accessibility tree because the owning
- * surface's status text already carries the equivalent information without per-sample chatter.
+ * The bars are stationary: [StationaryLevelBars] gives each slot a rest height from the mark and
+ * a fixed lag into the reducer's history, so every bar grows and shrinks in place with a real
+ * recent sample and nothing scrolls. There is no clock-driven animation and no interpolation; the
+ * canvas reads [levels] only in its draw pass, so a published sample redraws this canvas and
+ * recomposes nothing, and when the sampler is silent (idle, paused, processing) nothing here runs.
+ * Reduced motion therefore needs no separate rendering path. Bars are mirrored around the centre
+ * line on a fixed [barPitch] grid and the group is centred in the canvas, so the mark keeps its
+ * proportions whether it sits in the smartbar row or the rewrite sheet, and a wide canvas never
+ * spreads it thin. The meter is excluded from the accessibility tree because the owning surface's
+ * status text already carries the equivalent information without per-sample chatter.
  *
  * Shared by the dictation row and the rewrite panel's recording body so both modes show the same
  * truthful meter without a second recorder or sampler.
  */
 @Composable
 fun MeasuredLevelWaveform(
-    levels: List<Float>,
+    levels: State<AudioLevelHistoryState>,
     barCount: Int,
     paused: Boolean,
     modifier: Modifier = Modifier,
     color: Color = OwnkeyBrand.SignalOrange,
+    barWidth: Dp = RecordingRowLayoutPolicy.BarWidthDp.dp,
+    barPitch: Dp = RecordingRowLayoutPolicy.BarPitchDp.dp,
 ) {
     Canvas(
         modifier = modifier
             .alpha(if (paused) 0.34f else 1f)
             .clearAndSetSemantics { },
     ) {
-        if (levels.isEmpty() || barCount <= 0) return@Canvas
-        val stroke = 3.4.dp.toPx()
+        if (barCount <= 0) return@Canvas
+        val history = levels.value
+        val heights = StationaryLevelBars.heights(history.levels, barCount, history.baseline)
+        val stroke = barWidth.toPx()
+        val pitch = barPitch.toPx()
         val centerY = size.height / 2f
-        val gap = size.width / (barCount + 1)
-        // Compact widths show fewer bars by dropping the oldest samples, never by faking a profile.
-        val visible = levels.takeLast(barCount)
-        visible.forEachIndexed { index, level ->
-            val x = gap * (index + 1)
-            val halfHeight = (size.height * level.coerceIn(0f, 1f) / 2f).coerceAtLeast(stroke)
+        // Round caps add half a stroke at each end, so a full-height bar still fits the canvas.
+        val fullHalfHeight = ((minOf(size.height, MaxWaveformBarHeight.toPx()) - stroke) / 2f)
+            .coerceAtLeast(stroke * 0.25f)
+        val stubHalfHeight = (stroke * 0.25f).coerceAtMost(fullHalfHeight)
+        val firstX = (size.width - heights.size * pitch) / 2f + pitch / 2f
+        heights.forEachIndexed { index, height ->
+            val x = firstX + index * pitch
+            val halfHeight = (fullHalfHeight * height).coerceIn(stubHalfHeight, fullHalfHeight)
             drawLine(
                 color = color,
                 start = Offset(x, centerY - halfHeight),
