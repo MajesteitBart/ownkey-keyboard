@@ -123,13 +123,14 @@
     <string name="speech_dictionary__hints_cloud_off_summary">Correcties en stopwoorden verwijderen werken nog steeds op dit apparaat.</string>
     <string name="speech_dictionary__hints_local_label">Dicteren op dit apparaat (Orukeet)</string>
     <string name="speech_dictionary__hints_local_toggle">Woorden gebruiken voor herkenning op dit apparaat</string>
-    <string name="speech_dictionary__hints_local_summary">Met opgeslagen woorden gebruikt Orukeet beam search met hotwords voor de opname. Zet dit uit als dicteren op dit apparaat traag wordt.</string>
+    <string name="speech_dictionary__hints_local_summary">Standaard uit totdat het op een telefoon is gemeten. Als dit aanstaat en er woorden zijn opgeslagen, schakelt Orukeet voor de opname van de gebruikelijke greedy decoder naar beam search met hotwords, wat trager kan zijn.</string>
     <plurals name="speech_dictionary__hints_local_budget_ok">
         <item quantity="one">Je woord past binnen het hintbudget op dit apparaat.</item>
         <item quantity="other">Alle {count} woorden passen binnen het hintbudget op dit apparaat.</item>
     </plurals>
     <string name="speech_dictionary__hints_local_budget_exceeded">{included} van {total} woorden passen binnen het hintbudget op dit apparaat. De rest blijft opgeslagen, maar gaat niet naar Orukeet.</string>
     <string name="speech_dictionary__load_error">Je opgeslagen woordenboek kon niet worden gelezen. Er is een kopie naast het nieuwe bestand bewaard en de lijst begint leeg.</string>
+    <string name="speech_dictionary__load_error_newer">Je opgeslagen woordenboek is gemaakt door een nieuwere versie van Ownkey. Het is naast het nieuwe bestand bewaard en wordt niet gewijzigd; werk de app bij om het weer te gebruiken. Tot die tijd begint de lijst leeg.</string>
     <string name="speech_dictionary__only_fillers">Er zijn alleen stopwoorden verstaan. Er is niets ingevoegd.</string>
     <string name="speech_dictionary__ai_card_summary">Namen en termen voor herkenning, correcties voor terugkerende versprekingen, en stopwoorden verwijderen.</string>
     <plurals name="speech_dictionary__ai_card_words">

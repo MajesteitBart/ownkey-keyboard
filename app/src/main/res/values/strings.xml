@@ -1492,13 +1492,14 @@
     <string name="speech_dictionary__hints_cloud_off_summary">Corrections and filler removal still run on this device.</string>
     <string name="speech_dictionary__hints_local_label">On-device dictation (Orukeet)</string>
     <string name="speech_dictionary__hints_local_toggle">Use words for on-device recognition</string>
-    <string name="speech_dictionary__hints_local_summary">With words saved, Orukeet uses beam search with hotwords for the recording. Turn this off if on-device dictation becomes slow.</string>
+    <string name="speech_dictionary__hints_local_summary">Off by default until it is measured on a phone. When on and words are saved, Orukeet switches from its usual greedy decoder to beam search with hotwords for the recording, which can be slower.</string>
     <plurals name="speech_dictionary__hints_local_budget_ok">
         <item quantity="one">Your word fits the on-device hint budget.</item>
         <item quantity="other">All {count} words fit the on-device hint budget.</item>
     </plurals>
     <string name="speech_dictionary__hints_local_budget_exceeded">{included} of {total} words fit the on-device hint budget. The rest stay saved but are not sent to Orukeet.</string>
     <string name="speech_dictionary__load_error">Your saved dictionary could not be read. A copy was kept next to the new file, and the entries start empty.</string>
+    <string name="speech_dictionary__load_error_newer">Your saved dictionary was written by a newer version of Ownkey. It was kept next to the new file and is not changed; update the app to use it again. The entries start empty until then.</string>
     <string name="speech_dictionary__only_fillers">Only filler words were heard. Nothing was inserted.</string>
     <string name="speech_dictionary__ai_card_summary">Names and terms for recognition, corrections for recurring mishearings, and filler-word removal.</string>
     <plurals name="speech_dictionary__ai_card_words">

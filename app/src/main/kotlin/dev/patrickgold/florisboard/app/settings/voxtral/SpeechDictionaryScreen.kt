@@ -64,6 +64,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.dictionary.FillerRules
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.RemovedEntry
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryDocument
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryEntry
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryLoadError
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryRepository
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.entries
 import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
@@ -119,8 +120,12 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 IntroCard()
-                if (state.loadError != null) {
-                    NoticeBanner(text = userStringRes(R.string.speech_dictionary__load_error), warning = true)
+                when (state.loadError) {
+                    SpeechDictionaryLoadError.UNREADABLE ->
+                        NoticeBanner(text = userStringRes(R.string.speech_dictionary__load_error), warning = true)
+                    SpeechDictionaryLoadError.NEWER_VERSION ->
+                        NoticeBanner(text = userStringRes(R.string.speech_dictionary__load_error_newer), warning = true)
+                    null -> Unit
                 }
                 AddEntryCard(
                     document = state.document,

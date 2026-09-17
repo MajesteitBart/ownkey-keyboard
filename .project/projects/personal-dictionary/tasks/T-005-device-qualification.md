@@ -36,7 +36,7 @@ Measure Orukeet with the beam-search hotword profile against greedy search on a 
 
 ## Technical Notes
 
-Blocked in the implementation session: no phone was connected and the emulator is x86_64 without a downloaded model. The toggle in Personal dictionary → Recognition hints switches the profile off without touching saved words.
+Blocked in the implementation session: no phone was connected and the emulator is x86_64 without a downloaded model. The on-device hint preference defaults to off; the toggle in Personal dictionary → Recognition hints turns the beam profile on for the measurements without touching saved words.
 
 ## Definition of Done
 - [ ] Implementation complete

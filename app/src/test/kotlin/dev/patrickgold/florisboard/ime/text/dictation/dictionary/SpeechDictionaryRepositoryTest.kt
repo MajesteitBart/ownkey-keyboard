@@ -162,6 +162,27 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Ownkey")
     }
 
+    test("a document written by a newer app is kept untouched and reported instead of being downgraded") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val newer = """{"version":2,"nextId":2,"words":[{"id":1,"word":"Ownkey","pronunciation":"own-key"}],"corrections":[],"fillers":{"enabled":true,"languages":["nl"],"custom":[]}}"""
+        file.writeText(newer)
+        val repository = repository(dir, clock = { 7L })
+        val state = runBlocking { repository.awaitLoaded() }
+        state.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        state.document.isEmpty shouldBe true
+        file.exists() shouldBe false
+        File(dir, "personal_dictionary.json.newer-v2-7").readText() shouldBe newer
+        runBlocking { repository.addWord("Orukeet") }
+        // The old app writes its own file; the newer one is still there, byte for byte.
+        SpeechDictionaryDocument.decode(file.readText()).let { document ->
+            document.version shouldBe SpeechDictionaryDocument.CURRENT_VERSION
+            document.words.map { it.word } shouldBe listOf("Orukeet")
+        }
+        File(dir, "personal_dictionary.json.newer-v2-7").readText() shouldBe newer
+        repository.state.value.loadError shouldBe null
+    }
+
     test("unknown keys from a newer document are tolerated on load") {
         val dir = temp()
         File(dir, "personal_dictionary.json").writeText(

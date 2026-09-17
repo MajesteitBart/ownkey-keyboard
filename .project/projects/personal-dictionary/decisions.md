@@ -36,6 +36,14 @@ The reference rules keep sentence punctuation, so `Uh, um.` cleans to `.` on Win
 
 After each ordinary dictation the smartbar offers "Fix a word" for 15 seconds. The chooser lets the user tap the word or phrase, the word is selected in the host editor, and the ordinary keyboard (or another dictation) retypes it; Save stores the correction and, unless switched off, the replacement as a vocabulary word. No in-keyboard text field is needed, the host app's undo keeps working, and the editor session, field and text are verified before anything is selected. When verification fails the heard text is handed to the settings page.
 
+## 2026-09-18 — Local hotwords stay off until the device probe
+
+Review of PR #14 pointed out that a default of on would switch ordinary Orukeet dictation from the measured greedy decoder to the unmeasured beam profile as soon as one word is saved. The preference now defaults to off; the toggle in Personal dictionary → Recognition hints turns it on for the T-005 measurements.
+
+## 2026-09-18 — A newer on-disk dictionary is kept, not downgraded
+
+Loading a document with a higher version than the app supports would have succeeded (unknown keys are ignored) and the next edit would have rewritten it as version 1, dropping newer fields. The file is now moved aside as `.newer-v<version>-<time>`, the entries start empty, and the page says why. Restore already rejected newer backups.
+
 ## 2026-09-17 — Cloud hints: automatic only for documented hosts
 
 Automatic mode sends `context_bias` parts to api.mistral.ai and a `prompt` part to api.openai.com, both documented; every other host gets no words unless the user picks the explicit prompt mode. Multipart text parts are now written as UTF-8, which the previous `writeBytes` call did not do.

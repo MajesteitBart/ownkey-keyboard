@@ -63,6 +63,12 @@ data class RemovedEntry(val entry: SpeechDictionaryEntry, val index: Int)
 enum class SpeechDictionaryLoadError {
     /** The saved file could not be parsed. It was kept next to the new file for inspection. */
     UNREADABLE,
+
+    /**
+     * The saved file was written by a newer app. It was kept untouched next to the new file so a
+     * later upgrade can use it; an older app must not rewrite it as an older schema.
+     */
+    NEWER_VERSION,
 }
 
 data class SpeechDictionaryState(
@@ -296,6 +302,18 @@ class SpeechDictionaryRepository(
         }
         val parsed = runCatching { SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)) }
         parsed.onSuccess { document ->
+            if (document.version > SpeechDictionaryDocument.CURRENT_VERSION) {
+                // Unknown fields are ignored on decode, so saving would silently downgrade the
+                // file. Keep it for the newer app and start empty, visibly.
+                val kept = File(file.parentFile, "${file.name}.newer-v${document.version}-${clock()}")
+                runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }
+                _state.value = SpeechDictionaryState(
+                    SpeechDictionaryDocument(),
+                    loaded = true,
+                    loadError = SpeechDictionaryLoadError.NEWER_VERSION,
+                )
+                return
+            }
             _state.value = SpeechDictionaryState(document, loaded = true)
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
