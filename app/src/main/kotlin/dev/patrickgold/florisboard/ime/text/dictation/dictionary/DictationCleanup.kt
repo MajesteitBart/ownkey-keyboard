@@ -106,15 +106,23 @@ object DictationFixModel {
         return selection.start - committedText.length
     }
 
+    /** How much of the text after the selected word is remembered to detect cursor relocation. */
+    const val EXPECTED_AFTER_LIMIT = 64
+
     /**
      * What the user has typed over the selected word so far: the text between the word's original
-     * start and the cursor. The window may not reach the start right after the selection moved;
-     * that is not the same as the cursor having left the region.
+     * start and the cursor. [expectedAfter] is the text that followed the word when the replacement
+     * began; the cursor must still sit right in front of it, otherwise it was moved elsewhere and
+     * whatever lies between would be unrelated text, not a replacement. The window may not reach
+     * the start right after the selection moved; that is not the same as the cursor having left.
      */
-    fun replacementPreview(content: EditorContent, absoluteStart: Int): ReplacementPreview {
+    fun replacementPreview(content: EditorContent, absoluteStart: Int, expectedAfter: String = ""): ReplacementPreview {
         if (content.offset < 0 || !content.selection.isValid) return ReplacementPreview.CursorLeft
         val cursor = content.selection.start
         if (cursor < absoluteStart) return ReplacementPreview.CursorLeft
+        // The editor keeps at least 128 characters after the cursor and the remembered suffix is at
+        // most 64, so a shorter or different suffix means the cursor moved or the text changed.
+        if (!content.textAfterSelection.startsWith(expectedAfter)) return ReplacementPreview.CursorLeft
         val localStart = absoluteStart - content.offset
         val localCursor = cursor - content.offset
         if (localStart < 0 || localCursor > content.text.length) return ReplacementPreview.OutOfWindow

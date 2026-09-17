@@ -196,6 +196,25 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         repository.state.value.loadError shouldBe null
     }
 
+    test("a durable copy is used when the main file is damaged or missing, and written back at once") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val copy = SpeechDictionaryDocument.encode(SpeechDictionaryDocument(nextId = 2, words = listOf(VocabularyEntry(1, "Ownkey"))))
+        File(dir, "personal_dictionary.json.bak").writeText(copy)
+        file.writeText("{ torn")
+        val damaged = runBlocking { repository(dir, clock = { 3L }).awaitLoaded() }
+        damaged.loadError shouldBe null
+        damaged.document.words.map { it.word } shouldBe listOf("Ownkey")
+        // The recovered document is on disk again, so a restart before the next edit keeps it.
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Ownkey")
+        File(dir, "personal_dictionary.json.unreadable-3").readText() shouldBe "{ torn"
+
+        file.delete()
+        val missing = runBlocking { repository(dir).awaitLoaded() }
+        missing.document.words.map { it.word } shouldBe listOf("Ownkey")
+        file.exists() shouldBe true
+    }
+
     test("unknown keys from a newer document are tolerated on load") {
         val dir = temp()
         File(dir, "personal_dictionary.json").writeText(

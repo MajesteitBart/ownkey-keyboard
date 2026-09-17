@@ -304,7 +304,14 @@ class SpeechDictionaryRepository(
 
     private fun load() {
         if (!file.exists()) {
-            _state.value = SpeechDictionaryState(SpeechDictionaryDocument(), loaded = true)
+            // A crash between moving a damaged file aside and rewriting it leaves only the copy.
+            val recovered = recoverFromBackup()
+            if (recovered != null) {
+                runCatching { write(recovered) }
+                _state.value = SpeechDictionaryState(recovered, loaded = true)
+            } else {
+                _state.value = SpeechDictionaryState(SpeechDictionaryDocument(), loaded = true)
+            }
             return
         }
         val parsed = runCatching { SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)) }
@@ -326,11 +333,11 @@ class SpeechDictionaryRepository(
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
             val kept = File(file.parentFile, "${file.name}.unreadable-${clock()}")
             runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }
-            // A durable copy only exists after a non-atomic write path; use it when it parses.
-            val recovered = backupFile().takeIf { it.exists() }?.let { backup ->
-                runCatching { SpeechDictionaryDocument.decode(backup.readText(Charsets.UTF_8)) }.getOrNull()
-            }?.takeIf { it.version <= SpeechDictionaryDocument.CURRENT_VERSION }
+            // A durable copy only exists after a non-atomic write path; use it when it parses, and
+            // write it back so a restart before the next edit does not start empty.
+            val recovered = recoverFromBackup()
             _state.value = if (recovered != null) {
+                runCatching { write(recovered) }
                 SpeechDictionaryState(recovered, loaded = true)
             } else {
                 SpeechDictionaryState(
@@ -361,4 +368,8 @@ class SpeechDictionaryRepository(
     }
 
     private fun backupFile(): File = File(file.parentFile, "${file.name}.bak")
+
+    private fun recoverFromBackup(): SpeechDictionaryDocument? = backupFile().takeIf { it.exists() }
+        ?.let { backup -> runCatching { SpeechDictionaryDocument.decode(backup.readText(Charsets.UTF_8)) }.getOrNull() }
+        ?.takeIf { it.version <= SpeechDictionaryDocument.CURRENT_VERSION }
 }

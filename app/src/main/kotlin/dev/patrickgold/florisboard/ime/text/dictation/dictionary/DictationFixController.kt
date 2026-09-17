@@ -50,6 +50,8 @@ sealed interface DictationFixState {
         val absoluteStart: Int,
         val replacement: String,
         val addAsWord: Boolean,
+        /** Text that followed the word when the replacement began; the cursor must stay in front of it. */
+        val expectedAfter: String = "",
     ) : DictationFixState {
         val canSave: Boolean
             get() = TranscriptCleanup.normalizeTerm(replacement).let { it.isNotEmpty() && it != TranscriptCleanup.normalizeTerm(source) }
@@ -150,7 +152,10 @@ class DictationFixController(
             publish(DictationFixState.Manual(source))
             return
         }
-        publish(DictationFixState.Replacing(insertion, source, start, replacement = "", addAsWord = true))
+        // What follows the word right now: the rest of the insertion plus whatever the field held after it.
+        val expectedAfter = (insertion.committedText.substring(token.end) + content.textAfterSelection)
+            .take(DictationFixModel.EXPECTED_AFTER_LIMIT)
+        publish(DictationFixState.Replacing(insertion, source, start, replacement = "", addAsWord = true, expectedAfter = expectedAfter))
     }
 
     fun toggleAddAsWord() {
@@ -209,7 +214,7 @@ class DictationFixController(
                     publish(DictationFixState.Hidden)
                     return
                 }
-                when (val preview = DictationFixModel.replacementPreview(content, current.absoluteStart)) {
+                when (val preview = DictationFixModel.replacementPreview(content, current.absoluteStart, current.expectedAfter)) {
                     is ReplacementPreview.Text -> if (preview.value != current.replacement) {
                         publish(current.copy(replacement = preview.value))
                     }

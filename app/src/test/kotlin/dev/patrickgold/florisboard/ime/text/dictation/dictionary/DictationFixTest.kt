@@ -309,6 +309,26 @@ class DictationFixControllerTest : FunSpec({
         third.controller.state.value shouldBe DictationFixState.Manual("key")
     }
 
+    test("moving the cursor elsewhere ends the replacement instead of learning unrelated text") {
+        val h = Harness()
+        h.offerAndChoose(1)
+        h.controller.beginReplacement(cursorContent(h.hostText))
+        (h.controller.state.value as DictationFixState.Replacing).expectedAfter shouldBe " works"
+        // Typing over the selection keeps the suffix in front of the cursor.
+        h.editor.emit(cursorContent("Before own Ownkey works", cursor = 17))
+        (h.controller.state.value as DictationFixState.Replacing).replacement shouldBe "Ownkey"
+        // A tap after `works` puts other text between the word start and the cursor: that is not a replacement.
+        h.editor.emit(cursorContent("Before own Ownkey works", cursor = 23))
+        h.controller.state.value shouldBe DictationFixState.Hidden
+
+        val model = DictationFixModel.replacementPreview(cursorContent("Before own key works", cursor = 14), 11, " works")
+        model shouldBe ReplacementPreview.Text("key")
+        DictationFixModel.replacementPreview(cursorContent("Before own key works", cursor = 20), 11, " works") shouldBe ReplacementPreview.CursorLeft
+        // The editor window after the cursor always covers the remembered suffix, so a shorter
+        // suffix means the text after the word changed.
+        DictationFixModel.replacementPreview(cursorContent("Before own key wo", cursor = 14), 11, " works") shouldBe ReplacementPreview.CursorLeft
+    }
+
     test("a keystroke inside the commit grace still retires the offer once the grace ends") {
         val h = Harness()
         h.controller.offer(h.insertion(agoMs = 0L))
