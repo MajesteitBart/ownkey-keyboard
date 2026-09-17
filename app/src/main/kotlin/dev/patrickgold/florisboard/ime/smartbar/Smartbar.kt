@@ -292,8 +292,9 @@ private fun SmartbarMainRow(
                 return@Box
             }
             // Right after dictation inserted text there is no composing word, so the strip offers
-            // the fix instead of predictions; the first keystroke brings the predictions back.
-            if (dictationFixOffered && !expanded) {
+            // the fix instead of predictions; the first keystroke brings the predictions back. The
+            // offer is short-lived and explicit, so it also takes the expanded toolbar's place.
+            if (dictationFixOffered) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixChip()
                 }
@@ -428,7 +429,9 @@ private fun SmartbarMainRow(
         ) {
             when (smartbarLayout) {
                 SmartbarLayout.SUGGESTIONS_ONLY -> {
-                    if (recordingRowState != null || rewritePanelVisible) {
+                    // The fix offer and chooser title live in the centre content, so they need the
+                    // same route as recording and the rewrite panel in the single-row layouts.
+                    if (recordingRowState != null || rewritePanelVisible || dictationFixOffered || dictationFixChoosing) {
                         CenterContent()
                         StickyAction()
                     } else if (shouldShowInlineSuggestionsUi) {
@@ -439,7 +442,7 @@ private fun SmartbarMainRow(
                 }
 
                 SmartbarLayout.ACTIONS_ONLY -> {
-                    if (recordingRowState != null || rewritePanelVisible) {
+                    if (recordingRowState != null || rewritePanelVisible || dictationFixOffered || dictationFixChoosing) {
                         CenterContent()
                         StickyAction()
                     } else if (shouldShowInlineSuggestionsUi) {
