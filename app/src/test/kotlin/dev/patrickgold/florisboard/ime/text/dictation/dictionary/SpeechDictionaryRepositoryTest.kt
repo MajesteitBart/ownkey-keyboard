@@ -289,6 +289,34 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Meanwhile", "Later")
     }
 
+    test("an unreadable file that cannot be moved aside is never overwritten either") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        file.writeText("{ torn")
+        File(dir, "personal_dictionary.json.bak").writeText(
+            SpeechDictionaryDocument.encode(SpeechDictionaryDocument(nextId = 2, words = listOf(VocabularyEntry(1, "Copy")))),
+        )
+        val blocker = File(dir, "personal_dictionary.json.unreadable-3")
+        File(blocker, "child").apply { parentFile.mkdirs(); writeText("x") }
+        val repository = repository(dir, clock = { 3L })
+        val state = runBlocking { repository.awaitLoaded() }
+        // The copy is served, but the torn original stays where it is and nothing is written.
+        state.document.words.map { it.word } shouldBe listOf("Copy")
+        state.loadError shouldBe SpeechDictionaryLoadError.UNREADABLE
+        file.readText() shouldBe "{ torn"
+
+        runBlocking { repository.addWord("Meanwhile") }
+        repository.state.value.document.words.map { it.word } shouldBe listOf("Copy", "Meanwhile")
+        repository.state.value.loadError shouldBe SpeechDictionaryLoadError.UNREADABLE
+        file.readText() shouldBe "{ torn"
+
+        blocker.deleteRecursively()
+        runBlocking { repository.addWord("Later") }
+        repository.state.value.loadError shouldBe null
+        blocker.readText() shouldBe "{ torn"
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Copy", "Meanwhile", "Later")
+    }
+
     test("a kept file survives when the merged document cannot be written") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")

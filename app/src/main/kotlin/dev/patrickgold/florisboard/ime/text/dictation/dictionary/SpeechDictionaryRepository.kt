@@ -103,6 +103,14 @@ class SpeechDictionaryRepository(
     @Volatile
     private var compiled: Pair<SpeechDictionaryDocument, SpeechDictionarySnapshot>? = null
 
+    /**
+     * Set while a file that must be preserved (newer schema or unreadable) still sits at the main
+     * path because moving it aside failed; the retry runs before any write. Declared before the
+     * loader below, which may run synchronously during construction.
+     */
+    @Volatile
+    private var blockedMainPath: (() -> Boolean)? = null
+
     private val initialized: Deferred<Unit> = scope.async(ioDispatcher) { load() }
 
     suspend fun awaitLoaded(): SpeechDictionaryState {
@@ -331,7 +339,7 @@ class SpeechDictionaryRepository(
                 _state.value = SpeechDictionaryState(
                     versioned,
                     loaded = true,
-                    loadError = if (written) null else SpeechDictionaryLoadError.NEWER_VERSION,
+                    loadError = if (written) null else current.loadError ?: SpeechDictionaryLoadError.NEWER_VERSION,
                 )
             }
             result
@@ -355,7 +363,8 @@ class SpeechDictionaryRepository(
                 // file. Keep it for the newer app and start empty, visibly. A copy left by the
                 // non-atomic write path is older still and must not resurface on the next start.
                 // If the move fails the newer file stays where it is, and no save may touch it.
-                if (quarantine(document.version)) backupFile().delete() else pendingQuarantine = document.version
+                val version = document.version
+                moveAsideOrBlock { quarantineNewer(version) }
                 _state.value = SpeechDictionaryState(
                     SpeechDictionaryDocument(),
                     loaded = true,
@@ -368,14 +377,14 @@ class SpeechDictionaryRepository(
             _state.value = SpeechDictionaryState(absorbed.document, loaded = true, loadError = quarantineError())
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
-            val kept = File(file.parentFile, "${file.name}.unreadable-${clock()}")
-            runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }
+            // If it cannot be moved aside now, no write may touch the main path until it can.
+            val movedAside = moveAsideOrBlock { quarantineUnreadable() }
             // A durable copy only exists after a non-atomic write path; use it when it parses, and
             // write it back so a restart before the next edit does not start empty.
             val recovered = recoverFromBackup()
             _state.value = if (recovered != null) {
-                runCatching { write(recovered) }
-                SpeechDictionaryState(recovered, loaded = true)
+                if (movedAside) runCatching { write(recovered) }
+                SpeechDictionaryState(recovered, loaded = true, loadError = if (movedAside) null else SpeechDictionaryLoadError.UNREADABLE)
             } else {
                 SpeechDictionaryState(
                     SpeechDictionaryDocument(),
@@ -406,27 +415,36 @@ class SpeechDictionaryRepository(
 
     private fun backupFile(): File = File(file.parentFile, "${file.name}.bak")
 
-    /** Version of a newer file still at the main path because moving it aside failed. */
-    @Volatile
-    private var pendingQuarantine: Int? = null
-
-    /** Moves the newer file at the main path aside. False leaves it untouched for a later retry. */
-    private fun quarantine(version: Int): Boolean {
-        val kept = File(file.parentFile, "${file.name}.newer-v$version-${clock()}")
+    /** Moves the file at the main path aside under [suffix]. False leaves it untouched for a retry. */
+    private fun moveAside(suffix: String): Boolean {
+        val kept = File(file.parentFile, "${file.name}.$suffix")
         return runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }.isSuccess
     }
 
-    /** True when it is safe to write the main file, retrying a failed quarantine first. */
+    /** Keeps a newer-schema file for a later upgrade; the older `.bak` copy must not resurface. */
+    private fun quarantineNewer(version: Int): Boolean {
+        if (!moveAside("newer-v$version-${clock()}")) return false
+        backupFile().delete()
+        return true
+    }
+
+    private fun quarantineUnreadable(): Boolean = moveAside("unreadable-${clock()}")
+
+    /** Runs [attempt] now; if it fails, remembers it so every write retries it first. */
+    private fun moveAsideOrBlock(attempt: () -> Boolean): Boolean {
+        if (attempt()) return true
+        blockedMainPath = attempt
+        return false
+    }
+
+    /** True when it is safe to write the main file, retrying a failed move-aside first. */
     private fun mainPathWritable(): Boolean {
-        val version = pendingQuarantine ?: return true
-        if (!file.exists()) {
-            pendingQuarantine = null
+        val retry = blockedMainPath ?: return true
+        if (!file.exists() || retry()) {
+            blockedMainPath = null
             return true
         }
-        if (!quarantine(version)) return false
-        backupFile().delete()
-        pendingQuarantine = null
-        return true
+        return false
     }
 
     private fun recoverFromBackup(): SpeechDictionaryDocument? = backupFile().takeIf { it.exists() }
