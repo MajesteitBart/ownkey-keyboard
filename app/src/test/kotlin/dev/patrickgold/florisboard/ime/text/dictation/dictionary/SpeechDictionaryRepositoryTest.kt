@@ -259,6 +259,27 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         }
     }
 
+    test("a kept file survives when the merged document cannot be written") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        kept.writeText("""{"version":2,"nextId":2,"words":[{"id":1,"word":"Ownkey"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""")
+        // A non-empty directory in the temp file's place makes every write fail.
+        File(dir, "personal_dictionary.json.tmp").mkdirs()
+        File(dir, "personal_dictionary.json.tmp/blocker").writeText("x")
+        val upgraded = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Default,
+            supportedVersion = 2,
+        )
+        val state = runBlocking { upgraded.awaitLoaded() }
+        state.document.words.map { it.word } shouldBe listOf("Ownkey")
+        file.exists() shouldBe false
+        kept.exists() shouldBe true
+    }
+
     test("unknown keys from a newer document are tolerated on load") {
         val dir = temp()
         File(dir, "personal_dictionary.json").writeText(

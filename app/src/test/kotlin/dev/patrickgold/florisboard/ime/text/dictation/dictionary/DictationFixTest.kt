@@ -149,6 +149,12 @@ class OrdinaryDictationCleanupTest : FunSpec({
         // Fillers that leave only a full stop are still nothing to insert.
         OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh, um."), symbols) shouldBe
             DictationCleanupResult.OnlyFillers("Uh, um.")
+        // A leftover symbol that a correction turns back into a word is text again.
+        val dollar = TranscriptCleaner(
+            CleanupSettings(true, FillerRules.fillerWords(listOf("en")), listOf(CorrectionRule("$", "dollar"))),
+        )
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh, $"), dollar) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("dollar"), "Uh, $")
     }
 
     test("failures, cancellation and identity cleaners pass through unchanged") {

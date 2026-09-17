@@ -330,10 +330,9 @@ class SpeechDictionaryRepository(
             // A crash between moving a damaged file aside and rewriting it leaves only the copy; a
             // file kept for a newer app is taken back as soon as this app understands its version.
             val recovered = recoverFromBackup()
-            val base = recovered ?: SpeechDictionaryDocument()
-            val absorbed = absorbQuarantined(base)
-            if (recovered != null || absorbed !== base) runCatching { write(absorbed) }
-            _state.value = SpeechDictionaryState(absorbed, loaded = true, loadError = quarantineError())
+            val absorbed = absorbQuarantined(recovered ?: SpeechDictionaryDocument())
+            if (recovered != null || absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
+            _state.value = SpeechDictionaryState(absorbed.document, loaded = true, loadError = quarantineError())
             return
         }
         val parsed = runCatching { SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)) }
@@ -353,8 +352,8 @@ class SpeechDictionaryRepository(
                 return
             }
             val absorbed = absorbQuarantined(document)
-            if (absorbed !== document) runCatching { write(absorbed) }
-            _state.value = SpeechDictionaryState(absorbed, loaded = true, loadError = quarantineError())
+            if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
+            _state.value = SpeechDictionaryState(absorbed.document, loaded = true, loadError = quarantineError())
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
             val kept = File(file.parentFile, "${file.name}.unreadable-${clock()}")
@@ -413,18 +412,28 @@ class SpeechDictionaryRepository(
     private fun quarantineError(): SpeechDictionaryLoadError? =
         if (quarantinedFiles().any { it.second > supportedVersion }) SpeechDictionaryLoadError.NEWER_VERSION else null
 
+    /** A merged document plus the kept files it came from, which may only go once it is on disk. */
+    private class Absorbed(val document: SpeechDictionaryDocument, val consumed: List<File>)
+
     /**
-     * Merges the entries of files kept for a newer app once this app supports their version, then
-     * removes those files. Entries added meanwhile are kept; the kept file's filler settings win.
+     * Merges the entries of files kept for a newer app once this app supports their version.
+     * Entries added meanwhile are kept; the kept file's filler settings win. The files are returned
+     * rather than deleted here, because they are the only copy until the merge has been written.
      */
-    private fun absorbQuarantined(base: SpeechDictionaryDocument): SpeechDictionaryDocument {
+    private fun absorbQuarantined(base: SpeechDictionaryDocument): Absorbed {
         var next = base
+        val consumed = ArrayList<File>()
         for ((kept, version) in quarantinedFiles()) {
             if (version > supportedVersion) continue
             val document = runCatching { SpeechDictionaryDocument.decode(kept.readText(Charsets.UTF_8)) }.getOrNull() ?: continue
             next = merged(next, document)
-            kept.delete()
+            consumed.add(kept)
         }
-        return next
+        return Absorbed(next, consumed)
+    }
+
+    /** Writes the merged document and removes the kept files only when that write succeeded. */
+    private fun persistAbsorbed(absorbed: Absorbed) {
+        if (runCatching { write(absorbed.document) }.isSuccess) absorbed.consumed.forEach { it.delete() }
     }
 }

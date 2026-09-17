@@ -37,7 +37,11 @@ object OrdinaryDictationCleanup {
         // Checked per code point so supplementary-plane letters count as text.
         val hadText = outcome.text.codePoints().anyMatch(Character::isLetterOrDigit)
         val fillersTookAllText = detailed.afterFillers.codePoints().noneMatch(Character::isLetterOrDigit)
-        if (cleaned.isEmpty() || (hadText && fillersTookAllText)) return DictationCleanupResult.OnlyFillers(outcome.text)
+        // A correction may turn a leftover symbol back into words (`$` → `dollar`); the final text decides.
+        val endsWithoutText = cleaned.codePoints().noneMatch(Character::isLetterOrDigit)
+        if (cleaned.isEmpty() || (hadText && fillersTookAllText && endsWithoutText)) {
+            return DictationCleanupResult.OnlyFillers(outcome.text)
+        }
         return DictationCleanupResult.Ready(TranscriptionOutcome.Transcript(cleaned), outcome.text)
     }
 }
