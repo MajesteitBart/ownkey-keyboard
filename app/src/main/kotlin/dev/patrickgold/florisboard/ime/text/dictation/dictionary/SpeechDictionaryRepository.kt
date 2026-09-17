@@ -93,6 +93,8 @@ class SpeechDictionaryRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Highest document version this app understands; a parameter so upgrade paths can be tested. */
+    private val supportedVersion: Int = SpeechDictionaryDocument.CURRENT_VERSION,
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(SpeechDictionaryState(SpeechDictionaryDocument(), loaded = false))
@@ -253,39 +255,60 @@ class SpeechDictionaryRepository(
      * both modes because they are one setting, not a list to merge.
      */
     suspend fun restore(backup: SpeechDictionaryDocument, merge: Boolean) {
-        if (backup.version > SpeechDictionaryDocument.CURRENT_VERSION) {
+        if (backup.version > supportedVersion) {
             throw RestoreRejectedException(
                 "Personal dictionary backup version ${backup.version} is newer than this app supports.",
             )
         }
         if (backup.version < 1) throw RestoreRejectedException("Personal dictionary backup has an invalid version.")
+        // Every row is checked before anything is written, so an erase restore never replaces the
+        // current entries with a partial set. Repeated rows are redundant, not invalid, and are folded.
+        backup.words.forEachIndexed { index, word ->
+            if (TranscriptCleanup.normalizeTerm(word.word).isEmpty()) {
+                throw RestoreRejectedException("Personal dictionary backup word ${index + 1} is blank.")
+            }
+        }
+        backup.corrections.forEachIndexed { index, correction ->
+            val source = TranscriptCleanup.normalizeTerm(correction.source)
+            val replacement = TranscriptCleanup.normalizeTerm(correction.replacement)
+            if (source.isEmpty() || replacement.isEmpty()) {
+                throw RestoreRejectedException("Personal dictionary backup correction ${index + 1} is incomplete.")
+            }
+            if (source == replacement) {
+                throw RestoreRejectedException("Personal dictionary backup correction ${index + 1} does not change anything.")
+            }
+        }
         mutate { document ->
             val base = if (merge) document else document.copy(words = emptyList(), corrections = emptyList())
-            var next = base.copy(nextId = maxOf(base.nextId, 1L))
-            for (word in backup.words) {
-                if (SpeechDictionaryValidation.validateWord(next, word.word) != null) continue
-                val entry = VocabularyEntry(next.nextId, TranscriptCleanup.normalizeTerm(word.word), word.createdAt)
-                next = next.copy(nextId = next.nextId + 1, words = next.words + entry)
-            }
-            for (correction in backup.corrections) {
-                if (SpeechDictionaryValidation.validateCorrection(next, correction.source, correction.replacement) != null) continue
-                val entry = CorrectionEntry(
-                    id = next.nextId,
-                    source = TranscriptCleanup.normalizeTerm(correction.source),
-                    replacement = TranscriptCleanup.normalizeTerm(correction.replacement),
-                    createdAt = correction.createdAt,
-                )
-                next = next.copy(nextId = next.nextId + 1, corrections = next.corrections + entry)
-            }
-            next = next.copy(
-                fillers = FillerSettings(
-                    enabled = backup.fillers.enabled,
-                    languages = FillerRules.normalizeLanguages(backup.fillers.languages),
-                    custom = TranscriptCleanup.normalizeVocabulary(backup.fillers.custom),
-                ),
-            )
-            next to Unit
+            merged(base, backup) to Unit
         }
+    }
+
+    /** Adds the entries of [incoming] that [base] lacks, and takes its filler settings. */
+    private fun merged(base: SpeechDictionaryDocument, incoming: SpeechDictionaryDocument): SpeechDictionaryDocument {
+        var next = base.copy(nextId = maxOf(base.nextId, 1L))
+        for (word in incoming.words) {
+            if (SpeechDictionaryValidation.validateWord(next, word.word) != null) continue
+            val entry = VocabularyEntry(next.nextId, TranscriptCleanup.normalizeTerm(word.word), word.createdAt)
+            next = next.copy(nextId = next.nextId + 1, words = next.words + entry)
+        }
+        for (correction in incoming.corrections) {
+            if (SpeechDictionaryValidation.validateCorrection(next, correction.source, correction.replacement) != null) continue
+            val entry = CorrectionEntry(
+                id = next.nextId,
+                source = TranscriptCleanup.normalizeTerm(correction.source),
+                replacement = TranscriptCleanup.normalizeTerm(correction.replacement),
+                createdAt = correction.createdAt,
+            )
+            next = next.copy(nextId = next.nextId + 1, corrections = next.corrections + entry)
+        }
+        return next.copy(
+            fillers = FillerSettings(
+                enabled = incoming.fillers.enabled,
+                languages = FillerRules.normalizeLanguages(incoming.fillers.languages),
+                custom = TranscriptCleanup.normalizeVocabulary(incoming.fillers.custom),
+            ),
+        )
     }
 
     private suspend fun <R> mutate(transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>): R {
@@ -294,7 +317,7 @@ class SpeechDictionaryRepository(
             val current = _state.value
             val (next, result) = transform(current.document)
             if (next !== current.document) {
-                val versioned = next.copy(version = SpeechDictionaryDocument.CURRENT_VERSION)
+                val versioned = next.copy(version = supportedVersion)
                 withContext(ioDispatcher) { write(versioned) }
                 _state.value = SpeechDictionaryState(versioned, loaded = true, loadError = null)
             }
@@ -304,23 +327,24 @@ class SpeechDictionaryRepository(
 
     private fun load() {
         if (!file.exists()) {
-            // A crash between moving a damaged file aside and rewriting it leaves only the copy.
+            // A crash between moving a damaged file aside and rewriting it leaves only the copy; a
+            // file kept for a newer app is taken back as soon as this app understands its version.
             val recovered = recoverFromBackup()
-            if (recovered != null) {
-                runCatching { write(recovered) }
-                _state.value = SpeechDictionaryState(recovered, loaded = true)
-            } else {
-                _state.value = SpeechDictionaryState(SpeechDictionaryDocument(), loaded = true)
-            }
+            val base = recovered ?: SpeechDictionaryDocument()
+            val absorbed = absorbQuarantined(base)
+            if (recovered != null || absorbed !== base) runCatching { write(absorbed) }
+            _state.value = SpeechDictionaryState(absorbed, loaded = true, loadError = quarantineError())
             return
         }
         val parsed = runCatching { SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)) }
         parsed.onSuccess { document ->
-            if (document.version > SpeechDictionaryDocument.CURRENT_VERSION) {
+            if (document.version > supportedVersion) {
                 // Unknown fields are ignored on decode, so saving would silently downgrade the
-                // file. Keep it for the newer app and start empty, visibly.
+                // file. Keep it for the newer app and start empty, visibly. A copy left by the
+                // non-atomic write path is older still and must not resurface on the next start.
                 val kept = File(file.parentFile, "${file.name}.newer-v${document.version}-${clock()}")
                 runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }
+                backupFile().delete()
                 _state.value = SpeechDictionaryState(
                     SpeechDictionaryDocument(),
                     loaded = true,
@@ -328,7 +352,9 @@ class SpeechDictionaryRepository(
                 )
                 return
             }
-            _state.value = SpeechDictionaryState(document, loaded = true)
+            val absorbed = absorbQuarantined(document)
+            if (absorbed !== document) runCatching { write(absorbed) }
+            _state.value = SpeechDictionaryState(absorbed, loaded = true, loadError = quarantineError())
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
             val kept = File(file.parentFile, "${file.name}.unreadable-${clock()}")
@@ -353,7 +379,7 @@ class SpeechDictionaryRepository(
         file.parentFile?.mkdirs()
         val temp = File(file.parentFile, "${file.name}.tmp")
         FileOutputStream(temp).use { stream ->
-            stream.write(SpeechDictionaryDocument.encode(document).toByteArray(Charsets.UTF_8))
+            stream.write(SpeechDictionaryDocument.encode(document.copy(version = supportedVersion)).toByteArray(Charsets.UTF_8))
             stream.fd.sync()
         }
         try {
@@ -371,5 +397,34 @@ class SpeechDictionaryRepository(
 
     private fun recoverFromBackup(): SpeechDictionaryDocument? = backupFile().takeIf { it.exists() }
         ?.let { backup -> runCatching { SpeechDictionaryDocument.decode(backup.readText(Charsets.UTF_8)) }.getOrNull() }
-        ?.takeIf { it.version <= SpeechDictionaryDocument.CURRENT_VERSION }
+        ?.takeIf { it.version <= supportedVersion }
+
+    /** Files moved aside because a newer app wrote them, with their document version. */
+    private fun quarantinedFiles(): List<Pair<File, Int>> {
+        // Built here rather than as a property: load() can run on the IO dispatcher before the
+        // constructor has initialised later properties.
+        val pattern = Regex("${Regex.escape(file.name)}\\.newer-v(\\d+)-\\d+")
+        return file.parentFile?.listFiles()
+            ?.mapNotNull { kept -> pattern.matchEntire(kept.name)?.let { kept to it.groupValues[1].toInt() } }
+            ?.sortedBy { it.first.name }
+            ?: emptyList()
+    }
+
+    private fun quarantineError(): SpeechDictionaryLoadError? =
+        if (quarantinedFiles().any { it.second > supportedVersion }) SpeechDictionaryLoadError.NEWER_VERSION else null
+
+    /**
+     * Merges the entries of files kept for a newer app once this app supports their version, then
+     * removes those files. Entries added meanwhile are kept; the kept file's filler settings win.
+     */
+    private fun absorbQuarantined(base: SpeechDictionaryDocument): SpeechDictionaryDocument {
+        var next = base
+        for ((kept, version) in quarantinedFiles()) {
+            if (version > supportedVersion) continue
+            val document = runCatching { SpeechDictionaryDocument.decode(kept.readText(Charsets.UTF_8)) }.getOrNull() ?: continue
+            next = merged(next, document)
+            kept.delete()
+        }
+        return next
+    }
 }

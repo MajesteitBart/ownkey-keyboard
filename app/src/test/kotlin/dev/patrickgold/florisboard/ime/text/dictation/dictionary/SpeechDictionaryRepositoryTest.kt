@@ -215,6 +215,50 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         file.exists() shouldBe true
     }
 
+    test("a stale copy never shadows a file kept for a newer app, and an upgrade takes that file back") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        File(dir, "personal_dictionary.json.bak").writeText(
+            SpeechDictionaryDocument.encode(SpeechDictionaryDocument(nextId = 2, words = listOf(VocabularyEntry(1, "Stale")))),
+        )
+        val newer = """{"version":2,"nextId":3,"words":[{"id":1,"word":"Ownkey"},{"id":2,"word":"Orukeet"}],"corrections":[],"fillers":{"enabled":false,"languages":["nl"],"custom":[]}}"""
+        file.writeText(newer)
+
+        val downgraded = runBlocking { repository(dir, clock = { 5L }).awaitLoaded() }
+        downgraded.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        downgraded.document.isEmpty shouldBe true
+        File(dir, "personal_dictionary.json.bak").exists() shouldBe false
+        File(dir, "personal_dictionary.json.newer-v2-5").readText() shouldBe newer
+
+        // A restart before any edit keeps warning and does not resurrect anything stale.
+        val restarted = runBlocking { repository(dir).awaitLoaded() }
+        restarted.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        restarted.document.isEmpty shouldBe true
+        file.exists() shouldBe false
+
+        // The old app keeps working meanwhile.
+        runBlocking { repository(dir).addWord("Meanwhile") }
+
+        // An app that supports version 2 merges the kept file back and removes it.
+        val upgraded = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Default,
+            clock = { 9L },
+            supportedVersion = 2,
+        )
+        val state = runBlocking { upgraded.awaitLoaded() }
+        state.loadError shouldBe null
+        state.document.words.map { it.word } shouldBe listOf("Meanwhile", "Ownkey", "Orukeet")
+        state.document.fillers shouldBe FillerSettings(enabled = false, languages = listOf("nl"), custom = emptyList())
+        File(dir, "personal_dictionary.json.newer-v2-5").exists() shouldBe false
+        SpeechDictionaryDocument.decode(file.readText()).let { written ->
+            written.version shouldBe 2
+            written.words.map { it.word } shouldBe listOf("Meanwhile", "Ownkey", "Orukeet")
+        }
+    }
+
     test("unknown keys from a newer document are tolerated on load") {
         val dir = temp()
         File(dir, "personal_dictionary.json").writeText(
@@ -269,15 +313,25 @@ class SpeechDictionaryRepositoryTest : FunSpec({
             runBlocking { repository(dir).awaitLoaded() }.document.words.map { it.word } shouldBe listOf("New")
         }
 
-        test("restore drops blank, identical and duplicate backup entries but keeps the rest") {
+        test("restore rejects blank or identical rows before touching anything and folds repeated rows") {
             val dir = temp()
             val repository = repository(dir)
-            val backup = SpeechDictionaryDocument(
-                words = listOf(VocabularyEntry(1, " "), VocabularyEntry(2, "A"), VocabularyEntry(3, "a")),
-                corrections = listOf(CorrectionEntry(4, "x", "x"), CorrectionEntry(5, "own key", "Ownkey"), CorrectionEntry(6, "OWN KEY", "Other")),
+            runBlocking { repository.addWord("Keep me") }
+            val before = repository.state.value.document
+            val blankWord = SpeechDictionaryDocument(words = listOf(VocabularyEntry(1, " "), VocabularyEntry(2, "A")))
+            shouldThrow<RestoreRejectedException> { runBlocking { repository.restore(blankWord, merge = false) } }
+            val identical = SpeechDictionaryDocument(corrections = listOf(CorrectionEntry(1, "x", "x")))
+            shouldThrow<RestoreRejectedException> { runBlocking { repository.restore(identical, merge = false) } }
+            val incomplete = SpeechDictionaryDocument(corrections = listOf(CorrectionEntry(1, "x", " ")))
+            shouldThrow<RestoreRejectedException> { runBlocking { repository.restore(incomplete, merge = true) } }
+            repository.state.value.document shouldBeSameInstanceAs before
+
+            val repeated = SpeechDictionaryDocument(
+                words = listOf(VocabularyEntry(2, "A"), VocabularyEntry(3, "a")),
+                corrections = listOf(CorrectionEntry(5, "own key", "Ownkey"), CorrectionEntry(6, "OWN KEY", "Other")),
                 fillers = FillerSettings(enabled = false, languages = listOf("xx", "es"), custom = listOf("")),
             )
-            runBlocking { repository.restore(backup, merge = false) }
+            runBlocking { repository.restore(repeated, merge = false) }
             val document = repository.state.value.document
             document.words.map { it.word } shouldBe listOf("A")
             document.corrections.map { it.source to it.replacement } shouldBe listOf("own key" to "Ownkey")
