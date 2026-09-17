@@ -38,6 +38,9 @@ object LlmRewriteProviders {
     const val Mistral = "mistral_chat_completions"
     const val OpenRouter = "openrouter_chat_completions"
     const val Custom = "custom"
+    const val Default = OpenRouter
+    const val DefaultEndpointUrl = "https://openrouter.ai/api/v1/chat/completions"
+    const val DefaultModel = "meta/muse-spark-1.1"
 
     val presets = listOf(
         LlmRewriteProviderPreset(
@@ -74,8 +77,8 @@ object LlmRewriteProviders {
             id = OpenRouter,
             label = "OpenRouter",
             summary = "OpenAI-compatible routing through OpenRouter.",
-            endpointUrl = "https://openrouter.ai/api/v1/chat/completions",
-            defaultModel = "openai/gpt-5.4-mini",
+            endpointUrl = DefaultEndpointUrl,
+            defaultModel = DefaultModel,
         ),
         LlmRewriteProviderPreset(
             id = Custom,

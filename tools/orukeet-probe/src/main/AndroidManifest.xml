@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Present on the ordinary service to compare with the isolated UID. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:label="Ownkey ASR probe" android:allowBackup="false"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name=".ProbeActivity" android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ownkey-probe" android:host="run" />
+            </intent-filter>
+        </activity>
+        <service android:name=".RegularAsrService" android:exported="false"
+            android:process=":asr" />
+        <service android:name=".IsolatedAsrService" android:exported="false"
+            android:process=":isolated_asr" android:isolatedProcess="true" />
+    </application>
+</manifest>

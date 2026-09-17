@@ -129,9 +129,9 @@ fun VoiceRecordingRowContent(
                 modifier = Modifier.width(if (compact) 56.dp else 62.dp),
             )
             SmartbarDivider()
-            if (availableWidth >= 420.dp) {
+            if (availableWidth >= 420.dp || state.local) {
                 Text(
-                    text = state.status.label(),
+                    text = state.label(),
                     modifier = Modifier
                         // The label may use only the space left after the fixed meter and controls.
                         .weight(1f, fill = false)
@@ -302,7 +302,7 @@ private fun ProcessingStatus(
             trackColor = OwnkeyBrand.Bone.copy(alpha = 0.08f),
         )
         Text(
-            text = state.status.label(),
+            text = state.label(),
             modifier = Modifier
                 .weight(1f)
                 .semantics { liveRegion = LiveRegionMode.Polite },
@@ -322,7 +322,7 @@ private fun ProcessingStatus(
  */
 @Composable
 private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
-    val announcement = state.status.label()
+    val announcement = state.label()
     Box(
         modifier = Modifier
             .size(1.dp)
@@ -332,6 +332,11 @@ private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
             },
     )
 }
+
+@Composable
+private fun VoiceRecordingRowState.label(): String = if (local) {
+    stringRes(if (phase == VoiceRecordingPhase.PROCESSING) R.string.orukeet__transcribing else R.string.orukeet__recording)
+} else status.label()
 
 @Composable
 private fun VoiceRecordingStatus.label(): String = stringRes(

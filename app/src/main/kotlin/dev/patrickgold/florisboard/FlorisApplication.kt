@@ -40,10 +40,11 @@ import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackControl
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
-import dev.patrickgold.florisboard.ime.text.rewrite.createCloudAiAvailabilityPolicy
+import dev.patrickgold.florisboard.ime.text.rewrite.createAiAvailabilityPolicy
 import dev.patrickgold.florisboard.ime.text.rewrite.createVoiceRewriteSessionManager
 import dev.patrickgold.florisboard.ime.text.rewrite.createVoiceRewriteUiController
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteManager
+import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPreferenceReader
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.crashutility.CrashUtility
@@ -53,7 +54,11 @@ import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.ext.ExtensionManager
 import dev.patrickgold.florisboard.lib.util.AndroidBatteryTraceSink
 import dev.patrickgold.florisboard.lib.util.MotionPreferences
-import dev.patrickgold.jetpref.datastore.runtime.initAndroid
+import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
+import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
+import dev.patrickgold.jetpref.datastore.runtime.LoadStrategy
+import dev.patrickgold.jetpref.datastore.runtime.PersistStrategy
+import dev.patrickgold.jetpref.datastore.runtime.jetprefDatastoreDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -61,6 +66,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
 import org.florisboard.lib.kotlin.tryOrNull
+import java.io.File
 import java.lang.ref.WeakReference
 
 /**
@@ -70,12 +76,15 @@ import java.lang.ref.WeakReference
 private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 
 @Suppress("unused")
-class FlorisApplication : Application() {
+class FlorisApplication : Application(), androidx.work.Configuration.Provider {
+    override val workManagerConfiguration: androidx.work.Configuration
+        get() = androidx.work.Configuration.Builder().setMinimumLoggingLevel(Log.ERROR).build()
     private val mainHandler by lazy { Handler(mainLooper) }
     private val scope = CoroutineScope(Dispatchers.Default)
     private val voiceFeedbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val prefs by FlorisPreferenceStore
     val preferenceStoreLoaded = MutableStateFlow(false)
+    val offlineDictation = lazy { dev.patrickgold.florisboard.ime.text.dictation.offline.OfflineDictationController(this) }
 
     val cacheManager = lazy { CacheManager(this) }
     val clipboardManager = lazy { ClipboardManager(this) }
@@ -97,8 +106,8 @@ class FlorisApplication : Application() {
         )
     }
     val voiceActionFeedbackController = lazy { VoiceActionFeedbackController(voiceFeedbackScope) }
-    val cloudAiAvailabilityPolicy = lazy {
-        createCloudAiAvailabilityPolicy(
+    val aiAvailabilityPolicy = lazy {
+        createAiAvailabilityPolicy(
             scope = voiceFeedbackScope,
             editorInstance = editorInstance.value,
             keyboardManager = keyboardManager.value,
@@ -109,15 +118,15 @@ class FlorisApplication : Application() {
             this,
             audioSessionCoordinator.value,
             voiceActionFeedbackController.value,
-            cloudAiAvailabilityPolicy.value,
+            aiAvailabilityPolicy.value,
         )
     }
-    val llmRewriteManager = lazy { LlmRewriteManager(this, cloudAiAvailabilityPolicy.value) }
+    val llmRewriteManager = lazy { LlmRewriteManager(this, aiAvailabilityPolicy.value) }
     val voiceRewriteSessionManager = lazy {
         createVoiceRewriteSessionManager(
             context = this,
             scope = voiceFeedbackScope,
-            availabilityPolicy = cloudAiAvailabilityPolicy.value,
+            availabilityPolicy = aiAvailabilityPolicy.value,
             audioSessionCoordinator = audioSessionCoordinator.value,
             feedbackController = voiceActionFeedbackController.value,
             editorInstance = editorInstance.value,
@@ -130,7 +139,7 @@ class FlorisApplication : Application() {
             scope = voiceFeedbackScope,
             context = this,
             sessionManager = voiceRewriteSessionManager.value,
-            availabilityPolicy = cloudAiAvailabilityPolicy.value,
+            availabilityPolicy = aiAvailabilityPolicy.value,
             dictationManager = voxtralDictationManager.value,
             rewriteManager = llmRewriteManager.value,
             editorInstance = editorInstance.value,
@@ -142,6 +151,14 @@ class FlorisApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         FlorisApplicationReference = WeakReference(this)
+        // Native inference must not initialize preferences, keyboard services, crash logging or clear cache.
+        val processName = if (android.os.Build.VERSION.SDK_INT >= 28) Application.getProcessName() else {
+            java.io.File("/proc/self/cmdline").inputStream().use { stream ->
+                val bytes = ByteArray(256); val count = stream.read(bytes)
+                String(bytes, 0, count.coerceAtLeast(0)).substringBefore('\u0000')
+            }
+        }
+        if (processName.endsWith(org.ownkey.offline.InferenceService.PROCESS_SUFFIX)) return
         try {
             Flog.install(
                 context = this,
@@ -167,12 +184,32 @@ class FlorisApplication : Application() {
         }
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level != TRIM_MEMORY_UI_HIDDEN && level >= TRIM_MEMORY_RUNNING_LOW && offlineDictation.isInitialized()) {
+            offlineDictation.value.runtime.trimMemory()
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (offlineDictation.isInitialized()) offlineDictation.value.runtime.trimMemory()
+    }
+
     fun init() {
         cacheDir?.deleteContentsRecursively()
         scope.launch {
-            val result = FlorisPreferenceStore.initAndroid(
-                context = this@FlorisApplication,
-                datastoreName = FlorisPreferenceModel.NAME,
+            // Only orphaned local recordings from an earlier main process; models never live in cache.
+            File(noBackupFilesDir, "ai-audio").deleteRecursively()
+            val storage = FileBasedStorage(
+                File(
+                    jetprefDatastoreDir,
+                    "${FlorisPreferenceModel.NAME}.${AndroidAppDataStorage.JETPREF_FILE_EXT}",
+                ).path,
+            )
+            val result = FlorisPreferenceStore.init(
+                loadStrategy = LoadStrategy.UseReader(RewritePromptPreferenceReader(storage)),
+                persistStrategy = PersistStrategy.UseWriter(storage),
             )
             Log.i("PREFS", result.toString())
             migrateLegacyVoxtralApiKeyIfNeeded()
@@ -249,7 +286,7 @@ fun Context.audioLevelHistorySampler() = this.florisApplication().audioLevelHist
 
 fun Context.voiceActionFeedbackController() = this.florisApplication().voiceActionFeedbackController
 
-fun Context.cloudAiAvailabilityPolicy() = this.florisApplication().cloudAiAvailabilityPolicy
+fun Context.aiAvailabilityPolicy() = this.florisApplication().aiAvailabilityPolicy
 
 fun Context.voxtralDictationManager() = this.florisApplication().voxtralDictationManager
 

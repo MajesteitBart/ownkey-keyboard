@@ -35,7 +35,7 @@ import org.florisboard.lib.android.showShortToastSync
 
 class LlmRewriteManager(
     context: Context,
-    private val cloudAiAvailabilityPolicy: CloudAiAvailabilityPolicy,
+    private val aiAvailabilityPolicy: AiAvailabilityPolicy,
 ) {
     companion object {
         /** Same dwell as the voice flow's `Text replaced` confirmation, so both feel like one panel. */
@@ -86,8 +86,8 @@ class LlmRewriteManager(
 
     init {
         scope.launch {
-            cloudAiAvailabilityPolicy.state.collect { availability ->
-                if (availability is CloudAiAvailability.Unavailable) {
+            aiAvailabilityPolicy.state.collect { availability ->
+                if (availability is AiAvailability.Unavailable) {
                     generateJob?.cancel()
                     generateJob = null
                     activeTarget = null
@@ -98,7 +98,7 @@ class LlmRewriteManager(
     }
 
     fun rewriteWith(prompt: RewritePromptPreset) {
-        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+        if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
             return
         }
         if (_uiStateFlow.value.step == RewriteStep.GENERATING) {
@@ -119,7 +119,7 @@ class LlmRewriteManager(
 
     /** Re-runs the active prompt against the originally captured text. */
     fun tryAgain() {
-        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+        if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
             return
         }
         val state = _uiStateFlow.value
@@ -188,13 +188,13 @@ class LlmRewriteManager(
         LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).providerName
 
     private fun generate(prompt: RewritePromptPreset, target: RewriteTarget) {
-        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+        if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
             return
         }
         generateJob?.cancel()
         _uiStateFlow.value = RewriteUiState(step = RewriteStep.GENERATING, activePrompt = prompt)
         generateJob = scope.launch {
-            if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+            if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
                 activeTarget = null
                 _uiStateFlow.value = RewriteUiState()
                 return@launch

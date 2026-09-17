@@ -29,6 +29,8 @@ data class RewritePromptPreset(
 )
 
 object RewritePromptPresets {
+    private const val FormattingInstruction = "Avoid em dashes, emojis, decorative formatting, and chatbot introductions or sign-offs. Use straight quotes and sentence case."
+
     private val json = Json(DefaultJsonConfig) {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -38,32 +40,37 @@ object RewritePromptPresets {
         RewritePromptPreset(
             id = "improve",
             name = "Improve writing",
-            instruction = "Rewrite the text to improve clarity, flow, and word choice. Preserve the original meaning.",
+            instruction = "Rewrite the text to improve clarity, flow, and word choice. Preserve the original meaning.\n\n$FormattingInstruction",
         ),
         RewritePromptPreset(
             id = "grammar",
             name = "Fix grammar",
-            instruction = "Fix spelling, grammar, and punctuation mistakes without changing the meaning or tone.",
+            instruction = "Fix spelling, grammar, and punctuation mistakes without changing the meaning or tone.\n\n$FormattingInstruction",
         ),
         RewritePromptPreset(
             id = "shorter",
             name = "Make shorter",
-            instruction = "Rewrite the text to be significantly shorter while keeping the essential meaning.",
-        ),
-        RewritePromptPreset(
-            id = "business",
-            name = "Business",
-            instruction = "Rewrite the text in a professional business tone suitable for a client, colleague, or stakeholder.",
-        ),
-        RewritePromptPreset(
-            id = "casual",
-            name = "More casual",
-            instruction = "Rewrite the text in a relaxed, friendly, casual tone.",
+            instruction = "Rewrite the text to be significantly shorter while keeping the essential meaning.\n\n$FormattingInstruction",
         ),
         RewritePromptPreset(
             id = "rewrite_dutch",
             name = "Rewrite in Dutch",
-            instruction = "Rewrite the text in natural Dutch. Preserve the original meaning and return only Dutch text.",
+            instruction = "Rewrite the text in natural Dutch. Preserve the original meaning and return only Dutch text.\n\n$FormattingInstruction",
+        ),
+        RewritePromptPreset(
+            id = "plainspoken",
+            name = "Plainspoken",
+            instruction = """
+                Rewrite in plain, direct, human language. Preserve the writer's meaning, opinions, emotion, and level of certainty. Keep the original language.
+
+                Use familiar words, concrete details, and active verbs. Cut filler, hype, vague claims, jargon, repetition, and unnecessary hedging. Explain what happens without forced contrasts or answering objections nobody raised. Keep terminology consistent.
+
+                Vary sentence length naturally. Split dense sentences. Preserve personality without adding cleverness, formality, or enthusiasm. Don't invent facts or details.
+
+                $FormattingInstruction
+
+                Return only the rewritten text.
+            """.trimIndent(),
         ),
     )
 
@@ -73,15 +80,14 @@ object RewritePromptPresets {
         val decoded = runCatching {
             json.decodeFromString(ListSerializer(RewritePromptPreset.serializer()), value)
         }.getOrDefault(defaults)
-        val validPrompts = decoded.filter { it.name.isNotBlank() && it.instruction.isNotBlank() }
-        return when {
-            validPrompts.map { it.id } in legacyDefaultIdSets -> defaults
-            else -> validPrompts.ifEmpty { defaults }
-        }
+        // Saved names and instructions belong to the user, including entries with old default IDs.
+        return decoded.filter { it.name.isNotBlank() && it.instruction.isNotBlank() }.ifEmpty { defaults }
     }
 
     fun encode(value: List<RewritePromptPreset>): String {
-        return json.encodeToString(ListSerializer(RewritePromptPreset.serializer()), value)
+        return escapeRewritePromptJsonForStorage(
+            json.encodeToString(ListSerializer(RewritePromptPreset.serializer()), value),
+        )
     }
 
     fun newCustom(index: Int): RewritePromptPreset {
@@ -91,11 +97,6 @@ object RewritePromptPresets {
             instruction = "Rewrite the text in my preferred voice.",
         )
     }
-
-    private val legacyDefaultIdSets = listOf(
-        listOf("clean", "formal", "business"),
-        listOf("clean", "business", "rewrite_dutch", "rewrite_english"),
-    )
 
     private val qualityPresetIds = setOf("improve", "grammar", "shorter", "clean")
     private val tonePresetIds = setOf("business", "casual", "formal")

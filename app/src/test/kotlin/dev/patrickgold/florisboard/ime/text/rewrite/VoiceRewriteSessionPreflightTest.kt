@@ -11,6 +11,8 @@
 package dev.patrickgold.florisboard.ime.text.rewrite
 
 import dev.patrickgold.florisboard.ime.editor.EditorRange
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionSession
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend
 import dev.patrickgold.florisboard.ime.text.dictation.AudioRecorder
 import dev.patrickgold.florisboard.ime.text.dictation.AudioRecording
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
@@ -31,6 +33,64 @@ import kotlin.coroutines.ContinuationInterceptor
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceRewriteSessionPreflightTest : FunSpec({
+    test("local voice rewrite rediscloses cloud text use and snapshots before opening the microphone") {
+        runTest {
+            val recorder = FakePreflightRecorder()
+            val disclosure = FakeDisclosureStore(version = 3)
+            var snapshots = 0
+            var releases = 0
+            val fixture = preflightFixture(backgroundScope, recorder = recorder, disclosureStore = disclosure, local = true,
+                snapshotProvider = {
+                    recorder.startCount shouldBe 0
+                    snapshots++
+                    TranscriptionSession(TranscriptionBackend.ORUKEET, recorder, null) { releases++ }
+                })
+            fixture.manager.begin(); runCurrent()
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.DISCLOSURE
+            fixture.manager.state.value.disclosure?.audioIsLocal shouldBe true
+            fixture.manager.state.value.disclosure?.rewriteProviderName shouldBe "OpenAI"
+            snapshots shouldBe 0
+            fixture.manager.acknowledgeDisclosure(); runCurrent()
+            disclosure.version shouldBe 1003
+            fixture.coordinator.state.value?.mode shouldBe AudioSessionMode.LOCAL
+            snapshots shouldBe 1
+            recorder.startCount shouldBe 1
+            fixture.manager.cancel(); runCurrent()
+            releases shouldBe 1
+        }
+    }
+
+    test("provider changes during local preflight cannot send audio to cloud") {
+        runTest {
+            var releases = 0
+            val recorder = FakePreflightRecorder()
+            val fixture = preflightFixture(backgroundScope, recorder = recorder,
+                disclosureStore = FakeDisclosureStore(version = 1003), local = true,
+                snapshotProvider = { TranscriptionSession(TranscriptionBackend.CLOUD, recorder, null) { releases++ } })
+            fixture.manager.begin(); runCurrent()
+            recorder.startCount shouldBe 0
+            releases shouldBe 1
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.WARNING
+        }
+    }
+
+    test("switching to cloud while local disclosure is open requires the cloud disclosure before recording") {
+        runTest {
+            var local = true
+            val recorder = FakePreflightRecorder()
+            val fixture = preflightFixture(backgroundScope, recorder = recorder, localProvider = { local })
+            fixture.manager.begin(); runCurrent()
+            fixture.manager.state.value.disclosure?.audioIsLocal shouldBe true
+            local = false
+            fixture.manager.acknowledgeDisclosure(); runCurrent()
+            recorder.startCount shouldBe 0
+            fixture.manager.state.value.phase shouldBe VoiceRewriteSessionPhase.DISCLOSURE
+            fixture.manager.state.value.disclosure?.audioIsLocal shouldBe false
+            fixture.manager.acknowledgeDisclosure(); runCurrent()
+            recorder.startCount shouldBe 1
+        }
+    }
+
     test("state contract exposes every mutually exclusive session phase") {
         VoiceRewriteSessionPhase.entries shouldContainExactly listOf(
             VoiceRewriteSessionPhase.READY,
@@ -271,7 +331,7 @@ private data class PreflightFixture(
 
 private fun preflightFixture(
     scope: kotlinx.coroutines.CoroutineScope,
-    session: CloudAiEditorSession = preflightSession(),
+    session: AiEditorSession = preflightSession(),
     targetResolution: VoiceRewriteTargetResolution = VoiceRewriteTargetResolution.Resolved(snapshot()),
     targetSource: VoiceRewriteTargetSource? = null,
     coordinator: AudioSessionCoordinator = AudioSessionCoordinator(),
@@ -279,11 +339,14 @@ private fun preflightFixture(
     permissionGranted: Boolean = true,
     transcriptionConfigured: Boolean = true,
     rewriteConfigured: Boolean = true,
+    local: Boolean = false,
+    localProvider: () -> Boolean = { local },
+    snapshotProvider: (suspend () -> TranscriptionSession)? = null,
     disclosureStore: FakeDisclosureStore = FakeDisclosureStore(),
     events: MutableList<String> = mutableListOf(),
 ): PreflightFixture {
     val sessions = MutableStateFlow(session)
-    val policy = CloudAiAvailabilityPolicy(scope, sessions)
+    val policy = AiAvailabilityPolicy(scope, sessions)
     val source = targetSource ?: VoiceRewriteTargetSource {
         events += "target"
         targetResolution
@@ -303,7 +366,7 @@ private fun preflightFixture(
         providerConfiguration = object : VoiceRewriteProviderConfigurationSource {
             override fun transcriptionProvider(): VoiceRewriteProviderConfiguration {
                 events += "transcription-config"
-                return VoiceRewriteProviderConfiguration(transcriptionConfigured, "Mistral")
+                return VoiceRewriteProviderConfiguration(transcriptionConfigured, if (local) "Orukeet" else "Mistral", isLocal = localProvider())
             }
 
             override fun rewriteProvider(): VoiceRewriteProviderConfiguration {
@@ -314,6 +377,7 @@ private fun preflightFixture(
         configurationDispatcher = scope.coroutineContext[ContinuationInterceptor] as CoroutineDispatcher,
         disclosureStore = disclosureStore,
         disclosureVersion = 3,
+        transcriptionSessionProvider = snapshotProvider,
     )
     return PreflightFixture(manager, recorder, coordinator)
 }
@@ -365,7 +429,7 @@ private fun snapshot() = VoiceRewriteTargetSnapshot(
 private fun preflightSession(
     isIncognito: Boolean = false,
     isSecure: Boolean = false,
-) = CloudAiEditorSession(
+) = AiEditorSession(
     sessionId = 7L,
     isIncognito = isIncognito,
     isSecureField = isSecure,

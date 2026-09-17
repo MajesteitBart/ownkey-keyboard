@@ -765,6 +765,9 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
 
     val voxtral = Voxtral()
     inner class Voxtral {
+        // Empty preserves the pre-Orukeet key-based route on upgrade. Phone-only; excluded from Wear sync.
+        val dictationBackend = string(key = "ai__dictation_backend", default = "")
+        val previousDictationBackend = string(key = "ai__previous_dictation_backend", default = "")
         val apiKey = string(
             key = "voxtral__api_key",
             default = "",
@@ -791,15 +794,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val postProcessingEndpointUrl = string(
             key = "voxtral__post_processing_endpoint_url",
-            default = LlmRewriteProviders.byId(LlmRewriteProviders.OpenAiResponses).endpointUrl,
+            default = LlmRewriteProviders.DefaultEndpointUrl,
         )
         val postProcessingModel = string(
             key = "voxtral__post_processing_model",
-            default = LlmRewriteProviders.byId(LlmRewriteProviders.OpenAiResponses).defaultModel,
+            default = LlmRewriteProviders.DefaultModel,
         )
         val postProcessingProvider = string(
             key = "voxtral__post_processing_provider",
-            default = LlmRewriteProviders.OpenAiResponses,
+            default = LlmRewriteProviders.Default,
         )
         val rewritePrompts = string(
             key = "voxtral__rewrite_prompts",

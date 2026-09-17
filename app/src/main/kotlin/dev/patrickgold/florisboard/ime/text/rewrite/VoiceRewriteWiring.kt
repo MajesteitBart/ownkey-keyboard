@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
  * Version of the first-use disclosure copy. Bump it only when the described data path changes, so a
  * provider swap stays visible on the voice card without re-prompting on every use.
  */
-const val VOICE_REWRITE_DISCLOSURE_VERSION = 1
+const val VOICE_REWRITE_DISCLOSURE_VERSION = 2
 
 private const val AI_SETTINGS_DEEPLINK = "ui://florisboard/settings/voxtral"
 
@@ -50,7 +50,7 @@ private const val INCOGNITO_SETTINGS_DEEPLINK = "ui://florisboard/settings/typin
 fun createVoiceRewriteSessionManager(
     context: Context,
     scope: CoroutineScope,
-    availabilityPolicy: CloudAiAvailabilityPolicy,
+    availabilityPolicy: AiAvailabilityPolicy,
     audioSessionCoordinator: AudioSessionCoordinator,
     feedbackController: VoiceActionFeedbackController,
     editorInstance: EditorInstance,
@@ -64,8 +64,8 @@ fun createVoiceRewriteSessionManager(
         targetSource = VoiceRewriteTargetResolver(EditorInstanceVoiceRewriteGateway(editorInstance)),
         audioSessionCoordinator = audioSessionCoordinator,
         feedbackController = feedbackController,
-        audioRecorderProvider = dictationManager::voiceRewriteRecorder,
-        audioSessionModeProvider = dictationManager::voiceRewriteAudioSessionMode,
+        audioRecorderProvider = { dev.patrickgold.florisboard.ime.text.dictation.NoOpAudioRecorder() },
+        audioSessionModeProvider = { dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode.MOCK },
         microphonePermission = {
             ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
@@ -77,7 +77,7 @@ fun createVoiceRewriteSessionManager(
         ),
         disclosureStore = PreferenceVoiceRewriteDisclosureStore(scope),
         disclosureVersion = VOICE_REWRITE_DISCLOSURE_VERSION,
-        instructionTranscriptionClientProvider = dictationManager::instructionTranscriptionClient,
+        transcriptionSessionProvider = { dictationManager.snapshotSession(dev.patrickgold.florisboard.ime.text.dictation.TranscriptionPurpose.VOICE_REWRITE_INSTRUCTION) },
         rewriteOperation = { sourceText, instruction ->
             rewriteManager.voiceRewriteOperation().rewrite(sourceText, instruction)
         },
@@ -88,7 +88,7 @@ fun createVoiceRewriteUiController(
     scope: CoroutineScope,
     context: Context,
     sessionManager: VoiceRewriteSessionManager,
-    availabilityPolicy: CloudAiAvailabilityPolicy,
+    availabilityPolicy: AiAvailabilityPolicy,
     dictationManager: VoxtralDictationManager,
     rewriteManager: LlmRewriteManager,
     editorInstance: EditorInstance,
@@ -130,6 +130,7 @@ private class AppVoiceRewriteProviderConfiguration(
         isConfigured = dictationManager.isTranscriptionConfigured(),
         displayName = dictationManager.transcriptionProviderKnownLabel()
             ?: context.getString(R.string.voice_rewrite__provider_custom),
+        isLocal = dictationManager.isLocalSelected(),
     )
 
     override fun rewriteProvider() = VoiceRewriteProviderConfiguration(

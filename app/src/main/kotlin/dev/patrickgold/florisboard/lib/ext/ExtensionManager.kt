@@ -145,7 +145,11 @@ class ExtensionManager(context: Context) {
     }
 
     fun getExtensionById(id: String): Extension? {
-        return extensions.value.find { it.meta.id == id }
+        // Layout indexing observes keyboardExtensions directly. The combined flow can
+        // still contain its previous value when that observer resolves a new layout.
+        return keyboardExtensions.value.find { it.meta.id == id }
+            ?: themes.value.find { it.meta.id == id }
+            ?: languagePacks.value.find { it.meta.id == id }
     }
 
     fun canDelete(ext: Extension): Boolean {

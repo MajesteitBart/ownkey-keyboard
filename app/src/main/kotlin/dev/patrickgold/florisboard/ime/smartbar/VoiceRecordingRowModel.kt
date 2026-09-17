@@ -44,6 +44,7 @@ data class VoiceRecordingRowState(
     val phase: VoiceRecordingPhase,
     val status: VoiceRecordingStatus,
     val elapsedMs: Long,
+    val local: Boolean = false,
 ) {
     val isCapturing: Boolean
         get() = phase == VoiceRecordingPhase.RECORDING || phase == VoiceRecordingPhase.PAUSED
@@ -121,5 +122,6 @@ fun voiceRecordingRowState(
             VoiceRecordingPhase.PROCESSING -> VoiceRecordingStatus.PROCESSING
         },
         elapsedMs = session.elapsedMs(nowMs),
+        local = session.mode == dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode.LOCAL,
     )
 }

@@ -1,0 +1,9 @@
+{
+  "uniqueId": "onnxruntime",
+  "name": "ONNX Runtime 1.27.0",
+  "website": "https://github.com/microsoft/onnxruntime",
+  "licenses": [
+    "onnxruntime",
+    "onnxruntime-thirdparty"
+  ]
+}

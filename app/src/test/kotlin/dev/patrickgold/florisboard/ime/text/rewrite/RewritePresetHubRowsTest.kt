@@ -21,12 +21,15 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 
 class RewritePresetHubRowsTest : FunSpec({
-    test("the six defaults split into one quality/length row and one tone/language row") {
+    test("the defaults split into quality, language and custom voice rows") {
         val rows = RewritePromptPresets.hubRows(RewritePromptPresets.defaults)
 
-        rows.map { it.group } shouldContainExactly listOf(RewritePresetGroup.QUALITY, RewritePresetGroup.TONE)
+        rows.map { it.group } shouldContainExactly listOf(
+            RewritePresetGroup.QUALITY, RewritePresetGroup.TONE, RewritePresetGroup.CUSTOM,
+        )
         rows[0].prompts.map { it.id } shouldContainExactly listOf("improve", "grammar", "shorter")
-        rows[1].prompts.map { it.id } shouldContainExactly listOf("business", "casual", "rewrite_dutch")
+        rows[1].prompts.map { it.id } shouldContainExactly listOf("rewrite_dutch")
+        rows[2].prompts.map { it.id } shouldContainExactly listOf("plainspoken")
     }
 
     test("every default preset is placed exactly once and nothing is dropped") {
@@ -46,7 +49,7 @@ class RewritePresetHubRowsTest : FunSpec({
             RewritePresetGroup.CUSTOM,
         )
         rows[2].prompts.size shouldBe RewritePromptPresets.HubColumns
-        rows[3].prompts.size shouldBe 1
+        rows[3].prompts.size shouldBe 2
         rows.all { it.prompts.size <= RewritePromptPresets.HubColumns } shouldBe true
     }
 

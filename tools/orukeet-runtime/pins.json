@@ -1,0 +1,8 @@
+{
+  "source": {"name": "sherpa-source.zip", "url": "https://github.com/k2-fsa/sherpa-onnx/archive/refs/tags/v1.13.4.zip", "bytes": 13006560, "sha256": "7ba66920d00eb9f9561cf3c69cd73e28af8f4a33287c39b827a33e7523fd28b8", "revision": "142807252687d81b40d6315f23470a1512a00de3"},
+  "ort": {"name": "onnxruntime-android-1.27.0.zip", "url": "https://github.com/csukuangfj/onnxruntime-libs/releases/download/v1.27.0/onnxruntime-android-1.27.0.zip", "bytes": 32794323, "sha256": "a78f303a26b5e75c84c8b2a97fa2ddb400b2d1b5e069bec19aa229ccd3597fdb"},
+  "bindings": {"name": "sherpa-onnx-1.13.4.aar", "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-1.13.4.aar", "bytes": 48847529, "sha256": "03f9c4df965f21c71269365a7951a7f23b5696fddd093fa318c80d65550ab780"},
+  "ndk": "29.0.14206865",
+  "cmake": "3.22.1",
+  "abis": ["arm64-v8a", "x86_64"]
+}

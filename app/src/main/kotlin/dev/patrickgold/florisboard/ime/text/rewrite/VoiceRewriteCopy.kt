@@ -76,10 +76,10 @@ fun VoiceRewriteAction.stringResId(): Int = when (this) {
 
 /** Resource-backed reason for a control that is visibly disabled rather than silently inert. */
 @StringRes
-fun CloudAiUnavailableReason.stringResId(): Int = when (this) {
-    CloudAiUnavailableReason.NO_ACTIVE_EDITOR -> R.string.voice_rewrite__error_no_active_editor
-    CloudAiUnavailableReason.SECURE_FIELD -> R.string.voice_recording__unavailable_secure
-    CloudAiUnavailableReason.INCOGNITO -> R.string.voice_recording__unavailable_incognito
+fun AiUnavailableReason.stringResId(): Int = when (this) {
+    AiUnavailableReason.NO_ACTIVE_EDITOR -> R.string.voice_rewrite__error_no_active_editor
+    AiUnavailableReason.SECURE_FIELD -> R.string.voice_recording__unavailable_secure
+    AiUnavailableReason.INCOGNITO -> R.string.voice_recording__unavailable_incognito
 }
 
 @Composable
@@ -89,7 +89,7 @@ fun VoiceRewriteMessage.text(): String = stringRes(stringResId())
 fun VoiceRewriteAction.label(): String = stringRes(stringResId())
 
 @Composable
-fun CloudAiUnavailableReason.text(): String = stringRes(stringResId())
+fun AiUnavailableReason.text(): String = stringRes(stringResId())
 
 @Composable
 fun VoiceRewriteScopeLabel.text(): String = when (scope) {

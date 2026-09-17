@@ -222,9 +222,9 @@ private fun replacementManager(
     }
     return VoiceRewriteSessionManager(
         scope = scope,
-        availabilityPolicy = CloudAiAvailabilityPolicy(
+        availabilityPolicy = AiAvailabilityPolicy(
             scope,
-            MutableStateFlow(CloudAiEditorSession(7L, false, false)),
+            MutableStateFlow(AiEditorSession(7L, false, false)),
         ),
         targetSource = VoiceRewriteTargetSource { VoiceRewriteTargetResolution.Resolved(snapshot) },
         audioSessionCoordinator = AudioSessionCoordinator(),
