@@ -95,10 +95,28 @@ class DictationFixModelTest : FunSpec({
     }
 
     test("replacement preview is the text between the word start and the cursor") {
-        DictationFixModel.replacementPreview(selectedContent("Before own key works", 7, 14), 7) shouldBe ""
-        DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 13), 7) shouldBe "Ownkey"
-        DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 3), 7) shouldBe null
-        DictationFixModel.replacementPreview(cursorContent("yy Ownkey works", cursor = 109, offset = 100), 103) shouldBe "Ownkey"
+        DictationFixModel.replacementPreview(selectedContent("Before own key works", 7, 14), 7) shouldBe ReplacementPreview.Text("")
+        DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 13), 7) shouldBe ReplacementPreview.Text("Ownkey")
+        DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 3), 7) shouldBe ReplacementPreview.CursorLeft
+        DictationFixModel.replacementPreview(cursorContent("yy Ownkey works", cursor = 109, offset = 100), 103) shouldBe ReplacementPreview.Text("Ownkey")
+        // The window starts after the word: unknown for now, not the end of the fix.
+        DictationFixModel.replacementPreview(cursorContent("nkey works", cursor = 106, offset = 100), 98) shouldBe ReplacementPreview.OutOfWindow
+        DictationFixModel.replacementPreview(EditorContent.Unspecified, 7) shouldBe ReplacementPreview.CursorLeft
+    }
+
+    test("a long insertion is located from the visible tail of a truncated snapshot window") {
+        val committed = " " + "word ".repeat(80).trim()
+        // The editor keeps a bounded window before the cursor; here it starts inside the insertion.
+        val tail = committed.takeLast(100)
+        DictationFixModel.locateCommitted(cursorContent(tail, cursor = 500 + 100, offset = 500), committed) shouldBe 600 - committed.length
+        // Without an offset the snapshot is complete, so a short prefix is a mismatch, not a tail.
+        DictationFixModel.locateCommitted(cursorContent(tail), committed) shouldBe null
+        DictationFixModel.locateCommitted(cursorContent("other text", cursor = 510, offset = 500), committed) shouldBe null
+    }
+
+    test("tokens keep combining marks so decomposed accents are replaced whole") {
+        val decomposed = "Zoë works"
+        DictationFixModel.tokenize(decomposed).map { it.text } shouldBe listOf("Zoë", "works")
     }
 })
 
@@ -111,6 +129,25 @@ class OrdinaryDictationCleanupTest : FunSpec({
         OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Um, own key uh works."), cleaner) shouldBe
             DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("Ownkey works."), "Um, own key uh works.")
         OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh, um."), cleaner) shouldBe
+            DictationCleanupResult.OnlyFillers("Uh, um.")
+        // A supplementary-plane letter is text, even though it spans two UTF-16 chars.
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Um, 𝔘."), cleaner) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("𝔘."), "Um, 𝔘.")
+    }
+
+    test("symbols produced on purpose by a correction are inserted, not treated as filler-only") {
+        val symbols = TranscriptCleaner(
+            CleanupSettings(true, FillerRules.fillerWords(listOf("en")), listOf(CorrectionRule("smiley", "😊"), CorrectionRule("period", "."))),
+        )
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Um, smiley"), symbols) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("😊"), "Um, smiley")
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("period"), symbols) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("."), "period")
+        // A transcript that was punctuation to begin with passes through as before.
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("."), symbols) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("."), ".")
+        // Fillers that leave only a full stop are still nothing to insert.
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh, um."), symbols) shouldBe
             DictationCleanupResult.OnlyFillers("Uh, um.")
     }
 
@@ -270,6 +307,50 @@ class DictationFixControllerTest : FunSpec({
         third.offerAndChoose(1)
         third.controller.beginReplacement(cursorContent("Before own key works!"))
         third.controller.state.value shouldBe DictationFixState.Manual("key")
+    }
+
+    test("a keystroke inside the commit grace still retires the offer once the grace ends") {
+        val h = Harness()
+        h.controller.offer(h.insertion(agoMs = 0L))
+        h.editor.emit(cursorContent(h.hostText + " x"))
+        h.controller.state.value.shouldBeInstanceOf<DictationFixState.Offered>()
+        // The recheck runs on the real clock after the remaining grace.
+        val deadline = System.currentTimeMillis() + 3_000L
+        while (h.controller.state.value !is DictationFixState.Hidden && System.currentTimeMillis() < deadline) Thread.sleep(25)
+        h.controller.state.value shouldBe DictationFixState.Hidden
+    }
+
+    test("a dismissal while the save is still being written wins over the late confirmation") {
+        val dir = Files.createTempDirectory("fix-race").toFile()
+        val slowRepository = SpeechDictionaryRepository(
+            file = File(dir, "personal_dictionary.json"),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Unconfined,
+        )
+        val editor = FakeEditor()
+        val controller = DictationFixController(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            repository = slowRepository,
+            editor = editor,
+            openDictionary = {},
+            clock = { 100_000L },
+        )
+        val insertion = DictationInsertion("raw", " own key works", 1L, "com.example.notes", 7, 99_000L)
+        controller.offer(insertion)
+        controller.openChooser()
+        controller.tapToken(0)
+        controller.beginReplacement(cursorContent("Before own key works"))
+        editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
+        (controller.state.value as DictationFixState.Replacing).canSave shouldBe true
+        controller.save()
+        // The write hops to the IO dispatcher; the user dismisses before it lands.
+        controller.dismiss()
+        val deadline = System.currentTimeMillis() + 5_000L
+        while (runBlocking { slowRepository.export() }.corrections.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(25)
+        runBlocking { slowRepository.export() }.corrections.map { it.source to it.replacement } shouldBe listOf("own" to "Ownkey")
+        Thread.sleep(100)
+        controller.state.value shouldBe DictationFixState.Hidden
     }
 
     test("a new recording or another panel retires the offer and chooser, and a session switch ends the replacement") {

@@ -77,7 +77,7 @@ Model training, a cleanup LLM, semantic self-correction, changing typed text, au
 
 ## Non-Functional Requirements
 
-Use existing Compose, Room, navigation, and coroutines. Compile/cache snapshots off the UI/IME thread. Keep at most one loaded Orukeet engine. Support TalkBack, large text, and narrow layouts. Honor Orukeet's internal-build gate.
+Use existing Compose, navigation, coroutines, and kotlinx.serialization; speech data lives in a dedicated versioned JSON document with atomic writes, not in Room. Compile/cache snapshots off the UI/IME thread. Keep at most one loaded Orukeet engine. Support TalkBack, large text, and narrow layouts. Honor Orukeet's internal-build gate.
 
 ## Assumptions and Needs Clarification
 
@@ -85,7 +85,7 @@ Windows defaults are proposed: filler removal on, English/Dutch on, other lists 
 
 ## Probe Findings and Remaining Unknowns
 
-Pinned source and the packaged AAR expose beam search, per-stream hotwords, and BPE options. The manifest already includes `bpe.vocab`; no new model download is expected. Android currently uses greedy search without vocabulary. Physical-device quality, latency, memory, transport limits, and exact provider multipart behavior remain unqualified.
+Pinned source and the packaged AAR expose beam search, per-stream hotwords, and BPE options. The manifest already includes `bpe.vocab`; no new model download is expected. Implemented: requests without words keep greedy search; when the on-device hint preference is on and words exist, the inference process recreates the engine with modified beam search, the BPE vocabulary, and the words as hotwords within a 64 KiB transport budget. Physical-device quality, latency, memory, and profile-switch cost remain unqualified (T-005); the provider multipart fields are covered by JVM tests.
 
 ## Footguns and Touchpoints
 
@@ -93,4 +93,4 @@ Shared cleanup would alter spoken instructions. Empty language lists must not re
 
 ## Dependencies and Approval Notes
 
-Depends on Orukeet PR #13, current transcription/session safety, backup/restore, Windows fixtures, and a representative arm64 phone. Research/planning requested on 2026-09-17; implementation remains planned and separate from the Orukeet PR.
+Depends on Orukeet PR #13, current transcription/session safety, backup/restore, Windows fixtures, and a representative arm64 phone. Research/planning requested on 2026-09-17; implementation completed the same day in PR #14 on top of the Orukeet branch. Physical-device qualification of local hints (T-005) remains pending, and the hint preference stays off until it passes.

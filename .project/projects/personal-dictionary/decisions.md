@@ -2,11 +2,11 @@
 
 ## 2026-09-17 — Plan Windows parity as three features
 
-Status: proposed for implementation; grounded in completed research. Recognition vocabulary, exact corrections, and filler removal have different responsibilities. Keep all three visible and testable. No new cleanup model, semantic rewrite, or automatic word collection.
+Status: implemented in PR #14 (storage, settings, backup, dictation integration, keyboard fix flow); physical-device qualification of local hints remains open in T-005. Recognition vocabulary, exact corrections, and filler removal have different responsibilities. Keep all three visible and testable. No new cleanup model, semantic rewrite, or automatic word collection.
 
 ## 2026-09-17 — Separate speech data from typing dictionaries
 
-Use a dedicated Room repository with transactional edits and versioned backup support. Existing typing records have different fields/semantics, and copying them into cloud hints would create an unexpected privacy boundary. Do not use nested JSON in JetPref after the saved-voice persistence failure.
+Use a dedicated speech repository with transactional edits and versioned backup support; the persistence design chosen at implementation time is the file-backed versioned JSON document described below, not Room. Existing typing records have different fields/semantics, and copying them into cloud hints would create an unexpected privacy boundary. Do not use nested JSON in JetPref after the saved-voice persistence failure.
 
 ## 2026-09-17 — Apply cleanup only to ordinary dictation
 

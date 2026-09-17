@@ -43,6 +43,39 @@ object CloudVocabularyHints {
     private const val OPENAI_HOST = "api.openai.com"
 
     /**
+     * Request-side budget for one upload. Saved entries are never truncated; only the request is,
+     * in saved order, and the settings page reports how many words fit. Not a provider limit.
+     */
+    const val MAX_TERMS = 200
+    const val MAX_BYTES = 16 * 1024
+
+    data class Bounded(val terms: List<String>, val dropped: Int) {
+        val included: Int get() = terms.size
+    }
+
+    fun bound(vocabulary: List<String>, maxTerms: Int = MAX_TERMS, maxBytes: Int = MAX_BYTES): Bounded {
+        val terms = ArrayList<String>()
+        var bytes = 0
+        var dropped = 0
+        for (raw in vocabulary) {
+            val term = raw.trim()
+            if (term.isEmpty()) continue
+            if (dropped > 0) {
+                dropped++
+                continue
+            }
+            val termBytes = term.toByteArray(Charsets.UTF_8).size + if (terms.isEmpty()) 0 else 2
+            if (terms.size >= maxTerms || bytes + termBytes > maxBytes) {
+                dropped++
+                continue
+            }
+            terms.add(term)
+            bytes += termBytes
+        }
+        return Bounded(terms, dropped)
+    }
+
+    /**
      * OpenAI compatibility alone is not evidence of hint support: an unknown endpoint may reject or
      * silently ignore an extra field, so [CloudVocabularyMode.AUTO] only sends to documented hosts.
      */

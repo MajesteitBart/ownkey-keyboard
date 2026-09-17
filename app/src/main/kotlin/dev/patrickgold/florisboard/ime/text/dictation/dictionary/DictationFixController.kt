@@ -82,6 +82,7 @@ class DictationFixController(
     val state: StateFlow<DictationFixState> = _state
 
     private var timer: Job? = null
+    private var lastContent: EditorContent? = null
 
     init {
         scope.launch { editor.contentFlow.collect(::onEditorContent) }
@@ -94,7 +95,16 @@ class DictationFixController(
         if (DictationFixModel.tokenize(insertion.committedText).isEmpty()) return
         publish(DictationFixState.Offered(insertion))
         timer = scope.launch {
-            delay(offerTimeoutMs)
+            // Emissions inside the commit grace are not judged; re-judge the latest one once it ends
+            // so a keystroke typed right after the insertion still retires the offer.
+            val grace = COMMIT_GRACE_MS - (clock() - insertion.committedAtMs)
+            if (grace > 0) {
+                delay(grace)
+                val offered = _state.value as? DictationFixState.Offered
+                val content = lastContent
+                if (offered != null && offered.insertion === insertion && content != null) judgeOffer(offered, content)
+            }
+            delay((offerTimeoutMs - maxOf(grace, 0L)).coerceAtLeast(0L))
             if (_state.value.let { it is DictationFixState.Offered && it.insertion === insertion }) publish(DictationFixState.Hidden)
         }
     }
@@ -156,11 +166,13 @@ class DictationFixController(
         val addAsWord = current.addAsWord
         scope.launch {
             val correction = repository.upsertCorrection(source, replacement)
+            val wordAdded = correction is EntryResult.Saved && addAsWord && repository.addWord(replacement) is EntryResult.Saved
+            // The write is asynchronous; a dismissal or a new dictation in the meantime owns the state now.
+            if (_state.value !== current) return@launch
             if (correction is EntryResult.Rejected) {
                 publish(DictationFixState.Hidden)
                 return@launch
             }
-            val wordAdded = addAsWord && repository.addWord(replacement) is EntryResult.Saved
             publish(DictationFixState.Saved(source, replacement, wordAdded))
             timer = scope.launch {
                 delay(savedDwellMs)
@@ -184,24 +196,25 @@ class DictationFixController(
     }
 
     private fun onEditorContent(content: EditorContent) {
+        lastContent = content
         when (val current = _state.value) {
             is DictationFixState.Offered -> {
                 // The host confirms the commit asynchronously; an emission from before that must not
-                // retire the offer. After the grace period typing, moving the cursor or switching
-                // fields all retire it.
+                // retire the offer. The timer re-judges the latest emission once the grace ends.
                 if (clock() - current.insertion.committedAtMs < COMMIT_GRACE_MS) return
-                val stillThere = editor.activeSessionId == current.insertion.editorSessionId &&
-                    DictationFixModel.locateCommitted(content, current.insertion.committedText) != null
-                if (!stillThere) publish(DictationFixState.Hidden)
+                judgeOffer(current, content)
             }
             is DictationFixState.Replacing -> {
                 if (editor.activeSessionId != current.insertion.editorSessionId) {
                     publish(DictationFixState.Hidden)
                     return
                 }
-                val preview = DictationFixModel.replacementPreview(content, current.absoluteStart)
-                if (preview == null) publish(DictationFixState.Hidden) else if (preview != current.replacement) {
-                    publish(current.copy(replacement = preview))
+                when (val preview = DictationFixModel.replacementPreview(content, current.absoluteStart)) {
+                    is ReplacementPreview.Text -> if (preview.value != current.replacement) {
+                        publish(current.copy(replacement = preview.value))
+                    }
+                    ReplacementPreview.OutOfWindow -> Unit
+                    ReplacementPreview.CursorLeft -> publish(DictationFixState.Hidden)
                 }
             }
             is DictationFixState.Choosing -> {
@@ -209,6 +222,13 @@ class DictationFixController(
             }
             is DictationFixState.Manual, is DictationFixState.Saved, DictationFixState.Hidden -> Unit
         }
+    }
+
+    /** Typing, moving the cursor or switching fields all retire the offer. */
+    private fun judgeOffer(current: DictationFixState.Offered, content: EditorContent) {
+        val stillThere = editor.activeSessionId == current.insertion.editorSessionId &&
+            DictationFixModel.locateCommitted(content, current.insertion.committedText) != null
+        if (!stillThere) publish(DictationFixState.Hidden)
     }
 
     private fun publish(next: DictationFixState) {

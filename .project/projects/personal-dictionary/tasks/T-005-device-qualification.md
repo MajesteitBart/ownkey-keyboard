@@ -10,7 +10,7 @@ updated: 2026-09-17T21:40:00Z
 linear_issue_id:
 github_issue:
 github_pr:
-depends_on: [T-003]
+depends_on: [T-002, T-003]
 conflicts_with: []
 parallel: false
 priority: medium
@@ -26,8 +26,13 @@ acceptance_criteria_ids: [AC-001]
 Measure Orukeet with the beam-search hotword profile against greedy search on a representative arm64 phone: name accuracy, word error rate on ordinary and mixed-language speech, false insertions with irrelevant names, warm and cold decode time, engine recreation cost when the profile switches, cancellation, and peak PSS. Decide whether the on-device hint toggle stays on by default for internal builds.
 
 ## Acceptance Criteria
-- [ ] Paired English and Dutch recordings compared with no hints, relevant names and irrelevant names.
-- [ ] Aggregate accuracy, latency and memory results published without private audio or transcripts.
+- [ ] Paired English and Dutch recordings, including ordinary speech, mixed languages and negative examples, compared with no hints, relevant names and irrelevant names.
+- [ ] Name accuracy and word error rate recorded for greedy and for the beam hotword profile.
+- [ ] False insertions with irrelevant names counted and reported.
+- [ ] Warm and cold decode time per recording, and the engine recreation cost when the profile switches, measured.
+- [ ] Cancellation during a beam decode verified to release the engine and the audio lease.
+- [ ] Peak PSS of the inference process recorded for both profiles.
+- [ ] Aggregate results published without private audio or transcripts.
 - [ ] Default for `ai__local_vocabulary_hints` confirmed or changed based on the results.
 
 ## Traceability

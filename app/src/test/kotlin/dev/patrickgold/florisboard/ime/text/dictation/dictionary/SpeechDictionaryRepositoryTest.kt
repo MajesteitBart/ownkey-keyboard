@@ -98,6 +98,19 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { repository(dir).snapshot() }.fillers.languages shouldBe emptyList()
     }
 
+    test("single language toggles rebase on the stored document instead of a stale selection") {
+        val dir = temp()
+        val repository = repository(dir)
+        runBlocking {
+            repository.setFillerLanguage("de", true)
+            repository.setFillerLanguage("fr", true)
+            repository.state.value.document.fillers.languages shouldBe listOf("en", "nl", "de", "fr")
+            repository.setFillerLanguage("en", false)
+            repository.setFillerLanguage("xx", true)
+            repository.state.value.document.fillers.languages shouldBe listOf("nl", "de", "fr")
+        }
+    }
+
     test("remove returns the entry with its index and undo puts it back in place") {
         val dir = temp()
         val repository = repository(dir)

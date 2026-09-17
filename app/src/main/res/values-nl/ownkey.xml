@@ -60,7 +60,7 @@
     <string name="speech_dictionary__title">Persoonlijk woordenboek</string>
     <string name="speech_dictionary__intro_title">Jouw woorden, jouw spelling</string>
     <string name="speech_dictionary__intro_summary">Woorden helpen dicteren om namen en termen te herkennen. Correcties vervangen wat verkeerd wordt verstaan, elke keer. Stopwoorden worden op dit apparaat verwijderd.</string>
-    <string name="speech_dictionary__cloud_disclosure">Bij clouddictatie gaan je woorden samen met de audio naar het ingestelde eindpunt. Bij dicteren op dit apparaat blijven ze op de telefoon.</string>
+    <string name="speech_dictionary__cloud_disclosure">Bij clouddictatie met herkenningshints aan gaan je woorden samen met de audio naar het ingestelde eindpunt. Met hints uit of bij dicteren op dit apparaat blijven ze op de telefoon.</string>
     <string name="speech_dictionary__add_title">Item toevoegen</string>
     <string name="speech_dictionary__add_summary">Sla een naam of term op om te herkennen, of zet correctie aan om een terugkerende verspreking te vervangen.</string>
     <string name="speech_dictionary__correction_toggle">Spelfout corrigeren</string>
@@ -95,7 +95,7 @@
     <string name="speech_dictionary__correction_kind">Correctie</string>
     <string name="speech_dictionary__correction_arrow">{source} → {replacement}</string>
     <string name="speech_dictionary__fillers_title">Stopwoorden</string>
-    <string name="speech_dictionary__fillers_summary">Aarzelingen zoals “uh” en “ehm” worden op dit apparaat uit gedicteerde tekst gehaald, zonder taalmodel. Betekenisvolle woorden zoals “like”, “well”, “dus” en “gewoon” blijven altijd staan.</string>
+    <string name="speech_dictionary__fillers_summary">Als dit aanstaat, worden aarzelingen zoals “uh” en “ehm” op dit apparaat uit gedicteerde tekst gehaald, zonder taalmodel. De ingebouwde lijsten raken betekenisvolle woorden zoals “like”, “well”, “dus” en “gewoon” nooit aan; alleen woorden die je zelf toevoegt kunnen dat overrulen.</string>
     <string name="speech_dictionary__fillers_enabled">Stopwoorden verwijderen</string>
     <string name="speech_dictionary__fillers_off_note">Stopwoorden verwijderen staat uit. Correcties werken nog wel.</string>
     <string name="speech_dictionary__fillers_languages">Talen</string>
@@ -121,6 +121,7 @@
     <string name="speech_dictionary__hints_cloud_prompt_summary">Voor OpenAI-compatibele eindpunten die een promptveld accepteren. Een eindpunt dat dat niet doet, kan het verzoek weigeren.</string>
     <string name="speech_dictionary__hints_cloud_off">Geen woorden sturen</string>
     <string name="speech_dictionary__hints_cloud_off_summary">Correcties en stopwoorden verwijderen werken nog steeds op dit apparaat.</string>
+    <string name="speech_dictionary__hints_cloud_budget_exceeded">{included} van {total} woorden passen in één cloudverzoek. De rest blijft opgeslagen, maar wordt niet verstuurd.</string>
     <string name="speech_dictionary__hints_local_label">Dicteren op dit apparaat (Orukeet)</string>
     <string name="speech_dictionary__hints_local_toggle">Woorden gebruiken voor herkenning op dit apparaat</string>
     <string name="speech_dictionary__hints_local_summary">Standaard uit totdat het op een telefoon is gemeten. Als dit aanstaat en er woorden zijn opgeslagen, schakelt Orukeet voor de opname van de gebruikelijke greedy decoder naar beam search met hotwords, wat trager kan zijn.</string>

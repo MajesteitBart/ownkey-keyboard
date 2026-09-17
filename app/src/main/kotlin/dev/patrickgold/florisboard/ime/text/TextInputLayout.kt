@@ -42,6 +42,8 @@ import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixRow
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import org.florisboard.lib.snygg.ui.SnyggIcon
 
 @Composable
@@ -65,12 +67,16 @@ fun TextInputLayout(
     ) {
         Smartbar()
         val dictationFixController = androidx.compose.runtime.remember(context) { context.dictationFixController().value }
-        val dictationFixState by dictationFixController.state.collectAsState()
+        // Only the chooser predicate is observed here, so the per-keystroke preview updates while a
+        // word is retyped never recompose the keyboard layout.
+        val dictationFixChoosing by androidx.compose.runtime.remember(dictationFixController) {
+            dictationFixController.state.map { it is DictationFixState.Choosing }.distinctUntilChanged()
+        }.collectAsState(initial = false)
         // While a word is being retyped the keyboard stays; the row above it shows the replacement.
         DictationFixRow()
         if (keyboardManager.isRewriteOptionsVisible) {
             RewriteOptionsPanel()
-        } else if (dictationFixState is DictationFixState.Choosing) {
+        } else if (dictationFixChoosing) {
             DictationFixPanel()
         } else if (state.isActionsOverflowVisible) {
             QuickActionsOverflowPanel()

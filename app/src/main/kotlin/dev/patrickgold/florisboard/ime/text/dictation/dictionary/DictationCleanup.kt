@@ -29,10 +29,15 @@ object OrdinaryDictationCleanup {
     fun apply(outcome: TranscriptionOutcome, cleaner: TranscriptCleaner?): DictationCleanupResult {
         if (outcome !is TranscriptionOutcome.Transcript) return DictationCleanupResult.Ready(outcome, null)
         if (cleaner == null || cleaner.isIdentity) return DictationCleanupResult.Ready(outcome, outcome.text)
-        val cleaned = cleaner.clean(outcome.text).trim()
-        // The reference rules keep sentence punctuation, so `Uh, um.` cleans to `.`; punctuation with
-        // no letters or digits left is still nothing worth inserting.
-        if (cleaned.none { it.isLetterOrDigit() }) return DictationCleanupResult.OnlyFillers(outcome.text)
+        val detailed = cleaner.cleanDetailed(outcome.text)
+        val cleaned = detailed.text.trim()
+        // The reference rules keep sentence punctuation, so `Uh, um.` cleans to `.`. Only when filler
+        // removal took every letter and digit out of a transcript that had some is the result
+        // "nothing to insert"; symbols a correction produced on purpose (`smiley` → `😊`) are kept.
+        // Checked per code point so supplementary-plane letters count as text.
+        val hadText = outcome.text.codePoints().anyMatch(Character::isLetterOrDigit)
+        val fillersTookAllText = detailed.afterFillers.codePoints().noneMatch(Character::isLetterOrDigit)
+        if (cleaned.isEmpty() || (hadText && fillersTookAllText)) return DictationCleanupResult.OnlyFillers(outcome.text)
         return DictationCleanupResult.Ready(TranscriptionOutcome.Transcript(cleaned), outcome.text)
     }
 }
@@ -51,8 +56,11 @@ data class DictationInsertion(
 data class DictationToken(val text: String, val start: Int, val end: Int)
 
 object DictationFixModel {
-    /** Words keep inner apostrophes, hyphens and dots (`Bart's`, `e-mail`, `v1.2`); surrounding punctuation is dropped. */
-    private val tokenPattern = Regex("[\\p{L}\\p{N}]+(?:['’.\\-][\\p{L}\\p{N}]+)*")
+    /**
+     * Words keep inner apostrophes, hyphens and dots (`Bart's`, `e-mail`, `v1.2`); surrounding
+     * punctuation is dropped. Combining marks belong to the word so decomposed accents are kept.
+     */
+    private val tokenPattern = Regex("[\\p{L}\\p{M}\\p{N}]+(?:['’.\\-][\\p{L}\\p{M}\\p{N}]+)*")
 
     fun tokenize(text: String): List<DictationToken> =
         tokenPattern.findAll(text).map { match -> DictationToken(match.value, match.range.first, match.range.last + 1) }.toList()
@@ -78,24 +86,48 @@ object DictationFixModel {
         return index..index
     }
 
-    /** Absolute editor offset where the committed text starts, if it still ends right at the cursor. */
+    /**
+     * Absolute editor offset where the committed text starts, if it still ends right at the cursor.
+     *
+     * The editor snapshot holds a bounded window before the cursor. A long dictation can exceed it,
+     * so when the window is truncated at its start only the visible tail has to match.
+     */
     fun locateCommitted(content: EditorContent, committedText: String): Int? {
         if (committedText.isEmpty() || content.offset < 0) return null
         val selection = content.selection
         if (!selection.isValid || !selection.isCursorMode) return null
-        if (!content.textBeforeSelection.endsWith(committedText)) return null
+        val before = content.textBeforeSelection
+        val matches = if (before.length >= committedText.length) {
+            before.endsWith(committedText)
+        } else {
+            content.offset > 0 && before.isNotEmpty() && committedText.endsWith(before)
+        }
+        if (!matches) return null
         return selection.start - committedText.length
     }
 
     /**
      * What the user has typed over the selected word so far: the text between the word's original
-     * start and the cursor. Null once the cursor left that region, which ends the fix.
+     * start and the cursor. The window may not reach the start right after the selection moved;
+     * that is not the same as the cursor having left the region.
      */
-    fun replacementPreview(content: EditorContent, absoluteStart: Int): String? {
-        if (content.offset < 0 || !content.selection.isValid) return null
+    fun replacementPreview(content: EditorContent, absoluteStart: Int): ReplacementPreview {
+        if (content.offset < 0 || !content.selection.isValid) return ReplacementPreview.CursorLeft
+        val cursor = content.selection.start
+        if (cursor < absoluteStart) return ReplacementPreview.CursorLeft
         val localStart = absoluteStart - content.offset
-        val localCursor = content.selection.start - content.offset
-        if (localStart < 0 || localCursor < localStart || localCursor > content.text.length) return null
-        return content.text.substring(localStart, localCursor)
+        val localCursor = cursor - content.offset
+        if (localStart < 0 || localCursor > content.text.length) return ReplacementPreview.OutOfWindow
+        return ReplacementPreview.Text(content.text.substring(localStart, localCursor))
     }
+}
+
+sealed interface ReplacementPreview {
+    data class Text(val value: String) : ReplacementPreview
+
+    /** The snapshot window does not cover the word yet; keep the last known replacement. */
+    data object OutOfWindow : ReplacementPreview
+
+    /** The cursor moved before the word, which ends the fix. */
+    data object CursorLeft : ReplacementPreview
 }

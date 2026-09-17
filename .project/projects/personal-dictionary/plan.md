@@ -30,7 +30,7 @@ Avoid nested speech JSON in JetPref. The saved-voice incident makes real-file pe
 
 ## Policy and Artifact Map
 
-`.project/` remains authoritative. Spec/plan stay planned; no feature implementation or Linear writes are part of this task. `spec.md` defines acceptance, this plan defines sequence/gates, `decisions.md` records rationale, and `research/windows-parity/` records evidence. Decompose executable tasks after scope acceptance and the probe. `ownkey-keyboard-team` owns all phases; this does not authorize delegated agents.
+`.project/` remains authoritative. Phases 1 to 4 are implemented (tasks T-001 to T-004, PR #14); only the physical-device qualification of local hints (T-005) is still blocked. No Linear writes are part of this work. `spec.md` defines acceptance, this plan defines sequence/gates, `decisions.md` records rationale, and `research/windows-parity/` records evidence. `ownkey-keyboard-team` owns all phases; this does not authorize delegated agents.
 
 ## Device Probe
 
@@ -45,12 +45,12 @@ Start with a proposed 64 KiB UTF-8 vocabulary IPC budget, below the full Binder 
 | Phase | Component/file ownership | Dependency | Exit evidence |
 | --- | --- | --- | --- |
 | 0. Compatibility/device probe | `lib/offline-asr/OrukeetEngine.kt`, model/runtime inspection, private fixtures | Orukeet baseline | Paired accuracy/false-positive/time/memory results; decoder and transport decision |
-| 1. Data and cleanup | New `ime/text/dictation/dictionary/` entities/repository/processor; JVM/Room tests | Agreed spec | Windows parity, Unicode/literal tests, atomic edits, disk/restart and empty-language persistence |
+| 1. Data and cleanup | New `ime/text/dictation/dictionary/` document/repository/processor; JVM tests on real files | Agreed spec | Windows parity, Unicode/literal tests, atomic edits, disk/restart and empty-language persistence |
 | 2. Settings and backup | AI dictionary/filler pages, `VoxtralScreen.kt`, navigation, `DictionaryScreen.kt`, `BackupScreen.kt`, `RestoreScreen.kt`, EN/NL resources | Phase 1 | Add/edit/delete, correction toggle, Save/Cancel, accessibility, real export/import and old-backup compatibility |
 | 3. Dictation integration | `TranscriptionClient.kt`, `VoxtralDictationManager.kt`, `TranscriptionOperations.kt`, `OfflineDictationController.kt`, `InferenceConnection.kt`, `InferenceService.kt`, `OrukeetEngine.kt` | Phase 0 decision and phase 1 snapshot | Per-session hints, request fixtures, local inference, ordinary-only cleanup, neutral empty result, cancellation/editor safety |
 | 4. Qualification | Tests, physical-device checks, builds, project evidence | Phases 2–3 | Upgrade/restore persistence, no typing regression, local/cloud dictation, required CI |
 
-Cleanup remains usable with endpoints lacking hints. Keep unqualified local hotwords off rather than silently altering ordinary dictation. Milestones: scope/probe; durable data and cleanup; UI/backup/integration; internally installable qualified build.
+Cleanup remains usable with endpoints lacking hints. Keep unqualified local hotwords off rather than silently altering ordinary dictation: the `ai__local_vocabulary_hints` preference defaults to off, and the settings toggle turns the beam profile on only for the T-005 measurements. Milestones: scope/probe; durable data and cleanup; UI/backup/integration; internally installable qualified build.
 
 ## Rollout
 

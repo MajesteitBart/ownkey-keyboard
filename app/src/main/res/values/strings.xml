@@ -1429,7 +1429,7 @@
     <string name="speech_dictionary__title">Personal dictionary</string>
     <string name="speech_dictionary__intro_title">Your words, your spelling</string>
     <string name="speech_dictionary__intro_summary">Words help dictation recognise names and terms. Corrections replace what is heard wrong, every time. Filler words are removed on this device.</string>
-    <string name="speech_dictionary__cloud_disclosure">With cloud dictation, your words travel with the audio to the configured endpoint. With on-device dictation, they stay on this phone.</string>
+    <string name="speech_dictionary__cloud_disclosure">With cloud dictation and recognition hints on, your words travel with the audio to the configured endpoint. With hints off or on-device dictation, they stay on this phone.</string>
     <string name="speech_dictionary__add_title">Add an entry</string>
     <string name="speech_dictionary__add_summary">Save a name or term to recognise, or turn on correction to replace a recurring mishearing.</string>
     <string name="speech_dictionary__correction_toggle">Correct a misspelling</string>
@@ -1464,7 +1464,7 @@
     <string name="speech_dictionary__correction_kind">Correction</string>
     <string name="speech_dictionary__correction_arrow">{source} → {replacement}</string>
     <string name="speech_dictionary__fillers_title">Filler words</string>
-    <string name="speech_dictionary__fillers_summary">Hesitations such as “uh” and “ehm” are removed from dictated text on this device, without a language model. Meaningful words like “like”, “well”, “dus” and “gewoon” are never touched.</string>
+    <string name="speech_dictionary__fillers_summary">When on, hesitations such as “uh” and “ehm” are removed from dictated text on this device, without a language model. The built-in lists never touch meaningful words like “like”, “well”, “dus” and “gewoon”; only words you add yourself can override that.</string>
     <string name="speech_dictionary__fillers_enabled">Remove filler words</string>
     <string name="speech_dictionary__fillers_off_note">Filler removal is off. Corrections still apply.</string>
     <string name="speech_dictionary__fillers_languages">Languages</string>
@@ -1490,6 +1490,7 @@
     <string name="speech_dictionary__hints_cloud_prompt_summary">For OpenAI-compatible endpoints that accept a prompt field. An endpoint that does not may reject the request.</string>
     <string name="speech_dictionary__hints_cloud_off">Do not send words</string>
     <string name="speech_dictionary__hints_cloud_off_summary">Corrections and filler removal still run on this device.</string>
+    <string name="speech_dictionary__hints_cloud_budget_exceeded">{included} of {total} words fit one cloud request. The rest stay saved but are not sent.</string>
     <string name="speech_dictionary__hints_local_label">On-device dictation (Orukeet)</string>
     <string name="speech_dictionary__hints_local_toggle">Use words for on-device recognition</string>
     <string name="speech_dictionary__hints_local_summary">Off by default until it is measured on a phone. When on and words are saved, Orukeet switches from its usual greedy decoder to beam search with hotwords for the recording, which can be slower.</string>

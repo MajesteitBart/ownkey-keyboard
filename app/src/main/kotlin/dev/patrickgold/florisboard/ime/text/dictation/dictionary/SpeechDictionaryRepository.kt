@@ -229,6 +229,13 @@ class SpeechDictionaryRepository(
         document.copy(fillers = document.fillers.copy(languages = FillerRules.normalizeLanguages(codes))) to Unit
     }
 
+    /** Toggles one language against the current document under the lock, so quick taps never overwrite each other. */
+    suspend fun setFillerLanguage(code: String, enabled: Boolean) = mutate { document ->
+        val current = FillerRules.normalizeLanguages(document.fillers.languages)
+        val next = if (enabled) current + code else current - code
+        document.copy(fillers = document.fillers.copy(languages = FillerRules.normalizeLanguages(next))) to Unit
+    }
+
     suspend fun setCustomFillers(words: List<String>) = mutate { document ->
         document.copy(fillers = document.fillers.copy(custom = TranscriptCleanup.normalizeVocabulary(words))) to Unit
     }
@@ -319,11 +326,19 @@ class SpeechDictionaryRepository(
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
             val kept = File(file.parentFile, "${file.name}.unreadable-${clock()}")
             runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }
-            _state.value = SpeechDictionaryState(
-                SpeechDictionaryDocument(),
-                loaded = true,
-                loadError = SpeechDictionaryLoadError.UNREADABLE,
-            )
+            // A durable copy only exists after a non-atomic write path; use it when it parses.
+            val recovered = backupFile().takeIf { it.exists() }?.let { backup ->
+                runCatching { SpeechDictionaryDocument.decode(backup.readText(Charsets.UTF_8)) }.getOrNull()
+            }?.takeIf { it.version <= SpeechDictionaryDocument.CURRENT_VERSION }
+            _state.value = if (recovered != null) {
+                SpeechDictionaryState(recovered, loaded = true)
+            } else {
+                SpeechDictionaryState(
+                    SpeechDictionaryDocument(),
+                    loaded = true,
+                    loadError = SpeechDictionaryLoadError.UNREADABLE,
+                )
+            }
         }
     }
 
@@ -337,7 +352,13 @@ class SpeechDictionaryRepository(
         try {
             Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            // Without an atomic rename a crash mid-replace could leave a torn file. Keep the
+            // previous document as a durable copy first; load() falls back to it when the main
+            // file is unreadable.
+            if (file.exists()) Files.copy(file.toPath(), backupFile().toPath(), StandardCopyOption.REPLACE_EXISTING)
             Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }
+
+    private fun backupFile(): File = File(file.parentFile, "${file.name}.bak")
 }

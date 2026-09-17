@@ -46,7 +46,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -144,19 +143,7 @@ fun VoxtralScreen() = FlorisScreen {
             }
         }
 
-        MaterialTheme(
-            colorScheme = darkColorScheme(
-                primary = OwnkeyBrand.TrustBlue,
-                onPrimary = OwnkeyBrand.Bone,
-                background = OwnkeyBrand.Key,
-                onBackground = OwnkeyBrand.Bone,
-                surface = OwnkeyBrand.Panel,
-                onSurface = OwnkeyBrand.Bone,
-                surfaceVariant = OwnkeyBrand.Action,
-                onSurfaceVariant = OwnkeyBrand.Ash,
-                outline = OwnkeyBrand.Line,
-            ),
-        ) {
+        OwnkeyAiSettingsTheme {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

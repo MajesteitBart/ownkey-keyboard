@@ -40,6 +40,20 @@ class CloudVocabularyHintsTest : FunSpec({
         CloudVocabularyHints.promptText(listOf("Ownkey", "Bart")) shouldBe "Ownkey, Bart"
     }
 
+    test("one request is bounded by term count and bytes in saved order, without touching the saved list") {
+        val many = (1..250).map { "Term$it" }
+        val byCount = CloudVocabularyHints.bound(many)
+        byCount.included shouldBe CloudVocabularyHints.MAX_TERMS
+        byCount.dropped shouldBe 50
+        byCount.terms.first() shouldBe "Term1"
+        val byBytes = CloudVocabularyHints.bound(listOf("Zoë", "Müller", "Ångström"), maxBytes = 12)
+        // "Zoë" is 4 bytes and ", Müller" is 9 bytes, so the second term already overflows.
+        byBytes.terms shouldBe listOf("Zoë")
+        byBytes.dropped shouldBe 2
+        CloudVocabularyHints.bound(listOf(" ", "Ownkey", "")).terms shouldBe listOf("Ownkey")
+        many.size shouldBe 250
+    }
+
     context("request fields") {
         val recording = AudioRecording(byteArrayOf(1, 2, 3), 16000, 1, 500L, "audio/mp4", "clip.m4a")
         fun client(endpoint: String, field: CloudVocabularyField, vocabulary: List<String>) = VoxtralRelayTranscriptionClient(

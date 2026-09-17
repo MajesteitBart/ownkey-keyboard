@@ -74,7 +74,7 @@ Paths below are relative to the Android repository. App Kotlin paths share `app/
 | Option | Benefit | Cost/risk | Proposal |
 | --- | --- | --- | --- |
 | Reuse typing dictionary tables | Less new storage | Wrong semantics; mixes typing and cloud vocabulary | Reject |
-| Dedicated speech Room repository | Atomic typed records; clear scope and backup contract | New schema and export section | Adopt |
+| Dedicated speech repository (implemented as a versioned JSON document with atomic writes) | Typed records; clear scope and backup contract; real-file JVM tests | New file format and export section | Adopt |
 | LLM cleanup or training | Could handle semantics | Extra model/network/latency; not requested | Reject |
 | Deterministic Windows rules | Fast, offline, testable parity | No semantic understanding; language false positives | Adopt with explicit controls |
 | Beam hints using current model/runtime | No extra model download | Mobile accuracy/time/RAM unmeasured | Device probe required |

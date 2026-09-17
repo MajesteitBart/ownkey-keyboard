@@ -417,8 +417,10 @@ class VoxtralDictationManager(
                 val endpoint = prefs.voxtral.endpointUrl.get()
                 val model = prefs.voxtral.model.get()
                 val language = TranscriptionLanguageHints.resolve(purpose, prefs.voxtral.languageHint.get(), subtypeManager.activeSubtype.primaryLocale.languageTag())
+                // The client falls back to the default endpoint for a blank preference; the hint
+                // field must be resolved from the same URL the request will actually use.
                 val vocabularyField = CloudVocabularyHints.field(
-                    endpoint,
+                    endpoint.trim().ifBlank { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
                     CloudVocabularyMode.fromPreference(prefs.voxtral.cloudVocabularyMode.get()),
                 )
                 val vocabulary = dictionary.vocabulary

@@ -72,6 +72,8 @@ import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.horizontalTween
@@ -197,9 +199,19 @@ private fun SmartbarMainRow(
     val dictationFixController = remember(context) {
         (context.applicationContext as dev.patrickgold.florisboard.FlorisApplication).dictationFixController.value
     }
-    val dictationFixState by dictationFixController.state.collectAsState()
-    val dictationFixOffered = dictationFixState is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Offered
-    val dictationFixChoosing = dictationFixState is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Choosing
+    // Only the two strip-relevant phases are observed, so preview updates while a word is retyped
+    // never recompose the smartbar.
+    val dictationFixPhase by remember(dictationFixController) {
+        dictationFixController.state.map { state ->
+            when (state) {
+                is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Offered -> 1
+                is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Choosing -> 2
+                else -> 0
+            }
+        }.distinctUntilChanged()
+    }.collectAsState(initial = 0)
+    val dictationFixOffered = dictationFixPhase == 1
+    val dictationFixChoosing = dictationFixPhase == 2
     val voiceRewriteUiController by context.voiceRewriteUiController()
     val llmRewriteManager by context.llmRewriteManager()
     val closeRewritePanel = remember(voiceRewriteUiController, llmRewriteManager) {

@@ -346,7 +346,7 @@ private fun TokenChip(
 ) {
     Surface(
         modifier = Modifier
-            .heightIn(min = 40.dp)
+            .heightIn(min = MinTouchTarget)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = text },
         color = if (selected) accent else OwnkeyBrand.Glass.Key,
@@ -375,7 +375,7 @@ private fun PanelButton(
 ) {
     Surface(
         modifier = Modifier
-            .heightIn(min = 40.dp)
+            .heightIn(min = MinTouchTarget)
             .alpha(if (enabled) 1f else 0.4f)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
         color = if (primary) accent else OwnkeyBrand.Glass.Key,

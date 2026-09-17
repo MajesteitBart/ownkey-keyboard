@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyMode
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.EntryError
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.EntryResult
@@ -66,6 +67,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionar
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryEntry
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryLoadError
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryRepository
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.TranscriptCleanup
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.entries
 import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
@@ -634,8 +636,8 @@ private fun FillerWordsCard(document: SpeechDictionaryDocument, repository: Spee
                 checked = checked,
                 enabled = fillers.enabled,
                 onCheckedChange = { nowChecked ->
-                    val next = if (nowChecked) selected + language.code else selected - language.code
-                    scope.launch { repository.setFillerLanguages(next) }
+                    // Rebased against the stored document, so two quick taps cannot overwrite each other.
+                    scope.launch { repository.setFillerLanguage(language.code, nowChecked) }
                 },
             )
         }
@@ -647,13 +649,13 @@ private fun FillerWordsCard(document: SpeechDictionaryDocument, repository: Spee
             label = userStringRes(R.string.speech_dictionary__fillers_custom_label),
             enabled = fillers.enabled,
         )
+        // Compared after the same normalisation the repository applies, so Save is not offered for
+        // a draft that only differs by whitespace, duplicates or letter case.
+        val normalizedDraft = TranscriptCleanup.normalizeVocabulary(customDraft.split(',', '\n'))
         OwnkeyButton(
             label = userStringRes(R.string.speech_dictionary__fillers_custom_save),
-            onClick = {
-                val words = customDraft.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() }
-                scope.launch { repository.setCustomFillers(words) }
-            },
-            enabled = fillers.enabled && customDraft.split(',', '\n').map { it.trim() }.filter { it.isNotEmpty() } != fillers.custom,
+            onClick = { scope.launch { repository.setCustomFillers(normalizedDraft) } },
+            enabled = fillers.enabled && normalizedDraft != fillers.custom,
             secondary = true,
         )
         if (fillers.enabled) {
@@ -772,6 +774,18 @@ private fun RecognitionHintsCard(
             selected = cloudMode == CloudVocabularyMode.OFF,
             onClick = { onCloudModeChange(CloudVocabularyMode.OFF) },
         )
+        if (cloudMode != CloudVocabularyMode.OFF && words.isNotEmpty()) {
+            val bounded = remember(words) { CloudVocabularyHints.bound(words) }
+            if (bounded.dropped > 0) {
+                StatusText(
+                    text = userStringRes(
+                        R.string.speech_dictionary__hints_cloud_budget_exceeded,
+                        "included" to bounded.included,
+                        "total" to (bounded.included + bounded.dropped),
+                    ),
+                )
+            }
+        }
         if (localCompatible) {
             SectionLabel(text = userStringRes(R.string.speech_dictionary__hints_local_label))
             SwitchRow(

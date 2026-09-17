@@ -238,10 +238,11 @@ class VoxtralRelayTranscriptionClient(
         val languageHint = languageHintProvider()?.trim()?.takeIf { it.isNotEmpty() }
         // Words are sent only through a field the endpoint is known to accept; otherwise none at all.
         val vocabularyField = vocabularyFieldProvider()
+        // Bounded per request, like the local IPC payload; saved entries stay intact.
         val vocabulary = if (vocabularyField == CloudVocabularyField.NONE) {
             emptyList()
         } else {
-            vocabularyProvider().map { it.trim() }.filter { it.isNotEmpty() }
+            CloudVocabularyHints.bound(vocabularyProvider()).terms
         }
 
         return Result.success(
