@@ -491,7 +491,8 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             default = false,
         )
         val isImeSetUp = boolean(
-            key = "internal__is_ime_set_up",
+            // Reopen existing setup once for the recovered Orukeet build without resetting app data.
+            key = "internal__is_ime_set_up_v2",
             default = false,
         )
         val versionOnInstall = string(

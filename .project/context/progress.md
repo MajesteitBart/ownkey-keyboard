@@ -1,6 +1,7 @@
 # Progress
 
 ## What Changed
+- 2026-09-17: The recovered internal build reopens the existing onboarding flow once after updating, preserving other preferences. [Setup verification](../projects/ownkey-brand-system-refresh/updates/2026-09-17-reopen-setup.md).
 - 2026-09-17: Recovered the uncommitted Orukeet integration and combined it with saved-voice persistence recovery on `fix/saved-voices-orukeet`. [Validation and internal APK handoff](../projects/voice-prompt-rewrite/updates/2026-09-17-orukeet-reconciliation.md).
 - 2026-09-15: Orukeet local dictation implemented for internal builds, including model downloads, explicit activation, session snapshots, local instruction transcription and separate inference process. [Delivery evidence](../projects/orukeet-offline-dictation/research/implementation-verification.md) records checks and remaining public-release gates.
 - Context pack refreshed on 2026-06-02 to match current Ownkey direction instead of the older typing-speed-only scope.
