@@ -826,8 +826,14 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.IME_PREV_SUBTYPE -> subtypeManager.switchToPrevSubtype()
             KeyCode.IME_NEXT_SUBTYPE -> subtypeManager.switchToNextSubtype()
             KeyCode.IME_UI_MODE_TEXT -> activeState.imeUiMode = ImeUiMode.TEXT
-            KeyCode.IME_UI_MODE_MEDIA -> activeState.imeUiMode = ImeUiMode.MEDIA
-            KeyCode.IME_UI_MODE_CLIPBOARD -> activeState.imeUiMode = ImeUiMode.CLIPBOARD
+            KeyCode.IME_UI_MODE_MEDIA -> {
+                dictationFixController.interrupt()
+                activeState.imeUiMode = ImeUiMode.MEDIA
+            }
+            KeyCode.IME_UI_MODE_CLIPBOARD -> {
+                dictationFixController.interrupt()
+                activeState.imeUiMode = ImeUiMode.CLIPBOARD
+            }
             KeyCode.VOICE_INPUT -> {
                 isRewriteOptionsVisible = false
                 activeState.isActionsOverflowVisible = false
@@ -845,6 +851,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.SPACE -> handleSpace(data)
             KeyCode.SYSTEM_INPUT_METHOD_PICKER -> InputMethodUtils.showImePicker(appContext)
             KeyCode.SHOW_SUBTYPE_PICKER -> {
+                dictationFixController.interrupt()
                 appContext.keyboardManager.value.activeState.isSubtypeSelectionVisible = true
             }
             KeyCode.SYSTEM_PREV_INPUT_METHOD -> FlorisImeService.switchToPrevInputMethod()
@@ -858,6 +865,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 activeState.isActionsOverflowVisible = !activeState.isActionsOverflowVisible
             }
             KeyCode.TOGGLE_ACTIONS_EDITOR -> {
+                dictationFixController.interrupt()
                 activeState.isActionsEditorVisible = !activeState.isActionsEditorVisible
             }
             KeyCode.AI_REWRITE -> {

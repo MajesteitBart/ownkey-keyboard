@@ -318,8 +318,21 @@ class SpeechDictionaryRepository(
             val (next, result) = transform(current.document)
             if (next !== current.document) {
                 val versioned = next.copy(version = supportedVersion)
-                withContext(ioDispatcher) { write(versioned) }
-                _state.value = SpeechDictionaryState(versioned, loaded = true, loadError = null)
+                // While a newer file could not be moved aside, edits stay in memory rather than
+                // overwrite the only newer-schema copy; the warning stays visible.
+                val written = withContext(ioDispatcher) {
+                    if (mainPathWritable()) {
+                        write(versioned)
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _state.value = SpeechDictionaryState(
+                    versioned,
+                    loaded = true,
+                    loadError = if (written) null else SpeechDictionaryLoadError.NEWER_VERSION,
+                )
             }
             result
         }
@@ -341,9 +354,8 @@ class SpeechDictionaryRepository(
                 // Unknown fields are ignored on decode, so saving would silently downgrade the
                 // file. Keep it for the newer app and start empty, visibly. A copy left by the
                 // non-atomic write path is older still and must not resurface on the next start.
-                val kept = File(file.parentFile, "${file.name}.newer-v${document.version}-${clock()}")
-                runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }
-                backupFile().delete()
+                // If the move fails the newer file stays where it is, and no save may touch it.
+                if (quarantine(document.version)) backupFile().delete() else pendingQuarantine = document.version
                 _state.value = SpeechDictionaryState(
                     SpeechDictionaryDocument(),
                     loaded = true,
@@ -393,6 +405,29 @@ class SpeechDictionaryRepository(
     }
 
     private fun backupFile(): File = File(file.parentFile, "${file.name}.bak")
+
+    /** Version of a newer file still at the main path because moving it aside failed. */
+    @Volatile
+    private var pendingQuarantine: Int? = null
+
+    /** Moves the newer file at the main path aside. False leaves it untouched for a later retry. */
+    private fun quarantine(version: Int): Boolean {
+        val kept = File(file.parentFile, "${file.name}.newer-v$version-${clock()}")
+        return runCatching { Files.move(file.toPath(), kept.toPath(), StandardCopyOption.REPLACE_EXISTING) }.isSuccess
+    }
+
+    /** True when it is safe to write the main file, retrying a failed quarantine first. */
+    private fun mainPathWritable(): Boolean {
+        val version = pendingQuarantine ?: return true
+        if (!file.exists()) {
+            pendingQuarantine = null
+            return true
+        }
+        if (!quarantine(version)) return false
+        backupFile().delete()
+        pendingQuarantine = null
+        return true
+    }
 
     private fun recoverFromBackup(): SpeechDictionaryDocument? = backupFile().takeIf { it.exists() }
         ?.let { backup -> runCatching { SpeechDictionaryDocument.decode(backup.readText(Charsets.UTF_8)) }.getOrNull() }

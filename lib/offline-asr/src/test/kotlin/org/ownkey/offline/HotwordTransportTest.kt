@@ -14,10 +14,14 @@ class HotwordTransportTest {
     }
 
     @Test
-    fun dropsBlankAndCaseInsensitiveDuplicateTerms() {
-        val encoded = HotwordTransport.encode(listOf("Orukeet", " ", "orukeet", "/", "Voxtral"))
-        assertEquals("Orukeet/Voxtral", encoded.hotwords)
-        assertEquals(2, encoded.included)
+    fun countsUntransportableAndCollidingTermsAsDroppedWithoutStoppingTheRest() {
+        // Blank input is not a saved word and is ignored; a term that sanitises to nothing or that
+        // collides with an earlier one cannot reach the recogniser and is reported as dropped, while
+        // later terms still go through.
+        val encoded = HotwordTransport.encode(listOf("Orukeet", " ", "orukeet", "/", "TCP/IP", "TCP:IP", "Voxtral"))
+        assertEquals("Orukeet/TCP IP/Voxtral", encoded.hotwords)
+        assertEquals(3, encoded.included)
+        assertEquals(3, encoded.dropped)
     }
 
     @Test

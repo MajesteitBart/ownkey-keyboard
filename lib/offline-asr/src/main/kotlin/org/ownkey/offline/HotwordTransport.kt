@@ -23,23 +23,33 @@ object HotwordTransport {
         .filter { it.isNotEmpty() }
         .joinToString(" ")
 
-    /** Keeps terms in saved order and stops at the first term that no longer fits the budget. */
+    /**
+     * Keeps terms in saved order and stops at the first term that no longer fits the budget. A term
+     * that has nothing left after sanitising, or that collides with an earlier term once sanitised,
+     * cannot be transported either and counts as dropped so the reported numbers stay honest.
+     */
     fun encode(terms: List<String>, maxBytes: Int = MAX_BYTES): Encoded {
         val builder = StringBuilder()
         val seen = HashSet<String>()
         var bytes = 0
         var included = 0
         var dropped = 0
+        var overflowed = false
         for (raw in terms) {
+            if (raw.isBlank()) continue
             val term = sanitize(raw)
-            if (term.isEmpty() || !seen.add(term.lowercase())) continue
-            if (dropped > 0) {
+            if (term.isEmpty() || !seen.add(term.lowercase())) {
+                dropped++
+                continue
+            }
+            if (overflowed) {
                 dropped++
                 continue
             }
             val piece = if (builder.isEmpty()) term else "$SEPARATOR$term"
             val pieceBytes = piece.toByteArray(Charsets.UTF_8).size
             if (bytes + pieceBytes > maxBytes) {
+                overflowed = true
                 dropped++
                 continue
             }

@@ -259,6 +259,36 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         }
     }
 
+    test("a newer file that cannot be moved aside is never overwritten, and edits wait in memory") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val newer = """{"version":2,"nextId":2,"words":[{"id":1,"word":"Ownkey"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}"""
+        file.writeText(newer)
+        File(dir, "personal_dictionary.json.bak").writeText("stale")
+        // A non-empty directory at the quarantine target makes the move fail.
+        val blocker = File(dir, "personal_dictionary.json.newer-v2-5")
+        File(blocker, "child").apply { parentFile.mkdirs(); writeText("x") }
+        val repository = repository(dir, clock = { 5L })
+        val state = runBlocking { repository.awaitLoaded() }
+        state.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        file.readText() shouldBe newer
+        File(dir, "personal_dictionary.json.bak").exists() shouldBe true
+
+        runBlocking { repository.addWord("Meanwhile") }
+        // The edit is served but nothing on disk changed; the warning stays.
+        repository.state.value.document.words.map { it.word } shouldBe listOf("Meanwhile")
+        repository.state.value.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        file.readText() shouldBe newer
+
+        // Once the move can succeed, the next edit quarantines the newer file and lands on disk.
+        blocker.deleteRecursively()
+        runBlocking { repository.addWord("Later") }
+        repository.state.value.loadError shouldBe null
+        blocker.readText() shouldBe newer
+        File(dir, "personal_dictionary.json.bak").exists() shouldBe false
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Meanwhile", "Later")
+    }
+
     test("a kept file survives when the merged document cannot be written") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")
