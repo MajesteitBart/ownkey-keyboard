@@ -769,6 +769,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         // Empty preserves the pre-Orukeet key-based route on upgrade. Phone-only; excluded from Wear sync.
         val dictationBackend = string(key = "ai__dictation_backend", default = "")
         val previousDictationBackend = string(key = "ai__previous_dictation_backend", default = "")
+        /** How personal-dictionary words travel with cloud audio; see CloudVocabularyMode. */
+        val cloudVocabularyMode = string(key = "ai__cloud_vocabulary_mode", default = "auto")
+        /** Whether personal-dictionary words are passed to the on-device recognizer as hotwords. */
+        val localVocabularyHints = boolean(key = "ai__local_vocabulary_hints", default = true)
         val apiKey = string(
             key = "voxtral__api_key",
             default = "",

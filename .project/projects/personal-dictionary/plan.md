@@ -1,9 +1,9 @@
 ---
 name: Personal Dictionary and Filler Removal
-status: planned
+status: active
 lead: ownkey-keyboard-team
 created: 2026-09-17T20:22:05Z
-updated: 2026-09-17T20:44:23Z
+updated: 2026-09-17T21:40:00Z
 linear_project_id: ""
 risk_level: medium
 spec_status_at_plan_time: planned
@@ -19,7 +19,7 @@ The existing typing dictionary represents words/frequency/locale/shortcuts. Tran
 
 ## Architecture Decisions
 
-1. **Separate speech storage:** dedicated Room entities/repository for stable IDs, normalized uniqueness, saved order, vocabulary, correction pairs, and typed settings. Publish immutable snapshots through `StateFlow`; save atomically. Leave typing schemas and suggestions unchanged.
+1. **Separate speech storage:** dedicated repository for stable IDs, normalized uniqueness, saved order, vocabulary, correction pairs, and typed settings. Publish immutable snapshots through `StateFlow`; save atomically. Leave typing schemas and suggestions unchanged. Implemented as a versioned JSON document with temp-file-plus-atomic-move writes rather than Room, so persistence is covered by real-file JVM tests; see decisions.md.
 2. **Pure Kotlin cleanup:** port Windows fixtures and semantics with escaped literal rules, Unicode-aware boundaries, literal replacements, and filler removal before ordered corrections, including cascades. Compile only when settings change, off the UI/IME thread.
 3. **Purpose-aware integration:** snapshot at recording start and send vocabulary to ASR. Clean ordinary text on a worker dispatcher before `OrdinaryDictationCommitOperation`; recheck validity immediately before commit. Distinguish cleaned-to-empty from ASR failure. Rewrite instructions bypass cleanup.
 4. **Per-stream Orukeet hints:** extend bounded IPC with vocabulary/profile. Probe modified beam search, four active paths, BPE vocabulary, and score 1.5 as Windows starting values. Keep one loaded engine; cache by model/profile if needed. Pass words through `createStream(hotwords)` without reloading on each edit.

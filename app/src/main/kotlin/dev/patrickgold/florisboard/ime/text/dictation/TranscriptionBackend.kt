@@ -19,6 +19,8 @@ class TranscriptionSession(
     val backend: TranscriptionBackend,
     val recorder: AudioRecorder,
     val client: TranscriptionClient?,
+    /** Dictionary snapshot taken at recording start; edits during a recording affect the next one. */
+    val dictionary: dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionarySnapshot? = null,
     private val release: () -> Unit = {},
 ) : AutoCloseable {
     val mode: AudioSessionMode get() = when (backend) {

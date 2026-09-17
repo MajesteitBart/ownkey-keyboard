@@ -36,6 +36,10 @@ import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsOverflow
 import dev.patrickgold.florisboard.ime.text.rewrite.RewriteOptionsPanel
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboardLayout
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.dictationFixController
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixPanel
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixRow
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.snygg.ui.SnyggIcon
@@ -60,8 +64,14 @@ fun TextInputLayout(
             .wrapContentHeight(),
     ) {
         Smartbar()
+        val dictationFixController = androidx.compose.runtime.remember(context) { context.dictationFixController().value }
+        val dictationFixState by dictationFixController.state.collectAsState()
+        // While a word is being retyped the keyboard stays; the row above it shows the replacement.
+        DictationFixRow()
         if (keyboardManager.isRewriteOptionsVisible) {
             RewriteOptionsPanel()
+        } else if (dictationFixState is DictationFixState.Choosing) {
+            DictationFixPanel()
         } else if (state.isActionsOverflowVisible) {
             QuickActionsOverflowPanel()
         } else {

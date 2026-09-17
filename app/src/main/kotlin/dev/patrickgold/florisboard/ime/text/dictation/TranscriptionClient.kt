@@ -16,6 +16,8 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyField
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
 import dev.patrickgold.florisboard.ime.text.network.withCancellableHttpConnection
 import dev.patrickgold.florisboard.lib.util.OwnkeyBatteryTraceLabels
 import kotlinx.coroutines.CancellationException
@@ -146,6 +148,8 @@ class VoxtralRelayTranscriptionClient(
     private val endpointUrlProvider: () -> String = { DefaultEndpointUrl },
     private val modelProvider: () -> String = { DefaultModel },
     private val languageHintProvider: () -> String? = { null },
+    private val vocabularyProvider: () -> List<String> = { emptyList() },
+    private val vocabularyFieldProvider: () -> CloudVocabularyField = { CloudVocabularyField.NONE },
     private val connectTimeoutMs: Int = 30_000,
     private val readTimeoutMs: Int = 60_000,
     private val maxRetryAttempts: Int = 2,
@@ -161,11 +165,15 @@ class VoxtralRelayTranscriptionClient(
         val endpointUrl: String,
         val model: String,
         val languageHint: String?,
+        val vocabulary: List<String>,
+        val vocabularyField: CloudVocabularyField,
     )
 
     internal data class RequestFields(
         val model: String,
         val language: String?,
+        val vocabulary: List<String> = emptyList(),
+        val vocabularyField: CloudVocabularyField = CloudVocabularyField.NONE,
     )
 
     override suspend fun transcribe(recording: AudioRecording): Result<String> {
@@ -204,7 +212,12 @@ class VoxtralRelayTranscriptionClient(
 
     internal fun prepareRequestFields(recording: AudioRecording): Result<RequestFields> =
         prepareRequest(recording).map { request ->
-            RequestFields(model = request.model, language = request.languageHint)
+            RequestFields(
+                model = request.model,
+                language = request.languageHint,
+                vocabulary = request.vocabulary,
+                vocabularyField = request.vocabularyField,
+            )
         }
 
     private fun prepareRequest(recording: AudioRecording): Result<PreparedRequest> {
@@ -223,6 +236,13 @@ class VoxtralRelayTranscriptionClient(
 
         val model = modelProvider().trim().ifBlank { DefaultModel }
         val languageHint = languageHintProvider()?.trim()?.takeIf { it.isNotEmpty() }
+        // Words are sent only through a field the endpoint is known to accept; otherwise none at all.
+        val vocabularyField = vocabularyFieldProvider()
+        val vocabulary = if (vocabularyField == CloudVocabularyField.NONE) {
+            emptyList()
+        } else {
+            vocabularyProvider().map { it.trim() }.filter { it.isNotEmpty() }
+        }
 
         return Result.success(
             PreparedRequest(
@@ -230,6 +250,8 @@ class VoxtralRelayTranscriptionClient(
                 endpointUrl = endpointUrl,
                 model = model,
                 languageHint = languageHint,
+                vocabulary = vocabulary,
+                vocabularyField = if (vocabulary.isEmpty()) CloudVocabularyField.NONE else vocabularyField,
             ),
         )
     }
@@ -255,6 +277,15 @@ class VoxtralRelayTranscriptionClient(
                 out.writeMultipartField(boundary, "model", preparedRequest.model)
                 if (!preparedRequest.languageHint.isNullOrBlank()) {
                     out.writeMultipartField(boundary, "language", preparedRequest.languageHint)
+                }
+                when (preparedRequest.vocabularyField) {
+                    CloudVocabularyField.NONE -> Unit
+                    CloudVocabularyField.CONTEXT_BIAS -> preparedRequest.vocabulary.forEach { term ->
+                        out.writeMultipartField(boundary, "context_bias", term)
+                    }
+                    CloudVocabularyField.PROMPT -> out.writeMultipartField(
+                        boundary, "prompt", CloudVocabularyHints.promptText(preparedRequest.vocabulary),
+                    )
                 }
                 out.writeMultipartFile(
                     boundary = boundary,
@@ -326,7 +357,8 @@ private fun DataOutputStream.writeMultipartField(
 ) {
     writeBytes("--$boundary\r\n")
     writeBytes("Content-Disposition: form-data; name=\"$fieldName\"\r\n\r\n")
-    writeBytes(value)
+    // writeBytes() would keep only the low byte of each char and mangle accented vocabulary.
+    write(value.toByteArray(Charsets.UTF_8))
     writeBytes("\r\n")
 }
 

@@ -39,6 +39,8 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionCoordinator
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryRepository
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.createDictationFixController
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
 import dev.patrickgold.florisboard.ime.text.rewrite.createAiAvailabilityPolicy
 import dev.patrickgold.florisboard.ime.text.rewrite.createVoiceRewriteSessionManager
@@ -75,6 +77,9 @@ import java.lang.ref.WeakReference
  */
 private var FlorisApplicationReference = WeakReference<FlorisApplication?>(null)
 
+private const val SPEECH_DICTIONARY_DIR = "speech-dictionary"
+private const val SPEECH_DICTIONARY_FILE = "personal_dictionary.json"
+
 @Suppress("unused")
 class FlorisApplication : Application(), androidx.work.Configuration.Provider {
     override val workManagerConfiguration: androidx.work.Configuration
@@ -85,6 +90,22 @@ class FlorisApplication : Application(), androidx.work.Configuration.Provider {
     private val prefs by FlorisPreferenceStore
     val preferenceStoreLoaded = MutableStateFlow(false)
     val offlineDictation = lazy { dev.patrickgold.florisboard.ime.text.dictation.offline.OfflineDictationController(this) }
+    /** Speech vocabulary, corrections and filler settings. Separate from the typing dictionaries. */
+    val speechDictionary = lazy {
+        SpeechDictionaryRepository(
+            file = File(File(filesDir, SPEECH_DICTIONARY_DIR), SPEECH_DICTIONARY_FILE),
+            scope = scope,
+        )
+    }
+    val dictationFixController = lazy {
+        createDictationFixController(
+            context = this,
+            scope = voiceFeedbackScope,
+            repository = speechDictionary.value,
+            editorInstance = editorInstance.value,
+            dictationManager = voxtralDictationManager.value,
+        )
+    }
 
     val cacheManager = lazy { CacheManager(this) }
     val clipboardManager = lazy { ClipboardManager(this) }
@@ -295,3 +316,7 @@ fun Context.llmRewriteManager() = this.florisApplication().llmRewriteManager
 fun Context.voiceRewriteSessionManager() = this.florisApplication().voiceRewriteSessionManager
 
 fun Context.voiceRewriteUiController() = this.florisApplication().voiceRewriteUiController
+
+fun Context.speechDictionary() = this.florisApplication().speechDictionary
+
+fun Context.dictationFixController() = this.florisApplication().dictationFixController

@@ -24,6 +24,22 @@ The pinned runtime and model already provide the required API/BPE file. Modified
 
 Use known Mistral `context_bias` support and an explicit compatible `prompt` mode where qualified. Unknown/custom endpoints default to no hint field. Explain vocabulary disclosure; never assume compatibility or impose an invented universal provider word cap.
 
+## 2026-09-17 — File-backed speech repository instead of Room
+
+Implemented as one versioned JSON document written through a temporary file and an atomic move, not as Room entities. The app module has no Robolectric, so Room persistence could not be exercised on the JVM, while the plan's test strategy makes real-file lifecycle coverage essential. The document is a few hundred entries at most, exports as-is into backups, and needs no schema migrations. This is not the nested JetPref JSON the saved-voice incident warned about: it is a dedicated file with typed serialization, unknown keys tolerated on load, unreadable files kept next to the new one, and restore validated before writing.
+
+## 2026-09-17 — Punctuation-only cleanup counts as nothing to insert
+
+The reference rules keep sentence punctuation, so `Uh, um.` cleans to `.` on Windows as well. Android inserts nothing in that case and shows the neutral "only filler words" message; the raw cleaner output stays identical to the reference for parity tests.
+
+## 2026-09-17 — Fix a misheard word from the keyboard
+
+After each ordinary dictation the smartbar offers "Fix a word" for 15 seconds. The chooser lets the user tap the word or phrase, the word is selected in the host editor, and the ordinary keyboard (or another dictation) retypes it; Save stores the correction and, unless switched off, the replacement as a vocabulary word. No in-keyboard text field is needed, the host app's undo keeps working, and the editor session, field and text are verified before anything is selected. When verification fails the heard text is handed to the settings page.
+
+## 2026-09-17 — Cloud hints: automatic only for documented hosts
+
+Automatic mode sends `context_bias` parts to api.mistral.ai and a `prompt` part to api.openai.com, both documented; every other host gets no words unless the user picks the explicit prompt mode. Multipart text parts are now written as UTF-8, which the previous `writeBytes` call did not do.
+
 ## 2026-09-17 — Separate research from Orukeet delivery
 
 Orukeet is committed, pushed, and represented by draft PR #13. Personal-dictionary documents live on a separate planning branch and remain planned. This research does not activate implementation or claim device qualification.

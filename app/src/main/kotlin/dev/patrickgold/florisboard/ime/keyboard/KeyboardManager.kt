@@ -28,6 +28,7 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
+import dev.patrickgold.florisboard.dictationFixController
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.extensionManager
@@ -94,6 +95,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private val prefs by FlorisPreferenceStore
     private val appContext by context.appContext()
+    private val dictationFixController by appContext.dictationFixController()
     private val clipboardManager by context.clipboardManager()
     private val editorInstance by context.editorInstance()
     private val extensionManager by context.extensionManager()
@@ -829,6 +831,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.VOICE_INPUT -> {
                 isRewriteOptionsVisible = false
                 activeState.isActionsOverflowVisible = false
+                dictationFixController.interrupt()
                 FlorisImeService.handleVoiceInputAction()
             }
             KeyCode.KANA_SWITCHER -> handleKanaSwitch()
@@ -851,6 +854,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             KeyCode.TOGGLE_ACTIONS_OVERFLOW -> {
                 isRewriteOptionsVisible = false
+                dictationFixController.interrupt()
                 activeState.isActionsOverflowVisible = !activeState.isActionsOverflowVisible
             }
             KeyCode.TOGGLE_ACTIONS_EDITOR -> {
@@ -858,6 +862,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             KeyCode.AI_REWRITE -> {
                 activeState.isActionsOverflowVisible = false
+                dictationFixController.interrupt()
                 isRewriteOptionsVisible = !isRewriteOptionsVisible
             }
             KeyCode.TOGGLE_INCOGNITO_MODE -> scope.launch { handleToggleIncognitoMode() }

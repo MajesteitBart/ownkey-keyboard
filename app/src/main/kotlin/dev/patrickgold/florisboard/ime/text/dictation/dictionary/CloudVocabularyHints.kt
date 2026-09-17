@@ -1,0 +1,69 @@
+/*
+ * Copyright (C) 2026 The FlorisBoard Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+package dev.patrickgold.florisboard.ime.text.dictation.dictionary
+
+/** How vocabulary reaches a cloud transcription endpoint. Stored as a preference. */
+enum class CloudVocabularyMode(val preference: String) {
+    /** Known endpoints with a documented field get it; unknown or custom endpoints get nothing. */
+    AUTO("auto"),
+
+    /** Send the words as an OpenAI-style `prompt` field. Only for endpoints known to accept it. */
+    PROMPT("prompt"),
+
+    /** Never send vocabulary with cloud audio. Corrections and filler removal still run locally. */
+    OFF("off");
+
+    companion object {
+        fun fromPreference(value: String): CloudVocabularyMode =
+            entries.firstOrNull { it.preference == value.trim().lowercase() } ?: AUTO
+    }
+}
+
+/** The multipart field that carries vocabulary, if any. */
+enum class CloudVocabularyField {
+    NONE,
+
+    /** Mistral's documented `context_bias` array, one multipart part per term. */
+    CONTEXT_BIAS,
+
+    /** One comma-separated `prompt` part, the OpenAI transcription convention. */
+    PROMPT,
+}
+
+object CloudVocabularyHints {
+    private const val MISTRAL_HOST = "api.mistral.ai"
+    private const val OPENAI_HOST = "api.openai.com"
+
+    /**
+     * OpenAI compatibility alone is not evidence of hint support: an unknown endpoint may reject or
+     * silently ignore an extra field, so [CloudVocabularyMode.AUTO] only sends to documented hosts.
+     */
+    fun field(endpointUrl: String, mode: CloudVocabularyMode): CloudVocabularyField = when (mode) {
+        CloudVocabularyMode.OFF -> CloudVocabularyField.NONE
+        CloudVocabularyMode.PROMPT -> CloudVocabularyField.PROMPT
+        CloudVocabularyMode.AUTO -> when (hostOf(endpointUrl)) {
+            MISTRAL_HOST -> CloudVocabularyField.CONTEXT_BIAS
+            OPENAI_HOST -> CloudVocabularyField.PROMPT
+            else -> CloudVocabularyField.NONE
+        }
+    }
+
+    fun promptText(vocabulary: List<String>): String = vocabulary.joinToString(", ")
+
+    private fun hostOf(endpointUrl: String): String? {
+        val trimmed = endpointUrl.trim()
+        if (trimmed.isEmpty()) return null
+        val withoutScheme = trimmed.substringAfter("://", missingDelimiterValue = trimmed)
+        val authority = withoutScheme.substringBefore('/').substringBefore('?')
+        val host = authority.substringAfterLast('@').substringBefore(':').lowercase()
+        return host.ifEmpty { null }
+    }
+}

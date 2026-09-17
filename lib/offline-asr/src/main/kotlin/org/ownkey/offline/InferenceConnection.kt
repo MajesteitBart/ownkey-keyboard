@@ -36,10 +36,13 @@ class InferenceConnection(context: Context) {
         true
     })
 
-    suspend fun load(modelId: String) { request(modelId, null) }
-    suspend fun transcribe(modelId: String, audio: ParcelFileDescriptor): String = request(modelId, audio)
+    suspend fun load(modelId: String) { request(modelId, null, "") }
 
-    private suspend fun request(modelId: String, audio: ParcelFileDescriptor?): String = withContext(Dispatchers.Main.immediate) {
+    /** [hotwords] is an already encoded [HotwordTransport] string; empty keeps the greedy profile. */
+    suspend fun transcribe(modelId: String, audio: ParcelFileDescriptor, hotwords: String = ""): String =
+        request(modelId, audio, hotwords)
+
+    private suspend fun request(modelId: String, audio: ParcelFileDescriptor?, hotwords: String): String = withContext(Dispatchers.Main.immediate) {
         if (!mutex.tryLock()) throw LocalAsrException(LocalAsrFailure.BUSY)
         try {
             withTimeout(90_000) {
@@ -57,6 +60,7 @@ class InferenceConnection(context: Context) {
                             data = Bundle().apply {
                                 putLong("request", id); putString("model", modelId)
                                 if (audio != null) putParcelable("audio", audio)
+                                if (hotwords.isNotEmpty()) putString(InferenceService.KEY_HOTWORDS, hotwords)
                             }
                         })
                     } catch (_: Exception) { died() }

@@ -194,6 +194,12 @@ private fun SmartbarMainRow(
     // Closing cancels any voice-rewrite session and the preset flow explicitly, so no recorder or
     // provider job can outlive the panel even for the frame before it leaves the composition.
     val rewritePanelVisible = keyboardManager.isRewriteOptionsVisible
+    val dictationFixController = remember(context) {
+        (context.applicationContext as dev.patrickgold.florisboard.FlorisApplication).dictationFixController.value
+    }
+    val dictationFixState by dictationFixController.state.collectAsState()
+    val dictationFixOffered = dictationFixState is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Offered
+    val dictationFixChoosing = dictationFixState is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Choosing
     val voiceRewriteUiController by context.voiceRewriteUiController()
     val llmRewriteManager by context.llmRewriteManager()
     val closeRewritePanel = remember(voiceRewriteUiController, llmRewriteManager) {
@@ -271,6 +277,20 @@ private fun SmartbarMainRow(
             // still the user's toolbar and its toggle keeps working while the panel is open.
             if (rewritePanelVisible && !expanded) {
                 RewritePanelSmartbarTitle(modifier = Modifier.fillMaxSize())
+                return@Box
+            }
+            // Right after dictation inserted text there is no composing word, so the strip offers
+            // the fix instead of predictions; the first keystroke brings the predictions back.
+            if (dictationFixOffered && !expanded) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixChip()
+                }
+                return@Box
+            }
+            if (dictationFixChoosing && !expanded) {
+                dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixSmartbarTitle(
+                    modifier = Modifier.fillMaxSize(),
+                )
                 return@Box
             }
             val enterTransition = if (shouldAnimate) HorizontalEnterTransition else NoEnterTransition

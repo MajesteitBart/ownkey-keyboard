@@ -54,7 +54,10 @@ import dev.patrickgold.florisboard.ime.clipboard.provider.ItemType
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPreferenceReader
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryDocument
 import dev.patrickgold.florisboard.lib.ext.ExtensionManager
+import dev.patrickgold.florisboard.speechDictionary
+import org.florisboard.lib.android.stringRes
 import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
 import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
@@ -176,6 +179,24 @@ fun RestoreScreen() = FlorisScreen {
             }
             if (srcDir.exists()) {
                 srcDir.copyRecursively(dstDir, overwrite = true)
+            }
+        }
+        if (restoreFilesSelector.speechDictionary) {
+            // Older backups have no speech section; then the current speech data is left alone.
+            val file = workspace.outputDir.subDir(Backup.SPEECH_DIR_NAME).subFile(Backup.SPEECH_DICTIONARY_JSON_NAME)
+            if (file.exists()) {
+                val document = try {
+                    SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8))
+                } catch (error: Exception) {
+                    throw IllegalStateException(
+                        context.stringRes(
+                            R.string.speech_dictionary__restore_invalid,
+                            "reason" to (error.message ?: error.javaClass.simpleName),
+                        ),
+                    )
+                }
+                // Validates before writing; an incompatible document leaves the entries untouched.
+                context.speechDictionary().value.restore(document, merge = !shouldReset)
             }
         }
         val clipboardManager = context.clipboardManager().value

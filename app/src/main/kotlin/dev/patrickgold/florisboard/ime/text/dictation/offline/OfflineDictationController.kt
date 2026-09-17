@@ -159,8 +159,16 @@ class OfflineDictationController(private val app: FlorisApplication) {
         if (app.voiceRewriteSessionManager.isInitialized()) app.voiceRewriteSessionManager.value.cancel()
     }
 
-    suspend fun session(): TranscriptionSession {
+    /**
+     * [vocabulary] is encoded once here and travels unchanged with every request of this session.
+     * An empty list keeps the greedy decoder; words switch the inference process to beam search.
+     */
+    suspend fun session(
+        vocabulary: List<String> = emptyList(),
+        dictionary: dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionarySnapshot? = null,
+    ): TranscriptionSession {
         initialized.await()
+        val hotwords = HotwordTransport.encode(vocabulary).hotwords
         return lifecycle.withLock {
             if (!ready) throw LocalAsrException(if (compatible) LocalAsrFailure.MODEL_MISSING else LocalAsrFailure.UNSUPPORTED)
             val model = store.acquire()
@@ -173,13 +181,14 @@ class OfflineDictationController(private val app: FlorisApplication) {
                             val file = recording.file ?: throw LocalAsrException(LocalAsrFailure.AUDIO)
                             if (recording.durationMs > ModelCatalog.RECORDING_CAP_MS + 1000) throw LocalAsrException(LocalAsrFailure.AUDIO)
                             val text = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { audio ->
-                                runtime.transcribe(model.id, audio)
+                                runtime.transcribe(model.id, audio, hotwords)
                             }
                             Result.success(text)
                         } catch (cancel: CancellationException) { throw cancel
                         } catch (error: Exception) { Result.failure(error) }
                     }
                 },
+                dictionary = dictionary,
                 release = model::close,
             )
         }

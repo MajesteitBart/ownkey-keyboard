@@ -51,9 +51,15 @@ class InferenceService : Service() {
             if (release.files.any { File(directory, it.name).length() != it.bytes }) {
                 throw LocalAsrException(LocalAsrFailure.MODEL_MISSING)
             }
-            if (engine == null || version != modelId) {
+            val hotwords = data.getString(KEY_HOTWORDS).orEmpty()
+            if (hotwords.toByteArray(Charsets.UTF_8).size > HotwordTransport.MAX_BYTES) {
+                throw LocalAsrException(LocalAsrFailure.RUNTIME)
+            }
+            val profile = if (hotwords.isEmpty()) DecoderProfile.GREEDY else DecoderProfile.BEAM_HOTWORDS
+            // One resident engine, keyed by model and decoder profile; a profile change recreates it.
+            if (engine == null || version != modelId || engine?.profile != profile) {
                 engine?.close(); engine = null; version = null
-                engine = OrukeetEngine(directory)
+                engine = OrukeetEngine(directory, profile)
                 version = modelId
             }
             if (audio == null) {
@@ -61,7 +67,7 @@ class InferenceService : Service() {
             } else {
                 respond(reply, id, "transcribing")
                 val samples = AudioDecoder.decode(audio.fileDescriptor)
-                val transcript = engine!!.transcribe(samples)
+                val transcript = engine!!.transcribe(samples, hotwords)
                 if (transcript.length > 16_000) throw LocalAsrException(LocalAsrFailure.RUNTIME)
                 respond(reply, id, "ok", text = transcript)
             }
@@ -111,5 +117,6 @@ class InferenceService : Service() {
         const val CANCEL = 2
         const val UNLOAD = 3
         const val EVENT = 4
+        const val KEY_HOTWORDS = "hotwords"
     }
 }

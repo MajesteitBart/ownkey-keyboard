@@ -2,9 +2,9 @@
 name: Personal Dictionary and Filler Removal
 slug: personal-dictionary
 owner: ownkey-keyboard-team
-status: planned
+status: active
 created: 2026-09-17T20:22:05Z
-updated: 2026-09-17T20:44:23Z
+updated: 2026-09-17T21:40:00Z
 outcome: Android dictation uses durable vocabulary hints, spelling corrections, and optional local filler removal without disrupting typing.
 uncertainty: medium
 probe_required: true
