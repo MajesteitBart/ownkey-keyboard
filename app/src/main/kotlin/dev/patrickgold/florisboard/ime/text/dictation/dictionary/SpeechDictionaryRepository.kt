@@ -515,17 +515,19 @@ class SpeechDictionaryRepository(
      * same files again and resurrect entries the user removed in between.
      */
     private fun persistAbsorbed(absorbed: Absorbed) {
-        if (runCatching { write(absorbed.document) }.isSuccess) {
-            absorbed.consumed.forEach { it.delete() }
+        pendingConsumed = if (runCatching { write(absorbed.document) }.isSuccess) {
+            pendingConsumed + undeleted(absorbed.consumed)
         } else {
-            pendingConsumed = pendingConsumed + absorbed.consumed
+            pendingConsumed + absorbed.consumed
         }
     }
 
     private fun retirePendingConsumed() {
         val files = pendingConsumed
         if (files.isEmpty()) return
-        pendingConsumed = emptyList()
-        files.forEach { it.delete() }
+        pendingConsumed = undeleted(files)
     }
+
+    /** Deletes the files and returns those that are still there, so a failed deletion is retried. */
+    private fun undeleted(files: List<File>): List<File> = files.filter { it.exists() && !it.delete() }
 }
