@@ -192,6 +192,28 @@ class OrdinaryDictationCleanupTest : FunSpec({
             DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("dollar"), "Uh, $")
     }
 
+    test("a symbol the speaker dictated survives filler removal, with or without a correction") {
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh, $"), cleaner) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("$"), "Uh, $")
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Um, &"), cleaner) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("&"), "Um, &")
+        val banknote = TranscriptCleaner(
+            CleanupSettings(true, FillerRules.fillerWords(listOf("en")), listOf(CorrectionRule("$", "💵"))),
+        )
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh, $"), banknote) shouldBe
+            DictationCleanupResult.Ready(TranscriptionOutcome.Transcript("💵"), "Uh, $")
+        // Sentence marks left behind by filler removal are still nothing to insert.
+        OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Uh... um!"), cleaner) shouldBe
+            DictationCleanupResult.OnlyFillers("Uh... um!")
+    }
+
+    test("content is anything but sentence marks, dashes, quotes, brackets and spacing") {
+        listOf("a", "7", "$", "€", "+", "%", "&", "@", "#", "😊", "𝔘", "é").forEach { OrdinaryDictationCleanup.hasContent(it) shouldBe true }
+        listOf("", " ", ".", ",", "?!", "…", "—", "-", "\"", "'", "«»", "()", "¿", "。", "\n\t").forEach {
+            OrdinaryDictationCleanup.hasContent(it) shouldBe false
+        }
+    }
+
     test("failures, cancellation and identity cleaners pass through unchanged") {
         val failure = TranscriptionOutcome.Failure(TranscriptionFailureReason.PROVIDER)
         OrdinaryDictationCleanup.apply(failure, cleaner) shouldBe DictationCleanupResult.Ready(failure, null)

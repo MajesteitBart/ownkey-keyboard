@@ -32,17 +32,38 @@ object OrdinaryDictationCleanup {
         val detailed = cleaner.cleanDetailed(outcome.text)
         val cleaned = detailed.text.trim()
         // The reference rules keep sentence punctuation, so `Uh, um.` cleans to `.`. Only when filler
-        // removal took every letter and digit out of a transcript that had some is the result
-        // "nothing to insert"; symbols a correction produced on purpose (`smiley` → `😊`) are kept.
-        // Checked per code point so supplementary-plane letters count as text.
-        val hadText = outcome.text.codePoints().anyMatch(Character::isLetterOrDigit)
-        val fillersTookAllText = detailed.afterFillers.codePoints().noneMatch(Character::isLetterOrDigit)
-        // A correction may turn a leftover symbol back into words (`$` → `dollar`); the final text decides.
-        val endsWithoutText = cleaned.codePoints().noneMatch(Character::isLetterOrDigit)
-        if (cleaned.isEmpty() || (hadText && fillersTookAllText && endsWithoutText)) {
+        // removal left nothing but punctuation and spacing in a transcript that had content is the
+        // result "nothing to insert". A symbol the speaker dictated (`Uh, $`) or a correction produced
+        // on purpose (`smiley` → `😊`) is content and is kept.
+        val hadContent = hasContent(outcome.text)
+        val fillersTookAllContent = !hasContent(detailed.afterFillers)
+        // A correction may turn leftover punctuation into content or back; the final text decides.
+        val endsWithoutContent = !hasContent(cleaned)
+        if (cleaned.isEmpty() || (hadContent && fillersTookAllContent && endsWithoutContent)) {
             return DictationCleanupResult.OnlyFillers(outcome.text)
         }
         return DictationCleanupResult.Ready(TranscriptionOutcome.Transcript(cleaned), outcome.text)
+    }
+
+    /** Sentence marks a recogniser places around words; what filler removal can leave behind. */
+    private const val SENTENCE_MARKS = ".,;:!?…‥'\"¡¿·。、，！？：；"
+
+    /**
+     * Letters, digits, marks and symbols (currency, maths, emoji) are content, and so is punctuation
+     * that stands for something (`%`, `&`, `@`, `#`). Sentence marks, dashes, quotes, brackets,
+     * spacing and invisible characters are not. Checked per code point so supplementary-plane
+     * characters count.
+     */
+    internal fun hasContent(text: String): Boolean = text.codePoints().anyMatch { codePoint ->
+        when (Character.getType(codePoint).toByte()) {
+            Character.DASH_PUNCTUATION, Character.START_PUNCTUATION, Character.END_PUNCTUATION,
+            Character.INITIAL_QUOTE_PUNCTUATION, Character.FINAL_QUOTE_PUNCTUATION,
+            Character.SPACE_SEPARATOR, Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR,
+            Character.CONTROL, Character.FORMAT, Character.UNASSIGNED,
+            -> false
+            Character.OTHER_PUNCTUATION -> SENTENCE_MARKS.indexOf(codePoint.toChar()) < 0 || codePoint > 0xFFFF
+            else -> true
+        }
     }
 }
 
