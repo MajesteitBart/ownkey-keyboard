@@ -60,6 +60,7 @@
     <string name="speech_dictionary__title">Persoonlijk woordenboek</string>
     <string name="speech_dictionary__intro_title">Jouw woorden, jouw spelling</string>
     <string name="speech_dictionary__intro_summary">Woorden helpen dicteren om namen en termen te herkennen. Correcties vervangen wat verkeerd wordt verstaan, elke keer. Stopwoorden worden op dit apparaat verwijderd.</string>
+    <string name="speech_dictionary__backend_unused">Spraakinvoer van het systeem is geselecteerd, dus dit woordenboek wordt niet gebruikt. Woorden, correcties en het verwijderen van stopwoorden werken met Orukeet of een ingestelde cloudprovider. Wijzig de dicteerprovider in Instellingen → AI.</string>
     <string name="speech_dictionary__cloud_disclosure">Bij clouddictatie met herkenningshints aan gaan je woorden samen met de audio naar het ingestelde eindpunt. Met hints uit of bij dicteren op dit apparaat blijven ze op de telefoon.</string>
     <string name="speech_dictionary__add_title">Item toevoegen</string>
     <string name="speech_dictionary__add_summary">Sla een naam of term op om te herkennen, of zet correctie aan om een terugkerende verspreking te vervangen.</string>

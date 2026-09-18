@@ -54,9 +54,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralRelayTranscriptionClient
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyField
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyMode
@@ -106,6 +109,9 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
         val endpointUrl by prefsRef.voxtral.endpointUrl.collectAsState()
         val localHints by prefsRef.voxtral.localVocabularyHints.collectAsState()
         val localCompatible = remember { context.offlineDictation().compatible }
+        val backendPreference by prefsRef.voxtral.dictationBackend.collectAsState()
+        val hasCloudKey = remember { VoxtralSecretsStore(context).hasApiKey() }
+        val backend = TranscriptionBackend.resolve(backendPreference, hasCloudKey, BuildConfig.DEBUG)
         var editing by remember { mutableStateOf<SpeechDictionaryEntry?>(null) }
         var removed by remember { mutableStateOf<RemovedEntry?>(null) }
 
@@ -125,6 +131,9 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 IntroCard()
+                if (!backend.usesSpeechDictionary) {
+                    NoticeBanner(text = userStringRes(R.string.speech_dictionary__backend_unused), warning = true)
+                }
                 when (state.loadError) {
                     SpeechDictionaryLoadError.UNREADABLE ->
                         NoticeBanner(text = userStringRes(R.string.speech_dictionary__load_error), warning = true)

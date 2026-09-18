@@ -4,6 +4,12 @@ package dev.patrickgold.florisboard.ime.text.dictation
 enum class TranscriptionBackend(val preference: String) {
     CLOUD("cloud"), ORUKEET("orukeet"), EXTERNAL_IME("external"), MOCK("mock"), UNAVAILABLE("unavailable");
 
+    /**
+     * System voice input inserts its own text, so Ownkey never sees a transcript to hint, correct or
+     * clean. The dictionary screen tells the user when the selected backend leaves the dictionary unused.
+     */
+    val usesSpeechDictionary: Boolean get() = this == CLOUD || this == ORUKEET || this == MOCK
+
     companion object {
         fun resolve(preference: String, hasCloudKey: Boolean, debug: Boolean): TranscriptionBackend = when (preference) {
             ORUKEET.preference -> ORUKEET // Missing models fail closed; never resolve to cloud.
