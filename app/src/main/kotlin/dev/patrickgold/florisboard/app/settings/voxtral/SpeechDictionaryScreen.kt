@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.ime.text.dictation.SpeechDictionaryUse
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralRelayTranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
@@ -74,6 +75,7 @@ import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionar
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryRepository
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.TranscriptCleanup
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.entries
+import dev.patrickgold.florisboard.ime.text.dictation.offline.ModelPhase
 import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.speechDictionary
@@ -108,10 +110,15 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
         val cloudMode by prefsRef.voxtral.cloudVocabularyMode.collectAsState()
         val endpointUrl by prefsRef.voxtral.endpointUrl.collectAsState()
         val localHints by prefsRef.voxtral.localVocabularyHints.collectAsState()
-        val localCompatible = remember { context.offlineDictation().compatible }
+        val offline = remember { context.offlineDictation() }
+        val localCompatible = remember { offline.compatible }
+        val localModel by offline.state.collectAsState()
         val backendPreference by prefsRef.voxtral.dictationBackend.collectAsState()
         val hasCloudKey = remember { VoxtralSecretsStore(context).hasApiKey() }
-        val backend = TranscriptionBackend.resolve(backendPreference, hasCloudKey, BuildConfig.DEBUG)
+        // While the model store is still being checked the answer is unknown; no notice until it is known.
+        val localModelReady = localModel.phase == ModelPhase.CHECKING || (localCompatible && localModel.currentId != null)
+        val dictionaryUse = TranscriptionBackend.resolve(backendPreference, hasCloudKey, BuildConfig.DEBUG)
+            .speechDictionaryUse(hasCloudKey, localModelReady)
         var editing by remember { mutableStateOf<SpeechDictionaryEntry?>(null) }
         var removed by remember { mutableStateOf<RemovedEntry?>(null) }
 
@@ -131,8 +138,12 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 IntroCard()
-                if (!backend.usesSpeechDictionary) {
-                    NoticeBanner(text = userStringRes(R.string.speech_dictionary__backend_unused), warning = true)
+                when (dictionaryUse) {
+                    SpeechDictionaryUse.SYSTEM_VOICE_INPUT ->
+                        NoticeBanner(text = userStringRes(R.string.speech_dictionary__backend_unused), warning = true)
+                    SpeechDictionaryUse.NOT_SET_UP ->
+                        NoticeBanner(text = userStringRes(R.string.speech_dictionary__backend_not_set_up), warning = true)
+                    SpeechDictionaryUse.APPLIED -> Unit
                 }
                 when (state.loadError) {
                     SpeechDictionaryLoadError.UNREADABLE ->

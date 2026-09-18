@@ -1434,6 +1434,7 @@
     <string name="speech_dictionary__intro_title">Your words, your spelling</string>
     <string name="speech_dictionary__intro_summary">Words help dictation recognise names and terms. Corrections replace what is heard wrong, every time. Filler words are removed on this device.</string>
     <string name="speech_dictionary__backend_unused">System voice input is selected, so this dictionary is not used. Words, corrections and filler removal work with Orukeet or a configured cloud provider. Change the dictation provider in Settings → AI.</string>
+    <string name="speech_dictionary__backend_not_set_up">Dictation is not set up for the selected provider yet, so this dictionary is not used. Add an API key or activate Orukeet in Settings → AI.</string>
     <string name="speech_dictionary__cloud_disclosure">With cloud dictation and recognition hints on, your words travel with the audio to the configured endpoint. With hints off or on-device dictation, they stay on this phone.</string>
     <string name="speech_dictionary__add_title">Add an entry</string>
     <string name="speech_dictionary__add_summary">Save a name or term to recognise, or turn on correction to replace a recurring mishearing.</string>
