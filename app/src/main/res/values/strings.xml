@@ -1418,6 +1418,10 @@
     <string name="orukeet__integrity_error">The model did not pass verification. Delete it and download again.</string>
     <string name="orukeet__busy_error">Finish or cancel the current voice session before changing the model.</string>
     <string name="orukeet__download_error">Download interrupted or unavailable. Retry to resume verified progress.</string>
+    <string name="orukeet__load_process_died">The model process stopped while loading. The device may be short on memory, or the speech runtime crashed. Close other apps and retry.</string>
+    <string name="orukeet__load_timeout">Loading the model took too long and was stopped. Retry.</string>
+    <string name="orukeet__load_runtime">The speech runtime could not load the model on this device.</string>
+    <string name="orukeet__error_detail">Technical detail: %1$s</string>
     <string name="orukeet__transcribing">Transcribing on this device…</string>
     <string name="orukeet__recording">On device · 30s max</string>
     <string name="orukeet__waiting_internet">No internet connection is available. The download will start when a connection is available.</string>

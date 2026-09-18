@@ -34,6 +34,7 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
     val scope = rememberCoroutineScope()
     var action by remember { mutableStateOf<Job?>(null) }
     var error by remember { mutableStateOf<LocalAsrFailure?>(null) }
+    var errorDetail by remember { mutableStateOf<String?>(null) }
     var downloadDialog by rememberSaveable { mutableStateOf(false) }
     var deleteDialog by rememberSaveable { mutableStateOf(false) }
     var noticesDialog by rememberSaveable { mutableStateOf(false) }
@@ -56,9 +57,14 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
         if (action?.isActive == true) return
         action = scope.launch {
             error = null
+            errorDetail = null
             try { block() }
             catch (cancel: CancellationException) { throw cancel }
-            catch (failure: Exception) { error = (failure as? LocalAsrException)?.reason ?: LocalAsrFailure.RUNTIME }
+            catch (failure: Exception) {
+                val local = failure as? LocalAsrException
+                error = local?.reason ?: LocalAsrFailure.RUNTIME
+                errorDetail = if (local != null) local.detail else failure.javaClass.simpleName
+            }
             finally { action = null }
         }
     }
@@ -97,7 +103,18 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
             candidateInstalled -> StatusText(stringResource(R.string.orukeet__downloaded))
             else -> StatusText(stringResource(R.string.orukeet__not_downloaded))
         }
-        (error ?: state.error)?.let { StatusText(stringResource(errorResource(it))) }
+        val shownError = error ?: state.error
+        if (shownError != null) {
+            StatusText(stringResource(errorResource(shownError)))
+            // Internal builds name the failure, so a phone problem can be reported without a debugger attached.
+            if (BuildConfig.ORUKEET_INTERNAL) {
+                val detail = if (error != null) errorDetail else state.errorDetail
+                StatusText(
+                    stringResource(R.string.orukeet__error_detail, listOfNotNull(shownError.name, detail).joinToString(" · ")),
+                    modifier = Modifier.testTag("orukeet-error-detail"),
+                )
+            }
+        }
         if (transferring) {
             OwnkeyButton(stringResource(R.string.orukeet__cancel_download), { ModelDownloads.cancel(context) }, secondary = true)
             if (state.transferPhase == ModelPhase.WAITING_FOR_NETWORK) {
@@ -198,5 +215,9 @@ private fun errorResource(error: LocalAsrFailure): Int = when (error) {
     LocalAsrFailure.MODEL_MISSING -> R.string.orukeet__not_ready
     LocalAsrFailure.BUSY -> R.string.orukeet__busy_error
     LocalAsrFailure.DOWNLOAD -> R.string.orukeet__download_error
+    // This card only runs model operations, so these three come from loading the model, not from a recording.
+    LocalAsrFailure.PROCESS_DIED -> R.string.orukeet__load_process_died
+    LocalAsrFailure.TIMEOUT -> R.string.orukeet__load_timeout
+    LocalAsrFailure.RUNTIME -> R.string.orukeet__load_runtime
     else -> R.string.orukeet__transcription_failed
 }

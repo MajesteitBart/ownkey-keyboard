@@ -27,6 +27,8 @@ data class LocalModelState(
     val transferPhase: ModelPhase? = null,
     val allowMobileData: Boolean = false,
     val error: LocalAsrFailure? = null,
+    /** Technical note behind [error], shown in internal builds so a phone failure can be reported. */
+    val errorDetail: String? = null,
 )
 
 class OfflineDictationController(private val app: FlorisApplication) {
@@ -50,11 +52,21 @@ class OfflineDictationController(private val app: FlorisApplication) {
     val selected: Boolean get() = prefs.voxtral.dictationBackend.get() == TranscriptionBackend.ORUKEET.preference
     val ready: Boolean get() = compatible && store.currentId != null && state.value.phase !in setOf(ModelPhase.ACTIVATING, ModelPhase.REMOVING)
 
-    private fun publish(phase: ModelPhase = ModelPhase.IDLE, error: LocalAsrFailure? = null) {
-        _state.update { it.copy(phase = phase, installed = store.installedIds, currentId = store.currentId, hasStoredData = store.hasStoredData, error = error) }
+    private fun publish(phase: ModelPhase = ModelPhase.IDLE, error: LocalAsrFailure? = null, errorDetail: String? = null) {
+        _state.update {
+            it.copy(
+                phase = phase, installed = store.installedIds, currentId = store.currentId,
+                hasStoredData = store.hasStoredData, error = error, errorDetail = errorDetail,
+            )
+        }
     }
     private fun transferState(phase: ModelPhase?, progress: DownloadProgress? = null, error: LocalAsrFailure? = null) {
-        _state.update { it.copy(transferPhase = phase, progress = progress, error = error, installed = store.installedIds, hasStoredData = store.hasStoredData) }
+        _state.update {
+            it.copy(
+                transferPhase = phase, progress = progress, error = error, errorDetail = null,
+                installed = store.installedIds, hasStoredData = store.hasStoredData,
+            )
+        }
     }
     fun waitingForNetwork(allowMobileData: Boolean) {
         _state.update { it.copy(allowMobileData = allowMobileData) }
@@ -112,7 +124,11 @@ class OfflineDictationController(private val app: FlorisApplication) {
                 withContext(NonCancellable) { runtime.unload() }; publish(); throw cancel
             } catch (error: Exception) {
                 runtime.unload()
-                publish(error = (error as? LocalAsrException)?.reason ?: LocalAsrFailure.RUNTIME)
+                val failure = error as? LocalAsrException
+                publish(
+                    error = failure?.reason ?: LocalAsrFailure.RUNTIME,
+                    errorDetail = failure?.detail ?: error.javaClass.simpleName.takeIf { failure == null },
+                )
                 throw error
             }
         }

@@ -2,6 +2,7 @@ package org.ownkey.offline
 
 import android.content.*
 import android.os.*
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ class InferenceConnection(context: Context) {
     private var nextRequest = 0L
     private var pending: ((Bundle) -> Unit)? = null
     private var connecting: CompletableDeferred<Unit>? = null
+    private var requestStartedAt = 0L
     private val reply = Messenger(Handler(Looper.getMainLooper()) { message ->
         val data = message.data
         if (data.getLong("request") == nextRequest && binding != null) {
@@ -44,8 +46,9 @@ class InferenceConnection(context: Context) {
 
     private suspend fun request(modelId: String, audio: ParcelFileDescriptor?, hotwords: String): String = withContext(Dispatchers.Main.immediate) {
         if (!mutex.tryLock()) throw LocalAsrException(LocalAsrFailure.BUSY)
+        requestStartedAt = SystemClock.elapsedRealtime()
         try {
-            withTimeout(90_000) {
+            withTimeout(REQUEST_TIMEOUT_MS) {
                 connect()
                 val id = ++nextRequest
                 val result = suspendCancellableCoroutine<Bundle> { continuation ->
@@ -67,15 +70,20 @@ class InferenceConnection(context: Context) {
                 }
                 if (result.getString("state") != "ok") {
                     _state.value = RuntimeState.FAILED
-                    throw LocalAsrException(runCatching { LocalAsrFailure.valueOf(result.getString("failure")!!) }
-                        .getOrDefault(LocalAsrFailure.PROCESS_DIED))
+                    val failure = runCatching { LocalAsrFailure.valueOf(result.getString("failure")!!) }
+                        .getOrDefault(LocalAsrFailure.PROCESS_DIED)
+                    val detail = result.getString(InferenceService.KEY_DETAIL)
+                    Log.w(TAG, "Request failed: $failure${detail?.let { " ($it)" }.orEmpty()}")
+                    throw LocalAsrException(failure, detail)
                 }
                 _state.value = RuntimeState.READY
                 result.getString("text").orEmpty()
             }
         } catch (_: TimeoutCancellationException) {
+            val detail = "no answer from the inference process after ${elapsedMs()} ms"
+            Log.w(TAG, "Request timed out: $detail")
             disconnect(kill = true)
-            throw LocalAsrException(LocalAsrFailure.TIMEOUT)
+            throw LocalAsrException(LocalAsrFailure.TIMEOUT, detail)
         } catch (error: CancellationException) {
             disconnect(kill = true)
             throw error
@@ -107,9 +115,16 @@ class InferenceConnection(context: Context) {
 
     private fun died() {
         val callback = pending
+        val detail = "inference process ended after ${elapsedMs()} ms"
+        if (callback != null) Log.w(TAG, "Request lost: $detail")
         disconnect(kill = false)
-        callback?.invoke(Bundle().apply { putString("state", "error"); putString("failure", LocalAsrFailure.PROCESS_DIED.name) })
+        callback?.invoke(Bundle().apply {
+            putString("state", "error"); putString("failure", LocalAsrFailure.PROCESS_DIED.name)
+            putString(InferenceService.KEY_DETAIL, detail)
+        })
     }
+
+    private fun elapsedMs(): Long = SystemClock.elapsedRealtime() - requestStartedAt
 
     private fun disconnect(kill: Boolean) {
         nextRequest++
@@ -134,4 +149,9 @@ class InferenceConnection(context: Context) {
     }
 
     fun trimMemory() { main.post { if (!mutex.isLocked) disconnect(kill = true) } }
+
+    private companion object {
+        const val TAG = "OwnkeyAsr"
+        const val REQUEST_TIMEOUT_MS = 90_000L
+    }
 }

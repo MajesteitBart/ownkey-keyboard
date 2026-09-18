@@ -43,4 +43,8 @@ enum class LocalAsrFailure {
     MODEL_MISSING, MODEL_DAMAGED, INSUFFICIENT_STORAGE, DOWNLOAD, INTEGRITY,
     UNSUPPORTED, BUSY, AUDIO, EMPTY, PROCESS_DIED, TIMEOUT, RUNTIME, CANCELLED,
 }
-class LocalAsrException(val reason: LocalAsrFailure) : Exception(reason.name)
+/**
+ * [detail] is a short technical note for logs and internal builds, for example the exception class of a
+ * native load failure or how long the inference process lived. It never carries audio or transcripts.
+ */
+class LocalAsrException(val reason: LocalAsrFailure, val detail: String? = null) : Exception(reason.name)

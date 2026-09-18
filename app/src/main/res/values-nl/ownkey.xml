@@ -41,6 +41,10 @@
     <string name="orukeet__integrity_error">Het model is niet door de controle gekomen. Verwijder het en download opnieuw.</string>
     <string name="orukeet__busy_error">Rond de huidige spraaksessie af of annuleer deze voordat je het model wijzigt.</string>
     <string name="orukeet__download_error">Download onderbroken of niet beschikbaar. Probeer opnieuw om verder te gaan.</string>
+    <string name="orukeet__load_process_died">Het modelproces stopte tijdens het laden. Het apparaat heeft mogelijk te weinig geheugen, of de spraakruntime is gecrasht. Sluit andere apps en probeer opnieuw.</string>
+    <string name="orukeet__load_timeout">Het laden van het model duurde te lang en is gestopt. Probeer opnieuw.</string>
+    <string name="orukeet__load_runtime">De spraakruntime kon het model niet laden op dit apparaat.</string>
+    <string name="orukeet__error_detail">Technisch detail: %1$s</string>
     <string name="orukeet__downloading">Model downloaden…</string>
     <string name="orukeet__verifying">Model controleren…</string>
     <string name="orukeet__download_channel">Modeldownloads</string>

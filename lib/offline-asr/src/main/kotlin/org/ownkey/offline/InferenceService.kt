@@ -3,6 +3,7 @@ package org.ownkey.offline
 import android.app.Service
 import android.content.Intent
 import android.os.*
+import android.util.Log
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -59,8 +60,11 @@ class InferenceService : Service() {
             // One resident engine, keyed by model and decoder profile; a profile change recreates it.
             if (engine == null || version != modelId || engine?.profile != profile) {
                 engine?.close(); engine = null; version = null
+                val started = SystemClock.elapsedRealtime()
+                Log.i(TAG, "Loading $modelId with the $profile decoder")
                 engine = OrukeetEngine(directory, profile)
                 version = modelId
+                Log.i(TAG, "Loaded $modelId in ${SystemClock.elapsedRealtime() - started} ms")
             }
             if (audio == null) {
                 respond(reply, id, "ok")
@@ -72,16 +76,23 @@ class InferenceService : Service() {
                 respond(reply, id, "ok", text = transcript)
             }
         } catch (error: LocalAsrException) {
-            respond(reply, id, "error", failure = error.reason)
-        } catch (_: Throwable) {
-            respond(reply, id, "error", failure = LocalAsrFailure.RUNTIME)
+            Log.w(TAG, "Request $id failed: ${error.reason}")
+            respond(reply, id, "error", failure = error.reason, detail = error.detail)
+        } catch (error: Throwable) {
+            // Load and decode failures carry no audio or transcript text, so the class and message are safe to
+            // report. Without this the settings card can only say that something failed.
+            Log.e(TAG, "Request $id failed in the native runtime", error)
+            respond(reply, id, "error", failure = LocalAsrFailure.RUNTIME, detail = describe(error))
             main.post { terminate() }
         } finally {
             runCatching { audio?.close() }
         }
     }
 
-    private fun respond(reply: Messenger, id: Long, state: String, text: String? = null, failure: LocalAsrFailure? = null) {
+    private fun respond(
+        reply: Messenger, id: Long, state: String, text: String? = null,
+        failure: LocalAsrFailure? = null, detail: String? = null,
+    ) {
         main.post {
         if (state == "ok" || (state == "error" && failure != LocalAsrFailure.BUSY)) {
             active = false
@@ -94,6 +105,7 @@ class InferenceService : Service() {
                     putLong("request", id); putString("state", state); putInt("pid", Process.myPid())
                     if (text != null) putString("text", text)
                     if (failure != null) putString("failure", failure.name)
+                    if (detail != null) putString(KEY_DETAIL, detail)
                 }
             })
         }.onFailure { terminate() }
@@ -118,5 +130,12 @@ class InferenceService : Service() {
         const val UNLOAD = 3
         const val EVENT = 4
         const val KEY_HOTWORDS = "hotwords"
+        const val KEY_DETAIL = "detail"
+        private const val TAG = "OwnkeyAsr"
+        private const val MAX_DETAIL = 240
+
+        internal fun describe(error: Throwable): String =
+            listOfNotNull(error.javaClass.simpleName, error.message?.takeIf { it.isNotBlank() })
+                .joinToString(": ").replace(Regex("\\s+"), " ").take(MAX_DETAIL)
     }
 }

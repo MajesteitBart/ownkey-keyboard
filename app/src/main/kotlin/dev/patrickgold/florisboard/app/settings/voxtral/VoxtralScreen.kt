@@ -795,9 +795,10 @@ internal fun OwnkeyButton(
 }
 
 @Composable
-internal fun StatusText(text: String) {
+internal fun StatusText(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
+        modifier = modifier,
         color = OwnkeyBrand.Ash,
         style = MaterialTheme.typography.bodyMedium,
     )
