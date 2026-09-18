@@ -340,6 +340,42 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Copy", "Meanwhile", "Later")
     }
 
+    test("an upgraded app labels the loaded and exported document with the version it writes") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        file.writeText("""{"version":1,"nextId":2,"words":[{"id":1,"word":"Main"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""")
+        File(dir, "personal_dictionary.json.newer-v2-5").writeText(
+            """{"version":2,"nextId":2,"words":[{"id":1,"word":"Kept"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""",
+        )
+        val upgraded = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Default,
+            supportedVersion = 2,
+        )
+        val state = runBlocking { upgraded.awaitLoaded() }
+        state.document.words.map { it.word } shouldBe listOf("Main", "Kept")
+        // A backup taken before the next edit must not claim the older schema: an older app would
+        // accept it and drop what it does not know instead of rejecting it.
+        state.document.version shouldBe 2
+        runBlocking { upgraded.export() }.version shouldBe 2
+        SpeechDictionaryDocument.decode(file.readText()).version shouldBe 2
+
+        // The same holds without anything to absorb: an older main file alone.
+        val plainDir = temp()
+        val plain = File(plainDir, "personal_dictionary.json")
+        plain.writeText("""{"version":1,"nextId":2,"words":[{"id":1,"word":"Main"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""")
+        val plainRepository = SpeechDictionaryRepository(
+            file = plain,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Default,
+            supportedVersion = 2,
+        )
+        runBlocking { plainRepository.export() }.version shouldBe 2
+    }
+
     test("a kept file survives a failed merge write and is retired by the next successful one") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")

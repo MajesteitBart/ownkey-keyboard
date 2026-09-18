@@ -264,8 +264,16 @@ class SpeechDictionaryRepository(
     /** A portable copy for backups. */
     suspend fun export(): SpeechDictionaryDocument {
         initialized.await()
-        return _state.value.document
+        return _state.value.document.stamped()
     }
+
+    /**
+     * Every document this app publishes, saves or exports carries the version it writes. A document
+     * read from an older file would otherwise keep the old label in memory, and a backup taken before
+     * the next edit could be accepted by an older app that drops what it does not know.
+     */
+    private fun SpeechDictionaryDocument.stamped(): SpeechDictionaryDocument =
+        if (version == supportedVersion) this else copy(version = supportedVersion)
 
     /**
      * Restores from a backup section. Validation happens before anything is written, so an invalid
@@ -381,7 +389,7 @@ class SpeechDictionaryRepository(
             val recovered = if (quarantineError() == null) recoverFromBackup() else null
             val absorbed = absorbQuarantined(recovered ?: SpeechDictionaryDocument())
             if (recovered != null || absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
-            _state.value = SpeechDictionaryState(absorbed.document, loaded = true, loadError = quarantineError())
+            _state.value = SpeechDictionaryState(absorbed.document.stamped(), loaded = true, loadError = quarantineError())
             return
         }
         val parsed = runCatching { SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)) }
@@ -402,7 +410,7 @@ class SpeechDictionaryRepository(
             }
             val absorbed = absorbQuarantined(document)
             if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
-            _state.value = SpeechDictionaryState(absorbed.document, loaded = true, loadError = quarantineError())
+            _state.value = SpeechDictionaryState(absorbed.document.stamped(), loaded = true, loadError = quarantineError())
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
             // If it cannot be moved aside now, no write may touch the main path until it can.
@@ -414,7 +422,7 @@ class SpeechDictionaryRepository(
                 // The warning only goes once the recovered copy is safely back at the main path.
                 val writtenBack = movedAside && runCatching { write(recovered) }.isSuccess
                 SpeechDictionaryState(
-                    recovered,
+                    recovered.stamped(),
                     loaded = true,
                     loadError = if (writtenBack) null else SpeechDictionaryLoadError.UNREADABLE,
                     saveError = !writtenBack,
