@@ -60,7 +60,7 @@ fun createDictationFixController(
         available = availabilityPolicy.state.map { it is AiAvailability.Available },
     )
     dictationManager.insertionListener = object : DictationInsertionListener {
-        override fun onDictationStarted() = controller.interrupt()
+        override fun onDictationStarted() = controller.onDictationStarted()
         override fun onDictationInserted(insertion: DictationInsertion) = controller.offer(insertion)
     }
     return controller

@@ -131,13 +131,21 @@ class DictationFixController(
     }
 
     /**
-     * A new recording or another keyboard panel takes over. The offer, chooser and confirmations
-     * go away; an active replacement stays, because the user may be dictating the new spelling.
+     * A new recording starts. The offer, chooser and confirmations go away; an active replacement
+     * stays, because dictating over the selected word is a valid way to give the new spelling.
      */
-    fun interrupt() {
+    fun onDictationStarted() {
         val current = _state.value
         if (current is DictationFixState.Hidden || current is DictationFixState.Replacing) return
         publish(DictationFixState.Hidden)
+    }
+
+    /**
+     * Another keyboard panel takes over (media, clipboard, overflow, rewrite, pickers). The flow
+     * ends in every state: text pasted or picked there is not a retyped word to learn from.
+     */
+    fun interrupt() {
+        if (_state.value !is DictationFixState.Hidden) publish(DictationFixState.Hidden)
     }
 
     fun openChooser() {

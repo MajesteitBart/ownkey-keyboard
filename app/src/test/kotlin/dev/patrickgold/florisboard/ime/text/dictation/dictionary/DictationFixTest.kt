@@ -285,7 +285,7 @@ class DictationFixControllerTest : FunSpec({
         val h = Harness()
         h.offerAndChoose(0, 1)
         h.controller.beginReplacement(cursorContent(h.hostText))
-        h.controller.interrupt()
+        h.controller.onDictationStarted()
         h.controller.state.value.shouldBeInstanceOf<DictationFixState.Replacing>()
         h.controller.offer(h.insertion().copy(committedText = "Ownkey"))
         h.controller.state.value.shouldBeInstanceOf<DictationFixState.Replacing>()
@@ -480,6 +480,15 @@ class DictationFixControllerTest : FunSpec({
         h.controller.state.value shouldBe DictationFixState.Hidden
         h.offerAndChoose(1)
         h.controller.interrupt()
+        h.controller.state.value shouldBe DictationFixState.Hidden
+        // Another panel (clipboard, media, rewrite) also ends an active replacement: pasted or
+        // picked text is not a retyped word. Only a new dictation keeps it.
+        h.offerAndChoose(1)
+        h.controller.beginReplacement(cursorContent(h.hostText))
+        h.controller.interrupt()
+        h.controller.state.value shouldBe DictationFixState.Hidden
+        h.offerAndChoose(1)
+        h.controller.onDictationStarted()
         h.controller.state.value shouldBe DictationFixState.Hidden
         h.offerAndChoose(1)
         h.controller.beginReplacement(cursorContent(h.hostText))
