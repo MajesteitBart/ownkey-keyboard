@@ -16,6 +16,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -269,7 +271,8 @@ class SpeechDictionaryRepository(
      * the ones that are missing; erase replaces the entries. Filler settings follow the backup in
      * both modes because they are one setting, not a list to merge.
      */
-    suspend fun restore(backup: SpeechDictionaryDocument, merge: Boolean) {
+    /** Returns false when the restored document is only held in memory because the write failed. */
+    suspend fun restore(backup: SpeechDictionaryDocument, merge: Boolean): Boolean {
         if (backup.version > supportedVersion) {
             throw RestoreRejectedException(
                 "Personal dictionary backup version ${backup.version} is newer than this app supports.",
@@ -297,6 +300,7 @@ class SpeechDictionaryRepository(
             val base = if (merge) document else document.copy(words = emptyList(), corrections = emptyList())
             merged(base, backup) to Unit
         }
+        return !_state.value.saveError
     }
 
     /** Adds the entries of [incoming] that [base] lacks, and takes its filler settings. */
@@ -332,6 +336,9 @@ class SpeechDictionaryRepository(
             val current = _state.value
             val (next, result) = transform(current.document)
             if (next !== current.document) {
+                // A caller cancelled while waiting for the lock must not start a write at all; only
+                // a write already in progress is carried through to completion below.
+                currentCoroutineContext().ensureActive()
                 val versioned = next.copy(version = supportedVersion)
                 // While a newer file could not be moved aside, edits stay in memory rather than
                 // overwrite the only newer-schema copy; the warning stays visible. A storage failure

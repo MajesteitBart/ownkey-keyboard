@@ -90,6 +90,7 @@ class DictationFixController(
     val state: StateFlow<DictationFixState> = _state
 
     private var timer: Job? = null
+    private var saveJob: Job? = null
     private var lastContent: EditorContent? = null
 
     init {
@@ -97,8 +98,14 @@ class DictationFixController(
         scope.launch { available.collect { ok -> if (!ok) abort() } }
     }
 
-    /** Ends the flow in every state, including an active replacement: nothing may be learned now. */
+    /**
+     * Ends the flow in every state, including an active replacement and a save that has not
+     * started writing yet: nothing may be learned now. A write already in progress completes so
+     * disk and memory stay consistent; its word hint and confirmation are dropped.
+     */
     fun abort() {
+        saveJob?.cancel()
+        saveJob = null
         if (_state.value !is DictationFixState.Hidden) publish(DictationFixState.Hidden)
     }
 
@@ -181,10 +188,12 @@ class DictationFixController(
         val source = current.source
         val replacement = TranscriptCleanup.normalizeTerm(current.replacement)
         val addAsWord = current.addAsWord
-        scope.launch {
+        saveJob = scope.launch {
             val correction = repository.upsertCorrection(source, replacement)
+            // The write is asynchronous; a dismissal, an abort or a new dictation in the meantime
+            // owns the state now, and no further learning happens for it.
+            if (_state.value !== current) return@launch
             val wordAdded = correction is EntryResult.Saved && addAsWord && repository.addWord(replacement) is EntryResult.Saved
-            // The write is asynchronous; a dismissal or a new dictation in the meantime owns the state now.
             if (_state.value !== current) return@launch
             if (correction is EntryResult.Rejected) {
                 publish(DictationFixState.Hidden)

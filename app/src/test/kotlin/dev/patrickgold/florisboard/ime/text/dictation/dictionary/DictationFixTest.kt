@@ -411,6 +411,39 @@ class DictationFixControllerTest : FunSpec({
         controller.state.value shouldBe DictationFixState.Hidden
     }
 
+    test("an abort during a save drops the word hint and the confirmation") {
+        val dir = Files.createTempDirectory("fix-abort-save").toFile()
+        val slowRepository = SpeechDictionaryRepository(
+            file = File(dir, "personal_dictionary.json"),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Unconfined,
+        )
+        val editor = FakeEditor()
+        val controller = DictationFixController(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            repository = slowRepository,
+            editor = editor,
+            openDictionary = {},
+            clock = { 100_000L },
+        )
+        controller.offer(DictationInsertion("raw", " own key works", 1L, "com.example.notes", 7, 99_000L))
+        controller.openChooser()
+        controller.tapToken(0)
+        controller.beginReplacement(cursorContent("Before own key works"))
+        editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
+        controller.save()
+        // Incognito switches on while the correction is being written.
+        controller.abort()
+        controller.state.value shouldBe DictationFixState.Hidden
+        val deadline = System.currentTimeMillis() + 3_000L
+        while (System.currentTimeMillis() < deadline && runBlocking { slowRepository.export() }.corrections.isEmpty()) Thread.sleep(25)
+        Thread.sleep(200)
+        // Whatever happened to the correction write, no word hint was learned afterwards and nothing was confirmed.
+        runBlocking { slowRepository.export() }.words shouldBe emptyList()
+        controller.state.value shouldBe DictationFixState.Hidden
+    }
+
     test("a save that storage refused is reported, not confirmed") {
         val dir = Files.createTempDirectory("fix-save-failed").toFile()
         val repository = SpeechDictionaryRepository(

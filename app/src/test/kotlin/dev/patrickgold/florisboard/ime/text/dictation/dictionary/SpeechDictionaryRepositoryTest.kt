@@ -456,6 +456,17 @@ class SpeechDictionaryRepositoryTest : FunSpec({
             document.fillers shouldBe FillerSettings(enabled = false, languages = listOf("es"), custom = emptyList())
         }
 
+        test("a restore whose write storage refused reports failure instead of success") {
+            val dir = temp()
+            val repository = repository(dir)
+            runBlocking { repository.restore(SpeechDictionaryDocument(words = listOf(VocabularyEntry(1, "Ok"))), merge = false) } shouldBe true
+            val blocker = File(dir, "personal_dictionary.json.tmp")
+            File(blocker, "child").apply { parentFile.mkdirs(); writeText("x") }
+            runBlocking { repository.restore(SpeechDictionaryDocument(words = listOf(VocabularyEntry(1, "Lost"))), merge = false) } shouldBe false
+            repository.state.value.saveError shouldBe true
+            SpeechDictionaryDocument.decode(File(dir, "personal_dictionary.json").readText()).words.map { it.word } shouldBe listOf("Ok")
+        }
+
         test("a corrupt backup section fails to decode before anything is written") {
             shouldThrow<Exception> { SpeechDictionaryDocument.decode("{\"version\": \"one\"}") }
             shouldThrow<Exception> { SpeechDictionaryDocument.decode("nope") }

@@ -196,7 +196,10 @@ fun RestoreScreen() = FlorisScreen {
                     )
                 }
                 // Validates before writing; an incompatible document leaves the entries untouched.
-                context.speechDictionary().value.restore(document, merge = !shouldReset)
+                // A write that storage refused is a failed restore, not a success to navigate away from.
+                if (!context.speechDictionary().value.restore(document, merge = !shouldReset)) {
+                    throw IllegalStateException(context.stringRes(R.string.speech_dictionary__save_error))
+                }
             }
         }
         val clipboardManager = context.clipboardManager().value
