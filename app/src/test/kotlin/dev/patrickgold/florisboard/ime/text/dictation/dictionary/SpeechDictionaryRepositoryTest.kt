@@ -419,6 +419,60 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { reloaded.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
     }
 
+    test("a kept file that cannot be deleted is not merged again after a restart") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        val marker = File(dir, "personal_dictionary.json.merged")
+        kept.writeText("""{"version":2,"nextId":2,"words":[{"id":1,"word":"Ownkey"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""")
+        var deletable = false
+        fun upgraded() = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Default,
+            supportedVersion = 2,
+            deleteKeptFile = { deletable && it.delete() },
+        )
+
+        // The merge is written, the kept file stays, and that is recorded next to the main file.
+        val first = upgraded()
+        runBlocking { first.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Ownkey")
+        kept.exists() shouldBe true
+        marker.readLines() shouldBe listOf(kept.name)
+
+        // The user removes the merged entry; the write succeeds, the deletion still fails.
+        runBlocking { first.remove(1L) } shouldNotBe null
+        first.state.value.saveError shouldBe false
+        kept.exists() shouldBe true
+
+        // A restart must not bring the removed entry back from the file that is still there.
+        val second = upgraded()
+        runBlocking { second.awaitLoaded() }.document.words shouldBe emptyList()
+        kept.exists() shouldBe true
+        marker.readLines() shouldBe listOf(kept.name)
+
+        // Once the deletion works, the next start cleans up the file and the record of it.
+        deletable = true
+        val third = upgraded()
+        runBlocking { third.awaitLoaded() }.document.words shouldBe emptyList()
+        kept.exists() shouldBe false
+        marker.exists() shouldBe false
+    }
+
+    test("a file with a version below one is kept aside as unreadable, never relabelled and exported") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val invalid = """{"version":0,"nextId":2,"words":[{"id":1,"word":"Ghost"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}"""
+        file.writeText(invalid)
+        val repository = repository(dir)
+        val state = runBlocking { repository.awaitLoaded() }
+        state.loadError shouldBe SpeechDictionaryLoadError.UNREADABLE
+        state.document.words shouldBe emptyList()
+        runBlocking { repository.export() }.words shouldBe emptyList()
+        dir.listFiles()!!.single { it.name.contains(".unreadable-") }.readText() shouldBe invalid
+    }
+
     test("a storage failure during an ordinary edit is reported in the state, not thrown") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")

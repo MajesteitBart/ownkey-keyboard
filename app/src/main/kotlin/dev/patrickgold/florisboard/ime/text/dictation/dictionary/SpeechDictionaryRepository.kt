@@ -100,6 +100,8 @@ class SpeechDictionaryRepository(
     private val clock: () -> Long = System::currentTimeMillis,
     /** Highest document version this app understands; a parameter so upgrade paths can be tested. */
     private val supportedVersion: Int = SpeechDictionaryDocument.CURRENT_VERSION,
+    /** Removes a kept file after its entries were merged; a parameter so a failing deletion can be tested. */
+    private val deleteKeptFile: (File) -> Boolean = File::delete,
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(SpeechDictionaryState(SpeechDictionaryDocument(), loaded = false))
@@ -392,7 +394,11 @@ class SpeechDictionaryRepository(
             _state.value = SpeechDictionaryState(absorbed.document.stamped(), loaded = true, loadError = quarantineError())
             return
         }
-        val parsed = runCatching { SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)) }
+        // A version below 1 was never written by any app. It is handled like an unreadable file, the same
+        // way restore rejects it, so it can never be relabelled and exported as a valid backup.
+        val parsed = runCatching {
+            SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)).also { require(it.version >= 1) }
+        }
         parsed.onSuccess { document ->
             if (document.version > supportedVersion) {
                 // Unknown fields are ignored on decode, so saving would silently downgrade the
@@ -408,8 +414,11 @@ class SpeechDictionaryRepository(
                 )
                 return
             }
-            val absorbed = absorbQuarantined(document)
-            if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
+            // Kept files recorded as merged are already part of this main file; only their deletion is
+            // outstanding. Merging them again would bring back entries the user removed since.
+            val absorbed = absorbQuarantined(document, alreadyMerged = readMergedMarker())
+            pendingConsumed = pendingConsumed + absorbed.skipped
+            if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed) else retirePendingConsumed()
             _state.value = SpeechDictionaryState(absorbed.document.stamped(), loaded = true, loadError = quarantineError())
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
@@ -491,7 +500,7 @@ class SpeechDictionaryRepository(
 
     private fun recoverFromBackup(): SpeechDictionaryDocument? = backupFile().takeIf { it.exists() }
         ?.let { backup -> runCatching { SpeechDictionaryDocument.decode(backup.readText(Charsets.UTF_8)) }.getOrNull() }
-        ?.takeIf { it.version <= supportedVersion }
+        ?.takeIf { it.version in 1..supportedVersion }
 
     /** Files moved aside because a newer app wrote them, with their document version. */
     private fun quarantinedFiles(): List<Pair<File, Int>> {
@@ -508,23 +517,30 @@ class SpeechDictionaryRepository(
         if (quarantinedFiles().any { it.second > supportedVersion }) SpeechDictionaryLoadError.NEWER_VERSION else null
 
     /** A merged document plus the kept files it came from, which may only go once it is on disk. */
-    private class Absorbed(val document: SpeechDictionaryDocument, val consumed: List<File>)
+    private class Absorbed(
+        val document: SpeechDictionaryDocument,
+        val consumed: List<File>,
+        /** Kept files left out because the main file already holds their entries. */
+        val skipped: List<File> = emptyList(),
+    )
 
     /**
      * Merges the entries of files kept for a newer app once this app supports their version.
      * Entries added meanwhile are kept; the kept file's filler settings win. The files are returned
      * rather than deleted here, because they are the only copy until the merge has been written.
      */
-    private fun absorbQuarantined(base: SpeechDictionaryDocument): Absorbed {
+    private fun absorbQuarantined(base: SpeechDictionaryDocument, alreadyMerged: Set<String> = emptySet()): Absorbed {
         var next = base
         val consumed = ArrayList<File>()
+        val skipped = ArrayList<File>()
         for ((kept, version) in quarantinedFiles()) {
             if (version > supportedVersion) continue
+            if (kept.name in alreadyMerged) { skipped.add(kept); continue }
             val document = runCatching { SpeechDictionaryDocument.decode(kept.readText(Charsets.UTF_8)) }.getOrNull() ?: continue
             next = merged(next, document)
             consumed.add(kept)
         }
-        return Absorbed(next, consumed)
+        return Absorbed(next, consumed, skipped)
     }
 
     /**
@@ -533,19 +549,46 @@ class SpeechDictionaryRepository(
      * same files again and resurrect entries the user removed in between.
      */
     private fun persistAbsorbed(absorbed: Absorbed) {
-        pendingConsumed = if (runCatching { write(absorbed.document) }.isSuccess) {
-            pendingConsumed + undeleted(absorbed.consumed)
-        } else {
-            pendingConsumed + absorbed.consumed
-        }
+        pendingConsumed = pendingConsumed + absorbed.consumed
+        if (runCatching { write(absorbed.document) }.isSuccess) retirePendingConsumed()
     }
 
+    /**
+     * Runs after a successful write, when the main file holds everything the pending kept files
+     * contributed. Files that still cannot be deleted are recorded next to the main file, so the
+     * next start retries the deletion instead of merging them a second time.
+     */
     private fun retirePendingConsumed() {
         val files = pendingConsumed
-        if (files.isEmpty()) return
+        if (files.isEmpty() && !mergedMarker().exists()) return
         pendingConsumed = undeleted(files)
+        recordMerged(pendingConsumed)
     }
 
     /** Deletes the files and returns those that are still there, so a failed deletion is retried. */
-    private fun undeleted(files: List<File>): List<File> = files.filter { it.exists() && !it.delete() }
+    private fun undeleted(files: List<File>): List<File> = files.filter { it.exists() && !deleteKeptFile(it) }
+
+    /** Names of kept files whose entries are in the main file but whose deletion has not succeeded yet. */
+    private fun mergedMarker(): File = File(file.parentFile, "${file.name}.merged")
+
+    private fun readMergedMarker(): Set<String> = runCatching {
+        mergedMarker().readLines(Charsets.UTF_8).map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }.getOrDefault(emptySet())
+
+    /**
+     * Best effort. If the marker cannot be written either, the in-memory list still covers this
+     * process, which is the behaviour without a marker.
+     */
+    private fun recordMerged(files: List<File>) {
+        val marker = mergedMarker()
+        runCatching {
+            if (files.isEmpty()) {
+                if (marker.exists()) marker.delete()
+            } else {
+                val temp = File(marker.parentFile, "${marker.name}.tmp")
+                temp.writeText(files.joinToString("\n") { it.name }, Charsets.UTF_8)
+                Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+    }
 }
