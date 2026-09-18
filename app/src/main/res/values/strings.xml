@@ -1501,6 +1501,7 @@
     <string name="speech_dictionary__hints_local_budget_exceeded">{included} of {total} words fit the on-device hint budget. The rest stay saved but are not sent to Orukeet.</string>
     <string name="speech_dictionary__load_error">Your saved dictionary could not be read. A copy was kept next to the new file, and the entries start empty.</string>
     <string name="speech_dictionary__load_error_newer">Your saved dictionary was written by a newer version of Ownkey. It was kept next to the new file and is not changed; update the app to use it again. The entries start empty until then.</string>
+    <string name="speech_dictionary__save_error">The last change could not be saved to storage. It is kept for now and saving is retried with the next change. Check free space.</string>
     <string name="speech_dictionary__only_fillers">Only filler words were heard. Nothing was inserted.</string>
     <string name="speech_dictionary__ai_card_summary">Names and terms for recognition, corrections for recurring mishearings, and filler-word removal.</string>
     <plurals name="speech_dictionary__ai_card_words">

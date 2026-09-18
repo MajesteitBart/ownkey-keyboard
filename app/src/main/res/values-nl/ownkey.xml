@@ -132,6 +132,7 @@
     <string name="speech_dictionary__hints_local_budget_exceeded">{included} van {total} woorden passen binnen het hintbudget op dit apparaat. De rest blijft opgeslagen, maar gaat niet naar Orukeet.</string>
     <string name="speech_dictionary__load_error">Je opgeslagen woordenboek kon niet worden gelezen. Er is een kopie naast het nieuwe bestand bewaard en de lijst begint leeg.</string>
     <string name="speech_dictionary__load_error_newer">Je opgeslagen woordenboek is gemaakt door een nieuwere versie van Ownkey. Het is naast het nieuwe bestand bewaard en wordt niet gewijzigd; werk de app bij om het weer te gebruiken. Tot die tijd begint de lijst leeg.</string>
+    <string name="speech_dictionary__save_error">De laatste wijziging kon niet worden opgeslagen. Ze blijft voorlopig bewaard en opslaan wordt bij de volgende wijziging opnieuw geprobeerd. Controleer de vrije ruimte.</string>
     <string name="speech_dictionary__only_fillers">Er zijn alleen stopwoorden verstaan. Er is niets ingevoegd.</string>
     <string name="speech_dictionary__ai_card_summary">Namen en termen voor herkenning, correcties voor terugkerende versprekingen, en stopwoorden verwijderen.</string>
     <plurals name="speech_dictionary__ai_card_words">

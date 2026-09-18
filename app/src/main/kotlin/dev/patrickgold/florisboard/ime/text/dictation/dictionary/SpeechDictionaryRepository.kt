@@ -75,6 +75,8 @@ data class SpeechDictionaryState(
     val document: SpeechDictionaryDocument,
     val loaded: Boolean,
     val loadError: SpeechDictionaryLoadError? = null,
+    /** The last change could not be written to storage; it is kept in memory and retried on the next change. */
+    val saveError: Boolean = false,
 )
 
 class RestoreRejectedException(message: String) : IllegalStateException(message)
@@ -110,6 +112,10 @@ class SpeechDictionaryRepository(
      */
     @Volatile
     private var blockedMainPath: (() -> Boolean)? = null
+
+    /** Kept files already merged into the state whose removal waits for a successful write. */
+    @Volatile
+    private var pendingConsumed: List<File> = emptyList()
 
     private val initialized: Deferred<Unit> = scope.async(ioDispatcher) { load() }
 
@@ -327,19 +333,23 @@ class SpeechDictionaryRepository(
             if (next !== current.document) {
                 val versioned = next.copy(version = supportedVersion)
                 // While a newer file could not be moved aside, edits stay in memory rather than
-                // overwrite the only newer-schema copy; the warning stays visible.
+                // overwrite the only newer-schema copy; the warning stays visible. A storage failure
+                // (full disk, unwritable directory) is reported the same way instead of thrown at
+                // the settings page or the keyboard: the change is kept and retried on the next one.
+                var blocked = false
                 val written = withContext(ioDispatcher) {
                     if (mainPathWritable()) {
-                        write(versioned)
-                        true
+                        runCatching { write(versioned) }.onSuccess { retirePendingConsumed() }.isSuccess
                     } else {
+                        blocked = true
                         false
                     }
                 }
                 _state.value = SpeechDictionaryState(
                     versioned,
                     loaded = true,
-                    loadError = if (written) null else current.loadError ?: SpeechDictionaryLoadError.NEWER_VERSION,
+                    loadError = if (!blocked) null else current.loadError ?: SpeechDictionaryLoadError.NEWER_VERSION,
+                    saveError = !written && !blocked,
                 )
             }
             result
@@ -485,8 +495,23 @@ class SpeechDictionaryRepository(
         return Absorbed(next, consumed)
     }
 
-    /** Writes the merged document and removes the kept files only when that write succeeded. */
+    /**
+     * Writes the merged document and removes the kept files only when that write succeeded. If it
+     * did not, the removal waits for the next successful write, so a later restart cannot merge the
+     * same files again and resurrect entries the user removed in between.
+     */
     private fun persistAbsorbed(absorbed: Absorbed) {
-        if (runCatching { write(absorbed.document) }.isSuccess) absorbed.consumed.forEach { it.delete() }
+        if (runCatching { write(absorbed.document) }.isSuccess) {
+            absorbed.consumed.forEach { it.delete() }
+        } else {
+            pendingConsumed = pendingConsumed + absorbed.consumed
+        }
+    }
+
+    private fun retirePendingConsumed() {
+        val files = pendingConsumed
+        if (files.isEmpty()) return
+        pendingConsumed = emptyList()
+        files.forEach { it.delete() }
     }
 }

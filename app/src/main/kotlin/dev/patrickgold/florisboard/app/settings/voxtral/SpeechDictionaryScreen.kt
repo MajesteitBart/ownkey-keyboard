@@ -129,6 +129,9 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                         NoticeBanner(text = userStringRes(R.string.speech_dictionary__load_error_newer), warning = true)
                     null -> Unit
                 }
+                if (state.saveError) {
+                    NoticeBanner(text = userStringRes(R.string.speech_dictionary__save_error), warning = true)
+                }
                 AddEntryCard(
                     document = state.document,
                     initialHeard = heard,

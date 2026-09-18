@@ -317,14 +317,14 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Copy", "Meanwhile", "Later")
     }
 
-    test("a kept file survives when the merged document cannot be written") {
+    test("a kept file survives a failed merge write and is retired by the next successful one") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")
         val kept = File(dir, "personal_dictionary.json.newer-v2-5")
         kept.writeText("""{"version":2,"nextId":2,"words":[{"id":1,"word":"Ownkey"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""")
         // A non-empty directory in the temp file's place makes every write fail.
-        File(dir, "personal_dictionary.json.tmp").mkdirs()
-        File(dir, "personal_dictionary.json.tmp/blocker").writeText("x")
+        val blocker = File(dir, "personal_dictionary.json.tmp")
+        File(blocker, "child").apply { parentFile.mkdirs(); writeText("x") }
         val upgraded = SpeechDictionaryRepository(
             file = file,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
@@ -336,6 +336,45 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         state.document.words.map { it.word } shouldBe listOf("Ownkey")
         file.exists() shouldBe false
         kept.exists() shouldBe true
+
+        // The user removes the merged entry while storage still fails: reported, not thrown.
+        runBlocking { upgraded.remove(1L) } shouldNotBe null
+        upgraded.state.value.saveError shouldBe true
+        upgraded.state.value.document.words shouldBe emptyList()
+        kept.exists() shouldBe true
+
+        // Storage works again: the next change lands and the kept file goes, so a restart cannot
+        // resurrect the removed entry.
+        blocker.deleteRecursively()
+        runBlocking { upgraded.addWord("Later") }
+        upgraded.state.value.saveError shouldBe false
+        kept.exists() shouldBe false
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Later")
+        val reloaded = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            ioDispatcher = Dispatchers.IO,
+            computeDispatcher = Dispatchers.Default,
+            supportedVersion = 2,
+        )
+        runBlocking { reloaded.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
+    }
+
+    test("a storage failure during an ordinary edit is reported in the state, not thrown") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val repository = repository(dir)
+        runBlocking { repository.addWord("First") }
+        val blocker = File(dir, "personal_dictionary.json.tmp")
+        File(blocker, "child").apply { parentFile.mkdirs(); writeText("x") }
+        runBlocking { repository.addWord("Second") }.shouldBeInstanceOf<EntryResult.Saved>()
+        repository.state.value.saveError shouldBe true
+        repository.state.value.document.words.map { it.word } shouldBe listOf("First", "Second")
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("First")
+        blocker.deleteRecursively()
+        runBlocking { repository.addWord("Third") }
+        repository.state.value.saveError shouldBe false
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("First", "Second", "Third")
     }
 
     test("unknown keys from a newer document are tolerated on load") {
