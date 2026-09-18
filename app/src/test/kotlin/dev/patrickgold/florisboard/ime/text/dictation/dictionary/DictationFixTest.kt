@@ -379,6 +379,67 @@ class DictationFixControllerTest : FunSpec({
         controller.state.value shouldBe DictationFixState.Hidden
     }
 
+    test("losing AI availability ends the flow in every state, including an active replacement") {
+        val available = kotlinx.coroutines.flow.MutableStateFlow(true)
+        val editor = FakeEditor()
+        val dir = Files.createTempDirectory("fix-availability").toFile()
+        val repository = SpeechDictionaryRepository(
+            file = File(dir, "personal_dictionary.json"),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            ioDispatcher = Dispatchers.Unconfined,
+            computeDispatcher = Dispatchers.Unconfined,
+        )
+        val controller = DictationFixController(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            repository = repository,
+            editor = editor,
+            openDictionary = {},
+            available = available,
+            clock = { 100_000L },
+        )
+        val insertion = DictationInsertion("raw", " own key works", 1L, "com.example.notes", 7, 99_000L)
+        controller.offer(insertion)
+        controller.openChooser()
+        controller.tapToken(1)
+        controller.beginReplacement(cursorContent("Before own key works"))
+        controller.state.value.shouldBeInstanceOf<DictationFixState.Replacing>()
+        available.value = false
+        controller.state.value shouldBe DictationFixState.Hidden
+        // Nothing is offered while unavailable either.
+        available.value = true
+        controller.abort()
+        controller.state.value shouldBe DictationFixState.Hidden
+    }
+
+    test("a save that storage refused is reported, not confirmed") {
+        val dir = Files.createTempDirectory("fix-save-failed").toFile()
+        val repository = SpeechDictionaryRepository(
+            file = File(dir, "personal_dictionary.json"),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            ioDispatcher = Dispatchers.Unconfined,
+            computeDispatcher = Dispatchers.Unconfined,
+        )
+        // A non-empty directory in the temp file's place makes every write fail.
+        File(dir, "personal_dictionary.json.tmp/blocker").apply { parentFile.mkdirs(); writeText("x") }
+        val editor = FakeEditor()
+        val controller = DictationFixController(
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            repository = repository,
+            editor = editor,
+            openDictionary = {},
+            clock = { 100_000L },
+        )
+        controller.offer(DictationInsertion("raw", " own key works", 1L, "com.example.notes", 7, 99_000L))
+        controller.openChooser()
+        controller.tapToken(0)
+        controller.beginReplacement(cursorContent("Before own key works"))
+        editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
+        controller.save()
+        controller.state.value shouldBe DictationFixState.SaveFailed("own")
+        runBlocking { repository.export() }.corrections.map { it.source to it.replacement } shouldBe listOf("own" to "Ownkey")
+        repository.state.value.saveError shouldBe true
+    }
+
     test("a new recording or another panel retires the offer and chooser, and a session switch ends the replacement") {
         val h = Harness()
         h.controller.offer(h.insertion())

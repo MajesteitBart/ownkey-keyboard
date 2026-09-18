@@ -1537,5 +1537,6 @@
     <string name="dictation_fix__saved">Saved. “{word}” becomes “{replacement}” from now on.</string>
     <string name="dictation_fix__saved_with_word">Saved. “{word}” becomes “{replacement}”, and “{replacement}” now helps recognition.</string>
     <string name="dictation_fix__manual">The text changed. Add “{word}” in your dictionary instead?</string>
+    <string name="dictation_fix__save_failed">“{word}” could not be saved to storage. It is kept for now and saved with the next change; check free space.</string>
     <string name="dictation_fix__manual_open">Open dictionary</string>
 </resources>

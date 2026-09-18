@@ -873,7 +873,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 dictationFixController.interrupt()
                 isRewriteOptionsVisible = !isRewriteOptionsVisible
             }
-            KeyCode.TOGGLE_INCOGNITO_MODE -> scope.launch { handleToggleIncognitoMode() }
+            KeyCode.TOGGLE_INCOGNITO_MODE -> {
+                // Nothing may be learned in incognito, so the fix flow ends in every state.
+                dictationFixController.abort()
+                scope.launch { handleToggleIncognitoMode() }
+            }
             KeyCode.TOGGLE_AUTOCORRECT -> handleToggleAutocorrect()
             KeyCode.UNDO -> if (!handleUndoLastAutocorrect()) editorInstance.performUndo()
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS

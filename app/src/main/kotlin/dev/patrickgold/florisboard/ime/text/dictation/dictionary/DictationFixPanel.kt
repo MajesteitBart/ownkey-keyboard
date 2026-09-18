@@ -221,7 +221,9 @@ fun DictationFixRow(modifier: Modifier = Modifier) {
     val controller = remember(context) { context.dictationFixController().value }
     val state by controller.state.collectAsState()
     val current = state
-    if (current !is DictationFixState.Replacing && current !is DictationFixState.Saved && current !is DictationFixState.Manual) return
+    if (current !is DictationFixState.Replacing && current !is DictationFixState.Saved &&
+        current !is DictationFixState.Manual && current !is DictationFixState.SaveFailed
+    ) return
     val accent = ownkeyAccentColor()
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -239,6 +241,7 @@ fun DictationFixRow(modifier: Modifier = Modifier) {
                 is DictationFixState.Replacing -> ReplacingContent(current, accent, controller)
                 is DictationFixState.Saved -> SavedContent(current)
                 is DictationFixState.Manual -> ManualContent(current, accent, controller)
+                is DictationFixState.SaveFailed -> SaveFailedContent(current, controller)
                 else -> Unit
             }
         }
@@ -313,6 +316,22 @@ private fun RowScope.SavedContent(state: DictationFixState.Saved) {
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
+}
+
+@Composable
+private fun RowScope.SaveFailedContent(
+    state: DictationFixState.SaveFailed,
+    controller: DictationFixController,
+) {
+    Text(
+        text = userStringRes(R.string.dictation_fix__save_failed, "word" to state.source),
+        modifier = Modifier.weight(1f),
+        color = OwnkeyBrand.WarningYellow,
+        fontSize = 13.sp,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), onClick = controller::dismiss)
 }
 
 @Composable

@@ -17,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 /** The host editor as the fix flow needs it. Abstracted so the state machine is testable without Android. */
@@ -61,6 +62,9 @@ sealed interface DictationFixState {
     data class Manual(val source: String) : DictationFixState
 
     data class Saved(val source: String, val replacement: String, val wordAdded: Boolean) : DictationFixState
+
+    /** Storage refused the write; the entry is held in memory and retried, but nothing is confirmed. */
+    data class SaveFailed(val source: String) : DictationFixState
 }
 
 /**
@@ -76,6 +80,8 @@ class DictationFixController(
     private val repository: SpeechDictionaryRepository,
     private val editor: DictationFixEditorGateway,
     private val openDictionary: (heard: String) -> Unit,
+    /** Whether AI features may run right now; false (incognito, secure field) ends the flow at any point. */
+    private val available: Flow<Boolean> = flowOf(true),
     private val clock: () -> Long = System::currentTimeMillis,
     private val offerTimeoutMs: Long = OFFER_TIMEOUT_MS,
     private val savedDwellMs: Long = SAVED_DWELL_MS,
@@ -88,6 +94,12 @@ class DictationFixController(
 
     init {
         scope.launch { editor.contentFlow.collect(::onEditorContent) }
+        scope.launch { available.collect { ok -> if (!ok) abort() } }
+    }
+
+    /** Ends the flow in every state, including an active replacement: nothing may be learned now. */
+    fun abort() {
+        if (_state.value !is DictationFixState.Hidden) publish(DictationFixState.Hidden)
     }
 
     fun offer(insertion: DictationInsertion) {
@@ -178,7 +190,12 @@ class DictationFixController(
                 publish(DictationFixState.Hidden)
                 return@launch
             }
-            publish(DictationFixState.Saved(source, replacement, wordAdded))
+            // The repository keeps a change it could not write and retries later; that is not a
+            // confirmation the keyboard may show.
+            publish(
+                if (repository.state.value.saveError) DictationFixState.SaveFailed(source)
+                else DictationFixState.Saved(source, replacement, wordAdded),
+            )
             timer = scope.launch {
                 delay(savedDwellMs)
                 if (_state.value is DictationFixState.Saved) publish(DictationFixState.Hidden)
@@ -225,7 +242,7 @@ class DictationFixController(
             is DictationFixState.Choosing -> {
                 if (editor.activeSessionId != current.insertion.editorSessionId) publish(DictationFixState.Hidden)
             }
-            is DictationFixState.Manual, is DictationFixState.Saved, DictationFixState.Hidden -> Unit
+            is DictationFixState.Manual, is DictationFixState.Saved, is DictationFixState.SaveFailed, DictationFixState.Hidden -> Unit
         }
     }
 

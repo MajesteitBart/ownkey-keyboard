@@ -104,6 +104,7 @@ class FlorisApplication : Application(), androidx.work.Configuration.Provider {
             repository = speechDictionary.value,
             editorInstance = editorInstance.value,
             dictationManager = voxtralDictationManager.value,
+            availabilityPolicy = aiAvailabilityPolicy.value,
         )
     }
 

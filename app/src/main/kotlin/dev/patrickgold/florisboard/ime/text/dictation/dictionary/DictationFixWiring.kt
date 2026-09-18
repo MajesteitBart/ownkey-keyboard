@@ -18,9 +18,12 @@ import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.EditorInstance
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
+import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailability
+import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailabilityPolicy
 import dev.patrickgold.florisboard.lib.util.launchActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /** Ordinary dictation lifecycle as seen by the keyboard-side fix flow. */
 interface DictationInsertionListener {
@@ -45,6 +48,7 @@ fun createDictationFixController(
     repository: SpeechDictionaryRepository,
     editorInstance: EditorInstance,
     dictationManager: VoxtralDictationManager,
+    availabilityPolicy: AiAvailabilityPolicy,
 ): DictationFixController {
     val appContext = context.applicationContext
     val controller = DictationFixController(
@@ -52,6 +56,8 @@ fun createDictationFixController(
         repository = repository,
         editor = EditorInstanceDictationFixGateway(editorInstance),
         openDictionary = { heard -> appContext.openSpeechDictionarySettings(heard) },
+        // Incognito and secure fields end the flow wherever it is; no correction may be learned then.
+        available = availabilityPolicy.state.map { it is AiAvailability.Available },
     )
     dictationManager.insertionListener = object : DictationInsertionListener {
         override fun onDictationStarted() = controller.interrupt()

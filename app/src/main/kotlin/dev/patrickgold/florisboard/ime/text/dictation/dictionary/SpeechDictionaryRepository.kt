@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -336,21 +337,25 @@ class SpeechDictionaryRepository(
                 // overwrite the only newer-schema copy; the warning stays visible. A storage failure
                 // (full disk, unwritable directory) is reported the same way instead of thrown at
                 // the settings page or the keyboard: the change is kept and retried on the next one.
-                var blocked = false
-                val written = withContext(ioDispatcher) {
-                    if (mainPathWritable()) {
-                        runCatching { write(versioned) }.onSuccess { retirePendingConsumed() }.isSuccess
-                    } else {
-                        blocked = true
-                        false
+                // Write and publication run non-cancellably: a caller that goes away mid-write must
+                // not leave disk and memory disagreeing.
+                withContext(NonCancellable) {
+                    var blocked = false
+                    val written = withContext(ioDispatcher) {
+                        if (mainPathWritable()) {
+                            runCatching { write(versioned) }.onSuccess { retirePendingConsumed() }.isSuccess
+                        } else {
+                            blocked = true
+                            false
+                        }
                     }
+                    _state.value = SpeechDictionaryState(
+                        versioned,
+                        loaded = true,
+                        loadError = if (!blocked) null else current.loadError ?: SpeechDictionaryLoadError.NEWER_VERSION,
+                        saveError = !written && !blocked,
+                    )
                 }
-                _state.value = SpeechDictionaryState(
-                    versioned,
-                    loaded = true,
-                    loadError = if (!blocked) null else current.loadError ?: SpeechDictionaryLoadError.NEWER_VERSION,
-                    saveError = !written && !blocked,
-                )
             }
             result
         }
