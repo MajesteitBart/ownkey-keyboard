@@ -360,7 +360,9 @@ class SpeechDictionaryRepository(
                         versioned,
                         loaded = true,
                         loadError = if (!blocked) null else current.loadError ?: SpeechDictionaryLoadError.NEWER_VERSION,
-                        saveError = !written && !blocked,
+                        // A blocked main path is an unsaved change too: restore and the keyboard
+                        // row read this flag to decide whether they may report success.
+                        saveError = !written,
                     )
                 }
             }

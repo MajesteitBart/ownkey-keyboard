@@ -275,18 +275,22 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         File(dir, "personal_dictionary.json.bak").exists() shouldBe true
 
         runBlocking { repository.addWord("Meanwhile") }
-        // The edit is served but nothing on disk changed; the warning stays.
+        // The edit is served but nothing on disk changed; the warning stays, the change counts as
+        // unsaved, and a restore in this state reports failure.
         repository.state.value.document.words.map { it.word } shouldBe listOf("Meanwhile")
         repository.state.value.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        repository.state.value.saveError shouldBe true
+        runBlocking { repository.restore(SpeechDictionaryDocument(words = listOf(VocabularyEntry(1, "Restored"))), merge = true) } shouldBe false
         file.readText() shouldBe newer
 
         // Once the move can succeed, the next edit quarantines the newer file and lands on disk.
         blocker.deleteRecursively()
         runBlocking { repository.addWord("Later") }
         repository.state.value.loadError shouldBe null
+        repository.state.value.saveError shouldBe false
         blocker.readText() shouldBe newer
         File(dir, "personal_dictionary.json.bak").exists() shouldBe false
-        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Meanwhile", "Later")
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Meanwhile", "Restored", "Later")
     }
 
     test("an unreadable file that cannot be moved aside is never overwritten either") {
@@ -308,6 +312,7 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { repository.addWord("Meanwhile") }
         repository.state.value.document.words.map { it.word } shouldBe listOf("Copy", "Meanwhile")
         repository.state.value.loadError shouldBe SpeechDictionaryLoadError.UNREADABLE
+        repository.state.value.saveError shouldBe true
         file.readText() shouldBe "{ torn"
 
         blocker.deleteRecursively()
