@@ -1490,6 +1490,7 @@
     <string name="speech_dictionary__hints_cloud_prompt_summary">For OpenAI-compatible endpoints that accept a prompt field. An endpoint that does not may reject the request.</string>
     <string name="speech_dictionary__hints_cloud_off">Do not send words</string>
     <string name="speech_dictionary__hints_cloud_off_summary">Corrections and filler removal still run on this device.</string>
+    <string name="speech_dictionary__hints_cloud_auto_unsupported">Your configured endpoint is not one of the known ones, so in Automatic mode it receives no words. Pick “Send as prompt” if it accepts a prompt field.</string>
     <string name="speech_dictionary__hints_cloud_budget_exceeded">{included} of {total} words fit one cloud request. The rest stay saved but are not sent.</string>
     <string name="speech_dictionary__hints_local_label">On-device dictation (Orukeet)</string>
     <string name="speech_dictionary__hints_local_toggle">Use words for on-device recognition</string>

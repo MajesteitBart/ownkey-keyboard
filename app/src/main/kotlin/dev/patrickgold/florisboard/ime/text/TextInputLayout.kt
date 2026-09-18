@@ -71,7 +71,7 @@ fun TextInputLayout(
         // word is retyped never recompose the keyboard layout.
         val dictationFixChoosing by androidx.compose.runtime.remember(dictationFixController) {
             dictationFixController.state.map { it is DictationFixState.Choosing }.distinctUntilChanged()
-        }.collectAsState(initial = false)
+        }.collectAsState(initial = dictationFixController.state.value is DictationFixState.Choosing)
         // While a word is being retyped the keyboard stays; the row above it shows the replacement.
         DictationFixRow()
         if (keyboardManager.isRewriteOptionsVisible) {

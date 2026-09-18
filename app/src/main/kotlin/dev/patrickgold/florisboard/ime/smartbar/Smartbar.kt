@@ -201,15 +201,15 @@ private fun SmartbarMainRow(
     }
     // Only the two strip-relevant phases are observed, so preview updates while a word is retyped
     // never recompose the smartbar.
+    fun phaseOf(state: dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState): Int = when (state) {
+        is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Offered -> 1
+        is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Choosing -> 2
+        else -> 0
+    }
+    // Seeded from the current state, so a recreated composition never flashes the wrong strip.
     val dictationFixPhase by remember(dictationFixController) {
-        dictationFixController.state.map { state ->
-            when (state) {
-                is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Offered -> 1
-                is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Choosing -> 2
-                else -> 0
-            }
-        }.distinctUntilChanged()
-    }.collectAsState(initial = 0)
+        dictationFixController.state.map(::phaseOf).distinctUntilChanged()
+    }.collectAsState(initial = phaseOf(dictationFixController.state.value))
     val dictationFixOffered = dictationFixPhase == 1
     val dictationFixChoosing = dictationFixPhase == 2
     val voiceRewriteUiController by context.voiceRewriteUiController()

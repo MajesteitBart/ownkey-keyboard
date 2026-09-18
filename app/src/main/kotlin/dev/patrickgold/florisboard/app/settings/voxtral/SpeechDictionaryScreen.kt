@@ -56,6 +56,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralRelayTranscriptionClient
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyField
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyMode
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.EntryError
@@ -101,6 +103,7 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
         val prefsRef = prefs
         val state by repository.state.collectAsState()
         val cloudMode by prefsRef.voxtral.cloudVocabularyMode.collectAsState()
+        val endpointUrl by prefsRef.voxtral.endpointUrl.collectAsState()
         val localHints by prefsRef.voxtral.localVocabularyHints.collectAsState()
         val localCompatible = remember { context.offlineDictation().compatible }
         var editing by remember { mutableStateOf<SpeechDictionaryEntry?>(null) }
@@ -154,6 +157,7 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                 FillerWordsCard(document = state.document, repository = repository)
                 RecognitionHintsCard(
                     words = state.document.words.map { it.word },
+                    endpointUrl = endpointUrl,
                     cloudMode = CloudVocabularyMode.fromPreference(cloudMode),
                     onCloudModeChange = { mode -> scope.launch { prefsRef.voxtral.cloudVocabularyMode.set(mode.preference) } },
                     localCompatible = localCompatible,
@@ -748,6 +752,7 @@ internal fun FillerLanguage.label(): String = userStringRes(
 @Composable
 private fun RecognitionHintsCard(
     words: List<String>,
+    endpointUrl: String,
     cloudMode: CloudVocabularyMode,
     onCloudModeChange: (CloudVocabularyMode) -> Unit,
     localCompatible: Boolean,
@@ -777,7 +782,15 @@ private fun RecognitionHintsCard(
             selected = cloudMode == CloudVocabularyMode.OFF,
             onClick = { onCloudModeChange(CloudVocabularyMode.OFF) },
         )
-        if (cloudMode != CloudVocabularyMode.OFF && words.isNotEmpty()) {
+        // The status follows the field the configured endpoint actually gets: in Automatic mode an
+        // unknown endpoint receives no words at all, so a "some words fit" line would be wrong there.
+        val resolvedField = CloudVocabularyHints.field(
+            endpointUrl.trim().ifBlank { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
+            cloudMode,
+        )
+        if (cloudMode == CloudVocabularyMode.AUTO && resolvedField == CloudVocabularyField.NONE) {
+            StatusText(text = userStringRes(R.string.speech_dictionary__hints_cloud_auto_unsupported))
+        } else if (resolvedField != CloudVocabularyField.NONE && words.isNotEmpty()) {
             val bounded = remember(words) { CloudVocabularyHints.bound(words) }
             if (bounded.dropped > 0) {
                 StatusText(

@@ -847,18 +847,28 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.KANA_HALF_KATA -> handleKanaHalfKata()
             KeyCode.LANGUAGE_SWITCH -> handleLanguageSwitch()
             KeyCode.REDO -> editorInstance.performRedo()
-            KeyCode.SETTINGS -> FlorisImeService.launchSettings()
+            KeyCode.SETTINGS -> {
+                dictationFixController.interrupt()
+                FlorisImeService.launchSettings()
+            }
             KeyCode.SHIFT -> handleShiftUp(data)
             KeyCode.SPACE -> handleSpace(data)
-            KeyCode.SYSTEM_INPUT_METHOD_PICKER -> InputMethodUtils.showImePicker(appContext)
+            KeyCode.SYSTEM_INPUT_METHOD_PICKER -> {
+                dictationFixController.interrupt()
+                InputMethodUtils.showImePicker(appContext)
+            }
             KeyCode.SHOW_SUBTYPE_PICKER -> {
                 dictationFixController.interrupt()
                 appContext.keyboardManager.value.activeState.isSubtypeSelectionVisible = true
             }
             KeyCode.SYSTEM_PREV_INPUT_METHOD -> FlorisImeService.switchToPrevInputMethod()
             KeyCode.SYSTEM_NEXT_INPUT_METHOD -> FlorisImeService.switchToNextInputMethod()
-            KeyCode.TOGGLE_SMARTBAR_VISIBILITY -> scope.launch {
-                prefs.smartbar.enabled.let { it.set(!it.get()) }
+            KeyCode.TOGGLE_SMARTBAR_VISIBILITY -> {
+                // The offer lives in the smartbar; hiding the bar must not bring a stale chip back later.
+                dictationFixController.interrupt()
+                scope.launch {
+                    prefs.smartbar.enabled.let { it.set(!it.get()) }
+                }
             }
             KeyCode.TOGGLE_ACTIONS_OVERFLOW -> {
                 isRewriteOptionsVisible = false

@@ -252,7 +252,10 @@ class DictationFixController(
                     is ReplacementPreview.Text -> if (preview.value != current.replacement) {
                         publish(current.copy(replacement = preview.value))
                     }
-                    ReplacementPreview.OutOfWindow -> Unit
+                    // The snapshot does not reach the word (a stale emission from before the selection
+                    // moved, or a replacement longer than the window). The text is unknown, so nothing
+                    // stale may be saved: the preview is blanked, which disables Save until it is back.
+                    ReplacementPreview.OutOfWindow -> if (current.replacement.isNotEmpty()) publish(current.copy(replacement = ""))
                     ReplacementPreview.CursorLeft -> publish(DictationFixState.Hidden)
                 }
             }

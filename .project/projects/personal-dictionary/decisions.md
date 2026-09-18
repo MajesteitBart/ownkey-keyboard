@@ -50,4 +50,4 @@ Automatic mode sends `context_bias` parts to api.mistral.ai and a `prompt` part 
 
 ## 2026-09-17 — Separate research from Orukeet delivery
 
-Orukeet is committed, pushed, and represented by draft PR #13. Personal-dictionary documents live on a separate planning branch and remain planned. This research does not activate implementation or claim device qualification.
+Orukeet is committed, pushed, and represented by draft PR #13. At research time the personal-dictionary documents lived on a separate planning branch and the research itself did not activate implementation. Superseded on the same day: the feature was implemented in PR #14 on top of the Orukeet branch. Device qualification is still not claimed; it remains open in T-005.

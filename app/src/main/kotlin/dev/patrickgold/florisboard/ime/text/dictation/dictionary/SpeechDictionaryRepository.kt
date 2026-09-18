@@ -251,7 +251,9 @@ class SpeechDictionaryRepository(
     /** Toggles one language against the current document under the lock, so quick taps never overwrite each other. */
     suspend fun setFillerLanguage(code: String, enabled: Boolean) = mutate { document ->
         val current = FillerRules.normalizeLanguages(document.fillers.languages)
-        val next = if (enabled) current + code else current - code
+        // Canonical code first, so disabling `EN` removes the stored `en`; unknown codes change nothing.
+        val canonical = FillerLanguage.fromCode(code)?.code ?: return@mutate document to Unit
+        val next = if (enabled) current + canonical else current - canonical
         document.copy(fillers = document.fillers.copy(languages = FillerRules.normalizeLanguages(next))) to Unit
     }
 
@@ -374,7 +376,9 @@ class SpeechDictionaryRepository(
         if (!file.exists()) {
             // A crash between moving a damaged file aside and rewriting it leaves only the copy; a
             // file kept for a newer app is taken back as soon as this app understands its version.
-            val recovered = recoverFromBackup()
+            // While a file kept for a newer app is waiting, a leftover copy is older than it by
+            // definition and must not come back as the active dictionary.
+            val recovered = if (quarantineError() == null) recoverFromBackup() else null
             val absorbed = absorbQuarantined(recovered ?: SpeechDictionaryDocument())
             if (recovered != null || absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
             _state.value = SpeechDictionaryState(absorbed.document, loaded = true, loadError = quarantineError())
@@ -407,8 +411,14 @@ class SpeechDictionaryRepository(
             // write it back so a restart before the next edit does not start empty.
             val recovered = recoverFromBackup()
             _state.value = if (recovered != null) {
-                if (movedAside) runCatching { write(recovered) }
-                SpeechDictionaryState(recovered, loaded = true, loadError = if (movedAside) null else SpeechDictionaryLoadError.UNREADABLE)
+                // The warning only goes once the recovered copy is safely back at the main path.
+                val writtenBack = movedAside && runCatching { write(recovered) }.isSuccess
+                SpeechDictionaryState(
+                    recovered,
+                    loaded = true,
+                    loadError = if (writtenBack) null else SpeechDictionaryLoadError.UNREADABLE,
+                    saveError = !writtenBack,
+                )
             } else {
                 SpeechDictionaryState(
                     SpeechDictionaryDocument(),

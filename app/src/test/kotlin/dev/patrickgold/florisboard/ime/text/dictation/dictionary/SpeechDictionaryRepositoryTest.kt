@@ -108,7 +108,25 @@ class SpeechDictionaryRepositoryTest : FunSpec({
             repository.setFillerLanguage("en", false)
             repository.setFillerLanguage("xx", true)
             repository.state.value.document.fillers.languages shouldBe listOf("nl", "de", "fr")
+            // Codes are canonicalised before adding or removing, so `NL` removes the stored `nl`.
+            repository.setFillerLanguage(" NL ", false)
+            repository.setFillerLanguage("DE", true)
+            repository.state.value.document.fillers.languages shouldBe listOf("de", "fr")
         }
+    }
+
+    test("a leftover copy is not restored while a file kept for a newer app is waiting") {
+        val dir = temp()
+        File(dir, "personal_dictionary.json.newer-v2-5").writeText(
+            """{"version":2,"nextId":2,"words":[{"id":1,"word":"Ownkey"}],"corrections":[],"fillers":{"enabled":true,"languages":["en"],"custom":[]}}""",
+        )
+        File(dir, "personal_dictionary.json.bak").writeText(
+            SpeechDictionaryDocument.encode(SpeechDictionaryDocument(nextId = 2, words = listOf(VocabularyEntry(1, "Stale")))),
+        )
+        val state = runBlocking { repository(dir).awaitLoaded() }
+        state.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        state.document.isEmpty shouldBe true
+        File(dir, "personal_dictionary.json").exists() shouldBe false
     }
 
     test("remove returns the entry with its index and undo puts it back in place") {

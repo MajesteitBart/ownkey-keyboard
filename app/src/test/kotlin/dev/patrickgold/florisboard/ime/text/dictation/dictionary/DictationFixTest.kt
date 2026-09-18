@@ -19,12 +19,21 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 private fun cursorContent(text: String, cursor: Int = text.length, offset: Int = 0) = EditorContent(
     text = text,
@@ -41,6 +50,32 @@ private fun selectedContent(text: String, start: Int, end: Int) = EditorContent(
     localComposing = EditorRange.Unspecified,
     localCurrentWord = EditorRange.Unspecified,
 )
+
+/**
+ * Single-thread IO dispatcher whose first task can be held, so a test decides exactly when a queued
+ * repository write runs. [drain] returns once everything queued before it, including the inline
+ * continuation of an unconfined caller, has finished.
+ */
+private class GatedIo : AutoCloseable {
+    private val executor = Executors.newSingleThreadExecutor()
+    private val gate = CountDownLatch(1)
+    val dispatcher = executor.asCoroutineDispatcher()
+
+    fun hold() {
+        executor.execute { gate.await() }
+    }
+
+    fun release() = gate.countDown()
+
+    fun drain() {
+        executor.submit { }.get(10, TimeUnit.SECONDS)
+    }
+
+    override fun close() {
+        gate.countDown()
+        executor.shutdownNow()
+    }
+}
 
 private class FakeEditor : DictationFixEditorGateway {
     val emissions = MutableSharedFlow<EditorContent>(extraBufferCapacity = 64)
@@ -169,6 +204,7 @@ class OrdinaryDictationCleanupTest : FunSpec({
     }
 })
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DictationFixControllerTest : FunSpec({
     class Harness {
         var now = 100_000L
@@ -336,24 +372,46 @@ class DictationFixControllerTest : FunSpec({
     }
 
     test("a keystroke inside the commit grace still retires the offer once the grace ends") {
-        val h = Harness()
-        h.controller.offer(h.insertion(agoMs = 0L))
-        h.editor.emit(cursorContent(h.hostText + " x"))
-        h.controller.state.value.shouldBeInstanceOf<DictationFixState.Offered>()
-        // The recheck runs on the real clock after the remaining grace.
-        val deadline = System.currentTimeMillis() + 3_000L
-        while (h.controller.state.value !is DictationFixState.Hidden && System.currentTimeMillis() < deadline) Thread.sleep(25)
-        h.controller.state.value shouldBe DictationFixState.Hidden
+        // Virtual time: the grace and the recheck are driven by the test scheduler, not the wall clock.
+        runTest {
+            val base = 100_000L
+            val editor = FakeEditor()
+            val dir = Files.createTempDirectory("fix-grace").toFile()
+            val repository = SpeechDictionaryRepository(
+                file = File(dir, "personal_dictionary.json"),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+                ioDispatcher = Dispatchers.Unconfined,
+                computeDispatcher = Dispatchers.Unconfined,
+            )
+            val controller = DictationFixController(
+                scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)),
+                repository = repository,
+                editor = editor,
+                openDictionary = {},
+                clock = { base + testScheduler.currentTime },
+            )
+            controller.offer(DictationInsertion("raw", " own key works", 1L, "com.example.notes", 7, base))
+            editor.emit(cursorContent("Before own key works x"))
+            controller.state.value.shouldBeInstanceOf<DictationFixState.Offered>()
+            advanceTimeBy(DictationFixController.COMMIT_GRACE_MS - 1)
+            runCurrent()
+            controller.state.value.shouldBeInstanceOf<DictationFixState.Offered>()
+            advanceTimeBy(2)
+            runCurrent()
+            controller.state.value shouldBe DictationFixState.Hidden
+        }
     }
 
     test("a dismissal while the save is still being written wins over the late confirmation") {
         val dir = Files.createTempDirectory("fix-race").toFile()
+        val gated = GatedIo()
         val slowRepository = SpeechDictionaryRepository(
             file = File(dir, "personal_dictionary.json"),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
-            ioDispatcher = Dispatchers.IO,
+            ioDispatcher = gated.dispatcher,
             computeDispatcher = Dispatchers.Unconfined,
         )
+        runBlocking { slowRepository.awaitLoaded() }
         val editor = FakeEditor()
         val controller = DictationFixController(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
@@ -369,14 +427,15 @@ class DictationFixControllerTest : FunSpec({
         controller.beginReplacement(cursorContent("Before own key works"))
         editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
         (controller.state.value as DictationFixState.Replacing).canSave shouldBe true
+        // The write is queued behind a held IO task, so the dismissal provably lands first.
+        gated.hold()
         controller.save()
-        // The write hops to the IO dispatcher; the user dismisses before it lands.
         controller.dismiss()
-        val deadline = System.currentTimeMillis() + 5_000L
-        while (runBlocking { slowRepository.export() }.corrections.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(25)
+        gated.release()
+        gated.drain()
         runBlocking { slowRepository.export() }.corrections.map { it.source to it.replacement } shouldBe listOf("own" to "Ownkey")
-        Thread.sleep(100)
         controller.state.value shouldBe DictationFixState.Hidden
+        gated.close()
     }
 
     test("losing AI availability ends the flow in every state, including an active replacement") {
@@ -413,12 +472,14 @@ class DictationFixControllerTest : FunSpec({
 
     test("an abort during a save drops the word hint and the confirmation") {
         val dir = Files.createTempDirectory("fix-abort-save").toFile()
+        val gated = GatedIo()
         val slowRepository = SpeechDictionaryRepository(
             file = File(dir, "personal_dictionary.json"),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
-            ioDispatcher = Dispatchers.IO,
+            ioDispatcher = gated.dispatcher,
             computeDispatcher = Dispatchers.Unconfined,
         )
+        runBlocking { slowRepository.awaitLoaded() }
         val editor = FakeEditor()
         val controller = DictationFixController(
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
@@ -432,16 +493,20 @@ class DictationFixControllerTest : FunSpec({
         controller.tapToken(0)
         controller.beginReplacement(cursorContent("Before own key works"))
         editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
+        // The correction write is already queued behind a held IO task when incognito switches on.
+        gated.hold()
         controller.save()
-        // Incognito switches on while the correction is being written.
         controller.abort()
         controller.state.value shouldBe DictationFixState.Hidden
-        val deadline = System.currentTimeMillis() + 3_000L
-        while (System.currentTimeMillis() < deadline && runBlocking { slowRepository.export() }.corrections.isEmpty()) Thread.sleep(25)
-        Thread.sleep(200)
-        // Whatever happened to the correction write, no word hint was learned afterwards and nothing was confirmed.
-        runBlocking { slowRepository.export() }.words shouldBe emptyList()
+        gated.release()
+        gated.drain()
+        // The write in progress completes for consistency, but no word hint follows and nothing is confirmed.
+        runBlocking { slowRepository.export() }.let { document ->
+            document.corrections.map { it.source to it.replacement } shouldBe listOf("own" to "Ownkey")
+            document.words shouldBe emptyList()
+        }
         controller.state.value shouldBe DictationFixState.Hidden
+        gated.close()
     }
 
     test("a save that storage refused is reported, not confirmed") {
