@@ -210,6 +210,25 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { repository(dir).awaitLoaded() }.loadError shouldBe null
     }
 
+    test("restore preflight validates without changing live entries or disk") {
+        val dir = temp()
+        val store = repository(dir)
+        runBlocking { store.addWord("Existing") }
+        val before = store.state.value
+        val file = File(dir, "personal_dictionary.json")
+        val bytes = file.readText()
+        shouldThrow<RestoreRejectedException> { store.validateRestore(SpeechDictionaryDocument(version = 99)) }
+        shouldThrow<RestoreRejectedException> {
+            store.validateRestore(SpeechDictionaryDocument(words = listOf(VocabularyEntry(1, " "))))
+        }
+        shouldThrow<RestoreRejectedException> {
+            store.validateRestore(SpeechDictionaryDocument(corrections = listOf(CorrectionEntry(1, "same", "same"))))
+        }
+        store.validateRestore(SpeechDictionaryDocument(words = listOf(VocabularyEntry(1, "Valid"))))
+        store.state.value shouldBeSameInstanceAs before
+        file.readText() shouldBe bytes
+    }
+
     test("an accepted settings save survives navigation cancelling its caller") {
         val dir = temp()
         val cancelOnWrite = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>()
@@ -665,7 +684,9 @@ class SpeechDictionaryRepositoryTest : FunSpec({
             file = File(crashDir, file.name), scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             supportedVersion = 2, deleteKeptFile = { false },
         )
-        runBlocking { restarted.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
+        val restartedDocument = runBlocking { restarted.awaitLoaded() }.document
+        restartedDocument.words.map { it.word } shouldBe listOf("Later")
+        restartedDocument.consumedQuarantines shouldBe setOf(kept.name)
         runBlocking { restarted.export() }.consumedQuarantines shouldBe emptySet()
     }
 
@@ -686,6 +707,26 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         )
         runBlocking { store.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
         SpeechDictionaryDocument.decode(file.readText()).consumedQuarantines shouldBe setOf(kept.name)
+    }
+
+    test("unreadable main recovery preserves the backup consumed record across another restart") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json").apply { writeText("broken main") }
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        kept.writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 2, words = listOf(VocabularyEntry(1, "Removed")),
+        )))
+        File(dir, "${file.name}.bak").writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 3, words = listOf(VocabularyEntry(2, "Later")),
+            consumedQuarantines = setOf(kept.name),
+        )))
+        fun reopened() = SpeechDictionaryRepository(
+            file = file, scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            supportedVersion = 2, deleteKeptFile = { false },
+        )
+        runBlocking { reopened().awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
+        SpeechDictionaryDocument.decode(file.readText()).consumedQuarantines shouldBe setOf(kept.name)
+        runBlocking { reopened().awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
     }
 
     test("inline consumed record prevents resurrection even if a legacy marker cannot be written") {

@@ -60,6 +60,7 @@ import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
 import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
 import dev.patrickgold.jetpref.material.ui.JetPrefListItem
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -213,11 +214,18 @@ fun BackupScreen() = FlorisScreen {
         }
         if (backupFilesSelector.speechDictionary) {
             // Versioned portable copy of the speech dictionary; the typing dictionaries are separate.
-            val document = context.speechDictionary().value.export()
-            val speechDir = workspace.inputDir.subDir(Backup.SPEECH_DIR_NAME)
-            speechDir.mkdirs()
-            speechDir.subFile(Backup.SPEECH_DICTIONARY_JSON_NAME)
-                .writeText(SpeechDictionaryDocument.encode(document), Charsets.UTF_8)
+            try {
+                val document = context.speechDictionary().value.export()
+                val speechDir = workspace.inputDir.subDir(Backup.SPEECH_DIR_NAME)
+                speechDir.mkdirs()
+                speechDir.subFile(Backup.SPEECH_DICTIONARY_JSON_NAME)
+                    .writeText(SpeechDictionaryDocument.encode(document), Charsets.UTF_8)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // The outer backup handler logs failures; keep private paths and data out of them.
+                throw IllegalStateException(context.getString(R.string.speech_dictionary__backup_failed))
+            }
         }
 
         if (backupFilesSelector.provideClipboardItems()) {

@@ -292,6 +292,15 @@ class SpeechDictionaryRepository(
      */
     /** Returns false when the restored document is only held in memory because the write failed. */
     suspend fun restore(backup: SpeechDictionaryDocument, merge: Boolean): Boolean {
+        validateRestore(backup)
+        return mutate(outcome = { _, persisted -> persisted }) { document ->
+            val base = if (merge) document else document.copy(words = emptyList(), corrections = emptyList())
+            merged(base, backup) to true
+        }
+    }
+
+    /** Preflight validation for multi-target restore, without changing any dictionary state. */
+    fun validateRestore(backup: SpeechDictionaryDocument) {
         if (backup.version > supportedVersion) {
             throw RestoreRejectedException(
                 "Personal dictionary backup version ${backup.version} is newer than this app supports.",
@@ -315,11 +324,6 @@ class SpeechDictionaryRepository(
                 throw RestoreRejectedException("Personal dictionary backup correction ${index + 1} does not change anything.")
             }
         }
-        mutate { document ->
-            val base = if (merge) document else document.copy(words = emptyList(), corrections = emptyList())
-            merged(base, backup) to Unit
-        }
-        return !_state.value.saveError
     }
 
     /** Adds the entries of [incoming] that [base] lacks, and takes its filler settings. */
@@ -514,7 +518,7 @@ class SpeechDictionaryRepository(
             // A process death after replacement therefore cannot merge an absorbed file again.
             val persisted = document.copy(
                 version = supportedVersion,
-                consumedQuarantines = pendingConsumed.map { it.name }.toSet(),
+                consumedQuarantines = document.consumedQuarantines + pendingConsumed.map { it.name },
             )
             stream.write(SpeechDictionaryDocument.encode(persisted).toByteArray(Charsets.UTF_8))
             stream.fd.sync()

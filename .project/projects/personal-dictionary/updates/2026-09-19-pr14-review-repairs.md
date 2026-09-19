@@ -100,3 +100,13 @@ References: [dialog dismissal](https://github.com/MajesteitBart/ownkey-keyboard/
 - Real-file tests snapshot the exact post-replacement/pre-retirement crash window, restart without a sidecar, simulate a failed sidecar path, check portable export, and recover a fallback checkpoint without resurrecting removed entries. Both newly identified crash paths failed before their repairs.
 
 Reference: [crash window between main and marker](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053366395).
+
+## Fallback Checkpoints and Backup Preflight
+
+- Rewriting an unreadable main from its fallback now preserves the fallback's consumed-file record. A real-file regression failed before the repair and verifies the rewritten checkpoint plus a second restart without resurrecting deleted entries.
+- The crash-window test separately asserts the restarted document contains its recovery record and the portable export omits it.
+- Selected speech backup data is decoded and validated before preferences, extensions or clipboard are changed. A regression verifies preflight rejects incompatible and invalid rows without changing live state or disk. Restore persistence results are captured under the mutation lock.
+- Speech backup write failures become a fixed localized error without the original exception cause or private paths. Coroutine cancellation still propagates.
+- All 463 app tests, debug assembly and release Kotlin compilation pass. No new device smoke test was possible; physical Orukeet hotword qualification remains pending.
+
+References: [fallback record](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053404281), [restart assertion](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053402420), [restore preflight](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053404283), [backup logging](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053404285).
