@@ -1526,7 +1526,7 @@
     <string name="speech_dictionary__typing_link_title">Personal dictionary for dictation</string>
     <string name="speech_dictionary__typing_link_summary">Names, corrections and filler words for AI dictation. Separate from the typing dictionaries above.</string>
     <string name="speech_dictionary__backup_label">Personal dictionary (dictation)</string>
-    <string name="speech_dictionary__restore_invalid">The personal dictionary in this backup could not be read: {reason}</string>
+    <string name="speech_dictionary__restore_invalid">The personal dictionary in this backup could not be read.</string>
 
     <!-- Keyboard-side flow that turns a misheard word into a saved correction. -->
     <string name="dictation_fix__chip">Fix a word</string>

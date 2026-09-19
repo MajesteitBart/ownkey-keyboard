@@ -187,13 +187,10 @@ fun RestoreScreen() = FlorisScreen {
             if (file.exists()) {
                 val document = try {
                     SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8))
-                } catch (error: Exception) {
-                    throw IllegalStateException(
-                        context.stringRes(
-                            R.string.speech_dictionary__restore_invalid,
-                            "reason" to (error.message ?: error.javaClass.simpleName),
-                        ),
-                    )
+                } catch (_: Exception) {
+                    // Decoder excerpts and IO messages may contain saved text or private paths.
+                    // Do not retain the original exception as a cause: the restore caller logs it.
+                    throw IllegalStateException(context.stringRes(R.string.speech_dictionary__restore_invalid))
                 }
                 // Validates before writing; an incompatible document leaves the entries untouched.
                 // A write that storage refused is a failed restore, not a success to navigate away from.

@@ -157,7 +157,7 @@
     <string name="speech_dictionary__typing_link_title">Persoonlijk woordenboek voor dicteren</string>
     <string name="speech_dictionary__typing_link_summary">Namen, correcties en stopwoorden voor AI-dicteren. Los van de typwoordenboeken hierboven.</string>
     <string name="speech_dictionary__backup_label">Persoonlijk woordenboek (dicteren)</string>
-    <string name="speech_dictionary__restore_invalid">Het persoonlijk woordenboek in deze back-up kon niet worden gelezen: {reason}</string>
+    <string name="speech_dictionary__restore_invalid">Het persoonlijk woordenboek in deze back-up kon niet worden gelezen.</string>
 
     <!-- Een verkeerd verstaan woord vanaf het toetsenbord corrigeren. -->
     <string name="dictation_fix__chip">Woord corrigeren</string>
