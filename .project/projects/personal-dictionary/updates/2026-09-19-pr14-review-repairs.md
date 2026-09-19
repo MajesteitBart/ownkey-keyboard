@@ -52,3 +52,11 @@ References: [attached punctuation](https://github.com/MajesteitBart/ownkey-keybo
 - Android device qualification remains pending; no connected device was available. Fresh final-head review and CI remain required before merging into the Orukeet branch.
 
 References: [settings navigation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053130336), [unspaced sentences](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053130341), [quarantine cancellation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053141896), [opening punctuation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053141904).
+
+## Endpoint Parsing and Combined Saves
+
+- Automatic cloud vocabulary disclosure now derives the host through the same `java.net.URL` parser as the HTTP client and accepts only HTTP(S). Fragment/user-info lookalikes, malformed ports, missing schemes, and unrelated hosts receive no automatic hints.
+- Keyboard correction and optional vocabulary learning now share one repository mutation and file replacement. Dismissal during persistence cannot leave half a requested save; incognito cancellation before replacement discards both entries. Existing vocabulary is reused, with unique IDs preserved when updating a correction.
+- Before these repairs, two added regressions failed: endpoint impersonation through a fragment and dismissal during persistence. Fresh final-head review and CI remain required.
+
+References: [endpoint parsing](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053181004), [atomic learning](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053181008).

@@ -167,6 +167,22 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Ownkey")
     }
 
+    test("combined correction saves reuse existing words and keep entry ids unique") {
+        val dir = temp()
+        val store = repository(dir)
+        runBlocking {
+            store.addWord("Ownkey")
+            store.upsertCorrection("own key", "OWNKEY", addAsWord = true).shouldBeInstanceOf<EntryResult.Saved>()
+            store.upsertCorrection("own key", "Orukeet", addAsWord = true).shouldBeInstanceOf<EntryResult.Saved>()
+            store.upsertCorrection("same", "same", addAsWord = true) shouldBe EntryResult.Rejected(EntryError.IDENTICAL)
+        }
+        val saved = runBlocking { repository(dir).awaitLoaded() }.document
+        saved.words.map { it.word } shouldBe listOf("Ownkey", "Orukeet")
+        saved.corrections.map { it.source to it.replacement } shouldBe listOf("own key" to "Orukeet")
+        (saved.words.map { it.id } + saved.corrections.map { it.id }).sorted() shouldBe listOf(1L, 2L, 3L)
+        saved.nextId shouldBe 4L
+    }
+
     test("an accepted settings save survives navigation cancelling its caller") {
         val dir = temp()
         val cancelOnWrite = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>()

@@ -269,12 +269,20 @@ class OrdinaryDictationCleanupTest : FunSpec({
 @OptIn(ExperimentalCoroutinesApi::class)
 class DictationFixControllerTest : FunSpec({
     class Harness {
+        var duringWrite: (() -> Unit)? = null
         var now = 100_000L
         val editor = FakeEditor()
         val opened = ArrayList<String>()
         val dir: File = Files.createTempDirectory("fix-flow").toFile()
         val repository = SpeechDictionaryRepository(
-            file = File(dir, "personal_dictionary.json"),
+            file = object : File(dir, "personal_dictionary.json") {
+                override fun getParentFile(): File? {
+                    val callback = duringWrite
+                    duringWrite = null
+                    callback?.invoke()
+                    return super.getParentFile()
+                }
+            },
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             ioDispatcher = Dispatchers.Unconfined,
             computeDispatcher = Dispatchers.Unconfined,
@@ -360,6 +368,20 @@ class DictationFixControllerTest : FunSpec({
         val document = runBlocking { h.repository.export() }
         document.corrections.map { it.source to it.replacement } shouldBe listOf("own key" to "Ownkey")
         document.words.map { it.word } shouldBe listOf("Ownkey")
+    }
+
+    test("dismissal during persistence saves the correction and selected word together") {
+        val h = Harness()
+        h.offerAndChoose(0, 1)
+        h.controller.beginReplacement(cursorContent(h.hostText))
+        h.editor.emit(cursorContent("Before Ownkey works", cursor = 13))
+        h.duringWrite = { h.controller.dismiss() }
+        h.controller.save()
+        h.controller.state.value shouldBe DictationFixState.Hidden
+        val disk = SpeechDictionaryDocument.decode(File(h.dir, "personal_dictionary.json").readText())
+        disk.corrections.map { it.source to it.replacement } shouldBe listOf("own key" to "Ownkey")
+        disk.words.map { it.word } shouldBe listOf("Ownkey")
+        runBlocking { h.repository.export() }.words shouldBe disk.words
     }
 
     test("the word hint is optional and a replacement equal to the source cannot be saved") {

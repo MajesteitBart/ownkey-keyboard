@@ -10,6 +10,8 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation.dictionary
 
+import java.net.URL
+
 /** How vocabulary reaches a cloud transcription endpoint. Stored as a preference. */
 enum class CloudVocabularyMode(val preference: String) {
     /** Known endpoints with a documented field get it; unknown or custom endpoints get nothing. */
@@ -92,11 +94,9 @@ object CloudVocabularyHints {
     fun promptText(vocabulary: List<String>): String = vocabulary.joinToString(", ")
 
     private fun hostOf(endpointUrl: String): String? {
-        val trimmed = endpointUrl.trim()
-        if (trimmed.isEmpty()) return null
-        val withoutScheme = trimmed.substringAfter("://", missingDelimiterValue = trimmed)
-        val authority = withoutScheme.substringBefore('/').substringBefore('?')
-        val host = authority.substringAfterLast('@').substringBefore(':').lowercase()
-        return host.ifEmpty { null }
+        // Use the HTTP client's parser: fragments and user-info must never impersonate a host.
+        val url = runCatching { URL(endpointUrl.trim()) }.getOrNull() ?: return null
+        if (url.protocol != "https" && url.protocol != "http") return null
+        return url.host.lowercase().ifEmpty { null }
     }
 }

@@ -101,7 +101,7 @@ class DictationFixController(
     /**
      * Ends the flow in every state, including an active replacement and a save that has not
      * started writing yet: nothing may be learned now. A write already in progress completes so
-     * disk and memory stay consistent; its word hint and confirmation are dropped.
+     * disk and memory stay consistent; its confirmation is dropped.
      */
     fun abort() {
         saveJob?.cancel()
@@ -198,13 +198,13 @@ class DictationFixController(
         val addAsWord = current.addAsWord
         saveJob?.cancel()
         saveJob = scope.launch {
-            val correction = repository.upsertCorrection(source, replacement, cancelBeforeCommit = true)
+            val correction = repository.upsertCorrection(
+                source, replacement, cancelBeforeCommit = true, addAsWord = addAsWord,
+            )
             // The write is asynchronous; a dismissal, an abort or a new dictation in the meantime
-            // owns the state now, and no further learning happens for it.
+            // owns the state now. The correction and word are committed together, or neither is.
             if (_state.value !== current) return@launch
-            val wordAdded = correction is EntryResult.Saved && addAsWord &&
-                repository.addWord(replacement, cancelBeforeCommit = true) is EntryResult.Saved
-            if (_state.value !== current) return@launch
+            val wordAdded = correction is EntryResult.Saved && addAsWord
             if (correction is EntryResult.Rejected) {
                 publish(DictationFixState.Hidden)
                 return@launch

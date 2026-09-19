@@ -16,6 +16,20 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
 class CloudVocabularyHintsTest : FunSpec({
+    test("automatic hints follow the HTTP URL host instead of fragment or authority lookalikes") {
+        listOf(
+            "https://evil.example#@api.mistral.ai/path",
+            "https://evil.example#@api.openai.com/path",
+            "api.mistral.ai/path",
+            "ftp://api.mistral.ai/path",
+            "https://api.mistral.ai:bad/path",
+            "https://api.mistral.ai.evil.example/path",
+            "https://api.mistral.ai@evil.example/path",
+        ).forEach { endpoint ->
+            CloudVocabularyHints.field(endpoint, CloudVocabularyMode.AUTO) shouldBe CloudVocabularyField.NONE
+        }
+    }
+
     val mistral = "https://api.mistral.ai/v1/audio/transcriptions"
     val openai = "https://api.openai.com/v1/audio/transcriptions"
     val custom = "https://asr.example.org/v1/audio/transcriptions"

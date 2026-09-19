@@ -160,32 +160,34 @@ class SpeechDictionaryRepository(
             EntryResult.Saved(SpeechDictionaryEntry.Correction(entry))
     }
 
-    /** Adds the correction, or updates the replacement of an existing rule with the same source. */
+    /** Upserts the correction and, optionally, its vocabulary word in one persisted document. */
     suspend fun upsertCorrection(
         source: String,
         replacement: String,
         cancelBeforeCommit: Boolean = false,
+        addAsWord: Boolean = false,
     ): EntryResult = mutate(cancelBeforeCommit) { document ->
         val key = TranscriptCleanup.normalizeTerm(source).lowercase()
         val existing = document.corrections.firstOrNull { it.source.lowercase() == key }
-        if (existing == null) {
-            SpeechDictionaryValidation.validateCorrection(document, source, replacement)
-                ?.let { return@mutate document to EntryResult.Rejected(it) }
-            val entry = CorrectionEntry(
-                id = document.nextId,
-                source = TranscriptCleanup.normalizeTerm(source),
-                replacement = TranscriptCleanup.normalizeTerm(replacement),
-                createdAt = clock(),
-            )
-            document.copy(nextId = document.nextId + 1, corrections = document.corrections + entry) to
-                EntryResult.Saved(SpeechDictionaryEntry.Correction(entry))
+        SpeechDictionaryValidation.validateCorrection(document, existing?.source ?: source, replacement, existing?.id)
+            ?.let { return@mutate document to EntryResult.Rejected(it) }
+        val normalizedReplacement = TranscriptCleanup.normalizeTerm(replacement)
+        val entry = existing?.copy(replacement = normalizedReplacement) ?: CorrectionEntry(
+            id = document.nextId,
+            source = TranscriptCleanup.normalizeTerm(source),
+            replacement = normalizedReplacement,
+            createdAt = clock(),
+        )
+        var next = if (existing == null) {
+            document.copy(nextId = document.nextId + 1, corrections = document.corrections + entry)
         } else {
-            SpeechDictionaryValidation.validateCorrection(document, existing.source, replacement, existing.id)
-                ?.let { return@mutate document to EntryResult.Rejected(it) }
-            val updated = existing.copy(replacement = TranscriptCleanup.normalizeTerm(replacement))
-            document.copy(corrections = document.corrections.map { if (it.id == existing.id) updated else it }) to
-                EntryResult.Saved(SpeechDictionaryEntry.Correction(updated))
+            document.copy(corrections = document.corrections.map { if (it.id == existing.id) entry else it })
         }
+        if (addAsWord && next.words.none { it.word.lowercase() == normalizedReplacement.lowercase() }) {
+            val word = VocabularyEntry(next.nextId, normalizedReplacement, clock())
+            next = next.copy(nextId = next.nextId + 1, words = next.words + word)
+        }
+        next to EntryResult.Saved(SpeechDictionaryEntry.Correction(entry))
     }
 
     suspend fun updateWord(id: Long, word: String): EntryResult = mutate { document ->
