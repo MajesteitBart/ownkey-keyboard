@@ -207,6 +207,17 @@ class OrdinaryDictationCleanupTest : FunSpec({
             DictationCleanupResult.OnlyFillers("Uh... um!")
     }
 
+    test("non-Latin sentence marks left by fillers are empty but intentionally dictated marks survive") {
+        "؟۔؛।॥։܀܁܂።⸮".forEach { mark ->
+            OrdinaryDictationCleanup.hasContent(mark.toString()) shouldBe false
+            val speech = "Uh, $mark"
+            OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript(speech), cleaner) shouldBe
+                DictationCleanupResult.OnlyFillers(speech)
+            OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript(mark.toString()), cleaner) shouldBe
+                DictationCleanupResult.Ready(TranscriptionOutcome.Transcript(mark.toString()), mark.toString())
+        }
+    }
+
     test("content is anything but sentence marks, dashes, quotes, brackets and spacing") {
         listOf("a", "7", "$", "€", "+", "%", "&", "@", "#", "😊", "𝔘", "é").forEach { OrdinaryDictationCleanup.hasContent(it) shouldBe true }
         listOf("", " ", ".", ",", "?!", "…", "—", "-", "\"", "'", "«»", "()", "¿", "。", "\n\t").forEach {

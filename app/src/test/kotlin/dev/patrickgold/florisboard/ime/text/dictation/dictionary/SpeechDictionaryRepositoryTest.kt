@@ -129,6 +129,62 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         File(dir, "personal_dictionary.json").exists() shouldBe false
     }
 
+    test("an upgrade after interrupted quarantine never restores a stale backup ahead of the kept main") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val newer = SpeechDictionaryDocument(
+            version = 2,
+            nextId = 3,
+            words = listOf(VocabularyEntry(1, "Current")),
+            corrections = listOf(CorrectionEntry(2, "own key", "Ownkey")),
+        )
+        // State left by a crash after the main rename but before the old backup was removed.
+        File(dir, "personal_dictionary.json.newer-v2-5").writeText(SpeechDictionaryDocument.encode(newer))
+        File(dir, "personal_dictionary.json.bak").writeText(SpeechDictionaryDocument.encode(
+            SpeechDictionaryDocument(
+                nextId = 3,
+                words = listOf(VocabularyEntry(1, "Deleted")),
+                corrections = listOf(CorrectionEntry(2, "own key", "Outdated")),
+            ),
+        ))
+        fun upgraded() = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            supportedVersion = 2,
+        )
+        repeat(2) {
+            val state = runBlocking { upgraded().awaitLoaded() }
+            state.loadError shouldBe null
+            state.document.words.map { it.word } shouldBe listOf("Current")
+            state.document.corrections.map { it.replacement } shouldBe listOf("Ownkey")
+        }
+    }
+
+    test("a failed stale backup deletion keeps the newer main in place until quarantine can safely retry") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val newer = SpeechDictionaryDocument.encode(SpeechDictionaryDocument(version = 2))
+        file.writeText(newer)
+        // A non-empty directory makes deletion fail on both Windows and Unix.
+        val backup = File(dir, "personal_dictionary.json.bak")
+        val child = File(backup, "child").apply { parentFile!!.mkdirs(); writeText("blocked") }
+        val repository = repository(dir, clock = { 5L })
+        runBlocking { repository.awaitLoaded() }.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        file.exists() shouldBe true
+        file.readText() shouldBe newer
+        File(dir, "personal_dictionary.json.newer-v2-5").exists() shouldBe false
+        runBlocking { repository.addWord("Meanwhile") }
+        repository.state.value.saveError shouldBe true
+        file.readText() shouldBe newer
+
+        child.delete() shouldBe true
+        runBlocking { repository.addWord("Later") }
+        repository.state.value.saveError shouldBe false
+        backup.exists() shouldBe false
+        File(dir, "personal_dictionary.json.newer-v2-5").readText() shouldBe newer
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Meanwhile", "Later")
+    }
+
     test("remove returns the entry with its index and undo puts it back in place") {
         val dir = temp()
         val repository = repository(dir)
@@ -290,7 +346,8 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         val state = runBlocking { repository.awaitLoaded() }
         state.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
         file.readText() shouldBe newer
-        File(dir, "personal_dictionary.json.bak").exists() shouldBe true
+        // The stale backup is retired first; a failed main rename still preserves the newer data.
+        File(dir, "personal_dictionary.json.bak").exists() shouldBe false
 
         runBlocking { repository.addWord("Meanwhile") }
         // The edit is served but nothing on disk changed; the warning stays, the change counts as
@@ -393,6 +450,7 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         )
         val state = runBlocking { upgraded.awaitLoaded() }
         state.document.words.map { it.word } shouldBe listOf("Ownkey")
+        state.saveError shouldBe true
         file.exists() shouldBe false
         kept.exists() shouldBe true
 

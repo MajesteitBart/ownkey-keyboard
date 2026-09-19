@@ -386,12 +386,14 @@ class SpeechDictionaryRepository(
         if (!file.exists()) {
             // A crash between moving a damaged file aside and rewriting it leaves only the copy; a
             // file kept for a newer app is taken back as soon as this app understands its version.
-            // While a file kept for a newer app is waiting, a leftover copy is older than it by
-            // definition and must not come back as the active dictionary.
-            val recovered = if (quarantineError() == null) recoverFromBackup() else null
+            // Any kept main outranks the stale backup, including after an upgrade that can now
+            // read its version. This also covers a crash in older builds between rename and delete.
+            val recovered = if (quarantinedFiles().isEmpty()) recoverFromBackup() else null
             val absorbed = absorbQuarantined(recovered ?: SpeechDictionaryDocument())
-            if (recovered != null || absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed)
-            _state.value = SpeechDictionaryState(absorbed.document.stamped(), loaded = true, loadError = quarantineError())
+            val persisted = if (recovered != null || absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed) else true
+            _state.value = SpeechDictionaryState(
+                absorbed.document.stamped(), loaded = true, loadError = quarantineError(), saveError = !persisted,
+            )
             return
         }
         // A version below 1 was never written by any app. It is handled like an unreadable file, the same
@@ -418,8 +420,13 @@ class SpeechDictionaryRepository(
             // outstanding. Merging them again would bring back entries the user removed since.
             val absorbed = absorbQuarantined(document, alreadyMerged = readMergedMarker())
             pendingConsumed = pendingConsumed + absorbed.skipped
-            if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed) else retirePendingConsumed()
-            _state.value = SpeechDictionaryState(absorbed.document.stamped(), loaded = true, loadError = quarantineError())
+            val persisted = if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed) else {
+                retirePendingConsumed()
+                true
+            }
+            _state.value = SpeechDictionaryState(
+                absorbed.document.stamped(), loaded = true, loadError = quarantineError(), saveError = !persisted,
+            )
         }.onFailure {
             // Keep the unreadable file for inspection instead of overwriting it on the next save.
             // If it cannot be moved aside now, no write may touch the main path until it can.
@@ -474,9 +481,11 @@ class SpeechDictionaryRepository(
 
     /** Keeps a newer-schema file for a later upgrade; the older `.bak` copy must not resurface. */
     private fun quarantineNewer(version: Int): Boolean {
-        if (!moveAside("newer-v$version-${clock()}")) return false
-        backupFile().delete()
-        return true
+        // Retire the stale backup before making the main path absent. If deletion fails, leave
+        // the authoritative main untouched and block writes until both steps can succeed.
+        val backup = backupFile()
+        if (!runCatching { !backup.exists() || backup.delete() }.getOrDefault(false)) return false
+        return moveAside("newer-v$version-${clock()}")
     }
 
     private fun quarantineUnreadable(): Boolean = moveAside("unreadable-${clock()}")
@@ -548,9 +557,11 @@ class SpeechDictionaryRepository(
      * did not, the removal waits for the next successful write, so a later restart cannot merge the
      * same files again and resurrect entries the user removed in between.
      */
-    private fun persistAbsorbed(absorbed: Absorbed) {
+    private fun persistAbsorbed(absorbed: Absorbed): Boolean {
         pendingConsumed = pendingConsumed + absorbed.consumed
-        if (runCatching { write(absorbed.document) }.isSuccess) retirePendingConsumed()
+        val persisted = runCatching { write(absorbed.document) }.isSuccess
+        if (persisted) retirePendingConsumed()
+        return persisted
     }
 
     /**

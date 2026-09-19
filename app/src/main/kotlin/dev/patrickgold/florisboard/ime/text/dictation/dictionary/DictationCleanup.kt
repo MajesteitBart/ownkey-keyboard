@@ -46,7 +46,7 @@ object OrdinaryDictationCleanup {
     }
 
     /** Sentence marks a recogniser places around words; what filler removal can leave behind. */
-    private const val SENTENCE_MARKS = ".,;:!?…‥'\"¡¿·。、，！？：；"
+    private const val SENTENCE_MARKS = ".,;:!?…‥'\"¡¿·。、，！？：；؟۔؛।॥։܀܁܂።⸮"
 
     /**
      * Letters, digits, marks and symbols (currency, maths, emoji) are content, and so is punctuation
