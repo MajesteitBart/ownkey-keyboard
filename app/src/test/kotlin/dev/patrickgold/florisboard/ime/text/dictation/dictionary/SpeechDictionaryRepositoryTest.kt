@@ -629,6 +629,36 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { reloaded.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
     }
 
+    test("failed quarantine marker persistence remains unsaved until retry prevents resurrection") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        kept.writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 2, words = listOf(VocabularyEntry(1, "Recovered")),
+        )))
+        val marker = File(dir, "personal_dictionary.json.merged")
+        val child = File(marker, "child").apply { parentFile.mkdirs(); writeText("blocked") }
+        fun upgraded() = SpeechDictionaryRepository(
+            file = file, scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            supportedVersion = 2, deleteKeptFile = { false },
+        )
+        val store = upgraded()
+        runBlocking { store.awaitLoaded() }.saveError shouldBe true
+        runBlocking { store.remove(1L) } shouldNotBe null
+        store.state.value.saveError shouldBe true
+        val pending = runBlocking { store.addWord("Later") }.shouldBeInstanceOf<EntryResult.Saved>()
+        pending.persisted shouldBe false
+        child.delete() shouldBe true
+        marker.delete() shouldBe true
+        runBlocking { store.updateWord(pending.entry.id, "Later") }
+            .shouldBeInstanceOf<EntryResult.Saved>().persisted shouldBe true
+        marker.readLines() shouldBe listOf(kept.name)
+        val reopened = runBlocking { upgraded().awaitLoaded() }
+        reopened.saveError shouldBe false
+        reopened.document.words.map { it.word } shouldBe listOf("Later")
+        kept.exists() shouldBe true
+    }
+
     test("a kept file that cannot be deleted is not merged again after a restart") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")

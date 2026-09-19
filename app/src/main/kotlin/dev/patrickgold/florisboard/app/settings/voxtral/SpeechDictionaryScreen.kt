@@ -158,12 +158,18 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                 AddEntryCard(
                     document = state.document,
                     initialHeard = heard,
-                    onAddWord = { id, word ->
-                        if (id != null && repository.state.value.document.words.any { it.id == id }) repository.updateWord(id, word)
+                    onAddWord = { pendingKey, word ->
+                        val id = pendingKey?.let { key ->
+                            repository.state.value.document.words.firstOrNull { it.word.lowercase() == key.lowercase() }?.id
+                        }
+                        if (id != null) repository.updateWord(id, word)
                         else repository.addWord(word)
                     },
-                    onAddCorrection = { id, source, replacement ->
-                        if (id != null && repository.state.value.document.corrections.any { it.id == id }) {
+                    onAddCorrection = { pendingKey, source, replacement ->
+                        val id = pendingKey?.let { key ->
+                            repository.state.value.document.corrections.firstOrNull { it.source.lowercase() == key.lowercase() }?.id
+                        }
+                        if (id != null) {
                             repository.updateCorrection(id, source, replacement)
                         } else repository.addCorrection(source, replacement)
                     },
@@ -271,8 +277,8 @@ private fun NoticeBanner(text: String, warning: Boolean = false) {
 private fun AddEntryCard(
     document: SpeechDictionaryDocument,
     initialHeard: String?,
-    onAddWord: suspend (Long?, String) -> EntryResult,
-    onAddCorrection: suspend (Long?, String, String) -> EntryResult,
+    onAddWord: suspend (String?, String) -> EntryResult,
+    onAddCorrection: suspend (String?, String, String) -> EntryResult,
 ) {
     val scope = rememberCoroutineScope()
     var correctionMode by rememberSaveable { mutableStateOf(!initialHeard.isNullOrBlank()) }
@@ -281,8 +287,9 @@ private fun AddEntryCard(
     var replacement by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<EntryError?>(null) }
     var notice by remember { mutableStateOf<SpeechDictionaryEntry?>(null) }
-    var pendingWordId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var pendingCorrectionId by rememberSaveable { mutableStateOf<Long?>(null) }
+    // A failed write's numeric ID may be reused after process death; retain the semantic key.
+    var pendingWordKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingCorrectionKey by rememberSaveable { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     var saveFailed by remember { mutableStateOf(false) }
 
@@ -299,8 +306,8 @@ private fun AddEntryCard(
         replacement = ""
         error = null
         saveFailed = false
-        pendingWordId = null
-        pendingCorrectionId = null
+        pendingWordKey = null
+        pendingCorrectionKey = null
     }
 
     fun save() {
@@ -309,16 +316,18 @@ private fun AddEntryCard(
         notice = null
         scope.launch {
             try {
-                val result = if (correctionMode) onAddCorrection(pendingCorrectionId, source, replacement)
-                else onAddWord(pendingWordId, word)
+                val result = if (correctionMode) onAddCorrection(pendingCorrectionKey, source, replacement)
+                else onAddWord(pendingWordKey, word)
                 when (result) {
                     is EntryResult.Saved -> {
                         saveFailed = !result.persisted
                         if (result.persisted) {
                             notice = result.entry
                             clear()
-                        } else if (correctionMode) pendingCorrectionId = result.entry.id
-                        else pendingWordId = result.entry.id
+                        } else when (val entry = result.entry) {
+                            is SpeechDictionaryEntry.Word -> pendingWordKey = entry.entry.word
+                            is SpeechDictionaryEntry.Correction -> pendingCorrectionKey = entry.entry.source
+                        }
                     }
                     is EntryResult.Rejected -> error = result.error
                 }
@@ -601,7 +610,7 @@ private fun EditEntryDialog(
     val isCorrection = entry is SpeechDictionaryEntry.Correction
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!saving) onDismiss() },
         containerColor = OwnkeyBrand.Panel,
         titleContentColor = OwnkeyBrand.Bone,
         textContentColor = OwnkeyBrand.Bone,
@@ -669,7 +678,7 @@ private fun EditEntryDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(enabled = !saving, onClick = { if (!saving) onDismiss() }) {
                 Text(text = userStringRes(R.string.action__cancel), color = OwnkeyBrand.Ash)
             }
         },

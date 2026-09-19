@@ -86,3 +86,8 @@ Reference: [interrupted load warning](https://github.com/MajesteitBart/ownkey-ke
 - Disk-backed storage tests cover failed word/correction adds and edits, successful retry without duplicates, and immutable per-operation results after a later successful save. No Android device was connected for a new UI smoke test.
 
 References: [native diagnostics](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053294977), [save feedback](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053294980).
+
+- Edit-dialog dismissal is disabled during an accepted save. Retried add drafts identify their original word/source rather than retaining a failed write's numeric ID across process death, where that ID could belong to a different entry.
+- Failure to persist a consumed-file marker now keeps recovery and later edits marked unsaved. The marker is flushed and replaced atomically where supported; failures propagate through load and mutation outcomes. A disk-backed regression covers marker path collision, failed deletion, a removed recovered word, successful retry and restart without resurrection.
+
+References: [dialog dismissal](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053312489), [marker persistence](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053319334).

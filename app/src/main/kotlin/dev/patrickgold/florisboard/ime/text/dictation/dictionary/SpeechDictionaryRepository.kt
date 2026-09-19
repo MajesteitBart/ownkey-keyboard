@@ -390,19 +390,20 @@ class SpeechDictionaryRepository(
                 // begins, finish publication non-cancellably so disk and memory cannot disagree.
                 withContext(NonCancellable) {
                     var blocked = false
+                    var mainWritten = false
                     val written = withContext(ioDispatcher) {
                         callerContext.ensureActive()
                         if (mainPathWritable()) {
                             runCatching { write(versioned) { callerContext.ensureActive() } }
                                 .onFailure { if (it is CancellationException) throw it }
-                                .onSuccess { retirePendingConsumed() }.isSuccess
+                                .onSuccess { mainWritten = true }.isSuccess && retirePendingConsumed()
                         } else {
                             blocked = true
                             false
                         }
                     }
                     // A cancelled failed write must not remain as an unsaved edit for later retry.
-                    if (!written) callerContext.ensureActive()
+                    if (!written && !mainWritten) callerContext.ensureActive()
                     persisted = written
                     _state.value = SpeechDictionaryState(
                         versioned,
@@ -466,7 +467,6 @@ class SpeechDictionaryRepository(
             pendingConsumed = pendingConsumed + absorbed.skipped
             val persisted = if (absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed) else {
                 retirePendingConsumed()
-                true
             }
             _state.value = SpeechDictionaryState(
                 absorbed.document.stamped(), loaded = true, loadError = quarantineError(), saveError = !persisted,
@@ -610,8 +610,7 @@ class SpeechDictionaryRepository(
     private fun persistAbsorbed(absorbed: Absorbed): Boolean {
         pendingConsumed = pendingConsumed + absorbed.consumed
         val persisted = runCatching { write(absorbed.document) }.isSuccess
-        if (persisted) retirePendingConsumed()
-        return persisted
+        return persisted && retirePendingConsumed()
     }
 
     /**
@@ -619,11 +618,11 @@ class SpeechDictionaryRepository(
      * contributed. Files that still cannot be deleted are recorded next to the main file, so the
      * next start retries the deletion instead of merging them a second time.
      */
-    private fun retirePendingConsumed() {
+    private fun retirePendingConsumed(): Boolean {
         val files = pendingConsumed
-        if (files.isEmpty() && !mergedMarker().exists()) return
+        if (files.isEmpty() && !mergedMarker().exists()) return true
         pendingConsumed = undeleted(files)
-        recordMerged(pendingConsumed)
+        return recordMerged(pendingConsumed)
     }
 
     /** Deletes the files and returns those that are still there, so a failed deletion is retried. */
@@ -636,20 +635,24 @@ class SpeechDictionaryRepository(
         mergedMarker().readLines(Charsets.UTF_8).map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     }.getOrDefault(emptySet())
 
-    /**
-     * Best effort. If the marker cannot be written either, the in-memory list still covers this
-     * process, which is the behaviour without a marker.
-     */
-    private fun recordMerged(files: List<File>) {
+    /** A main write is not durable recovery until remaining kept files are marked as consumed. */
+    private fun recordMerged(files: List<File>): Boolean {
         val marker = mergedMarker()
-        runCatching {
+        return runCatching {
             if (files.isEmpty()) {
-                if (marker.exists()) marker.delete()
+                check(!marker.exists() || marker.delete())
             } else {
                 val temp = File(marker.parentFile, "${marker.name}.tmp")
-                temp.writeText(files.joinToString("\n") { it.name }, Charsets.UTF_8)
-                Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                FileOutputStream(temp).use { stream ->
+                    stream.write(files.joinToString("\n") { it.name }.toByteArray(Charsets.UTF_8))
+                    stream.fd.sync()
+                }
+                try {
+                    Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                    Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
             }
-        }
+        }.isSuccess
     }
 }
