@@ -413,9 +413,17 @@ class SpeechDictionaryRepository(
             // read its version. This also covers a crash in older builds between rename and delete.
             val recovered = if (quarantinedFiles().isEmpty()) recoverFromBackup() else null
             val absorbed = absorbQuarantined(recovered ?: SpeechDictionaryDocument())
-            val persisted = if (recovered != null || absorbed.consumed.isNotEmpty()) persistAbsorbed(absorbed) else true
+            val hasRecovery = recovered != null || absorbed.consumed.isNotEmpty()
+            val persisted = if (hasRecovery) persistAbsorbed(absorbed) else true
+            val unreadableKept = file.parentFile?.listFiles()?.any {
+                it.isFile && it.name.startsWith("${file.name}.unreadable-")
+            } == true
             _state.value = SpeechDictionaryState(
-                absorbed.document.stamped(), loaded = true, loadError = quarantineError(), saveError = !persisted,
+                absorbed.document.stamped(), loaded = true,
+                loadError = quarantineError() ?: if (unreadableKept && (!hasRecovery || !persisted)) {
+                    SpeechDictionaryLoadError.UNREADABLE
+                } else null,
+                saveError = !persisted,
             )
             return
         }

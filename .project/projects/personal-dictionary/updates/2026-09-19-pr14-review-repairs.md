@@ -67,3 +67,10 @@ References: [endpoint parsing](https://github.com/MajesteitBart/ownkey-keyboard/
 - Extended the quote regression with a lowercase quoted sentence, an inverted question mark, a filler before a closing quote, and a possessive spelling. The extended regression failed before the repair; all 456 tests, debug assembly and release Kotlin compilation pass afterward.
 
 References: [closing quotes](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053190858), [capitalization after opening marks](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053190869).
+
+## Interrupted Unreadable Recovery
+
+- A missing main file with a kept unreadable copy now reports `UNREADABLE` until a valid main is saved or recovery is persisted. Existing valid backup recovery clears the warning; the damaged copy remains preserved.
+- Added restart and successful-backup regressions. The interrupted-load regression failed before the repair.
+
+Reference: [interrupted load warning](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053207427).

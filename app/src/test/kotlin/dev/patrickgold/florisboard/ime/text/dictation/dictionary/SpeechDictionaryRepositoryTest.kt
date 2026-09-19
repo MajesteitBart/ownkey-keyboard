@@ -183,6 +183,33 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         saved.nextId shouldBe 4L
     }
 
+    test("an interrupted unreadable quarantine stays visible until a valid main is saved") {
+        val dir = temp()
+        val kept = File(dir, "personal_dictionary.json.unreadable-5").apply { writeText("broken data") }
+        repeat(2) {
+            val state = runBlocking { repository(dir).awaitLoaded() }
+            state.loadError shouldBe SpeechDictionaryLoadError.UNREADABLE
+            kept.readText() shouldBe "broken data"
+        }
+        runBlocking { repository(dir).addWord("Recovered") }
+        val reopened = runBlocking { repository(dir).awaitLoaded() }
+        reopened.loadError shouldBe null
+        reopened.document.words.map { it.word } shouldBe listOf("Recovered")
+        kept.readText() shouldBe "broken data"
+    }
+
+    test("successful backup recovery resolves an interrupted unreadable quarantine warning") {
+        val dir = temp()
+        File(dir, "personal_dictionary.json.unreadable-5").writeText("broken data")
+        File(dir, "personal_dictionary.json.bak").writeText(SpeechDictionaryDocument.encode(
+            SpeechDictionaryDocument(nextId = 2, words = listOf(VocabularyEntry(1, "Recovered"))),
+        ))
+        val restored = runBlocking { repository(dir).awaitLoaded() }
+        restored.loadError shouldBe null
+        restored.document.words.map { it.word } shouldBe listOf("Recovered")
+        runBlocking { repository(dir).awaitLoaded() }.loadError shouldBe null
+    }
+
     test("an accepted settings save survives navigation cancelling its caller") {
         val dir = temp()
         val cancelOnWrite = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>()
