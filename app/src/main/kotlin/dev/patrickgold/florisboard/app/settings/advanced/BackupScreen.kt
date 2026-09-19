@@ -52,12 +52,15 @@ import dev.patrickgold.florisboard.ime.clipboard.provider.ItemType
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.devtools.flogError
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryDocument
 import dev.patrickgold.florisboard.lib.ext.ExtensionManager
+import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.lib.io.FileRegistry
 import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
 import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
 import dev.patrickgold.jetpref.material.ui.JetPrefListItem
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -79,6 +82,8 @@ object Backup {
     const val CLIPBOARD_TEXT_ITEMS_JSON_NAME = "clipboard_text_items.json"
     const val CLIPBOARD_IMAGES_JSON_NAME = "clipboard_images.json"
     const val CLIPBOARD_VIDEO_JSON_NAME = "clipboard_video.json"
+    const val SPEECH_DIR_NAME = "speech"
+    const val SPEECH_DICTIONARY_JSON_NAME = "personal_dictionary.json"
 
     private val SENSITIVE_PREF_KEYS = setOf(
         "voxtral__api_key",
@@ -105,6 +110,7 @@ object Backup {
         var jetprefDatastore by mutableStateOf(true)
         var imeKeyboard by mutableStateOf(true)
         var imeTheme by mutableStateOf(true)
+        var speechDictionary by mutableStateOf(true)
         var clipboardTextItems by mutableStateOf(false)
         var clipboardImageItems by mutableStateOf(false)
         var clipboardVideoItems by mutableStateOf(false)
@@ -132,7 +138,8 @@ object Backup {
         }
 
         fun atLeastOneSelected(): Boolean {
-            return jetprefDatastore || imeKeyboard || imeTheme || clipboardTextItems || clipboardImageItems || clipboardVideoItems
+            return jetprefDatastore || imeKeyboard || imeTheme || speechDictionary ||
+                clipboardTextItems || clipboardImageItems || clipboardVideoItems
         }
     }
 
@@ -203,6 +210,21 @@ fun BackupScreen() = FlorisScreen {
         if (backupFilesSelector.imeTheme) {
             context.filesDir.subDir(ExtensionManager.IME_THEME_PATH).let { dir ->
                 dir.copyRecursively(workspaceFilesDir.subDir(ExtensionManager.IME_THEME_PATH))
+            }
+        }
+        if (backupFilesSelector.speechDictionary) {
+            // Versioned portable copy of the speech dictionary; the typing dictionaries are separate.
+            try {
+                val document = context.speechDictionary().value.export()
+                val speechDir = workspace.inputDir.subDir(Backup.SPEECH_DIR_NAME)
+                speechDir.mkdirs()
+                speechDir.subFile(Backup.SPEECH_DICTIONARY_JSON_NAME)
+                    .writeText(SpeechDictionaryDocument.encode(document), Charsets.UTF_8)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // The outer backup handler logs failures; keep private paths and data out of them.
+                throw IllegalStateException(context.getString(R.string.speech_dictionary__backup_failed))
             }
         }
 
@@ -347,6 +369,11 @@ internal fun BackupFilesSelector(
             onClick = { filesSelector.imeTheme = !filesSelector.imeTheme },
             checked = filesSelector.imeTheme,
             text = stringRes(R.string.backup_and_restore__back_up__files_ime_theme),
+        )
+        CheckboxListItem(
+            onClick = { filesSelector.speechDictionary = !filesSelector.speechDictionary },
+            checked = filesSelector.speechDictionary,
+            text = stringRes(R.string.speech_dictionary__backup_label),
         )
 
         TriStateCheckboxListItem(

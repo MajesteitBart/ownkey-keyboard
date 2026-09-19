@@ -21,8 +21,8 @@ import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionMode
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackController
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionOnlyOperation
-import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiAvailabilityPolicy
-import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiEditorSession
+import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailabilityPolicy
+import dev.patrickgold.florisboard.ime.text.rewrite.AiEditorSession
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteDisclosureStore
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEditorFrame
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEditorGateway
@@ -450,13 +450,13 @@ private class VoiceRewriteCrossFlowFixture(
     rewriteHandler: (suspend (String, String) -> Result<String>)? = null,
 ) {
     private val editorSession = MutableStateFlow(
-        CloudAiEditorSession(
+        AiEditorSession(
             sessionId = editor.currentFrame().editorSessionId,
             isIncognito = false,
             isSecureField = false,
         ),
     )
-    private val availabilityPolicy = CloudAiAvailabilityPolicy(scope, editorSession)
+    private val availabilityPolicy = AiAvailabilityPolicy(scope, editorSession)
     val recorder = CrossFlowRecorder()
     val transcription = CrossFlowTranscriptionClient(transcriptionResponses, transcriptionHandler)
     val rewrite = CrossFlowRewriteOperation(rewriteResponses, rewriteHandler)

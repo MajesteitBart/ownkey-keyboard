@@ -7,6 +7,10 @@
 
     <!-- Permission needed for cloud dictation requests -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
 
     <!-- Permission needed for in-keyboard voice recording -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
@@ -42,6 +46,16 @@
 
         <!-- Allow app to be profiled for benchmarking and baseline profile generation -->
         <profileable android:shell="true"/>
+
+        <service android:name=".ime.text.dictation.offline.ModelDownloadJob"
+            android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false"/>
+        <receiver android:name=".ime.text.dictation.offline.CancelModelDownloadReceiver" android:exported="false"/>
+        <service android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync" tools:node="merge"/>
+        <provider android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup" tools:node="merge">
+            <meta-data android:name="androidx.work.WorkManagerInitializer" tools:node="remove"/>
+        </provider>
 
         <!-- IME service -->
         <service

@@ -43,8 +43,8 @@ class LlmRewriteClient(
     private val retryDelayMs: Long = 700,
 ) {
     companion object {
-        const val DefaultEndpointUrl = "https://api.openai.com/v1/responses"
-        const val DefaultModel = "gpt-5.5"
+        const val DefaultEndpointUrl = LlmRewriteProviders.DefaultEndpointUrl
+        const val DefaultModel = LlmRewriteProviders.DefaultModel
     }
 
     private data class PreparedRequest(
@@ -115,12 +115,13 @@ class LlmRewriteClient(
 
         val rawEndpointUrl = endpointUrlProvider().trim()
         val rawProviderId = providerIdProvider().trim()
-        val defaultProviderId = LlmRewriteProviders.OpenAiResponses
         val providerId = when {
+            rawProviderId.isBlank() && rawEndpointUrl.isBlank() -> LlmRewriteProviders.Default
             rawProviderId.isBlank() -> LlmRewriteProviders.inferFromEndpoint(rawEndpointUrl)
-            rawProviderId == defaultProviderId &&
+            // Older installs may have saved only the endpoint, with no explicit provider.
+            rawProviderId in setOf(LlmRewriteProviders.OpenAiResponses, LlmRewriteProviders.Default) &&
                 rawEndpointUrl.isNotBlank() &&
-                rawEndpointUrl != LlmRewriteProviders.byId(defaultProviderId).endpointUrl -> {
+                rawEndpointUrl != LlmRewriteProviders.byId(rawProviderId).endpointUrl -> {
                 LlmRewriteProviders.inferFromEndpoint(rawEndpointUrl)
             }
 

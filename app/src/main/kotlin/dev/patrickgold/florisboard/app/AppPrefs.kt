@@ -491,7 +491,8 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             default = false,
         )
         val isImeSetUp = boolean(
-            key = "internal__is_ime_set_up",
+            // Reopen existing setup once for the recovered Orukeet build without resetting app data.
+            key = "internal__is_ime_set_up_v2",
             default = false,
         )
         val versionOnInstall = string(
@@ -765,6 +766,17 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
 
     val voxtral = Voxtral()
     inner class Voxtral {
+        // Empty preserves the pre-Orukeet key-based route on upgrade. Phone-only; excluded from Wear sync.
+        val dictationBackend = string(key = "ai__dictation_backend", default = "")
+        val previousDictationBackend = string(key = "ai__previous_dictation_backend", default = "")
+        /** How personal-dictionary words travel with cloud audio; see CloudVocabularyMode. */
+        val cloudVocabularyMode = string(key = "ai__cloud_vocabulary_mode", default = "auto")
+        /**
+         * Whether personal-dictionary words are passed to the on-device recognizer as hotwords. Off
+         * until the physical-device probe (T-005) qualifies the beam-search profile, so saving a word
+         * never silently changes the greedy decoder ordinary dictation was measured with.
+         */
+        val localVocabularyHints = boolean(key = "ai__local_vocabulary_hints", default = false)
         val apiKey = string(
             key = "voxtral__api_key",
             default = "",
@@ -791,15 +803,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val postProcessingEndpointUrl = string(
             key = "voxtral__post_processing_endpoint_url",
-            default = LlmRewriteProviders.byId(LlmRewriteProviders.OpenAiResponses).endpointUrl,
+            default = LlmRewriteProviders.DefaultEndpointUrl,
         )
         val postProcessingModel = string(
             key = "voxtral__post_processing_model",
-            default = LlmRewriteProviders.byId(LlmRewriteProviders.OpenAiResponses).defaultModel,
+            default = LlmRewriteProviders.DefaultModel,
         )
         val postProcessingProvider = string(
             key = "voxtral__post_processing_provider",
-            default = LlmRewriteProviders.OpenAiResponses,
+            default = LlmRewriteProviders.Default,
         )
         val rewritePrompts = string(
             key = "voxtral__rewrite_prompts",

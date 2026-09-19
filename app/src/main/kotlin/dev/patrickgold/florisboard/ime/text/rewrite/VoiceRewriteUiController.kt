@@ -40,14 +40,14 @@ import kotlinx.coroutines.flow.stateIn
  * session never causes editor content to be inspected for AI use.
  */
 data class VoiceRewriteHubCardState(
-    val availability: CloudAiAvailability = CloudAiAvailability.Available,
+    val availability: AiAvailability = AiAvailability.Available,
     val selectionCharacterCount: Int? = null,
     val audioProvider: VoiceRewriteProviderConfiguration? = null,
     val rewriteProvider: VoiceRewriteProviderConfiguration? = null,
 ) {
-    val isAvailable: Boolean get() = availability is CloudAiAvailability.Available
-    val unavailableReason: CloudAiUnavailableReason?
-        get() = (availability as? CloudAiAvailability.Unavailable)?.reason
+    val isAvailable: Boolean get() = availability is AiAvailability.Available
+    val unavailableReason: AiUnavailableReason?
+        get() = (availability as? AiAvailability.Unavailable)?.reason
     val providersConfigured: Boolean
         get() = audioProvider?.isConfigured == true && rewriteProvider?.isConfigured == true
 }
@@ -55,7 +55,7 @@ data class VoiceRewriteHubCardState(
 class VoiceRewriteUiController(
     scope: CoroutineScope,
     private val sessionManager: VoiceRewriteSessionManager,
-    private val availabilityPolicy: CloudAiAvailabilityPolicy,
+    private val availabilityPolicy: AiAvailabilityPolicy,
     private val providerConfiguration: VoiceRewriteProviderConfigurationSource,
     private val selectionCharacterCount: () -> Int?,
     private val replacementGateway: () -> VoiceRewriteReplacementGateway,
@@ -63,7 +63,7 @@ class VoiceRewriteUiController(
     private val openAiSettingsRoute: () -> Unit,
     private val openIncognitoSettingRoute: () -> Unit,
 ) {
-    val availability: StateFlow<CloudAiAvailability> = availabilityPolicy.state
+    val availability: StateFlow<AiAvailability> = availabilityPolicy.state
 
     /**
      * Resolves the hub card. It touches the Keystore-backed secret stores, so callers must run it
@@ -71,7 +71,7 @@ class VoiceRewriteUiController(
      */
     fun hubCardState(): VoiceRewriteHubCardState {
         val currentAvailability = availabilityPolicy.current()
-        if (currentAvailability !is CloudAiAvailability.Available) {
+        if (currentAvailability !is AiAvailability.Available) {
             return VoiceRewriteHubCardState(availability = currentAvailability)
         }
         return VoiceRewriteHubCardState(
@@ -89,7 +89,7 @@ class VoiceRewriteUiController(
      * unavailable.
      */
     fun hubSelectionCharacterCount(): Int? {
-        if (availabilityPolicy.current() !is CloudAiAvailability.Available) return null
+        if (availabilityPolicy.current() !is AiAvailability.Available) return null
         return selectionCharacterCount()
     }
 

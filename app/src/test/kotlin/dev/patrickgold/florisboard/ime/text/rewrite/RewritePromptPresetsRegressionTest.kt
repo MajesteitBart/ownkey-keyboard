@@ -38,9 +38,22 @@ class RewritePromptPresetsRegressionTest : FunSpec({
         decoded.map { it.name } shouldContainExactly listOf("My voice", "Second voice", "Improve writing")
     }
 
-    test("the shipped default voices and their order are unchanged") {
+    test("the shipped default voices match the approved settings without duplicate Plainspoken voices") {
         RewritePromptPresets.decode(RewritePromptPresets.defaultJson).map { it.id } shouldContainExactly
-            listOf("improve", "grammar", "shorter", "business", "casual", "rewrite_dutch")
+            listOf("improve", "grammar", "shorter", "rewrite_dutch", "plainspoken")
+    }
+
+    listOf(
+        listOf("clean", "formal", "business"),
+        listOf("clean", "business", "rewrite_dutch", "rewrite_english"),
+    ).forEachIndexed { index, ids ->
+        test("edited legacy voice list $index keeps its names instructions and order") {
+            val saved = ids.mapIndexed { position, id ->
+                RewritePromptPreset(id, "Edited voice $position", "First line.\nSecond line $position.")
+            }
+
+            RewritePromptPresets.decode(RewritePromptPresets.encode(saved)) shouldContainExactly saved
+        }
     }
 
     test("an odd number of voices still fills whole grid rows without dropping the last voice") {

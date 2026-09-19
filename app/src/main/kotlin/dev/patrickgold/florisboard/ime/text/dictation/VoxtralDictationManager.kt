@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -25,8 +26,15 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.editorInstance
-import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiAvailability
-import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiAvailabilityPolicy
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyMode
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationCleanupResult
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationInsertion
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationInsertionListener
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.OrdinaryDictationCleanup
+import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailability
+import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailabilityPolicy
+import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.subtypeManager
 import kotlinx.coroutines.CoroutineScope
@@ -41,20 +49,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.showShortToastSync
 
-/**
- * Dictation entrypoint for the keyboard voice key.
- *
- * Debug behavior:
- * - API key empty: internal mock dictation flow.
- * - API key set: internal Voxtral API flow.
- *
- * Non-debug behavior remains legacy fallback to external voice IME.
- */
+/** Dictation entrypoint with an immutable backend/client/model snapshot for each recording. */
 class VoxtralDictationManager(
     context: Context,
     private val audioSessionCoordinator: AudioSessionCoordinator,
     private val feedbackController: VoiceActionFeedbackController,
-    private val cloudAiAvailabilityPolicy: CloudAiAvailabilityPolicy,
+    private val aiAvailabilityPolicy: AiAvailabilityPolicy,
 ) {
     enum class DictationState {
         IDLE,
@@ -75,12 +75,6 @@ class VoxtralDictationManager(
         }
     }
 
-    private enum class RoutingMode {
-        MOCK_INTERNAL,
-        INTERNAL_VOXTRAL,
-        EXTERNAL_IME_FALLBACK,
-    }
-
     private val appContext by context.appContext()
     private val editorInstance by context.editorInstance()
     private val subtypeManager by context.subtypeManager()
@@ -89,49 +83,50 @@ class VoxtralDictationManager(
     private val voxtralSecretsStore = VoxtralSecretsStore(appContext)
 
     private val mockAudioRecorder: AudioRecorder = NoOpAudioRecorder()
-    private val mediaAudioRecorder: AudioRecorder = MediaRecorderAudioRecorder(context = appContext)
     private val mockTranscriptionClient: TranscriptionClient = MockTranscriptionClient()
-    private val voxtralTranscriptionClient: TranscriptionClient = VoxtralRelayTranscriptionClient(
-        apiKeyProvider = { apiKey() },
-        endpointUrlProvider = { prefs.voxtral.endpointUrl.get() },
-        modelProvider = { prefs.voxtral.model.get() },
-        languageHintProvider = {
-            TranscriptionLanguageHints.resolve(
-                purpose = TranscriptionPurpose.DICTATION,
-                storedLanguageHint = prefs.voxtral.languageHint.get(),
-                activeSubtypeLanguageTag = subtypeManager.activeSubtype.primaryLocale.languageTag(),
-            )
-        },
-    )
-    private val voxtralInstructionTranscriptionClient: TranscriptionClient = VoxtralRelayTranscriptionClient(
-        apiKeyProvider = { apiKey() },
-        endpointUrlProvider = { prefs.voxtral.endpointUrl.get() },
-        modelProvider = { prefs.voxtral.model.get() },
-        languageHintProvider = { null },
-    )
     private val transcriptionOnlyOperation = TranscriptionOnlyOperation()
+    private val speechDictionary by lazy { appContext.speechDictionary().value }
+
+    /** Keyboard-side fix flow; it learns about ordinary insertions only, never about rewrite instructions. */
+    @Volatile
+    var insertionListener: DictationInsertionListener? = null
+    private var lastCommit: DictationInsertion? = null
+
     private val ordinaryDictationCommitOperation = OrdinaryDictationCommitOperation { transcript ->
         // Dictation supplies its own word boundary against the text around the cursor, so a phrase
         // dictated after `keyboard.` is inserted as ` When I…` rather than fused to the full stop.
         val content = editorInstance.activeContent
-        editorInstance.commitText(
-            DictationInsertionSpacing.join(
-                transcript = transcript,
-                textBefore = content.textBeforeSelection,
-                textAfter = content.textAfterSelection,
-            ),
+        val joined = DictationInsertionSpacing.join(
+            transcript = transcript,
+            textBefore = content.textBeforeSelection,
+            textAfter = content.textAfterSelection,
         )
+        val committed = editorInstance.commitText(joined)
+        if (committed) {
+            val info = editorInstance.activeInfo
+            lastCommit = DictationInsertion(
+                rawTranscript = "",
+                committedText = joined,
+                editorSessionId = editorInstance.activeInputSessionId,
+                hostPackage = info.packageName,
+                fieldId = info.base.fieldId,
+                committedAtMs = System.currentTimeMillis(),
+            )
+        }
+        committed
     }
 
-    private var activeSessionMode: RoutingMode? = null
+    private var activeSession: TranscriptionSession? = null
+    private var sessionGeneration = 0L
+    private var autoStopJob: Job? = null
     private var activeLease: AudioSessionLease? = null
     private var operationJob: Job? = null
 
     init {
         migrateLegacyApiKeyIfNeeded()
         scope.launch {
-            cloudAiAvailabilityPolicy.state.collectLatest { availability ->
-                if (availability is CloudAiAvailability.Unavailable && activeLease != null) {
+            aiAvailabilityPolicy.state.collectLatest { availability ->
+                if (availability is AiAvailability.Unavailable && activeLease != null) {
                     cancelDictation()
                 }
             }
@@ -147,20 +142,22 @@ class VoxtralDictationManager(
     val feedbackStateFlow: StateFlow<VoiceActionFeedbackState> = feedbackController.state
 
     fun onVoiceInputKeyPressed() {
-        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+        if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
             activeLease?.let { cancelDictation() }
             return
         }
-        val currentMode = activeSessionMode ?: resolveRoutingMode()
+        val currentMode = activeSession?.backend ?: resolveTranscriptionBackend()
 
         when (currentMode) {
-            RoutingMode.EXTERNAL_IME_FALLBACK -> {
+            TranscriptionBackend.EXTERNAL_IME -> {
                 FlorisImeService.switchToVoiceInputMethod()
                 return
             }
 
-            RoutingMode.MOCK_INTERNAL,
-            RoutingMode.INTERNAL_VOXTRAL -> {
+            TranscriptionBackend.MOCK,
+            TranscriptionBackend.UNAVAILABLE,
+            TranscriptionBackend.ORUKEET,
+            TranscriptionBackend.CLOUD -> {
                 when (_stateFlow.value) {
                     DictationState.IDLE,
                     DictationState.ERROR -> startListening(currentMode)
@@ -175,56 +172,65 @@ class VoxtralDictationManager(
         }
     }
 
-    private fun startListening(mode: RoutingMode) {
-        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
-            return
-        }
-        if (mode == RoutingMode.INTERNAL_VOXTRAL && !hasRecordAudioPermission()) {
-            _stateFlow.value = DictationState.ERROR
-            feedbackController.standaloneError(VoiceActionErrorReason.MICROPHONE_PERMISSION)
-            appContext.showShortToastSync("Microphone permission missing. Grant it in Settings → AI.")
-            return
-        }
-
-        val startResult = audioSessionCoordinator.tryStart(
-            owner = AudioSessionOwner.DICTATION,
-            mode = mode.toAudioSessionMode(),
-            recorder = recorderFor(mode),
-        )
-        val lease = when (startResult) {
-            is AudioSessionStartResult.Started -> startResult.lease
-            is AudioSessionStartResult.Busy -> {
-                feedbackController.standaloneError(VoiceActionErrorReason.AUDIO_SESSION_BUSY)
-                appContext.showShortToastSync("Finish the active voice session first")
-                return
-            }
-            AudioSessionStartResult.RecorderUnavailable -> {
+    private fun startListening(mode: TranscriptionBackend) {
+        if (operationJob?.isActive == true) return
+        val generation = ++sessionGeneration
+        operationJob = scope.launch {
+            if (aiAvailabilityPolicy.current() !is AiAvailability.Available) return@launch
+            if (mode != TranscriptionBackend.MOCK && !hasRecordAudioPermission()) {
                 _stateFlow.value = DictationState.ERROR
-                feedbackController.standaloneError(VoiceActionErrorReason.RECORDER_UNAVAILABLE)
-                if (mode == RoutingMode.INTERNAL_VOXTRAL) {
-                    appContext.showShortToastSync("Unable to start microphone recording")
-                } else {
-                    appContext.showShortToastSync("Unable to start dictation")
+                feedbackController.standaloneError(VoiceActionErrorReason.MICROPHONE_PERMISSION)
+                appContext.showShortToastSync("Microphone permission missing. Grant it in Settings → AI.")
+                return@launch
+            }
+            var snapshot: TranscriptionSession? = null
+            var acquired: AudioSessionLease? = null
+            try {
+                kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    // Assign before crossing the dispatcher boundary so cancellation cannot lose the lease.
+                    snapshot = snapshotSession(TranscriptionPurpose.DICTATION, mode)
                 }
-                return
-            }
-        }
-
-        activeSessionMode = mode
-        activeLease = lease
-        feedbackController.begin(lease.sessionId)
-        syncRecordingSession(lease)
-        _stateFlow.value = DictationState.LISTENING
-
-        // The smartbar recording row owns the visible `Listening` state, its timer, and the stop
-        // and cancel controls. A start toast would only duplicate it, so it remains solely as the
-        // fallback for keyboards whose smartbar is switched off and therefore have no row.
-        if (!prefs.smartbar.enabled.get()) {
-            if (mode == RoutingMode.MOCK_INTERNAL) {
-                appContext.showShortToastSync("Dictation started (mock mode). Tap mic again to insert text.")
-            } else {
-                appContext.showShortToastSync("Dictation started. Tap mic again to transcribe.")
-            }
+                val session = requireNotNull(snapshot)
+                val started = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    audioSessionCoordinator.tryStart(AudioSessionOwner.DICTATION, session.mode, session.recorder, session::close)
+                        .also { acquired = (it as? AudioSessionStartResult.Started)?.lease }
+                }
+                if (generation != sessionGeneration || aiAvailabilityPolicy.current() !is AiAvailability.Available) {
+                    acquired?.cancel(); snapshot?.close(); return@launch
+                }
+                val lease = acquired
+                if (lease == null) {
+                    snapshot?.close()
+                    feedbackController.standaloneError(if (started is AudioSessionStartResult.Busy) VoiceActionErrorReason.AUDIO_SESSION_BUSY else VoiceActionErrorReason.RECORDER_UNAVAILABLE)
+                    _stateFlow.value = DictationState.ERROR
+                    return@launch
+                }
+                activeSession = snapshot
+                activeLease = lease
+                feedbackController.begin(lease.sessionId)
+                syncRecordingSession(lease)
+                _stateFlow.value = DictationState.LISTENING
+                insertionListener?.onDictationStarted()
+                if (session.backend == TranscriptionBackend.ORUKEET) {
+                    autoStopJob = scope.launch {
+                        while (lease.isCurrent && _stateFlow.value in setOf(DictationState.LISTENING, DictationState.PAUSED)) {
+                            if ((lease.state?.elapsedMs(System.currentTimeMillis()) ?: 0) >= org.ownkey.offline.ModelCatalog.RECORDING_CAP_MS) {
+                                stopAndInsertTranscript(); break
+                            }
+                            delay(100)
+                        }
+                    }
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                acquired?.cancel(); snapshot?.close(); throw cancel
+            } catch (_: Exception) {
+                acquired?.cancel(); snapshot?.close()
+                if (generation == sessionGeneration) {
+                    _stateFlow.value = DictationState.ERROR
+                    feedbackController.standaloneError(VoiceActionErrorReason.TRANSCRIPTION)
+                    appContext.showShortToastSync(if (mode == TranscriptionBackend.ORUKEET) appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__not_ready) else "Unable to start dictation")
+                }
+            } finally { if (generation == sessionGeneration) operationJob = null }
         }
     }
 
@@ -237,13 +243,15 @@ class VoxtralDictationManager(
     }
 
     fun cancelDictation() {
-        val lease = activeLease ?: return
+        val lease = activeLease ?: run { invalidateSession(AudioSessionInvalidation.OWNER_CANCELLED); return }
+        sessionGeneration++
+        autoStopJob?.cancel(); autoStopJob = null
         operationJob?.cancel()
         operationJob = null
         lease.cancel()
         feedbackController.cancel(lease.sessionId)
         activeLease = null
-        activeSessionMode = null
+        activeSession = null
         _recordingSessionFlow.value = null
         _stateFlow.value = DictationState.IDLE
         appContext.showShortToastSync("Dictation cancelled")
@@ -254,7 +262,7 @@ class VoxtralDictationManager(
             return
         }
         val lease = activeLease ?: return
-        if (cloudAiAvailabilityPolicy.current() !is CloudAiAvailability.Available) {
+        if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
             cancelDictation()
             return
         }
@@ -262,16 +270,21 @@ class VoxtralDictationManager(
         operationJob = scope.launch {
             _stateFlow.value = DictationState.TRANSCRIBING
             feedbackController.processing(lease.sessionId)
-            val sessionMode = activeSessionMode ?: resolveRoutingMode()
-            val transcriptionClient = transcriptionClientFor(sessionMode, TranscriptionPurpose.DICTATION)
-                ?: return@launch
-            val outcome = transcriptionOnlyOperation.stopAndTranscribe(lease, transcriptionClient)
+            autoStopJob?.cancel(); autoStopJob = null
+            val session = activeSession ?: return@launch
+            val transcriptionClient = session.client ?: return@launch
+            val rawOutcome = transcriptionOnlyOperation.stopAndTranscribe(lease, transcriptionClient)
+            // Ordinary dictation is the only path that is cleaned. It uses the snapshot taken at
+            // recording start, runs off the main thread, and the lease is rechecked right before commit.
+            val cleaned = kotlinx.coroutines.withContext(Dispatchers.Default) {
+                OrdinaryDictationCleanup.apply(rawOutcome, session.dictionary?.cleaner)
+            }
 
             if (!lease.isCurrent) {
                 feedbackController.cancel(lease.sessionId)
                 if (activeLease?.sessionId == lease.sessionId) {
                     activeLease = null
-                    activeSessionMode = null
+                    activeSession = null
                     _recordingSessionFlow.value = null
                     operationJob = null
                     _stateFlow.value = DictationState.IDLE
@@ -279,11 +292,26 @@ class VoxtralDictationManager(
                 return@launch
             }
 
+            if (cleaned is DictationCleanupResult.OnlyFillers) {
+                // Neutral result: the recognizer worked, there was just nothing left to insert.
+                feedbackController.cancel(lease.sessionId)
+                finishSession(lease)
+                _stateFlow.value = DictationState.IDLE
+                appContext.showShortToastSync(appContext.getString(dev.patrickgold.florisboard.R.string.speech_dictionary__only_fillers))
+                return@launch
+            }
+            val outcome = (cleaned as DictationCleanupResult.Ready).outcome
+
             when (val commitResult = ordinaryDictationCommitOperation.commit(outcome)) {
                 OrdinaryDictationCommitResult.Committed -> {
                     feedbackController.success(lease.sessionId)
                     finishSession(lease)
                     _stateFlow.value = DictationState.IDLE
+                    val insertion = lastCommit
+                    lastCommit = null
+                    if (insertion != null) {
+                        insertionListener?.onDictationInserted(insertion.copy(rawTranscript = cleaned.rawTranscript.orEmpty()))
+                    }
                 }
                 OrdinaryDictationCommitResult.CommitFailed -> {
                     feedbackController.error(lease.sessionId, VoiceActionErrorReason.EDITOR_COMMIT)
@@ -300,12 +328,14 @@ class VoxtralDictationManager(
                         is TranscriptionOutcome.Failure -> {
                             val reason = when (commitResult.outcome.reason) {
                                 TranscriptionFailureReason.RECORDING -> VoiceActionErrorReason.RECORDING
-                                TranscriptionFailureReason.PROVIDER -> VoiceActionErrorReason.TRANSCRIPTION
+                                TranscriptionFailureReason.PROVIDER,
+                                TranscriptionFailureReason.LOCAL_MODEL,
+                                TranscriptionFailureReason.LOCAL_RUNTIME -> VoiceActionErrorReason.TRANSCRIPTION
                             }
                             feedbackController.error(lease.sessionId, reason)
                             finishSession(lease)
                             setError(
-                                "Failed to transcribe dictation",
+                                if (commitResult.outcome.reason in setOf(TranscriptionFailureReason.LOCAL_MODEL, TranscriptionFailureReason.LOCAL_RUNTIME)) appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__transcription_failed) else "Failed to transcribe dictation",
                                 IllegalStateException("Transcription failed: ${commitResult.outcome.reason}"),
                             )
                         }
@@ -351,23 +381,54 @@ class VoxtralDictationManager(
     }
 
     fun invalidateSession(reason: AudioSessionInvalidation) {
+        sessionGeneration++
+        autoStopJob?.cancel(); autoStopJob = null
         val sessionId = audioSessionCoordinator.state.value?.sessionId
         operationJob?.cancel()
         operationJob = null
         audioSessionCoordinator.invalidate(reason)
         sessionId?.let(feedbackController::cancel)
         activeLease = null
-        activeSessionMode = null
+        activeSession = null
         _recordingSessionFlow.value = null
         _stateFlow.value = DictationState.IDLE
     }
 
-    private fun resolveRoutingMode(): RoutingMode {
-        val apiKey = apiKey().trim()
-        return when {
-            apiKey.isNotEmpty() -> RoutingMode.INTERNAL_VOXTRAL
-            BuildConfig.DEBUG -> RoutingMode.MOCK_INTERNAL
-            else -> RoutingMode.EXTERNAL_IME_FALLBACK
+    private fun resolveTranscriptionBackend(): TranscriptionBackend = TranscriptionBackend.resolve(
+        prefs.voxtral.dictationBackend.get(), apiKey().isNotBlank(), BuildConfig.DEBUG,
+    )
+
+    /**
+     * Vocabulary hints reach both ordinary dictation and spoken rewrite instructions; the attached
+     * dictionary snapshot is only consulted for cleanup by [stopAndInsertTranscript].
+     */
+    suspend fun snapshotSession(purpose: TranscriptionPurpose, backend: TranscriptionBackend = resolveTranscriptionBackend()): TranscriptionSession {
+        val dictionary = speechDictionary.snapshot()
+        return when (backend) {
+            TranscriptionBackend.UNAVAILABLE -> throw org.ownkey.offline.LocalAsrException(org.ownkey.offline.LocalAsrFailure.UNSUPPORTED)
+            TranscriptionBackend.ORUKEET -> appContext.offlineDictation().session(
+                vocabulary = if (prefs.voxtral.localVocabularyHints.get()) dictionary.vocabulary else emptyList(),
+                dictionary = dictionary,
+            )
+            TranscriptionBackend.MOCK -> TranscriptionSession(backend, NoOpAudioRecorder(), mockTranscriptionClient, dictionary)
+            TranscriptionBackend.EXTERNAL_IME -> TranscriptionSession(backend, mockAudioRecorder, null)
+            TranscriptionBackend.CLOUD -> {
+                val key = apiKey()
+                val endpoint = prefs.voxtral.endpointUrl.get()
+                val model = prefs.voxtral.model.get()
+                val language = TranscriptionLanguageHints.resolve(purpose, prefs.voxtral.languageHint.get(), subtypeManager.activeSubtype.primaryLocale.languageTag())
+                // The client falls back to the default endpoint for a blank preference; the hint
+                // field must be resolved from the same URL the request will actually use.
+                val vocabularyField = CloudVocabularyHints.field(
+                    endpoint.trim().ifBlank { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
+                    CloudVocabularyMode.fromPreference(prefs.voxtral.cloudVocabularyMode.get()),
+                )
+                val vocabulary = dictionary.vocabulary
+                TranscriptionSession(backend, MediaRecorderAudioRecorder(appContext), VoxtralRelayTranscriptionClient(
+                    apiKeyProvider = { key }, endpointUrlProvider = { endpoint }, modelProvider = { model }, languageHintProvider = { language },
+                    vocabularyProvider = { vocabulary }, vocabularyFieldProvider = { vocabularyField },
+                ), dictionary)
+            }
         }
     }
 
@@ -393,65 +454,24 @@ class VoxtralDictationManager(
         apiKey()
     }
 
-    private fun recorderFor(mode: RoutingMode): AudioRecorder {
-        return when (mode) {
-            RoutingMode.MOCK_INTERNAL -> mockAudioRecorder
-            RoutingMode.INTERNAL_VOXTRAL -> mediaAudioRecorder
-            RoutingMode.EXTERNAL_IME_FALLBACK -> mockAudioRecorder
-        }
+    fun isLocalSelected(): Boolean = resolveTranscriptionBackend() == TranscriptionBackend.ORUKEET
+
+    fun isTranscriptionConfigured(): Boolean = when (resolveTranscriptionBackend()) {
+        TranscriptionBackend.ORUKEET -> appContext.offlineDictation().ready
+        TranscriptionBackend.EXTERNAL_IME, TranscriptionBackend.UNAVAILABLE -> false
+        TranscriptionBackend.CLOUD -> apiKey().isNotBlank()
+        TranscriptionBackend.MOCK -> true
     }
 
-    private fun transcriptionClientFor(
-        mode: RoutingMode,
-        purpose: TranscriptionPurpose,
-    ): TranscriptionClient? {
-        return when (mode) {
-            RoutingMode.MOCK_INTERNAL -> mockTranscriptionClient
-            RoutingMode.INTERNAL_VOXTRAL -> when (purpose) {
-                TranscriptionPurpose.DICTATION -> voxtralTranscriptionClient
-                TranscriptionPurpose.VOICE_REWRITE_INSTRUCTION -> voxtralInstructionTranscriptionClient
-            }
-            RoutingMode.EXTERNAL_IME_FALLBACK -> null
-        }
-    }
-
-    fun instructionTranscriptionClient(): TranscriptionClient? =
-        transcriptionClientFor(resolveRoutingMode(), TranscriptionPurpose.VOICE_REWRITE_INSTRUCTION)
-
-    /**
-     * Recorder and session mode for a voice-rewrite instruction. Voice rewrite must reuse the exact
-     * dictation routing so both modes contend for one recorder through [AudioSessionCoordinator]
-     * instead of opening a second microphone.
-     */
-    fun voiceRewriteRecorder(): AudioRecorder = recorderFor(resolveRoutingMode())
-
-    fun voiceRewriteAudioSessionMode(): AudioSessionMode = resolveRoutingMode().toAudioSessionMode()
-
-    /**
-     * True when the in-process transcription path is available. The external voice-IME fallback
-     * cannot return a transcript to the rewrite pipeline, so it counts as not configured.
-     */
-    fun isTranscriptionConfigured(): Boolean =
-        resolveRoutingMode() != RoutingMode.EXTERNAL_IME_FALLBACK
-
-    /**
-     * Known provider label for the configured transcription endpoint, or `null` for a custom or
-     * mock endpoint. The full endpoint URL never leaves the settings screen.
-     */
-    fun transcriptionProviderKnownLabel(): String? {
-        if (resolveRoutingMode() == RoutingMode.MOCK_INTERNAL) return null
-        return TranscriptionProviderNaming.knownLabel(prefs.voxtral.endpointUrl.get())
+    fun transcriptionProviderKnownLabel(): String? = when (resolveTranscriptionBackend()) {
+        TranscriptionBackend.ORUKEET -> appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__title)
+        TranscriptionBackend.MOCK, TranscriptionBackend.EXTERNAL_IME, TranscriptionBackend.UNAVAILABLE -> null
+        TranscriptionBackend.CLOUD -> TranscriptionProviderNaming.knownLabel(prefs.voxtral.endpointUrl.get())
     }
 
     private fun hasRecordAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun RoutingMode.toAudioSessionMode(): AudioSessionMode = when (this) {
-        RoutingMode.MOCK_INTERNAL -> AudioSessionMode.MOCK
-        RoutingMode.INTERNAL_VOXTRAL -> AudioSessionMode.CONFIGURED_PROVIDER
-        RoutingMode.EXTERNAL_IME_FALLBACK -> AudioSessionMode.MOCK
     }
 
     private fun syncRecordingSession(lease: AudioSessionLease) {
@@ -468,7 +488,7 @@ class VoxtralDictationManager(
         lease.complete()
         if (activeLease?.sessionId == lease.sessionId) {
             activeLease = null
-            activeSessionMode = null
+            activeSession = null
             _recordingSessionFlow.value = null
             operationJob = null
         }

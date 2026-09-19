@@ -351,7 +351,7 @@ private data class PipelineFixture(
     val transcription: FakePipelineTranscriptionClient,
     val rewrite: FakePipelineRewriteOperation,
     val feedbackController: VoiceActionFeedbackController,
-    val editorSession: MutableStateFlow<CloudAiEditorSession>,
+    val editorSession: MutableStateFlow<AiEditorSession>,
 )
 
 private fun pipelineFixture(
@@ -370,8 +370,8 @@ private fun pipelineFixture(
     transcriptionConfigured: () -> Boolean = { true },
     rewriteConfigured: () -> Boolean = { true },
 ): PipelineFixture {
-    val editorSession = MutableStateFlow(CloudAiEditorSession(7L, isIncognito = false, isSecureField = false))
-    val policy = CloudAiAvailabilityPolicy(
+    val editorSession = MutableStateFlow(AiEditorSession(7L, isIncognito = false, isSecureField = false))
+    val policy = AiAvailabilityPolicy(
         scope,
         editorSession,
     )

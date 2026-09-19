@@ -1,0 +1,21 @@
+{
+  "api": 36,
+  "page_bytes": 16384,
+  "runtime_aar_sha256": "db5e489fb948e98a3c5cba14b1a5fe4e32aff68e238e971c4f27cb2db968677e",
+  "activation_service": {
+    "rss_kib": 933588,
+    "high_water_rss_kib": 954460
+  },
+  "activation_main": {
+    "rss_kib": 329220,
+    "high_water_rss_kib": 329220
+  },
+  "after_inference_service": {
+    "rss_kib": 1020896,
+    "high_water_rss_kib": 1023728
+  },
+  "after_inference_main": {
+    "rss_kib": 329348,
+    "high_water_rss_kib": 329348
+  }
+}

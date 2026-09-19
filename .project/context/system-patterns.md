@@ -22,3 +22,8 @@ Capture architecture and delivery patterns that should be reused.
 
 7. **Store copy from real features only**
    - Google Play USPs should reflect shipped or directly implemented behavior. Avoid promising hosted AI, private cloud processing, or model capabilities that the app does not control.
+
+8. **Local inference is a separate, explicit route**
+   - Downloaded, selected and running states are independent. Snapshot the backend/model before microphone capture. A missing/crashed local model fails closed and never sends audio to cloud.
+   - Keep native inference in the unexported `:offline_asr` service. Local audio/model data lives in `noBackupFilesDir`; process startup skips main-app initialization. Cancel and process death invalidate late results.
+   - Internal Orukeet builds use the pinned ASR-only sherpa runtime; the stock AAR contains unused TTS dependencies. Public enablement requires the physical gates in the Orukeet project. Voice rewrite always discloses its separate cloud text step.

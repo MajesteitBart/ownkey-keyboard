@@ -18,55 +18,55 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class CloudAiAvailabilityPolicyTest : FunSpec({
+class AiAvailabilityPolicyTest : FunSpec({
     test("an incognito editor session has the distinct incognito reason") {
         runTest {
             val sessions = MutableStateFlow(activeSession(isIncognito = true))
-            val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
-            policy.current() shouldBe CloudAiAvailability.Unavailable(CloudAiUnavailableReason.INCOGNITO)
+            val policy = AiAvailabilityPolicy(backgroundScope, sessions)
+            policy.current() shouldBe AiAvailability.Unavailable(AiUnavailableReason.INCOGNITO)
         }
     }
 
     test("secure fields have their own reason and take precedence over incognito") {
         runTest {
             val sessions = MutableStateFlow(activeSession(isIncognito = true, isSecure = true))
-            val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
-            policy.current() shouldBe CloudAiAvailability.Unavailable(CloudAiUnavailableReason.SECURE_FIELD)
+            val policy = AiAvailabilityPolicy(backgroundScope, sessions)
+            policy.current() shouldBe AiAvailability.Unavailable(AiUnavailableReason.SECURE_FIELD)
         }
     }
 
     test("availability is observable and restores without replay when the session leaves incognito") {
         runTest {
             val sessions = MutableStateFlow(activeSession(isIncognito = true))
-            val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
+            val policy = AiAvailabilityPolicy(backgroundScope, sessions)
             runCurrent()
-            policy.state.value shouldBe CloudAiAvailability.Unavailable(CloudAiUnavailableReason.INCOGNITO)
+            policy.state.value shouldBe AiAvailability.Unavailable(AiUnavailableReason.INCOGNITO)
 
             sessions.value = activeSession(isIncognito = false)
             runCurrent()
-            policy.state.value shouldBe CloudAiAvailability.Available
+            policy.state.value shouldBe AiAvailability.Available
         }
     }
 
     test("no active editor is unavailable independently of privacy and configuration failures") {
         runTest {
-            val sessions = MutableStateFlow(CloudAiEditorSession.None)
-            val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
-            policy.current() shouldBe CloudAiAvailability.Unavailable(CloudAiUnavailableReason.NO_ACTIVE_EDITOR)
+            val sessions = MutableStateFlow(AiEditorSession.None)
+            val policy = AiAvailabilityPolicy(backgroundScope, sessions)
+            policy.current() shouldBe AiAvailability.Unavailable(AiUnavailableReason.NO_ACTIVE_EDITOR)
         }
     }
 
     test("all three AI entry paths block before content microphone or provider side effects") {
         runTest {
             val sessions = MutableStateFlow(activeSession(isIncognito = true))
-            val policy = CloudAiAvailabilityPolicy(backgroundScope, sessions)
+            val policy = AiAvailabilityPolicy(backgroundScope, sessions)
 
             listOf("dictation", "preset rewrite", "voice rewrite preflight").forEach { entryPoint ->
                 @Suppress("UNUSED_VARIABLE") val namedEntryPoint = entryPoint
                 var contentReads = 0
                 var microphoneStarts = 0
                 var providerRequests = 0
-                if (policy.current() is CloudAiAvailability.Available) {
+                if (policy.current() is AiAvailability.Available) {
                     contentReads += 1
                     microphoneStarts += 1
                     providerRequests += 1
@@ -77,7 +77,7 @@ class CloudAiAvailabilityPolicyTest : FunSpec({
             }
 
             sessions.value = activeSession(isIncognito = false)
-            policy.current() shouldBe CloudAiAvailability.Available
+            policy.current() shouldBe AiAvailability.Available
         }
     }
 })
@@ -85,7 +85,7 @@ class CloudAiAvailabilityPolicyTest : FunSpec({
 private fun activeSession(
     isIncognito: Boolean = false,
     isSecure: Boolean = false,
-) = CloudAiEditorSession(
+) = AiEditorSession(
     sessionId = 7L,
     isIncognito = isIncognito,
     isSecureField = isSecure,

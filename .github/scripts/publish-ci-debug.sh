@@ -38,7 +38,7 @@ cat > "$package_dir/notes.md" <<EOF
 Automated CI debug prerelease from \`main\`, refreshed after PR merges.
 Version: \`$VERSION\`
 Commit: \`$BUILD_COMMIT\`
-Includes: Phone + Wear debug APKs
+Includes: arm64 phone + Wear debug APKs
 Run: $GITHUB_SERVER_URL/$repo/actions/runs/$GITHUB_RUN_ID
 
 This rolling prerelease replaces its APKs after PR merges; use a versioned release for normal installation.

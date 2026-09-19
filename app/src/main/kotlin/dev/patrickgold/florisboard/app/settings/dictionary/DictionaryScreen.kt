@@ -55,5 +55,12 @@ fun DictionaryScreen() = FlorisScreen {
             onClick = { navController.navigate(Routes.Settings.UserDictionary(UserDictionaryType.FLORIS)) },
             enabledIf = { prefs.dictionary.enableFlorisUserDictionary isEqualTo true },
         )
+        // Speech entries live apart from the typing dictionaries: they bias recognition and rewrite
+        // transcripts, and they can travel to a cloud endpoint. Typing entries never do.
+        Preference(
+            title = stringRes(R.string.speech_dictionary__typing_link_title),
+            summary = stringRes(R.string.speech_dictionary__typing_link_summary),
+            onClick = { navController.navigate(Routes.Settings.SpeechDictionary()) },
+        )
     }
 }

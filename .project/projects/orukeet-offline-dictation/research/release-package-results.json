@@ -1,0 +1,38 @@
+[
+  {
+    "apk": "app-arm64-v8a-release.apk",
+    "abi": "arm64-v8a",
+    "bytes": 35839844,
+    "native_libraries": 3,
+    "sha256": "5f96127b859d97b8793709a0d3146fc53f4c28cae81710691a869c08365bc4cd",
+    "zip_alignment": "pass",
+    "elf_16k": "pass"
+  },
+  {
+    "apk": "app-armeabi-v7a-release.apk",
+    "abi": "armeabi-v7a",
+    "bytes": 10495060,
+    "native_libraries": 1,
+    "sha256": "941cc31aed55ef99529a8fd0471ea480cc4baaf792084c656981fe8930559694",
+    "zip_alignment": "pass",
+    "elf_16k": "not-applicable"
+  },
+  {
+    "apk": "app-x86-release.apk",
+    "abi": "x86",
+    "bytes": 10497084,
+    "native_libraries": 1,
+    "sha256": "1f489cae2c09eee0855f6adb162298420695961b2cab6eb689eb00a4097622ee",
+    "zip_alignment": "pass",
+    "elf_16k": "not-applicable"
+  },
+  {
+    "apk": "app-x86_64-release.apk",
+    "abi": "x86_64",
+    "bytes": 39386251,
+    "native_libraries": 3,
+    "sha256": "2508ce1a10f5526671bf059954779cce8c1c4d8a97e059375ac71b2d85a856f0",
+    "zip_alignment": "pass",
+    "elf_16k": "pass"
+  }
+]

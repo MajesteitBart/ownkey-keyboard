@@ -20,6 +20,8 @@ import kotlinx.coroutines.withContext
 enum class TranscriptionFailureReason {
     RECORDING,
     PROVIDER,
+    LOCAL_MODEL,
+    LOCAL_RUNTIME,
 }
 
 sealed interface TranscriptionOutcome {
@@ -38,6 +40,7 @@ class TranscriptionOnlyOperation(
         client: TranscriptionClient,
     ): TranscriptionOutcome {
         var recordingStopped = false
+        var ownedRecording: AudioRecording? = null
         return try {
             currentCoroutineContext().ensureActive()
             val recording = when (val stopResult = withContext(ioDispatcher) { lease.stop() }) {
@@ -54,6 +57,7 @@ class TranscriptionOnlyOperation(
                 AudioSessionStopResult.Stale -> return TranscriptionOutcome.Cancelled
             }
             recordingStopped = true
+            ownedRecording = recording
             currentCoroutineContext().ensureActive()
             val result = withContext(ioDispatcher) { client.transcribe(recording) }
             result.fold(
@@ -67,7 +71,14 @@ class TranscriptionOnlyOperation(
                         lease.cancel()
                         TranscriptionOutcome.Cancelled
                     } else {
-                        TranscriptionOutcome.Failure(TranscriptionFailureReason.PROVIDER)
+                        TranscriptionOutcome.Failure(if (error is org.ownkey.offline.LocalAsrException) {
+                            when (error.reason) {
+                                org.ownkey.offline.LocalAsrFailure.MODEL_MISSING,
+                                org.ownkey.offline.LocalAsrFailure.MODEL_DAMAGED,
+                                org.ownkey.offline.LocalAsrFailure.UNSUPPORTED -> TranscriptionFailureReason.LOCAL_MODEL
+                                else -> TranscriptionFailureReason.LOCAL_RUNTIME
+                            }
+                        } else TranscriptionFailureReason.PROVIDER)
                     }
                 },
             )
@@ -83,7 +94,7 @@ class TranscriptionOnlyOperation(
                     TranscriptionFailureReason.RECORDING
                 },
             )
-        }
+        } finally { ownedRecording?.close() }
     }
 }
 

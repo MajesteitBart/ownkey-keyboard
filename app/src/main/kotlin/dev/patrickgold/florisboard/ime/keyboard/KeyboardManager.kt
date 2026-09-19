@@ -28,6 +28,7 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
+import dev.patrickgold.florisboard.dictationFixController
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.extensionManager
@@ -94,6 +95,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private val prefs by FlorisPreferenceStore
     private val appContext by context.appContext()
+    private val dictationFixController by appContext.dictationFixController()
     private val clipboardManager by context.clipboardManager()
     private val editorInstance by context.editorInstance()
     private val extensionManager by context.extensionManager()
@@ -824,11 +826,19 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.IME_PREV_SUBTYPE -> subtypeManager.switchToPrevSubtype()
             KeyCode.IME_NEXT_SUBTYPE -> subtypeManager.switchToNextSubtype()
             KeyCode.IME_UI_MODE_TEXT -> activeState.imeUiMode = ImeUiMode.TEXT
-            KeyCode.IME_UI_MODE_MEDIA -> activeState.imeUiMode = ImeUiMode.MEDIA
-            KeyCode.IME_UI_MODE_CLIPBOARD -> activeState.imeUiMode = ImeUiMode.CLIPBOARD
+            KeyCode.IME_UI_MODE_MEDIA -> {
+                dictationFixController.interrupt()
+                activeState.imeUiMode = ImeUiMode.MEDIA
+            }
+            KeyCode.IME_UI_MODE_CLIPBOARD -> {
+                dictationFixController.interrupt()
+                activeState.imeUiMode = ImeUiMode.CLIPBOARD
+            }
             KeyCode.VOICE_INPUT -> {
                 isRewriteOptionsVisible = false
                 activeState.isActionsOverflowVisible = false
+                // Dictating over the selected word is a valid replacement, so that state survives.
+                dictationFixController.onDictationStarted()
                 FlorisImeService.handleVoiceInputAction()
             }
             KeyCode.KANA_SWITCHER -> handleKanaSwitch()
@@ -837,30 +847,48 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.KANA_HALF_KATA -> handleKanaHalfKata()
             KeyCode.LANGUAGE_SWITCH -> handleLanguageSwitch()
             KeyCode.REDO -> editorInstance.performRedo()
-            KeyCode.SETTINGS -> FlorisImeService.launchSettings()
+            KeyCode.SETTINGS -> {
+                dictationFixController.interrupt()
+                FlorisImeService.launchSettings()
+            }
             KeyCode.SHIFT -> handleShiftUp(data)
             KeyCode.SPACE -> handleSpace(data)
-            KeyCode.SYSTEM_INPUT_METHOD_PICKER -> InputMethodUtils.showImePicker(appContext)
+            KeyCode.SYSTEM_INPUT_METHOD_PICKER -> {
+                dictationFixController.interrupt()
+                InputMethodUtils.showImePicker(appContext)
+            }
             KeyCode.SHOW_SUBTYPE_PICKER -> {
+                dictationFixController.interrupt()
                 appContext.keyboardManager.value.activeState.isSubtypeSelectionVisible = true
             }
             KeyCode.SYSTEM_PREV_INPUT_METHOD -> FlorisImeService.switchToPrevInputMethod()
             KeyCode.SYSTEM_NEXT_INPUT_METHOD -> FlorisImeService.switchToNextInputMethod()
-            KeyCode.TOGGLE_SMARTBAR_VISIBILITY -> scope.launch {
-                prefs.smartbar.enabled.let { it.set(!it.get()) }
+            KeyCode.TOGGLE_SMARTBAR_VISIBILITY -> {
+                // The offer lives in the smartbar; hiding the bar must not bring a stale chip back later.
+                dictationFixController.interrupt()
+                scope.launch {
+                    prefs.smartbar.enabled.let { it.set(!it.get()) }
+                }
             }
             KeyCode.TOGGLE_ACTIONS_OVERFLOW -> {
                 isRewriteOptionsVisible = false
+                dictationFixController.interrupt()
                 activeState.isActionsOverflowVisible = !activeState.isActionsOverflowVisible
             }
             KeyCode.TOGGLE_ACTIONS_EDITOR -> {
+                dictationFixController.interrupt()
                 activeState.isActionsEditorVisible = !activeState.isActionsEditorVisible
             }
             KeyCode.AI_REWRITE -> {
                 activeState.isActionsOverflowVisible = false
+                dictationFixController.interrupt()
                 isRewriteOptionsVisible = !isRewriteOptionsVisible
             }
-            KeyCode.TOGGLE_INCOGNITO_MODE -> scope.launch { handleToggleIncognitoMode() }
+            KeyCode.TOGGLE_INCOGNITO_MODE -> {
+                // Nothing may be learned in incognito, so the fix flow ends in every state.
+                dictationFixController.abort()
+                scope.launch { handleToggleIncognitoMode() }
+            }
             KeyCode.TOGGLE_AUTOCORRECT -> handleToggleAutocorrect()
             KeyCode.UNDO -> if (!handleUndoLastAutocorrect()) editorInstance.performUndo()
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS

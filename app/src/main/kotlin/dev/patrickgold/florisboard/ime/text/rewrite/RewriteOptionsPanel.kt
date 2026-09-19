@@ -459,7 +459,7 @@ private fun VoiceInstructionCard(
 private fun RewriteOptionCard(
     prompt: RewritePromptPreset,
     enabled: Boolean,
-    unavailableReason: CloudAiUnavailableReason?,
+    unavailableReason: AiUnavailableReason?,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -545,7 +545,7 @@ private fun BoxScope.VoiceDisclosureBody(
                 Text(text = scope.text(), color = OwnkeyBrand.Glass.InkSoft, fontSize = 12.sp)
             }
             Text(
-                text = stringRes(R.string.voice_rewrite__disclosure_body),
+                text = stringRes(if (disclosure?.audioIsLocal == true) R.string.orukeet__rewrite_disclosure else R.string.voice_rewrite__disclosure_body),
                 color = OwnkeyBrand.Glass.InkSoft,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
@@ -553,7 +553,7 @@ private fun BoxScope.VoiceDisclosureBody(
             if (disclosure != null) {
                 Text(
                     text = stringRes(
-                        R.string.voice_rewrite__disclosure_audio_row,
+                        if (disclosure.audioIsLocal) R.string.orukeet__rewrite_audio_row else R.string.voice_rewrite__disclosure_audio_row,
                         "provider" to disclosure.audioProviderName,
                     ),
                     fontSize = 13.sp,

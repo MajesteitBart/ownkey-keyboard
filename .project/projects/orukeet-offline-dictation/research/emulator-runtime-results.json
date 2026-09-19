@@ -1,0 +1,586 @@
+{
+  "api": "36",
+  "abi": "x86_64",
+  "fingerprint": "google/sdk_gphone16k_x86_64/emu64xa16k:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys",
+  "page_bytes": 16384,
+  "scenarios": [
+    {
+      "event": "result",
+      "service_pid": 6039,
+      "service_uid": 10214,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": true,
+      "loader": "path",
+      "sample_format": "wav",
+      "start_rss_kb": 125560,
+      "loopback_socket": "connection_failed",
+      "original_paths_readable": true,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": true,
+      "audio_decode_ms": 104,
+      "audio_samples": 118960,
+      "load_ms": 1428,
+      "after_load_rss_kb": 852800,
+      "activation_hwm_kb": 868364,
+      "after_load_pss_kb": 741503,
+      "inference_ms": 1274,
+      "transcript_chars": 122,
+      "normalized_sha256": "cde79f9865986e8d0ebcc9e9277b7c6f76610802d7356c523c0ec97394b6923a",
+      "nonempty": true,
+      "after_inference_rss_kb": 931272,
+      "inference_hwm_kb": 933472,
+      "status": "ok",
+      "after_unload_rss_kb": 223288,
+      "sampled_peak_rss_kb": {
+        "bind": 132728,
+        "load": 867084,
+        "inference": 933344,
+        "unload": 826444,
+        "audio": 135544
+      },
+      "run_id": "normal-wav-success-1789479472589",
+      "mode": "normal",
+      "requested_failure": "",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 3814,
+      "phases": "audio,load,inference",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "event": "result",
+      "service_pid": 6113,
+      "service_uid": 10214,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": true,
+      "loader": "path",
+      "sample_format": "aac",
+      "start_rss_kb": 129656,
+      "loopback_socket": "connection_failed",
+      "original_paths_readable": true,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": true,
+      "audio_decode_ms": 125,
+      "audio_samples": 121856,
+      "load_ms": 1204,
+      "after_load_rss_kb": 860620,
+      "activation_hwm_kb": 875824,
+      "after_load_pss_kb": 742780,
+      "inference_ms": 1408,
+      "transcript_chars": 122,
+      "normalized_sha256": "cde79f9865986e8d0ebcc9e9277b7c6f76610802d7356c523c0ec97394b6923a",
+      "nonempty": true,
+      "after_inference_rss_kb": 940760,
+      "inference_hwm_kb": 942768,
+      "status": "ok",
+      "after_unload_rss_kb": 229628,
+      "sampled_peak_rss_kb": {
+        "bind": 129400,
+        "load": 871344,
+        "inference": 942512,
+        "unload": 750504,
+        "audio": 143096
+      },
+      "run_id": "normal-aac-success-1789479476810",
+      "mode": "normal",
+      "requested_failure": "",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 2978,
+      "phases": "audio,load,inference",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "status": "service_died",
+      "last_phase": "load",
+      "service_death_observed": true,
+      "event": "evidence",
+      "service_pid": 6173,
+      "service_uid": 99002,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": false,
+      "loader": "fd",
+      "sample_format": "wav",
+      "start_rss_kb": 127352,
+      "loopback_socket": "permission_denied",
+      "original_paths_readable": false,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": false,
+      "audio_decode_ms": 73,
+      "audio_samples": 118960,
+      "run_id": "isolated-wav-success-1789479480068",
+      "mode": "isolated",
+      "requested_failure": "",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 358,
+      "phases": "audio,load",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "event": "result",
+      "service_pid": 6222,
+      "service_uid": 99003,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": false,
+      "loader": "fd",
+      "sample_format": "aac",
+      "start_rss_kb": 127352,
+      "loopback_socket": "permission_denied",
+      "original_paths_readable": false,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": false,
+      "status": "error",
+      "error_type": "IOException",
+      "error_phase": "audio",
+      "after_unload_rss_kb": 138232,
+      "sampled_peak_rss_kb": {
+        "bind": 127352,
+        "audio": 137720
+      },
+      "run_id": "isolated-aac-success-1789479480691",
+      "mode": "isolated",
+      "requested_failure": "",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 5153,
+      "phases": "audio",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "status": "service_died",
+      "last_phase": "load",
+      "service_death_observed": true,
+      "event": "evidence",
+      "service_pid": 6286,
+      "service_uid": 10214,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": true,
+      "loader": "path",
+      "sample_format": "wav",
+      "start_rss_kb": 129400,
+      "loopback_socket": "connection_failed",
+      "original_paths_readable": true,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": true,
+      "audio_decode_ms": 68,
+      "audio_samples": 118960,
+      "run_id": "normal-wav-load-1789479486031",
+      "mode": "normal",
+      "requested_failure": "load",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 210,
+      "phases": "audio,load",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "status": "service_died",
+      "last_phase": "inference",
+      "service_death_observed": true,
+      "event": "evidence",
+      "service_pid": 6319,
+      "service_uid": 10214,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": true,
+      "loader": "path",
+      "sample_format": "wav",
+      "start_rss_kb": 129656,
+      "loopback_socket": "connection_failed",
+      "original_paths_readable": true,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": true,
+      "audio_decode_ms": 66,
+      "audio_samples": 118960,
+      "load_ms": 1208,
+      "after_load_rss_kb": 853420,
+      "activation_hwm_kb": 868084,
+      "after_load_pss_kb": 741891,
+      "run_id": "normal-wav-inference-1789479486662",
+      "mode": "normal",
+      "requested_failure": "inference",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 1488,
+      "phases": "audio,load,inference",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "status": "cancelled",
+      "last_phase": "inference",
+      "service_death_observed": true,
+      "cancel_to_death_ms": 136,
+      "event": "evidence",
+      "service_pid": 6363,
+      "service_uid": 10214,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": true,
+      "loader": "path",
+      "sample_format": "wav",
+      "start_rss_kb": 129400,
+      "loopback_socket": "connection_failed",
+      "original_paths_readable": true,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": true,
+      "audio_decode_ms": 69,
+      "audio_samples": 118960,
+      "load_ms": 1212,
+      "after_load_rss_kb": 852888,
+      "activation_hwm_kb": 868204,
+      "after_load_pss_kb": 741067,
+      "cancel_ack_ms": 1,
+      "run_id": "normal-wav-cancel-1789479488331",
+      "mode": "normal",
+      "requested_failure": "cancel",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 1603,
+      "phases": "audio,load,inference",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "event": "result",
+      "service_pid": 6413,
+      "service_uid": 99004,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": false,
+      "loader": "fd",
+      "sample_format": "wav",
+      "start_rss_kb": 127480,
+      "loopback_socket": "permission_denied",
+      "original_paths_readable": false,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": false,
+      "status": "error",
+      "error_type": "OutOfMemoryError",
+      "error_phase": "bind",
+      "after_unload_rss_kb": 127992,
+      "sampled_peak_rss_kb": {
+        "bind": 127480
+      },
+      "run_id": "isolated-wav-oom-1789479490524",
+      "mode": "isolated",
+      "requested_failure": "oom",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 106,
+      "phases": "",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    },
+    {
+      "event": "result",
+      "service_pid": 6445,
+      "service_uid": 10214,
+      "main_uid": 10214,
+      "page_bytes": 16384,
+      "internet_permission": true,
+      "loader": "path",
+      "sample_format": "wav",
+      "start_rss_kb": 129316,
+      "loopback_socket": "connection_failed",
+      "original_paths_readable": true,
+      "model_descriptors_readable": true,
+      "model_fd_paths_reopenable": true,
+      "audio_decode_ms": 66,
+      "audio_samples": 118960,
+      "load_ms": 1248,
+      "after_load_rss_kb": 853188,
+      "activation_hwm_kb": 868084,
+      "after_load_pss_kb": 741706,
+      "inference_ms": 1256,
+      "transcript_chars": 122,
+      "normalized_sha256": "cde79f9865986e8d0ebcc9e9277b7c6f76610802d7356c523c0ec97394b6923a",
+      "nonempty": true,
+      "after_inference_rss_kb": 929808,
+      "inference_hwm_kb": 933340,
+      "status": "ok",
+      "after_unload_rss_kb": 222440,
+      "sampled_peak_rss_kb": {
+        "bind": 129444,
+        "load": 853700,
+        "inference": 933188,
+        "unload": 884760,
+        "audio": 133156
+      },
+      "run_id": "normal-wav-success-1789479491143",
+      "mode": "normal",
+      "requested_failure": "",
+      "main_pid": 6015,
+      "main_alive": true,
+      "elapsed_ms": 2747,
+      "phases": "audio,load,inference",
+      "service_absent_after_run": true,
+      "main_pid_still_running": true
+    }
+  ],
+  "apk_sha256": "fca38acdef3228a0d800591b9c31083a49be9de1e9fe0d4d5214bac3a45985e8",
+  "source_sha256": {
+    "src/main/AndroidManifest.xml": "c19533c98e99bb23a1d32f13ed156d66097eebcc65ad4980060c1b49fa02d84d",
+    "src/main/java/nl/bartvandermeeren/ownkey/probe/ProbeActivity.kt": "308c920a8457046089c688a2f25409a60cca8110de2ef3857bce1017898a03f4",
+    "src/main/java/nl/bartvandermeeren/ownkey/probe/ProbeAudio.kt": "cba251e20eb125cd9e20a4af31693f3434953677e193654a4a9544bd12d6aa4f",
+    "src/main/java/nl/bartvandermeeren/ownkey/probe/ProbeService.kt": "11b3f7dc9384c6c801d80781d9750707e99ad73a7e9fb7de2fc754ec38f0b364"
+  },
+  "captured_date": "2026-09-15",
+  "threads": 2,
+  "package": {
+    "debug_apk_bytes": 67738260,
+    "zip_alignment_16k": true,
+    "native_bytes_by_abi": {
+      "arm64-v8a": 31246808,
+      "x86_64": 35435512
+    }
+  },
+  "preparation": {
+    "pins": {
+      "runtime": {
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-1.13.4.aar",
+        "name": "sherpa-onnx-1.13.4.aar",
+        "bytes": 48847529,
+        "sha256": "03f9c4df965f21c71269365a7951a7f23b5696fddd093fa318c80d65550ab780"
+      },
+      "manifest": {
+        "url": "https://huggingface.co/oruk/orukeet/resolve/55a984d46f68323301837194ce647c702f55facc/onnx/manifest.json",
+        "name": "manifest.json",
+        "bytes": 1867,
+        "sha256": "7e80f93f0e9b923c392424b0f85d28a717feee0a4d2a6aa9bfa723693868e727"
+      },
+      "archive": {
+        "url": "https://huggingface.co/oruk/orukeet/resolve/55a984d46f68323301837194ce647c702f55facc/onnx/sherpa-onnx-orukeet-v0.1.0-int8.tar.bz2",
+        "name": "model.tar.bz2",
+        "bytes": 486807585,
+        "sha256": "f9191f30178cc9122ce2f023bf9fefafc822028307b0efa4caff645ba3fe8d0a"
+      },
+      "fixture": {
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/resolve/1ab9323565ddb038682214b292f588070a538ce2/test_wavs/0.wav",
+        "name": "sample.wav",
+        "bytes": 237964,
+        "sha256": "5fceacff0315d49cb59fcc505bcecf1ed5f2f35c2897b1e65a59f30e5d922150"
+      }
+    },
+    "model_files": [
+      {
+        "path": "encoder.int8.onnx",
+        "bytes": 653182378,
+        "sha256": "7b55f2a504a20a8e462899f5befd45f4a1784948d76ed0127902d9cf39405487"
+      },
+      {
+        "path": "decoder.int8.onnx",
+        "bytes": 11845332,
+        "sha256": "c185c2afb4c77c94bb1314807ecb3dc1623057a3dc540b83e10301af9bf4cfca"
+      },
+      {
+        "path": "joiner.int8.onnx",
+        "bytes": 6355335,
+        "sha256": "1a7e90abf7172d926dd7e2edac2a5d5035c24dfb641a15e131d57b6a5f63cdd3"
+      },
+      {
+        "path": "tokens.txt",
+        "bytes": 93939,
+        "sha256": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d"
+      },
+      {
+        "path": "bpe.vocab",
+        "bytes": 117408,
+        "sha256": "41d5e71b3591642eff088151efd7acd4e750124cc0054c8ba9fa3245187a4804"
+      },
+      {
+        "path": "LICENSE-WEIGHTS",
+        "bytes": 20137,
+        "sha256": "23ee78c8bae49cf08ea2f0c84945c66b987ebe4520881fb51b3dad4fb43d07c2"
+      },
+      {
+        "path": "NOTICE.md",
+        "bytes": 5271,
+        "sha256": "440361d963edd9621e744f251332b47f2c4de2e2594ecfe42b215e3f6223fa44"
+      }
+    ],
+    "fixture": {
+      "channels": 1,
+      "sample_rate": 16000,
+      "sample_width": 2,
+      "frames": 118960
+    },
+    "native": [
+      {
+        "path": "jni/arm64-v8a/libonnxruntime.so",
+        "bytes": 21688920,
+        "compressed_bytes": 7681953,
+        "load_alignment": [
+          16384,
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/arm64-v8a/libsherpa-onnx-c-api.so",
+        "bytes": 4406888,
+        "compressed_bytes": 1847389,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/arm64-v8a/libsherpa-onnx-cxx-api.so",
+        "bytes": 440272,
+        "compressed_bytes": 143192,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/arm64-v8a/libsherpa-onnx-jni.so",
+        "bytes": 4710728,
+        "compressed_bytes": 1927272,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/armeabi-v7a/libonnxruntime.so",
+        "bytes": 15026104,
+        "compressed_bytes": 7028086,
+        "load_alignment": [
+          16384,
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/armeabi-v7a/libsherpa-onnx-c-api.so",
+        "bytes": 3153132,
+        "compressed_bytes": 1742431,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/armeabi-v7a/libsherpa-onnx-cxx-api.so",
+        "bytes": 281752,
+        "compressed_bytes": 119799,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/armeabi-v7a/libsherpa-onnx-jni.so",
+        "bytes": 3376604,
+        "compressed_bytes": 1835350,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86/libonnxruntime.so",
+        "bytes": 25933900,
+        "compressed_bytes": 8967963,
+        "load_alignment": [
+          16384,
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86/libsherpa-onnx-c-api.so",
+        "bytes": 4986032,
+        "compressed_bytes": 2043393,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86/libsherpa-onnx-cxx-api.so",
+        "bytes": 392288,
+        "compressed_bytes": 148314,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86/libsherpa-onnx-jni.so",
+        "bytes": 5290856,
+        "compressed_bytes": 2116819,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86_64/libonnxruntime.so",
+        "bytes": 25003152,
+        "compressed_bytes": 8679113,
+        "load_alignment": [
+          16384,
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86_64/libsherpa-onnx-c-api.so",
+        "bytes": 4862584,
+        "compressed_bytes": 2056675,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86_64/libsherpa-onnx-cxx-api.so",
+        "bytes": 436520,
+        "compressed_bytes": 144447,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      {
+        "path": "jni/x86_64/libsherpa-onnx-jni.so",
+        "bytes": 5133256,
+        "compressed_bytes": 2143730,
+        "load_alignment": [
+          16384,
+          16384,
+          16384
+        ]
+      }
+    ]
+  }
+}

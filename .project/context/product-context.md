@@ -16,7 +16,8 @@
 
 ## User-Facing AI Defaults
 - Dictation defaults to Mistral Voxtral ASR: `https://api.mistral.ai/v1/audio/transcriptions`, `voxtral-mini-latest`.
-- Rewrite defaults to OpenAI Responses, currently with model setting `gpt-5.5`.
+- Rewrite defaults to OpenRouter with model setting `meta/muse-spark-1.1`.
+- Default rewrite voices are Improve writing, Fix grammar, Make shorter, Rewrite in Dutch, and Plainspoken. Saved custom voices and provider settings remain user-controlled.
 - Rewrite provider presets include OpenAI Responses, OpenAI Chat Completions, Anthropic, Mistral, OpenRouter, and Other / Custom.
 - Custom provider selection clears endpoint/model fields so the user can enter their own values.
 

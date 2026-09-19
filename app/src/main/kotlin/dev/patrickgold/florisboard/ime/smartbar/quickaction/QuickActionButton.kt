@@ -105,7 +105,7 @@ import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
-import dev.patrickgold.florisboard.ime.text.rewrite.CloudAiAvailability
+import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailability
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEntryOrigin
 import dev.patrickgold.florisboard.ime.text.rewrite.stringResId
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
@@ -200,12 +200,12 @@ fun QuickActionButton(
 
     // An incognito or secure editor session disables every cloud AI action. The key stays visible
     // and answers with the specific reason instead of becoming an inert or silently failing control.
-    val cloudAiAvailability = if (usesVoiceGesture) {
+    val aiAvailability = if (usesVoiceGesture) {
         voiceRewriteUiController.value.availability.collectAsState().value
     } else {
-        CloudAiAvailability.Available
+        AiAvailability.Available
     }
-    val aiUnavailableReason = (cloudAiAvailability as? CloudAiAvailability.Unavailable)?.reason
+    val aiUnavailableReason = (aiAvailability as? AiAvailability.Unavailable)?.reason
     val aiUnavailableText = aiUnavailableReason?.let { stringRes(it.stringResId()) }
 
     fun dispatchVoiceOutcome(outcome: VoiceActionGestureOutcome) {
@@ -268,7 +268,7 @@ fun QuickActionButton(
      */
     fun Modifier.voiceQuickActionInput(): Modifier {
         return indication(interactionSource, localIndication)
-            .pointerInput(action, isEnabled, longPressTimeoutMs, cloudAiAvailability, reducedMotion) {
+            .pointerInput(action, isEnabled, longPressTimeoutMs, aiAvailability, reducedMotion) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     down.consume()
