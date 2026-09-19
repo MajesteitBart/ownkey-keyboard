@@ -25,6 +25,7 @@ data class CleanupSettings(
 
 /** Shared by filler matching, sentence repair, and the neutral filler-only result. */
 internal object TranscriptPunctuation {
+    const val OPENING = "\"'“‘«¿¡([{"
     // These marks also delimit unspaced sentences. Keep Latin dots conservative for names/domains.
     const val UNSPACED_END = "。！？؟۔।॥։܀܁܂።⸮"
     const val SENTENCE_END = ".!?…‥" + UNSPACED_END
@@ -96,12 +97,15 @@ object TranscriptCleanup {
         val alternatives = usable.sortedByDescending { it.length }.joinToString("|") { Pattern.quote(it) }
         val punctuation = TranscriptPunctuation.followingPattern
         val sentenceEnd = TranscriptPunctuation.unspacedEndPattern
+        val opening = "[${Pattern.quote(TranscriptPunctuation.OPENING)}]"
+        val afterOpening = "(?<!$WORD_EDGE$opening)(?<=$opening)"
         // Retain closing quotes; an apostrophe inside a word is not a closing boundary.
         val closingQuote = "[\"'”’»](?=$SPACE|$punctuation|$)"
         val post = "(?:$punctuation*$sentenceEnd$punctuation*|$punctuation*(?=$SPACE|$|$closingQuote))"
         return Pattern.compile(
-            "(?<pre>,)?(?<lead>^|$SPACE+|(?<=$sentenceEnd))(?<!$WORD_EDGE)" +
-                "(?<word>(?:$alternatives)(?:$SPACE+(?:$alternatives))*)(?!$WORD_EDGE)(?<post>$post)",
+            "(?<pre>,)?(?<lead>(?:^|$SPACE+|(?<=$sentenceEnd))(?<!$WORD_EDGE)|$afterOpening)" +
+                "(?<word>(?:$alternatives)(?:$SPACE+(?:$alternatives))*)" +
+                "(?:(?!$WORD_EDGE)|(?=$closingQuote))(?<post>$post)",
             FLAGS,
         )
     }
@@ -152,7 +156,8 @@ object TranscriptCleanup {
         val post = match.group("post").orEmpty()
         val lineStart = '\n' in lead
         val beforeClosingMarks = before.trimEnd { it in "\"'”’»)]}" }
-        var sentenceStart = lineStart || before.isEmpty() ||
+        val startsQuoted = lead.isEmpty() && before.lastOrNull()?.let { it in TranscriptPunctuation.OPENING } == true
+        var sentenceStart = lineStart || before.isEmpty() || startsQuoted ||
             beforeClosingMarks.lastOrNull()?.let { it in SENTENCE_END } == true || before.lastOrNull() == MARK
         val ending = post.firstOrNull { it in SENTENCE_END }?.toString().orEmpty()
         if (pre != null && !lineStart) sentenceStart = false
@@ -169,7 +174,7 @@ object TranscriptCleanup {
 
     /** Capitalizes a plain lowercase word; intentional casing such as `iPhone` or `eBay` is left alone. */
     internal fun capitalize(word: String): String {
-        val start = word.indexOfFirst { it !in "\"'“‘«¿¡([{" }
+        val start = word.indexOfFirst { it !in TranscriptPunctuation.OPENING }
         if (start < 0) return word
         val first = word[start]
         if (first.isLowerCase() && word.substring(start + 1).none { it.isUpperCase() }) {
