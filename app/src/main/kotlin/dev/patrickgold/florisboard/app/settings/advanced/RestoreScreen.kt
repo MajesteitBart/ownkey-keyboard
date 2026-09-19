@@ -54,7 +54,10 @@ import dev.patrickgold.florisboard.ime.clipboard.provider.ItemType
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPreferenceReader
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionaryDocument
 import dev.patrickgold.florisboard.lib.ext.ExtensionManager
+import dev.patrickgold.florisboard.speechDictionary
+import org.florisboard.lib.android.stringRes
 import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
 import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
@@ -148,6 +151,21 @@ fun RestoreScreen() = FlorisScreen {
     suspend fun performRestore() {
         val workspace = restoreWorkspace!!
         val shouldReset = importStrategy == ImportStrategy.Erase
+        // Validate selected speech data before preferences, extension files or clipboard can change.
+        // A missing section in an older archive intentionally leaves the current dictionary alone.
+        val speechDocument = if (restoreFilesSelector.speechDictionary) {
+            val file = workspace.outputDir.subDir(Backup.SPEECH_DIR_NAME).subFile(Backup.SPEECH_DICTIONARY_JSON_NAME)
+            if (file.exists()) {
+                val document = try {
+                    SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8))
+                } catch (_: Exception) {
+                    // Do not retain decoder excerpts or IO paths, including through an exception cause.
+                    throw IllegalStateException(context.stringRes(R.string.speech_dictionary__restore_invalid))
+                }
+                context.speechDictionary().value.validateRestore(document)
+                document
+            } else null
+        } else null
         if (restoreFilesSelector.jetprefDatastore) {
             val file = workspace.outputDir
                 .subDir(AndroidAppDataStorage.JETPREF_DIR_NAME)
@@ -176,6 +194,12 @@ fun RestoreScreen() = FlorisScreen {
             }
             if (srcDir.exists()) {
                 srcDir.copyRecursively(dstDir, overwrite = true)
+            }
+        }
+        if (speechDocument != null) {
+            // Storage failure remains a failed restore, not success to navigate away from.
+            if (!context.speechDictionary().value.restore(speechDocument, merge = !shouldReset)) {
+                throw IllegalStateException(context.stringRes(R.string.speech_dictionary__save_error))
             }
         }
         val clipboardManager = context.clipboardManager().value

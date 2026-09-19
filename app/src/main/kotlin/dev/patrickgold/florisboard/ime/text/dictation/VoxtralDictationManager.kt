@@ -26,8 +26,15 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.editorInstance
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyMode
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationCleanupResult
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationInsertion
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationInsertionListener
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.OrdinaryDictationCleanup
 import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailability
 import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailabilityPolicy
+import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.subtypeManager
 import kotlinx.coroutines.CoroutineScope
@@ -78,17 +85,35 @@ class VoxtralDictationManager(
     private val mockAudioRecorder: AudioRecorder = NoOpAudioRecorder()
     private val mockTranscriptionClient: TranscriptionClient = MockTranscriptionClient()
     private val transcriptionOnlyOperation = TranscriptionOnlyOperation()
+    private val speechDictionary by lazy { appContext.speechDictionary().value }
+
+    /** Keyboard-side fix flow; it learns about ordinary insertions only, never about rewrite instructions. */
+    @Volatile
+    var insertionListener: DictationInsertionListener? = null
+    private var lastCommit: DictationInsertion? = null
+
     private val ordinaryDictationCommitOperation = OrdinaryDictationCommitOperation { transcript ->
         // Dictation supplies its own word boundary against the text around the cursor, so a phrase
         // dictated after `keyboard.` is inserted as ` When I…` rather than fused to the full stop.
         val content = editorInstance.activeContent
-        editorInstance.commitText(
-            DictationInsertionSpacing.join(
-                transcript = transcript,
-                textBefore = content.textBeforeSelection,
-                textAfter = content.textAfterSelection,
-            ),
+        val joined = DictationInsertionSpacing.join(
+            transcript = transcript,
+            textBefore = content.textBeforeSelection,
+            textAfter = content.textAfterSelection,
         )
+        val committed = editorInstance.commitText(joined)
+        if (committed) {
+            val info = editorInstance.activeInfo
+            lastCommit = DictationInsertion(
+                rawTranscript = "",
+                committedText = joined,
+                editorSessionId = editorInstance.activeInputSessionId,
+                hostPackage = info.packageName,
+                fieldId = info.base.fieldId,
+                committedAtMs = System.currentTimeMillis(),
+            )
+        }
+        committed
     }
 
     private var activeSession: TranscriptionSession? = null
@@ -185,6 +210,7 @@ class VoxtralDictationManager(
                 feedbackController.begin(lease.sessionId)
                 syncRecordingSession(lease)
                 _stateFlow.value = DictationState.LISTENING
+                insertionListener?.onDictationStarted()
                 if (session.backend == TranscriptionBackend.ORUKEET) {
                     autoStopJob = scope.launch {
                         while (lease.isCurrent && _stateFlow.value in setOf(DictationState.LISTENING, DictationState.PAUSED)) {
@@ -245,8 +271,14 @@ class VoxtralDictationManager(
             _stateFlow.value = DictationState.TRANSCRIBING
             feedbackController.processing(lease.sessionId)
             autoStopJob?.cancel(); autoStopJob = null
-            val transcriptionClient = activeSession?.client ?: return@launch
-            val outcome = transcriptionOnlyOperation.stopAndTranscribe(lease, transcriptionClient)
+            val session = activeSession ?: return@launch
+            val transcriptionClient = session.client ?: return@launch
+            val rawOutcome = transcriptionOnlyOperation.stopAndTranscribe(lease, transcriptionClient)
+            // Ordinary dictation is the only path that is cleaned. It uses the snapshot taken at
+            // recording start, runs off the main thread, and the lease is rechecked right before commit.
+            val cleaned = kotlinx.coroutines.withContext(Dispatchers.Default) {
+                OrdinaryDictationCleanup.apply(rawOutcome, session.dictionary?.cleaner)
+            }
 
             if (!lease.isCurrent) {
                 feedbackController.cancel(lease.sessionId)
@@ -260,11 +292,26 @@ class VoxtralDictationManager(
                 return@launch
             }
 
+            if (cleaned is DictationCleanupResult.OnlyFillers) {
+                // Neutral result: the recognizer worked, there was just nothing left to insert.
+                feedbackController.cancel(lease.sessionId)
+                finishSession(lease)
+                _stateFlow.value = DictationState.IDLE
+                appContext.showShortToastSync(appContext.getString(dev.patrickgold.florisboard.R.string.speech_dictionary__only_fillers))
+                return@launch
+            }
+            val outcome = (cleaned as DictationCleanupResult.Ready).outcome
+
             when (val commitResult = ordinaryDictationCommitOperation.commit(outcome)) {
                 OrdinaryDictationCommitResult.Committed -> {
                     feedbackController.success(lease.sessionId)
                     finishSession(lease)
                     _stateFlow.value = DictationState.IDLE
+                    val insertion = lastCommit
+                    lastCommit = null
+                    if (insertion != null) {
+                        insertionListener?.onDictationInserted(insertion.copy(rawTranscript = cleaned.rawTranscript.orEmpty()))
+                    }
                 }
                 OrdinaryDictationCommitResult.CommitFailed -> {
                     feedbackController.error(lease.sessionId, VoiceActionErrorReason.EDITOR_COMMIT)
@@ -351,20 +398,36 @@ class VoxtralDictationManager(
         prefs.voxtral.dictationBackend.get(), apiKey().isNotBlank(), BuildConfig.DEBUG,
     )
 
+    /**
+     * Vocabulary hints reach both ordinary dictation and spoken rewrite instructions; the attached
+     * dictionary snapshot is only consulted for cleanup by [stopAndInsertTranscript].
+     */
     suspend fun snapshotSession(purpose: TranscriptionPurpose, backend: TranscriptionBackend = resolveTranscriptionBackend()): TranscriptionSession {
+        val dictionary = speechDictionary.snapshot()
         return when (backend) {
             TranscriptionBackend.UNAVAILABLE -> throw org.ownkey.offline.LocalAsrException(org.ownkey.offline.LocalAsrFailure.UNSUPPORTED)
-            TranscriptionBackend.ORUKEET -> appContext.offlineDictation().session()
-            TranscriptionBackend.MOCK -> TranscriptionSession(backend, NoOpAudioRecorder(), mockTranscriptionClient)
+            TranscriptionBackend.ORUKEET -> appContext.offlineDictation().session(
+                vocabulary = if (prefs.voxtral.localVocabularyHints.get()) dictionary.vocabulary else emptyList(),
+                dictionary = dictionary,
+            )
+            TranscriptionBackend.MOCK -> TranscriptionSession(backend, NoOpAudioRecorder(), mockTranscriptionClient, dictionary)
             TranscriptionBackend.EXTERNAL_IME -> TranscriptionSession(backend, mockAudioRecorder, null)
             TranscriptionBackend.CLOUD -> {
                 val key = apiKey()
                 val endpoint = prefs.voxtral.endpointUrl.get()
                 val model = prefs.voxtral.model.get()
                 val language = TranscriptionLanguageHints.resolve(purpose, prefs.voxtral.languageHint.get(), subtypeManager.activeSubtype.primaryLocale.languageTag())
+                // The client falls back to the default endpoint for a blank preference; the hint
+                // field must be resolved from the same URL the request will actually use.
+                val vocabularyField = CloudVocabularyHints.field(
+                    endpoint.trim().ifBlank { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
+                    CloudVocabularyMode.fromPreference(prefs.voxtral.cloudVocabularyMode.get()),
+                )
+                val vocabulary = dictionary.vocabulary
                 TranscriptionSession(backend, MediaRecorderAudioRecorder(appContext), VoxtralRelayTranscriptionClient(
                     apiKeyProvider = { key }, endpointUrlProvider = { endpoint }, modelProvider = { model }, languageHintProvider = { language },
-                ))
+                    vocabularyProvider = { vocabulary }, vocabularyFieldProvider = { vocabularyField },
+                ), dictionary)
             }
         }
     }

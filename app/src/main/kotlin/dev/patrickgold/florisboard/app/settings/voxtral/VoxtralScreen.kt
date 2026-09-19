@@ -46,7 +46,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,7 +66,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageMode
@@ -89,6 +90,7 @@ fun VoxtralScreen() = FlorisScreen {
     previewFieldVisible = false
 
     val context = LocalContext.current
+    val navController = LocalNavController.current
     val subtypeManager by context.subtypeManager()
     val voxtralSecretsStore = remember { VoxtralSecretsStore(context) }
     val llmRewriteSecretsStore = remember { LlmRewriteSecretsStore(context) }
@@ -141,19 +143,7 @@ fun VoxtralScreen() = FlorisScreen {
             }
         }
 
-        MaterialTheme(
-            colorScheme = darkColorScheme(
-                primary = OwnkeyBrand.TrustBlue,
-                onPrimary = OwnkeyBrand.Bone,
-                background = OwnkeyBrand.Key,
-                onBackground = OwnkeyBrand.Bone,
-                surface = OwnkeyBrand.Panel,
-                onSurface = OwnkeyBrand.Bone,
-                surfaceVariant = OwnkeyBrand.Action,
-                onSurfaceVariant = OwnkeyBrand.Ash,
-                outline = OwnkeyBrand.Line,
-            ),
-        ) {
+        OwnkeyAiSettingsTheme {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -163,6 +153,7 @@ fun VoxtralScreen() = FlorisScreen {
             ) {
                 AiIntroCard()
                 OrukeetSettingsCard(hasCloudKey = hasStoredApiKey)
+                PersonalDictionaryCard(onOpen = { navController.navigate(Routes.Settings.SpeechDictionary()) })
 
                 AiSectionCard(
                     title = stringRes(R.string.pref__voxtral__group_auth__label),
@@ -640,7 +631,7 @@ private fun DictationLanguageOptions(
 }
 
 @Composable
-private fun ChoiceOption(
+internal fun ChoiceOption(
     label: String,
     summary: String,
     selected: Boolean,
@@ -739,7 +730,7 @@ private fun ProviderOption(
 }
 
 @Composable
-private fun OwnkeyOutlinedTextField(
+internal fun OwnkeyOutlinedTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -804,16 +795,17 @@ internal fun OwnkeyButton(
 }
 
 @Composable
-internal fun StatusText(text: String) {
+internal fun StatusText(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
+        modifier = modifier,
         color = OwnkeyBrand.Ash,
         style = MaterialTheme.typography.bodyMedium,
     )
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+internal fun SectionLabel(text: String) {
     Text(
         text = text,
         color = OwnkeyBrand.Bone,

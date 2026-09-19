@@ -3,6 +3,7 @@ package org.ownkey.offline
 import android.app.Service
 import android.content.Intent
 import android.os.*
+import android.util.Log
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -51,31 +52,46 @@ class InferenceService : Service() {
             if (release.files.any { File(directory, it.name).length() != it.bytes }) {
                 throw LocalAsrException(LocalAsrFailure.MODEL_MISSING)
             }
-            if (engine == null || version != modelId) {
+            val hotwords = data.getString(KEY_HOTWORDS).orEmpty()
+            if (hotwords.toByteArray(Charsets.UTF_8).size > HotwordTransport.MAX_BYTES) {
+                throw LocalAsrException(LocalAsrFailure.RUNTIME)
+            }
+            val profile = if (hotwords.isEmpty()) DecoderProfile.GREEDY else DecoderProfile.BEAM_HOTWORDS
+            // One resident engine, keyed by model and decoder profile; a profile change recreates it.
+            if (engine == null || version != modelId || engine?.profile != profile) {
                 engine?.close(); engine = null; version = null
-                engine = OrukeetEngine(directory)
+                val started = SystemClock.elapsedRealtime()
+                Log.i(TAG, "Loading $modelId with the $profile decoder")
+                engine = OrukeetEngine(directory, profile)
                 version = modelId
+                Log.i(TAG, "Loaded $modelId in ${SystemClock.elapsedRealtime() - started} ms")
             }
             if (audio == null) {
                 respond(reply, id, "ok")
             } else {
                 respond(reply, id, "transcribing")
                 val samples = AudioDecoder.decode(audio.fileDescriptor)
-                val transcript = engine!!.transcribe(samples)
+                val transcript = engine!!.transcribe(samples, hotwords)
                 if (transcript.length > 16_000) throw LocalAsrException(LocalAsrFailure.RUNTIME)
                 respond(reply, id, "ok", text = transcript)
             }
         } catch (error: LocalAsrException) {
+            Log.w(TAG, "Request $id failed: ${error.reason}")
             respond(reply, id, "error", failure = error.reason)
-        } catch (_: Throwable) {
-            respond(reply, id, "error", failure = LocalAsrFailure.RUNTIME)
+        } catch (error: Throwable) {
+            val code = InferenceDiagnostics.failureCode(error)
+            Log.e(TAG, "Request $id failed: $code")
+            respond(reply, id, "error", failure = LocalAsrFailure.RUNTIME, detail = code)
             main.post { terminate() }
         } finally {
             runCatching { audio?.close() }
         }
     }
 
-    private fun respond(reply: Messenger, id: Long, state: String, text: String? = null, failure: LocalAsrFailure? = null) {
+    private fun respond(
+        reply: Messenger, id: Long, state: String, text: String? = null,
+        failure: LocalAsrFailure? = null, detail: String? = null,
+    ) {
         main.post {
         if (state == "ok" || (state == "error" && failure != LocalAsrFailure.BUSY)) {
             active = false
@@ -88,6 +104,7 @@ class InferenceService : Service() {
                     putLong("request", id); putString("state", state); putInt("pid", Process.myPid())
                     if (text != null) putString("text", text)
                     if (failure != null) putString("failure", failure.name)
+                    if (detail != null) putString(KEY_DETAIL, detail)
                 }
             })
         }.onFailure { terminate() }
@@ -111,5 +128,8 @@ class InferenceService : Service() {
         const val CANCEL = 2
         const val UNLOAD = 3
         const val EVENT = 4
+        const val KEY_HOTWORDS = "hotwords"
+        const val KEY_DETAIL = "detail"
+        private const val TAG = "OwnkeyAsr"
     }
 }

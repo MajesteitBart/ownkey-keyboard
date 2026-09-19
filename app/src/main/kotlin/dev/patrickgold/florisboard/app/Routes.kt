@@ -75,6 +75,7 @@ import dev.patrickgold.florisboard.app.settings.theme.ThemeManagerScreen
 import dev.patrickgold.florisboard.app.settings.theme.ThemeManagerScreenAction
 import dev.patrickgold.florisboard.app.settings.theme.ThemeScreen
 import dev.patrickgold.florisboard.app.settings.typing.TypingScreen
+import dev.patrickgold.florisboard.app.settings.voxtral.SpeechDictionaryScreen
 import dev.patrickgold.florisboard.app.settings.voxtral.VoxtralScreen
 import dev.patrickgold.florisboard.app.setup.SetupScreen
 import kotlinx.serialization.SerialName
@@ -176,6 +177,11 @@ object Routes {
         @Serializable
         @Deeplink("settings/voxtral")
         object Voxtral
+
+        /** [heard] prefills a correction; the keyboard passes it when the fix flow lost its editor. */
+        @Serializable
+        @Deeplink("settings/voxtral/dictionary")
+        data class SpeechDictionary(val heard: String? = null)
 
         @Serializable
         @Deeplink("settings/other")
@@ -320,6 +326,10 @@ object Routes {
             composableWithDeepLink(Settings.Media::class) { MediaScreen() }
 
             composableWithDeepLink(Settings.Voxtral::class) { VoxtralScreen() }
+            composableWithDeepLink(Settings.SpeechDictionary::class) { navBackStack ->
+                val payload = navBackStack.toRoute<Settings.SpeechDictionary>()
+                SpeechDictionaryScreen(payload.heard)
+            }
 
             composableWithDeepLink(Settings.Other::class) { OtherScreen() }
             composableWithDeepLink(Settings.PhysicalKeyboard::class) { PhysicalKeyboardScreen() }
