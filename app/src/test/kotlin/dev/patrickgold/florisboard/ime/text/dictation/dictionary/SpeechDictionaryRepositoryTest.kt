@@ -629,7 +629,66 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { reloaded.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
     }
 
-    test("failed quarantine marker persistence remains unsaved until retry prevents resurrection") {
+    test("restart after main replacement but before quarantine retirement cannot resurrect removed entries") {
+        val dir = temp()
+        val crashDir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        kept.writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 2, words = listOf(VocabularyEntry(1, "Recovered")),
+        )))
+        val blocker = File(dir, "personal_dictionary.json.tmp")
+        val child = File(blocker, "child").apply { parentFile.mkdirs(); writeText("blocked") }
+        var capture = false
+        val store = SpeechDictionaryRepository(
+            file = file, scope = CoroutineScope(SupervisorJob() + Dispatchers.Default), supportedVersion = 2,
+            deleteKeptFile = {
+                if (capture) {
+                    // Snapshot the exact crash window: committed main plus unretired quarantine,
+                    // before any legacy marker can be recorded. Resume from those bytes below.
+                    File(crashDir, file.name).writeBytes(file.readBytes())
+                    File(crashDir, kept.name).writeBytes(kept.readBytes())
+                    capture = false
+                }
+                false
+            },
+        )
+        runBlocking { store.awaitLoaded() }.saveError shouldBe true
+        runBlocking { store.remove(1L) }
+        child.delete() shouldBe true
+        blocker.delete() shouldBe true
+        capture = true
+        runBlocking { store.addWord("Later") }.shouldBeInstanceOf<EntryResult.Saved>().persisted shouldBe true
+        capture shouldBe false
+        File(crashDir, "personal_dictionary.json.merged").exists() shouldBe false
+        val restarted = SpeechDictionaryRepository(
+            file = File(crashDir, file.name), scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            supportedVersion = 2, deleteKeptFile = { false },
+        )
+        runBlocking { restarted.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
+        runBlocking { restarted.export() }.consumedQuarantines shouldBe emptySet()
+    }
+
+    test("fallback backup with an inline consumed record does not remerge its kept file") {
+        val dir = temp()
+        val file = File(dir, "personal_dictionary.json")
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        kept.writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 2, words = listOf(VocabularyEntry(1, "Removed")),
+        )))
+        File(dir, "${file.name}.bak").writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 3, words = listOf(VocabularyEntry(2, "Later")),
+            consumedQuarantines = setOf(kept.name),
+        )))
+        val store = SpeechDictionaryRepository(
+            file = file, scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            supportedVersion = 2, deleteKeptFile = { false },
+        )
+        runBlocking { store.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
+        SpeechDictionaryDocument.decode(file.readText()).consumedQuarantines shouldBe setOf(kept.name)
+    }
+
+    test("inline consumed record prevents resurrection even if a legacy marker cannot be written") {
         val dir = temp()
         val file = File(dir, "personal_dictionary.json")
         val kept = File(dir, "personal_dictionary.json.newer-v2-5")
@@ -643,11 +702,13 @@ class SpeechDictionaryRepositoryTest : FunSpec({
             supportedVersion = 2, deleteKeptFile = { false },
         )
         val store = upgraded()
-        runBlocking { store.awaitLoaded() }.saveError shouldBe true
+        runBlocking { store.awaitLoaded() }.saveError shouldBe false
         runBlocking { store.remove(1L) } shouldNotBe null
-        store.state.value.saveError shouldBe true
+        store.state.value.saveError shouldBe false
         val pending = runBlocking { store.addWord("Later") }.shouldBeInstanceOf<EntryResult.Saved>()
-        pending.persisted shouldBe false
+        pending.persisted shouldBe true
+        SpeechDictionaryDocument.decode(file.readText()).consumedQuarantines shouldBe setOf(kept.name)
+        runBlocking { upgraded().awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Later")
         child.delete() shouldBe true
         marker.delete() shouldBe true
         runBlocking { store.updateWord(pending.entry.id, "Later") }

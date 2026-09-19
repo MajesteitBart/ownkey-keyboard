@@ -28,6 +28,8 @@ data class SpeechDictionaryDocument(
     val words: List<VocabularyEntry> = emptyList(),
     val corrections: List<CorrectionEntry> = emptyList(),
     val fillers: FillerSettings = FillerSettings(),
+    /** Local recovery metadata committed atomically with entries; omitted from portable exports. */
+    val consumedQuarantines: Set<String> = emptySet(),
 ) {
     val isEmpty: Boolean get() = words.isEmpty() && corrections.isEmpty()
 

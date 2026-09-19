@@ -91,3 +91,12 @@ References: [native diagnostics](https://github.com/MajesteitBart/ownkey-keyboar
 - Failure to persist a consumed-file marker now keeps recovery and later edits marked unsaved. The marker is flushed and replaced atomically where supported; failures propagate through load and mutation outcomes. A disk-backed regression covers marker path collision, failed deletion, a removed recovered word, successful retry and restart without resurrection.
 
 References: [dialog dismissal](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053312489), [marker persistence](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053319334).
+
+## Atomic Recovery Record
+
+- Consumed quarantine filenames now travel inside the same atomically replaced dictionary document as its entries. A crash after main replacement and before retirement can no longer remerge a file whose recovered entries the user deleted.
+- Portable exports strip this local metadata. Readers still understand older sidecar markers, but new main writes do not depend on a second file write for durability. This supersedes the earlier rule that a failed sidecar must report an unsaved main: the main now contains its own committed skip state, so successful persistence is truthful even if optional compatibility-marker writing fails.
+- Fallback backup recovery honors its embedded record only when it accounts for all kept files, preserving the earlier rule that an unmarked stale backup must not shadow a newer kept main.
+- Real-file tests snapshot the exact post-replacement/pre-retirement crash window, restart without a sidecar, simulate a failed sidecar path, check portable export, and recover a fallback checkpoint without resurrecting removed entries. Both newly identified crash paths failed before their repairs.
+
+Reference: [crash window between main and marker](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053366395).
