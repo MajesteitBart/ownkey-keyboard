@@ -23,6 +23,13 @@ data class CleanupSettings(
     val corrections: List<CorrectionRule>,
 )
 
+/** Shared by filler matching, sentence repair, and the neutral filler-only result. */
+internal object TranscriptPunctuation {
+    const val SENTENCE_END = ".!?…‥。！？؟۔।॥։܀܁܂።⸮"
+    const val MARKS = SENTENCE_END + ",;:'\"¡¿·、，：；؛"
+    val pattern: String = "[${Pattern.quote(MARKS)}]"
+}
+
 /**
  * Deterministic transcript cleanup without a language model, ported from the Windows reference.
  *
@@ -31,7 +38,7 @@ data class CleanupSettings(
  * apostrophes, hyphens, line breaks and intentional casing such as `iPhone`.
  */
 object TranscriptCleanup {
-    private const val SENTENCE_END = ".!?…"
+    private const val SENTENCE_END = TranscriptPunctuation.SENTENCE_END
     // Built from its code point on purpose: a literal NUL in the source makes git treat this file
     // as binary, which hides diffs, blame and text-based review.
     private val MARK: Char = Char(0)
@@ -46,7 +53,7 @@ object TranscriptCleanup {
 
     private val whitespace = Regex("$SPACE+")
     private val markedWord = Pattern.compile("$MARK$SPACE*($NON_SPACE+)")
-    private val spaceBeforePunctuation = Pattern.compile("[ \\t]+([,.;:!?…])")
+    private val spaceBeforePunctuation = Pattern.compile("[ \\t]+(${TranscriptPunctuation.pattern})")
     private val repeatedSpaces = Pattern.compile("[ \\t]{2,}")
     private val spacedLineBreak = Pattern.compile(" *\\n *")
 
@@ -85,7 +92,7 @@ object TranscriptCleanup {
         val alternatives = usable.sortedByDescending { it.length }.joinToString("|") { Pattern.quote(it) }
         return Pattern.compile(
             "(?<pre>,)?(?<lead>^|$SPACE+)(?<!$WORD_EDGE)(?<word>(?:$alternatives)(?:$SPACE+(?:$alternatives))*)" +
-                "(?!$WORD_EDGE)(?<post>[,;:.!?…]*)(?=$SPACE|$)",
+                "(?!$WORD_EDGE)(?<post>${TranscriptPunctuation.pattern}*)(?=$SPACE|$)",
             FLAGS,
         )
     }

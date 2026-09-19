@@ -210,11 +210,21 @@ class OrdinaryDictationCleanupTest : FunSpec({
     test("non-Latin sentence marks left by fillers are empty but intentionally dictated marks survive") {
         "؟۔؛।॥։܀܁܂።⸮".forEach { mark ->
             OrdinaryDictationCleanup.hasContent(mark.toString()) shouldBe false
-            val speech = "Uh, $mark"
-            OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript(speech), cleaner) shouldBe
-                DictationCleanupResult.OnlyFillers(speech)
+            listOf("Uh, $mark", "Uh$mark").forEach { speech ->
+                OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript(speech), cleaner) shouldBe
+                    DictationCleanupResult.OnlyFillers(speech)
+            }
             OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript(mark.toString()), cleaner) shouldBe
                 DictationCleanupResult.Ready(TranscriptionOutcome.Transcript(mark.toString()), mark.toString())
+        }
+    }
+
+    test("localized punctuation attached to a filler preserves sentence boundaries and names") {
+        listOf("。", "！", "？", "؟", "।").forEach { mark ->
+            OrdinaryDictationCleanup.apply(TranscriptionOutcome.Transcript("Um$mark"), cleaner) shouldBe
+                DictationCleanupResult.OnlyFillers("Um$mark")
+            cleaner.clean("We left uh${mark} Next stop.") shouldBe "We left${mark} Next stop."
+            cleaner.clean("First$mark Uh, iPhone works.") shouldBe "First$mark iPhone works."
         }
     }
 
@@ -503,9 +513,10 @@ class DictationFixControllerTest : FunSpec({
         controller.state.value shouldBe DictationFixState.Hidden
     }
 
-    test("an abort during a save drops the word hint and the confirmation") {
+    test("incognito cancels a queued save without persisting the correction or word hint") {
         val dir = Files.createTempDirectory("fix-abort-save").toFile()
         val gated = GatedIo()
+        val available = kotlinx.coroutines.flow.MutableStateFlow(true)
         val slowRepository = SpeechDictionaryRepository(
             file = File(dir, "personal_dictionary.json"),
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
@@ -519,6 +530,7 @@ class DictationFixControllerTest : FunSpec({
             repository = slowRepository,
             editor = editor,
             openDictionary = {},
+            available = available,
             clock = { 100_000L },
         )
         controller.offer(DictationInsertion("raw", " own key works", 1L, "com.example.notes", 7, 99_000L))
@@ -529,15 +541,16 @@ class DictationFixControllerTest : FunSpec({
         // The correction write is already queued behind a held IO task when incognito switches on.
         gated.hold()
         controller.save()
-        controller.abort()
+        available.value = false
         controller.state.value shouldBe DictationFixState.Hidden
         gated.release()
         gated.drain()
-        // The write in progress completes for consistency, but no word hint follows and nothing is confirmed.
+        // No persistence started while the IO queue was held. Neither memory nor disk may learn it.
         runBlocking { slowRepository.export() }.let { document ->
-            document.corrections.map { it.source to it.replacement } shouldBe listOf("own" to "Ownkey")
+            document.corrections shouldBe emptyList()
             document.words shouldBe emptyList()
         }
+        File(dir, "personal_dictionary.json").exists() shouldBe false
         controller.state.value shouldBe DictationFixState.Hidden
         gated.close()
     }

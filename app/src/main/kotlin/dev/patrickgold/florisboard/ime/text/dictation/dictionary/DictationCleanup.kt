@@ -45,9 +45,6 @@ object OrdinaryDictationCleanup {
         return DictationCleanupResult.Ready(TranscriptionOutcome.Transcript(cleaned), outcome.text)
     }
 
-    /** Sentence marks a recogniser places around words; what filler removal can leave behind. */
-    private const val SENTENCE_MARKS = ".,;:!?…‥'\"¡¿·。、，！？：；؟۔؛।॥։܀܁܂።⸮"
-
     /**
      * Letters, digits, marks and symbols (currency, maths, emoji) are content, and so is punctuation
      * that stands for something (`%`, `&`, `@`, `#`). Sentence marks, dashes, quotes, brackets,
@@ -61,7 +58,7 @@ object OrdinaryDictationCleanup {
             Character.SPACE_SEPARATOR, Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR,
             Character.CONTROL, Character.FORMAT, Character.UNASSIGNED,
             -> false
-            Character.OTHER_PUNCTUATION -> SENTENCE_MARKS.indexOf(codePoint.toChar()) < 0 || codePoint > 0xFFFF
+            Character.OTHER_PUNCTUATION -> TranscriptPunctuation.MARKS.indexOf(codePoint.toChar()) < 0 || codePoint > 0xFFFF
             else -> true
         }
     }

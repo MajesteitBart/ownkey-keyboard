@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import java.io.File
 import java.nio.file.Files
 
@@ -90,6 +91,36 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         reloaded.nextId shouldBe 4L
     }
 
+    test("cancellation after IO starts but before replacement preserves disk and memory") {
+        val dir = temp()
+        val cancelOnWrite = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>()
+        val file = object : File(dir, "personal_dictionary.json") {
+            override fun getParentFile(): File? {
+                // write() first asks for the parent directory after entering its IO block.
+                cancelOnWrite.getAndSet(null)?.cancel()
+                return super.getParentFile()
+            }
+        }
+        val repository = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+        )
+        runBlocking {
+            repository.addWord("Existing")
+            val before = repository.state.value
+            val save = launch(start = kotlinx.coroutines.CoroutineStart.LAZY) { repository.addWord("Cancelled") }
+            cancelOnWrite.set(save)
+            save.start()
+            save.join()
+            save.isCancelled shouldBe true
+            repository.state.value shouldBeSameInstanceAs before
+        }
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Existing")
+        File(dir, "personal_dictionary.json.tmp").exists() shouldBe false
+        runBlocking { repository.addWord("Later") }
+        runBlocking { repository(dir).awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Existing", "Later")
+    }
+
     test("an explicitly empty language list survives reload and is not replaced by the defaults") {
         val dir = temp()
         runBlocking { repository(dir).setFillerLanguages(emptyList()) }
@@ -152,12 +183,18 @@ class SpeechDictionaryRepositoryTest : FunSpec({
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             supportedVersion = 2,
         )
-        repeat(2) {
-            val state = runBlocking { upgraded().awaitLoaded() }
-            state.loadError shouldBe null
-            state.document.words.map { it.word } shouldBe listOf("Current")
-            state.document.corrections.map { it.replacement } shouldBe listOf("Ownkey")
-        }
+        val state = runBlocking { upgraded().awaitLoaded() }
+        state.loadError shouldBe null
+        state.document.words.map { it.word } shouldBe listOf("Current")
+        state.document.corrections.map { it.replacement } shouldBe listOf("Ownkey")
+        val persisted = SpeechDictionaryDocument.decode(file.readText())
+        persisted.version shouldBe 2
+        persisted.words.map { it.word } shouldBe listOf("Current")
+        persisted.corrections.map { it.replacement } shouldBe listOf("Ownkey")
+        File(dir, "personal_dictionary.json.bak").exists() shouldBe true
+        File(dir, "personal_dictionary.json.newer-v2-5").exists() shouldBe false
+        // The next restart uses the newly persisted main, without absorbing the old file again.
+        runBlocking { upgraded().awaitLoaded() }.document shouldBe persisted
     }
 
     test("a failed stale backup deletion keeps the newer main in place until quarantine can safely retry") {

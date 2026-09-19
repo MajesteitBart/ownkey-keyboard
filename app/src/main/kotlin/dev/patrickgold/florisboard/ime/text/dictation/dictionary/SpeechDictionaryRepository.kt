@@ -10,6 +10,7 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation.dictionary
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -348,26 +349,31 @@ class SpeechDictionaryRepository(
             val current = _state.value
             val (next, result) = transform(current.document)
             if (next !== current.document) {
-                // A caller cancelled while waiting for the lock must not start a write at all; only
-                // a write already in progress is carried through to completion below.
-                currentCoroutineContext().ensureActive()
+                // Retain the caller's cancellation signal even inside NonCancellable below.
+                val callerContext = currentCoroutineContext()
+                callerContext.ensureActive()
                 val versioned = next.copy(version = supportedVersion)
                 // While a newer file could not be moved aside, edits stay in memory rather than
                 // overwrite the only newer-schema copy; the warning stays visible. A storage failure
                 // (full disk, unwritable directory) is reported the same way instead of thrown at
                 // the settings page or the keyboard: the change is kept and retried on the next one.
-                // Write and publication run non-cancellably: a caller that goes away mid-write must
-                // not leave disk and memory disagreeing.
+                // Check cancellation at IO entry and before file replacement. Once replacement
+                // begins, finish publication non-cancellably so disk and memory cannot disagree.
                 withContext(NonCancellable) {
                     var blocked = false
                     val written = withContext(ioDispatcher) {
+                        callerContext.ensureActive()
                         if (mainPathWritable()) {
-                            runCatching { write(versioned) }.onSuccess { retirePendingConsumed() }.isSuccess
+                            runCatching { write(versioned) { callerContext.ensureActive() } }
+                                .onFailure { if (it is CancellationException) throw it }
+                                .onSuccess { retirePendingConsumed() }.isSuccess
                         } else {
                             blocked = true
                             false
                         }
                     }
+                    // A cancelled failed write must not remain as an unsaved edit for later retry.
+                    if (!written) callerContext.ensureActive()
                     _state.value = SpeechDictionaryState(
                         versioned,
                         loaded = true,
@@ -453,7 +459,7 @@ class SpeechDictionaryRepository(
         }
     }
 
-    private fun write(document: SpeechDictionaryDocument) {
+    private fun write(document: SpeechDictionaryDocument, beforeCommit: () -> Unit = {}) {
         file.parentFile?.mkdirs()
         val temp = File(file.parentFile, "${file.name}.tmp")
         FileOutputStream(temp).use { stream ->
@@ -461,13 +467,19 @@ class SpeechDictionaryRepository(
             stream.fd.sync()
         }
         try {
-            Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-            // Without an atomic rename a crash mid-replace could leave a torn file. Keep the
-            // previous document as a durable copy first; load() falls back to it when the main
-            // file is unreadable.
-            if (file.exists()) Files.copy(file.toPath(), backupFile().toPath(), StandardCopyOption.REPLACE_EXISTING)
-            Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            beforeCommit()
+            try {
+                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                // Keep a durable previous copy before the non-atomic replacement.
+                if (file.exists()) Files.copy(file.toPath(), backupFile().toPath(), StandardCopyOption.REPLACE_EXISTING)
+                beforeCommit()
+                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+        } catch (cancelled: CancellationException) {
+            // The authoritative file is untouched, and the cancelled draft is never retried.
+            temp.delete()
+            throw cancelled
         }
     }
 
