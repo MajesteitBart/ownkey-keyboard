@@ -60,3 +60,10 @@ References: [settings navigation](https://github.com/MajesteitBart/ownkey-keyboa
 - Before these repairs, two added regressions failed: endpoint impersonation through a fragment and dismissal during persistence. Fresh final-head review and CI remain required.
 
 References: [endpoint parsing](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053181004), [atomic learning](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053181008).
+
+## Quote Boundaries
+
+- Closing quotes establish a filler boundary without being consumed; apostrophes inside words remain protected. Recapitalization skips opening punctuation while preserving intentional casing.
+- Extended the quote regression with a lowercase quoted sentence, an inverted question mark, a filler before a closing quote, and a possessive spelling. The extended regression failed before the repair; all 456 tests, debug assembly and release Kotlin compilation pass afterward.
+
+References: [closing quotes](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053190858), [capitalization after opening marks](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053190869).

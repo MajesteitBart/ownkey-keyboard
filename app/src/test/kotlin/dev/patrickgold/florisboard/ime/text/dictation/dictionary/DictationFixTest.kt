@@ -245,6 +245,10 @@ class OrdinaryDictationCleanupTest : FunSpec({
         cleaner.clean("Um。¿Qué tal?") shouldBe "¿Qué tal?"
         cleaner.clean("Um。\"iPhone works\"") shouldBe "\"iPhone works\""
         cleaner.clean("First。Uh。\"Next\"") shouldBe "First。\"Next\""
+        cleaner.clean("Um。¿qué tal?") shouldBe "¿Qué tal?"
+        cleaner.clean("Um。\"next stop\"") shouldBe "\"Next stop\""
+        cleaner.clean("He said \"well uh\".") shouldBe "He said \"well\"."
+        cleaner.clean("Keep Uh's spelling") shouldBe "Keep Uh's spelling"
     }
 
     test("content is anything but sentence marks, dashes, quotes, brackets and spacing") {

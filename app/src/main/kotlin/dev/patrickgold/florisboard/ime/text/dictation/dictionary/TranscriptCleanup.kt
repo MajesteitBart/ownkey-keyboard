@@ -96,7 +96,9 @@ object TranscriptCleanup {
         val alternatives = usable.sortedByDescending { it.length }.joinToString("|") { Pattern.quote(it) }
         val punctuation = TranscriptPunctuation.followingPattern
         val sentenceEnd = TranscriptPunctuation.unspacedEndPattern
-        val post = "(?:$punctuation*$sentenceEnd$punctuation*|$punctuation*(?=$SPACE|$))"
+        // Retain closing quotes; an apostrophe inside a word is not a closing boundary.
+        val closingQuote = "[\"'”’»](?=$SPACE|$punctuation|$)"
+        val post = "(?:$punctuation*$sentenceEnd$punctuation*|$punctuation*(?=$SPACE|$|$closingQuote))"
         return Pattern.compile(
             "(?<pre>,)?(?<lead>^|$SPACE+|(?<=$sentenceEnd))(?<!$WORD_EDGE)" +
                 "(?<word>(?:$alternatives)(?:$SPACE+(?:$alternatives))*)(?!$WORD_EDGE)(?<post>$post)",
@@ -165,10 +167,11 @@ object TranscriptCleanup {
 
     /** Capitalizes a plain lowercase word; intentional casing such as `iPhone` or `eBay` is left alone. */
     internal fun capitalize(word: String): String {
-        if (word.isEmpty()) return word
-        val first = word[0]
-        if (first.isLowerCase() && word.substring(1).none { it.isUpperCase() }) {
-            return word.substring(0, 1).uppercase() + word.substring(1)
+        val start = word.indexOfFirst { it !in "\"'“‘«¿¡([{" }
+        if (start < 0) return word
+        val first = word[start]
+        if (first.isLowerCase() && word.substring(start + 1).none { it.isUpperCase() }) {
+            return word.substring(0, start) + word.substring(start, start + 1).uppercase() + word.substring(start + 1)
         }
         return word
     }
