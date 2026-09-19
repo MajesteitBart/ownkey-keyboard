@@ -74,3 +74,5 @@ References: [closing quotes](https://github.com/MajesteitBart/ownkey-keyboard/pu
 - Added restart and successful-backup regressions. The interrupted-load regression failed before the repair.
 
 Reference: [interrupted load warning](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053207427).
+
+- Follow-up sentence repair recognizes terminal punctuation before closing quotes/brackets. The extended regression fails before the change and covers straight/curly quotes, a quote without terminal punctuation, and intentional name casing. [Review reference](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053225155).

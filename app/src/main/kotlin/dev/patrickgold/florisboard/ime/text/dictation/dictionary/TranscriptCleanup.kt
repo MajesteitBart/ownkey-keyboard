@@ -151,7 +151,9 @@ object TranscriptCleanup {
         val lead = match.group("lead").orEmpty()
         val post = match.group("post").orEmpty()
         val lineStart = '\n' in lead
-        var sentenceStart = lineStart || before.isEmpty() || before.last() in SENTENCE_END || before.last() == MARK
+        val beforeClosingMarks = before.trimEnd { it in "\"'”’»)]}" }
+        var sentenceStart = lineStart || before.isEmpty() ||
+            beforeClosingMarks.lastOrNull()?.let { it in SENTENCE_END } == true || before.lastOrNull() == MARK
         val ending = post.firstOrNull { it in SENTENCE_END }?.toString().orEmpty()
         if (pre != null && !lineStart) sentenceStart = false
         return when {
