@@ -19,8 +19,8 @@ import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.file.Files
 
@@ -108,7 +108,9 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking {
             repository.addWord("Existing")
             val before = repository.state.value
-            val save = launch(start = kotlinx.coroutines.CoroutineStart.LAZY) { repository.addWord("Cancelled") }
+            val save = launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                repository.addWord("Cancelled", cancelBeforeCommit = true)
+            }
             cancelOnWrite.set(save)
             save.start()
             save.join()
@@ -119,6 +121,76 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         File(dir, "personal_dictionary.json.tmp").exists() shouldBe false
         runBlocking { repository.addWord("Later") }
         runBlocking { repository(dir).awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Existing", "Later")
+    }
+
+    test("cancelling after a quarantine retry preserves the newer file for an upgrade") {
+        val dir = temp()
+        val cancelOnWrite = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>()
+        val file = object : File(dir, "personal_dictionary.json") {
+            override fun getParentFile(): File? {
+                if (!exists()) cancelOnWrite.getAndSet(null)?.cancel()
+                return super.getParentFile()
+            }
+        }
+        val newer = SpeechDictionaryDocument.encode(SpeechDictionaryDocument(
+            version = 2, nextId = 2, words = listOf(VocabularyEntry(1, "Ownkey")),
+        ))
+        file.writeText(newer)
+        val kept = File(dir, "personal_dictionary.json.newer-v2-5")
+        val child = File(kept, "child").apply { parentFile.mkdirs(); writeText("blocked") }
+        val store = SpeechDictionaryRepository(
+            file = file, scope = CoroutineScope(SupervisorJob() + Dispatchers.Default), clock = { 5L },
+        )
+        runBlocking {
+            val before = store.awaitLoaded()
+            before.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+            child.delete() shouldBe true
+            kept.delete() shouldBe true
+            val save = launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
+                store.addWord("Cancelled", cancelBeforeCommit = true)
+            }
+            cancelOnWrite.set(save)
+            save.start()
+            save.join()
+            save.isCancelled shouldBe true
+            store.state.value shouldBeSameInstanceAs before
+        }
+        kept.readText() shouldBe newer
+        file.exists() shouldBe false
+        File(dir, "personal_dictionary.json.tmp").exists() shouldBe false
+        runBlocking { repository(dir).awaitLoaded() }.document.words shouldBe emptyList()
+        val upgraded = SpeechDictionaryRepository(
+            file = File(dir, file.name), scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            supportedVersion = 2,
+        )
+        runBlocking { upgraded.awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Ownkey")
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Ownkey")
+    }
+
+    test("an accepted settings save survives navigation cancelling its caller") {
+        val dir = temp()
+        val cancelOnWrite = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>()
+        val file = object : File(dir, "personal_dictionary.json") {
+            override fun getParentFile(): File? {
+                cancelOnWrite.getAndSet(null)?.cancel()
+                return super.getParentFile()
+            }
+        }
+        val store = SpeechDictionaryRepository(
+            file = file,
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+        )
+        runBlocking {
+            store.addWord("Existing")
+            val save = launch(start = kotlinx.coroutines.CoroutineStart.LAZY) { store.addWord("Saved") }
+            cancelOnWrite.set(save)
+            save.start()
+            save.join()
+            store.state.value.document.words.map { it.word } shouldBe listOf("Existing", "Saved")
+            store.state.value.saveError shouldBe false
+        }
+        SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("Existing", "Saved")
+        runBlocking { repository(dir).awaitLoaded() }.document.words.map { it.word } shouldBe listOf("Existing", "Saved")
     }
 
     test("an explicitly empty language list survives reload and is not replaced by the defaults") {

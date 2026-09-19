@@ -196,12 +196,14 @@ class DictationFixController(
         val source = current.source
         val replacement = TranscriptCleanup.normalizeTerm(current.replacement)
         val addAsWord = current.addAsWord
+        saveJob?.cancel()
         saveJob = scope.launch {
-            val correction = repository.upsertCorrection(source, replacement)
+            val correction = repository.upsertCorrection(source, replacement, cancelBeforeCommit = true)
             // The write is asynchronous; a dismissal, an abort or a new dictation in the meantime
             // owns the state now, and no further learning happens for it.
             if (_state.value !== current) return@launch
-            val wordAdded = correction is EntryResult.Saved && addAsWord && repository.addWord(replacement) is EntryResult.Saved
+            val wordAdded = correction is EntryResult.Saved && addAsWord &&
+                repository.addWord(replacement, cancelBeforeCommit = true) is EntryResult.Saved
             if (_state.value !== current) return@launch
             if (correction is EntryResult.Rejected) {
                 publish(DictationFixState.Hidden)

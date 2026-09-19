@@ -25,9 +25,13 @@ data class CleanupSettings(
 
 /** Shared by filler matching, sentence repair, and the neutral filler-only result. */
 internal object TranscriptPunctuation {
-    const val SENTENCE_END = ".!?…‥。！？؟۔।॥։܀܁܂።⸮"
-    const val MARKS = SENTENCE_END + ",;:'\"¡¿·、，：；؛"
-    val pattern: String = "[${Pattern.quote(MARKS)}]"
+    // These marks also delimit unspaced sentences. Keep Latin dots conservative for names/domains.
+    const val UNSPACED_END = "。！？؟۔।॥։܀܁܂።⸮"
+    const val SENTENCE_END = ".!?…‥" + UNSPACED_END
+    const val FOLLOWING_MARKS = SENTENCE_END + ",;:、，：；؛"
+    const val MARKS = FOLLOWING_MARKS + "'\"¡¿·"
+    val followingPattern: String = "[${Pattern.quote(FOLLOWING_MARKS)}]"
+    val unspacedEndPattern: String = "[${Pattern.quote(UNSPACED_END)}]"
 }
 
 /**
@@ -53,7 +57,7 @@ object TranscriptCleanup {
 
     private val whitespace = Regex("$SPACE+")
     private val markedWord = Pattern.compile("$MARK$SPACE*($NON_SPACE+)")
-    private val spaceBeforePunctuation = Pattern.compile("[ \\t]+(${TranscriptPunctuation.pattern})")
+    private val spaceBeforePunctuation = Pattern.compile("[ \\t]+(${TranscriptPunctuation.followingPattern})")
     private val repeatedSpaces = Pattern.compile("[ \\t]{2,}")
     private val spacedLineBreak = Pattern.compile(" *\\n *")
 
@@ -90,9 +94,12 @@ object TranscriptCleanup {
         val usable = words.filter { it.isNotEmpty() }
         if (usable.isEmpty()) return null
         val alternatives = usable.sortedByDescending { it.length }.joinToString("|") { Pattern.quote(it) }
+        val punctuation = TranscriptPunctuation.followingPattern
+        val sentenceEnd = TranscriptPunctuation.unspacedEndPattern
+        val post = "(?:$punctuation*$sentenceEnd$punctuation*|$punctuation*(?=$SPACE|$))"
         return Pattern.compile(
-            "(?<pre>,)?(?<lead>^|$SPACE+)(?<!$WORD_EDGE)(?<word>(?:$alternatives)(?:$SPACE+(?:$alternatives))*)" +
-                "(?!$WORD_EDGE)(?<post>${TranscriptPunctuation.pattern}*)(?=$SPACE|$)",
+            "(?<pre>,)?(?<lead>^|$SPACE+|(?<=$sentenceEnd))(?<!$WORD_EDGE)" +
+                "(?<word>(?:$alternatives)(?:$SPACE+(?:$alternatives))*)(?!$WORD_EDGE)(?<post>$post)",
             FLAGS,
         )
     }

@@ -228,6 +228,25 @@ class OrdinaryDictationCleanupTest : FunSpec({
         }
     }
 
+    test("localized sentence boundaries do not require spaces around fillers") {
+        listOf("。", "！", "？", "؟", "।").forEach { mark ->
+            cleaner.clean("Um${mark}Next stop") shouldBe "Next stop"
+            cleaner.clean("First${mark}Uh${mark}next stop") shouldBe "First${mark}Next stop"
+            cleaner.clean("Uh${mark}Um${mark}iPhone works") shouldBe "iPhone works"
+        }
+        // Keep Latin dot-separated names and ordinary word boundaries conservative.
+        cleaner.clean("um.example and umbrella") shouldBe "um.example and umbrella"
+        cleaner.clean("Uh-huh, fine") shouldBe "Uh-huh, fine"
+    }
+
+    test("sentence cleanup preserves opening quotes and inverted punctuation") {
+        val ordinary = "He said \"hello\". ¿Qué tal? ¡Bien!"
+        cleaner.clean(ordinary) shouldBe ordinary
+        cleaner.clean("Um。¿Qué tal?") shouldBe "¿Qué tal?"
+        cleaner.clean("Um。\"iPhone works\"") shouldBe "\"iPhone works\""
+        cleaner.clean("First。Uh。\"Next\"") shouldBe "First。\"Next\""
+    }
+
     test("content is anything but sentence marks, dashes, quotes, brackets and spacing") {
         listOf("a", "7", "$", "€", "+", "%", "&", "@", "#", "😊", "𝔘", "é").forEach { OrdinaryDictationCleanup.hasContent(it) shouldBe true }
         listOf("", " ", ".", ",", "?!", "…", "—", "-", "\"", "'", "«»", "()", "¿", "。", "\n\t").forEach {
@@ -513,7 +532,7 @@ class DictationFixControllerTest : FunSpec({
         controller.state.value shouldBe DictationFixState.Hidden
     }
 
-    test("incognito cancels a queued save without persisting the correction or word hint") {
+    test("incognito cancels repeated queued saves without persisting a correction or word hint") {
         val dir = Files.createTempDirectory("fix-abort-save").toFile()
         val gated = GatedIo()
         val available = kotlinx.coroutines.flow.MutableStateFlow(true)
@@ -540,6 +559,7 @@ class DictationFixControllerTest : FunSpec({
         editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
         // The correction write is already queued behind a held IO task when incognito switches on.
         gated.hold()
+        controller.save()
         controller.save()
         available.value = false
         controller.state.value shouldBe DictationFixState.Hidden

@@ -42,3 +42,13 @@ Final-head Codex review and Android CI. PR #14 targets the Orukeet feature branc
 - Follow-up verification: 449 app tests pass with zero failures/errors/skips; debug APK assembly and release Kotlin compilation pass. The next head still requires fresh remote review and CI.
 
 References: [attached punctuation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053105894), [incognito cancellation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053105897), [explicit recovery assertions](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053105254).
+
+## Settings Durability and Sentence Boundaries
+
+- Settings mutations now finish independently of navigation cancellation. Only keyboard fix saves opt into cancellation before committing; repeated Save taps cancel the prior pending save so an incognito transition cannot leave an older save running.
+- Localized sentence marks delimit fillers even without spaces before the next sentence. Spacing repair uses following punctuation only, preserving opening quotes and inverted question/exclamation marks. Regression coverage also preserves domain names and intentional casing.
+- Regressions failed before repairs for settings navigation, unspaced sentence boundaries, opening punctuation, and repeated-save cancellation. Final verification passes 453 app tests with zero failures/errors/skips, debug APK assembly, and release Kotlin compilation.
+- A real-file cancellation test for a retried quarantine confirms that the newer document survives byte-for-byte in its kept file, an older restart does not resurrect cancelled data, and an upgraded reader recovers the original vocabulary. This refutes the claimed data loss; forcing the cancelled keyboard entry onto disk would undermine the incognito guarantee.
+- Android device qualification remains pending; no connected device was available. Fresh final-head review and CI remain required before merging into the Orukeet branch.
+
+References: [settings navigation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053130336), [unspaced sentences](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053130341), [quarantine cancellation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053141896), [opening punctuation](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053141904).

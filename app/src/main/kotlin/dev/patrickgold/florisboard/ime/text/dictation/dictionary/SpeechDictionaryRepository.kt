@@ -140,7 +140,7 @@ class SpeechDictionaryRepository(
         return snapshot
     }
 
-    suspend fun addWord(word: String): EntryResult = mutate { document ->
+    suspend fun addWord(word: String, cancelBeforeCommit: Boolean = false): EntryResult = mutate(cancelBeforeCommit) { document ->
         SpeechDictionaryValidation.validateWord(document, word)?.let { return@mutate document to EntryResult.Rejected(it) }
         val entry = VocabularyEntry(document.nextId, TranscriptCleanup.normalizeTerm(word), clock())
         document.copy(nextId = document.nextId + 1, words = document.words + entry) to
@@ -161,7 +161,11 @@ class SpeechDictionaryRepository(
     }
 
     /** Adds the correction, or updates the replacement of an existing rule with the same source. */
-    suspend fun upsertCorrection(source: String, replacement: String): EntryResult = mutate { document ->
+    suspend fun upsertCorrection(
+        source: String,
+        replacement: String,
+        cancelBeforeCommit: Boolean = false,
+    ): EntryResult = mutate(cancelBeforeCommit) { document ->
         val key = TranscriptCleanup.normalizeTerm(source).lowercase()
         val existing = document.corrections.firstOrNull { it.source.lowercase() == key }
         if (existing == null) {
@@ -343,7 +347,18 @@ class SpeechDictionaryRepository(
         )
     }
 
-    private suspend fun <R> mutate(transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>): R {
+    /**
+     * Accepted settings edits survive navigation, including while waiting for loading/the lock.
+     * Only the keyboard fix flow opts into cancellation before committing for privacy transitions.
+     */
+    private suspend fun <R> mutate(
+        cancelBeforeCommit: Boolean = false,
+        transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>,
+    ): R = if (cancelBeforeCommit) persistMutation(transform) else withContext(NonCancellable) {
+        persistMutation(transform)
+    }
+
+    private suspend fun <R> persistMutation(transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>): R {
         initialized.await()
         return mutex.withLock {
             val current = _state.value
