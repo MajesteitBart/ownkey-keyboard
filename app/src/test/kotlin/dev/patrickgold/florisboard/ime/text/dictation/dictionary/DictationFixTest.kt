@@ -258,6 +258,11 @@ class OrdinaryDictationCleanupTest : FunSpec({
         cleaner.clean("He said 'Uh, iPhone works.'") shouldBe "He said 'iPhone works.'"
         cleaner.clean("He said 'well uh'.") shouldBe "He said 'well'."
         cleaner.clean("Keep O'Uh and O’Uh names") shouldBe "Keep O'Uh and O’Uh names"
+        cleaner.clean("This is (uh, probably fine).") shouldBe "This is (probably fine)."
+        cleaner.clean("note(Uh, next)") shouldBe "note(next)"
+        cleaner.clean("他说“Uh, next.”") shouldBe "他说“Next.”"
+        cleaner.clean("(Uh, next.)") shouldBe "(Next.)"
+        cleaner.clean("note(Uh, um, next)") shouldBe "note(next)"
     }
 
     test("content is anything but sentence marks, dashes, quotes, brackets and spacing") {

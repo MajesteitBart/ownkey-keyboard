@@ -25,7 +25,8 @@ data class CleanupSettings(
 
 /** Shared by filler matching, sentence repair, and the neutral filler-only result. */
 internal object TranscriptPunctuation {
-    const val OPENING = "\"'“‘«¿¡([{"
+    const val QUOTE_OPENING = "\"'“‘«¿¡"
+    const val OPENING = QUOTE_OPENING + "([{"
     // These marks also delimit unspaced sentences. Keep Latin dots conservative for names/domains.
     const val UNSPACED_END = "。！？؟۔।॥։܀܁܂።⸮"
     const val SENTENCE_END = ".!?…‥" + UNSPACED_END
@@ -98,7 +99,7 @@ object TranscriptCleanup {
         val punctuation = TranscriptPunctuation.followingPattern
         val sentenceEnd = TranscriptPunctuation.unspacedEndPattern
         val opening = "[${Pattern.quote(TranscriptPunctuation.OPENING)}]"
-        val afterOpening = "(?<!$WORD_EDGE$opening)(?<=$opening)"
+        val afterOpening = "(?<!$WORD_EDGE['‘])(?<=$opening)"
         // Retain closing quotes; an apostrophe inside a word is not a closing boundary.
         val closingQuote = "[\"'”’»](?=$SPACE|$punctuation|$)"
         val post = "(?:$punctuation*$sentenceEnd$punctuation*|$punctuation*(?=$SPACE|$|$closingQuote))"
@@ -140,10 +141,16 @@ object TranscriptCleanup {
         val matcher = pattern.matcher(text)
         val output = StringBuilder(text.length)
         var last = 0
-        while (matcher.find()) {
+        while (matcher.find(last)) {
             output.append(text, last, matcher.start())
             output.append(fillerReplacement(text, matcher))
             last = matcher.end()
+            if (matcher.group("lead").isEmpty() && matcher.start() > 0 &&
+                text[matcher.start() - 1] in TranscriptPunctuation.OPENING
+            ) {
+                // A retained opening mark needs no leftover horizontal gap after its filler.
+                while (last < text.length && (text[last] == ' ' || text[last] == '\t')) last++
+            }
         }
         output.append(text, last, text.length)
         return output.toString()
@@ -156,8 +163,11 @@ object TranscriptCleanup {
         val post = match.group("post").orEmpty()
         val lineStart = '\n' in lead
         val beforeClosingMarks = before.trimEnd { it in "\"'”’»)]}" }
-        val startsQuoted = lead.isEmpty() && before.lastOrNull()?.let { it in TranscriptPunctuation.OPENING } == true
-        var sentenceStart = lineStart || before.isEmpty() || startsQuoted ||
+        val startsQuoted = lead.isEmpty() && before.lastOrNull()?.let { it in TranscriptPunctuation.QUOTE_OPENING } == true
+        val beforeOpeningMarks = before.trimEnd { it in TranscriptPunctuation.OPENING || it.isWhitespace() }
+        val startsEnclosedSentence = lead.isEmpty() && (beforeOpeningMarks.isEmpty() ||
+            beforeOpeningMarks.lastOrNull()?.let { it in SENTENCE_END } == true)
+        var sentenceStart = lineStart || before.isEmpty() || startsQuoted || startsEnclosedSentence ||
             beforeClosingMarks.lastOrNull()?.let { it in SENTENCE_END } == true || before.lastOrNull() == MARK
         val ending = post.firstOrNull { it in SENTENCE_END }?.toString().orEmpty()
         if (pre != null && !lineStart) sentenceStart = false

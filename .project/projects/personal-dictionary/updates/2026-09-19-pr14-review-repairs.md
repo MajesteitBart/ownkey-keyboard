@@ -70,6 +70,7 @@ References: [closing quotes](https://github.com/MajesteitBart/ownkey-keyboard/pu
 
 - Follow-up sentence repair recognizes terminal punctuation before closing quotes/brackets. The extended regression fails before the change and covers straight/curly quotes, a quote without terminal punctuation, and intentional name casing. [Review reference](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053225155).
 - Opening quotes now establish retained leading boundaries, with a preceding-word guard to protect names containing apostrophes. Quote regression coverage includes straight, curly and single quotes at a filler, plus intentional casing and apostrophes inside names. [Review reference](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053252221).
+- The preceding-word guard applies only to apostrophe delimiters; other quotes/brackets work immediately after words. Mid-sentence parentheticals retain lowercase text while enclosed sentence starts receive capitalization. Tests cover unspaced CJK quotation, inline parentheses, a sentence enclosed in parentheses, and consecutive fillers. [Parenthetical casing](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053278289), [delimiter guard](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053278294).
 
 ## Interrupted Unreadable Recovery
 
