@@ -212,7 +212,7 @@ class DictationFixController(
             // The repository keeps a change it could not write and retries later; that is not a
             // confirmation the keyboard may show.
             publish(
-                if (repository.state.value.saveError) DictationFixState.SaveFailed(source)
+                if (correction is EntryResult.Saved && !correction.persisted) DictationFixState.SaveFailed(source)
                 else DictationFixState.Saved(source, replacement, wordAdded),
             )
             timer = scope.launch {

@@ -77,12 +77,11 @@ class InferenceService : Service() {
             }
         } catch (error: LocalAsrException) {
             Log.w(TAG, "Request $id failed: ${error.reason}")
-            respond(reply, id, "error", failure = error.reason, detail = error.detail)
+            respond(reply, id, "error", failure = error.reason)
         } catch (error: Throwable) {
-            // Load and decode failures carry no audio or transcript text, so the class and message are safe to
-            // report. Without this the settings card can only say that something failed.
-            Log.e(TAG, "Request $id failed in the native runtime", error)
-            respond(reply, id, "error", failure = LocalAsrFailure.RUNTIME, detail = describe(error))
+            val code = InferenceDiagnostics.failureCode(error)
+            Log.e(TAG, "Request $id failed: $code")
+            respond(reply, id, "error", failure = LocalAsrFailure.RUNTIME, detail = code)
             main.post { terminate() }
         } finally {
             runCatching { audio?.close() }
@@ -132,10 +131,5 @@ class InferenceService : Service() {
         const val KEY_HOTWORDS = "hotwords"
         const val KEY_DETAIL = "detail"
         private const val TAG = "OwnkeyAsr"
-        private const val MAX_DETAIL = 240
-
-        internal fun describe(error: Throwable): String =
-            listOfNotNull(error.javaClass.simpleName, error.message?.takeIf { it.isNotBlank() })
-                .joinToString(": ").replace(Regex("\\s+"), " ").take(MAX_DETAIL)
     }
 }

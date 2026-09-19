@@ -140,16 +140,16 @@ class SpeechDictionaryRepository(
         return snapshot
     }
 
-    suspend fun addWord(word: String, cancelBeforeCommit: Boolean = false): EntryResult = mutate(cancelBeforeCommit) { document ->
-        SpeechDictionaryValidation.validateWord(document, word)?.let { return@mutate document to EntryResult.Rejected(it) }
+    suspend fun addWord(word: String, cancelBeforeCommit: Boolean = false): EntryResult = mutateEntry(cancelBeforeCommit) { document ->
+        SpeechDictionaryValidation.validateWord(document, word)?.let { return@mutateEntry document to EntryResult.Rejected(it) }
         val entry = VocabularyEntry(document.nextId, TranscriptCleanup.normalizeTerm(word), clock())
         document.copy(nextId = document.nextId + 1, words = document.words + entry) to
             EntryResult.Saved(SpeechDictionaryEntry.Word(entry))
     }
 
-    suspend fun addCorrection(source: String, replacement: String): EntryResult = mutate { document ->
+    suspend fun addCorrection(source: String, replacement: String): EntryResult = mutateEntry { document ->
         SpeechDictionaryValidation.validateCorrection(document, source, replacement)
-            ?.let { return@mutate document to EntryResult.Rejected(it) }
+            ?.let { return@mutateEntry document to EntryResult.Rejected(it) }
         val entry = CorrectionEntry(
             id = document.nextId,
             source = TranscriptCleanup.normalizeTerm(source),
@@ -166,11 +166,11 @@ class SpeechDictionaryRepository(
         replacement: String,
         cancelBeforeCommit: Boolean = false,
         addAsWord: Boolean = false,
-    ): EntryResult = mutate(cancelBeforeCommit) { document ->
+    ): EntryResult = mutateEntry(cancelBeforeCommit) { document ->
         val key = TranscriptCleanup.normalizeTerm(source).lowercase()
         val existing = document.corrections.firstOrNull { it.source.lowercase() == key }
         SpeechDictionaryValidation.validateCorrection(document, existing?.source ?: source, replacement, existing?.id)
-            ?.let { return@mutate document to EntryResult.Rejected(it) }
+            ?.let { return@mutateEntry document to EntryResult.Rejected(it) }
         val normalizedReplacement = TranscriptCleanup.normalizeTerm(replacement)
         val entry = existing?.copy(replacement = normalizedReplacement) ?: CorrectionEntry(
             id = document.nextId,
@@ -190,20 +190,20 @@ class SpeechDictionaryRepository(
         next to EntryResult.Saved(SpeechDictionaryEntry.Correction(entry))
     }
 
-    suspend fun updateWord(id: Long, word: String): EntryResult = mutate { document ->
+    suspend fun updateWord(id: Long, word: String): EntryResult = mutateEntry { document ->
         val existing = document.words.firstOrNull { it.id == id }
-            ?: return@mutate document to EntryResult.Rejected(EntryError.BLANK_WORD)
-        SpeechDictionaryValidation.validateWord(document, word, id)?.let { return@mutate document to EntryResult.Rejected(it) }
+            ?: return@mutateEntry document to EntryResult.Rejected(EntryError.BLANK_WORD)
+        SpeechDictionaryValidation.validateWord(document, word, id)?.let { return@mutateEntry document to EntryResult.Rejected(it) }
         val updated = existing.copy(word = TranscriptCleanup.normalizeTerm(word))
         document.copy(words = document.words.map { if (it.id == id) updated else it }) to
             EntryResult.Saved(SpeechDictionaryEntry.Word(updated))
     }
 
-    suspend fun updateCorrection(id: Long, source: String, replacement: String): EntryResult = mutate { document ->
+    suspend fun updateCorrection(id: Long, source: String, replacement: String): EntryResult = mutateEntry { document ->
         val existing = document.corrections.firstOrNull { it.id == id }
-            ?: return@mutate document to EntryResult.Rejected(EntryError.BLANK_SOURCE)
+            ?: return@mutateEntry document to EntryResult.Rejected(EntryError.BLANK_SOURCE)
         SpeechDictionaryValidation.validateCorrection(document, source, replacement, id)
-            ?.let { return@mutate document to EntryResult.Rejected(it) }
+            ?.let { return@mutateEntry document to EntryResult.Rejected(it) }
         val updated = existing.copy(
             source = TranscriptCleanup.normalizeTerm(source),
             replacement = TranscriptCleanup.normalizeTerm(replacement),
@@ -355,16 +355,28 @@ class SpeechDictionaryRepository(
      */
     private suspend fun <R> mutate(
         cancelBeforeCommit: Boolean = false,
+        outcome: (R, Boolean) -> R = { result, _ -> result },
         transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>,
-    ): R = if (cancelBeforeCommit) persistMutation(transform) else withContext(NonCancellable) {
-        persistMutation(transform)
+    ): R = if (cancelBeforeCommit) persistMutation(transform, outcome) else withContext(NonCancellable) {
+        persistMutation(transform, outcome)
     }
 
-    private suspend fun <R> persistMutation(transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>): R {
+    private suspend fun mutateEntry(
+        cancelBeforeCommit: Boolean = false,
+        transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, EntryResult>,
+    ): EntryResult = mutate(cancelBeforeCommit, outcome = { result, persisted ->
+        if (result is EntryResult.Saved) result.copy(persisted = persisted) else result
+    }, transform = transform)
+
+    private suspend fun <R> persistMutation(
+        transform: (SpeechDictionaryDocument) -> Pair<SpeechDictionaryDocument, R>,
+        outcome: (R, Boolean) -> R,
+    ): R {
         initialized.await()
         return mutex.withLock {
             val current = _state.value
             val (next, result) = transform(current.document)
+            var persisted = !current.saveError
             if (next !== current.document) {
                 // Retain the caller's cancellation signal even inside NonCancellable below.
                 val callerContext = currentCoroutineContext()
@@ -391,6 +403,7 @@ class SpeechDictionaryRepository(
                     }
                     // A cancelled failed write must not remain as an unsaved edit for later retry.
                     if (!written) callerContext.ensureActive()
+                    persisted = written
                     _state.value = SpeechDictionaryState(
                         versioned,
                         loaded = true,
@@ -401,7 +414,7 @@ class SpeechDictionaryRepository(
                     )
                 }
             }
-            result
+            outcome(result, persisted)
         }
     }
 

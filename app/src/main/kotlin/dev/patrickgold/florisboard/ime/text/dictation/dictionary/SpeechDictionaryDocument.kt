@@ -98,7 +98,7 @@ enum class EntryError {
 }
 
 sealed interface EntryResult {
-    data class Saved(val entry: SpeechDictionaryEntry) : EntryResult
+    data class Saved(val entry: SpeechDictionaryEntry, val persisted: Boolean = true) : EntryResult
     data class Rejected(val error: EntryError) : EntryResult
 }
 

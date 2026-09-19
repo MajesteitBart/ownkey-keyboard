@@ -690,14 +690,27 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         runBlocking { repository.addWord("First") }
         val blocker = File(dir, "personal_dictionary.json.tmp")
         File(blocker, "child").apply { parentFile.mkdirs(); writeText("x") }
-        runBlocking { repository.addWord("Second") }.shouldBeInstanceOf<EntryResult.Saved>()
+        val pending = runBlocking { repository.addWord("Second") }.shouldBeInstanceOf<EntryResult.Saved>()
+        pending.persisted shouldBe false
+        val correction = runBlocking { repository.addCorrection("own key", "Ownkey") }.shouldBeInstanceOf<EntryResult.Saved>()
+        correction.persisted shouldBe false
+        runBlocking { repository.updateCorrection(correction.entry.id, "own key", "OWNKEY") }
+            .shouldBeInstanceOf<EntryResult.Saved>().persisted shouldBe false
         repository.state.value.saveError shouldBe true
         repository.state.value.document.words.map { it.word } shouldBe listOf("First", "Second")
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("First")
         blocker.deleteRecursively()
+        runBlocking { repository.updateWord(pending.entry.id, "Second") }
+            .shouldBeInstanceOf<EntryResult.Saved>().persisted shouldBe true
+        // The old operation's outcome remains false after the later retry succeeds.
+        pending.persisted shouldBe false
+        runBlocking { repository.updateCorrection(correction.entry.id, "own key", "Ownkey") }
+            .shouldBeInstanceOf<EntryResult.Saved>().persisted shouldBe true
         runBlocking { repository.addWord("Third") }
         repository.state.value.saveError shouldBe false
         SpeechDictionaryDocument.decode(file.readText()).words.map { it.word } shouldBe listOf("First", "Second", "Third")
+        SpeechDictionaryDocument.decode(file.readText()).corrections.map { it.source to it.replacement } shouldBe
+            listOf("own key" to "Ownkey")
     }
 
     test("unknown keys from a newer document are tolerated on load") {

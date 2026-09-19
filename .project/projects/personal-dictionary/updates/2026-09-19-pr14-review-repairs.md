@@ -78,3 +78,11 @@ References: [closing quotes](https://github.com/MajesteitBart/ownkey-keyboard/pu
 - Added restart and successful-backup regressions. The interrupted-load regression failed before the repair.
 
 Reference: [interrupted load warning](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053207427).
+
+## Persistence Feedback and Native Diagnostics
+
+- Entry save results now carry the persistence outcome captured while holding the mutation lock. Settings forms retain failed drafts and retry the existing entry ID; edit dialogs stay open with a storage error. Save controls prevent overlapping submissions. The keyboard also uses the returned outcome rather than a later global state snapshot.
+- Native exceptions produce only fixed diagnostic codes, without throwable messages, causes, stack traces or native paths. A pure unit test covers message-bearing runtime, linkage and memory failures.
+- Disk-backed storage tests cover failed word/correction adds and edits, successful retry without duplicates, and immutable per-operation results after a later successful save. No Android device was connected for a new UI smoke test.
+
+References: [native diagnostics](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053294977), [save feedback](https://github.com/MajesteitBart/ownkey-keyboard/pull/14#discussion_r4053294980).

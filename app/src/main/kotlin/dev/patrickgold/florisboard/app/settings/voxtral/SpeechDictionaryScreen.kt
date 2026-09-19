@@ -158,8 +158,15 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                 AddEntryCard(
                     document = state.document,
                     initialHeard = heard,
-                    onAddWord = { word -> repository.addWord(word) },
-                    onAddCorrection = { source, replacement -> repository.addCorrection(source, replacement) },
+                    onAddWord = { id, word ->
+                        if (id != null && repository.state.value.document.words.any { it.id == id }) repository.updateWord(id, word)
+                        else repository.addWord(word)
+                    },
+                    onAddCorrection = { id, source, replacement ->
+                        if (id != null && repository.state.value.document.corrections.any { it.id == id }) {
+                            repository.updateCorrection(id, source, replacement)
+                        } else repository.addCorrection(source, replacement)
+                    },
                 )
                 EntriesCard(
                     document = state.document,
@@ -264,8 +271,8 @@ private fun NoticeBanner(text: String, warning: Boolean = false) {
 private fun AddEntryCard(
     document: SpeechDictionaryDocument,
     initialHeard: String?,
-    onAddWord: suspend (String) -> EntryResult,
-    onAddCorrection: suspend (String, String) -> EntryResult,
+    onAddWord: suspend (Long?, String) -> EntryResult,
+    onAddCorrection: suspend (Long?, String, String) -> EntryResult,
 ) {
     val scope = rememberCoroutineScope()
     var correctionMode by rememberSaveable { mutableStateOf(!initialHeard.isNullOrBlank()) }
@@ -274,6 +281,10 @@ private fun AddEntryCard(
     var replacement by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<EntryError?>(null) }
     var notice by remember { mutableStateOf<SpeechDictionaryEntry?>(null) }
+    var pendingWordId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var pendingCorrectionId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    var saveFailed by remember { mutableStateOf(false) }
 
     LaunchedEffect(notice) {
         if (notice != null) {
@@ -287,17 +298,32 @@ private fun AddEntryCard(
         source = ""
         replacement = ""
         error = null
+        saveFailed = false
+        pendingWordId = null
+        pendingCorrectionId = null
     }
 
     fun save() {
+        if (saving) return
+        saving = true
+        notice = null
         scope.launch {
-            val result = if (correctionMode) onAddCorrection(source, replacement) else onAddWord(word)
-            when (result) {
-                is EntryResult.Saved -> {
-                    notice = result.entry
-                    clear()
+            try {
+                val result = if (correctionMode) onAddCorrection(pendingCorrectionId, source, replacement)
+                else onAddWord(pendingWordId, word)
+                when (result) {
+                    is EntryResult.Saved -> {
+                        saveFailed = !result.persisted
+                        if (result.persisted) {
+                            notice = result.entry
+                            clear()
+                        } else if (correctionMode) pendingCorrectionId = result.entry.id
+                        else pendingWordId = result.entry.id
+                    }
+                    is EntryResult.Rejected -> error = result.error
                 }
-                is EntryResult.Rejected -> error = result.error
+            } finally {
+                saving = false
             }
         }
     }
@@ -312,6 +338,7 @@ private fun AddEntryCard(
             label = userStringRes(R.string.speech_dictionary__correction_toggle),
             summary = userStringRes(R.string.speech_dictionary__correction_toggle_summary),
             checked = correctionMode,
+            enabled = !saving,
             onCheckedChange = {
                 correctionMode = it
                 error = null
@@ -320,22 +347,26 @@ private fun AddEntryCard(
         if (correctionMode) {
             OwnkeyOutlinedTextField(
                 value = source,
+                enabled = !saving,
                 onValueChange = { source = it; error = null },
                 label = userStringRes(R.string.speech_dictionary__source_label),
             )
             OwnkeyOutlinedTextField(
                 value = replacement,
+                enabled = !saving,
                 onValueChange = { replacement = it; error = null },
                 label = userStringRes(R.string.speech_dictionary__replacement_label),
             )
         } else {
             OwnkeyOutlinedTextField(
                 value = word,
+                enabled = !saving,
                 onValueChange = { word = it; error = null },
                 label = userStringRes(R.string.speech_dictionary__word_label),
             )
         }
         error?.let { ErrorText(text = it.text()) }
+        if (saveFailed) ErrorText(text = userStringRes(R.string.speech_dictionary__save_error))
         notice?.let { saved ->
             SuccessText(
                 text = when (saved) {
@@ -355,13 +386,13 @@ private fun AddEntryCard(
             OwnkeyButton(
                 label = userStringRes(R.string.speech_dictionary__save_action),
                 onClick = ::save,
-                enabled = canSave,
+                enabled = canSave && !saving,
                 modifier = Modifier.weight(1f),
             )
             OwnkeyButton(
                 label = userStringRes(R.string.speech_dictionary__clear_action),
                 onClick = ::clear,
-                enabled = word.isNotEmpty() || source.isNotEmpty() || replacement.isNotEmpty(),
+                enabled = !saving && (word.isNotEmpty() || source.isNotEmpty() || replacement.isNotEmpty()),
                 modifier = Modifier.weight(1f),
                 secondary = true,
             )
@@ -565,6 +596,8 @@ private fun EditEntryDialog(
     var source by remember { mutableStateOf((entry as? SpeechDictionaryEntry.Correction)?.entry?.source.orEmpty()) }
     var replacement by remember { mutableStateOf((entry as? SpeechDictionaryEntry.Correction)?.entry?.replacement.orEmpty()) }
     var error by remember { mutableStateOf<EntryError?>(null) }
+    var saveFailed by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
     val isCorrection = entry is SpeechDictionaryEntry.Correction
 
     AlertDialog(
@@ -584,36 +617,50 @@ private fun EditEntryDialog(
                 if (isCorrection) {
                     OwnkeyOutlinedTextField(
                         value = source,
+                        enabled = !saving,
                         onValueChange = { source = it; error = null },
                         label = userStringRes(R.string.speech_dictionary__source_label),
                     )
                     OwnkeyOutlinedTextField(
                         value = replacement,
+                        enabled = !saving,
                         onValueChange = { replacement = it; error = null },
                         label = userStringRes(R.string.speech_dictionary__replacement_label),
                     )
                 } else {
                     OwnkeyOutlinedTextField(
                         value = word,
+                        enabled = !saving,
                         onValueChange = { word = it; error = null },
                         label = userStringRes(R.string.speech_dictionary__word_label),
                     )
                 }
                 error?.let { ErrorText(text = it.text()) }
+                if (saveFailed) ErrorText(text = userStringRes(R.string.speech_dictionary__save_error))
             }
         },
         confirmButton = {
             TextButton(
+                enabled = !saving,
                 onClick = {
+                    if (saving) return@TextButton
+                    saving = true
                     scope.launch {
-                        val result = if (isCorrection) {
-                            onSaveCorrection(entry.id, source, replacement)
-                        } else {
-                            onSaveWord(entry.id, word)
-                        }
-                        when (result) {
-                            is EntryResult.Saved -> onDismiss()
-                            is EntryResult.Rejected -> error = result.error
+                        try {
+                            val result = if (isCorrection) {
+                                onSaveCorrection(entry.id, source, replacement)
+                            } else {
+                                onSaveWord(entry.id, word)
+                            }
+                            when (result) {
+                                is EntryResult.Saved -> {
+                                    saveFailed = !result.persisted
+                                    if (result.persisted) onDismiss()
+                                }
+                                is EntryResult.Rejected -> error = result.error
+                            }
+                        } finally {
+                            saving = false
                         }
                     }
                 },
@@ -858,13 +905,14 @@ private fun SwitchRow(
     summary: String?,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -884,6 +932,7 @@ private fun SwitchRow(
             }
         }
         Switch(
+            enabled = enabled,
             checked = checked,
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
