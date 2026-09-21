@@ -1,0 +1,10 @@
+{
+  "uniqueId": "sherpa-onnx",
+  "name": "sherpa-onnx 1.13.4 (Ownkey ASR-only build)",
+  "website": "https://github.com/k2-fsa/sherpa-onnx",
+  "licenses": [
+    "sherpa-onnx",
+    "sherpa-asr-thirdparty",
+    "ndk-toolchain"
+  ]
+}

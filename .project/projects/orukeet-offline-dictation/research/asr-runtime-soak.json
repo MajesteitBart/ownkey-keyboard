@@ -1,0 +1,405 @@
+{
+  "api": 36,
+  "abi": "x86_64",
+  "duration_seconds": 900,
+  "cycles": 79,
+  "readings": [
+    {
+      "elapsed_ms": 2420,
+      "main_pss_kib": 200803,
+      "inference_pss_kib": 907374
+    },
+    {
+      "elapsed_ms": 13688,
+      "main_pss_kib": 200804,
+      "inference_pss_kib": 982250
+    },
+    {
+      "elapsed_ms": 24935,
+      "main_pss_kib": 200768,
+      "inference_pss_kib": 981814
+    },
+    {
+      "elapsed_ms": 36184,
+      "main_pss_kib": 200504,
+      "inference_pss_kib": 981762
+    },
+    {
+      "elapsed_ms": 47421,
+      "main_pss_kib": 200525,
+      "inference_pss_kib": 981815
+    },
+    {
+      "elapsed_ms": 58655,
+      "main_pss_kib": 200545,
+      "inference_pss_kib": 981775
+    },
+    {
+      "elapsed_ms": 69884,
+      "main_pss_kib": 200569,
+      "inference_pss_kib": 981835
+    },
+    {
+      "elapsed_ms": 81116,
+      "main_pss_kib": 200589,
+      "inference_pss_kib": 981783
+    },
+    {
+      "elapsed_ms": 92349,
+      "main_pss_kib": 200613,
+      "inference_pss_kib": 981839
+    },
+    {
+      "elapsed_ms": 103586,
+      "main_pss_kib": 200633,
+      "inference_pss_kib": 981791
+    },
+    {
+      "elapsed_ms": 114825,
+      "main_pss_kib": 200657,
+      "inference_pss_kib": 981847
+    },
+    {
+      "elapsed_ms": 126510,
+      "main_pss_kib": 200677,
+      "inference_pss_kib": 981811
+    },
+    {
+      "elapsed_ms": 137744,
+      "main_pss_kib": 200701,
+      "inference_pss_kib": 981855
+    },
+    {
+      "elapsed_ms": 148971,
+      "main_pss_kib": 200721,
+      "inference_pss_kib": 981823
+    },
+    {
+      "elapsed_ms": 160195,
+      "main_pss_kib": 200749,
+      "inference_pss_kib": 981847
+    },
+    {
+      "elapsed_ms": 171429,
+      "main_pss_kib": 200769,
+      "inference_pss_kib": 981819
+    },
+    {
+      "elapsed_ms": 183500,
+      "main_pss_kib": 200793,
+      "inference_pss_kib": 981635
+    },
+    {
+      "elapsed_ms": 195276,
+      "main_pss_kib": 200813,
+      "inference_pss_kib": 981999
+    },
+    {
+      "elapsed_ms": 207621,
+      "main_pss_kib": 200833,
+      "inference_pss_kib": 981771
+    },
+    {
+      "elapsed_ms": 219074,
+      "main_pss_kib": 200852,
+      "inference_pss_kib": 982034
+    },
+    {
+      "elapsed_ms": 230623,
+      "main_pss_kib": 200872,
+      "inference_pss_kib": 982006
+    },
+    {
+      "elapsed_ms": 241864,
+      "main_pss_kib": 200896,
+      "inference_pss_kib": 981982
+    },
+    {
+      "elapsed_ms": 253117,
+      "main_pss_kib": 200916,
+      "inference_pss_kib": 982002
+    },
+    {
+      "elapsed_ms": 264358,
+      "main_pss_kib": 200940,
+      "inference_pss_kib": 982002
+    },
+    {
+      "elapsed_ms": 275597,
+      "main_pss_kib": 200960,
+      "inference_pss_kib": 982002
+    },
+    {
+      "elapsed_ms": 286828,
+      "main_pss_kib": 200984,
+      "inference_pss_kib": 981986
+    },
+    {
+      "elapsed_ms": 298060,
+      "main_pss_kib": 201004,
+      "inference_pss_kib": 982002
+    },
+    {
+      "elapsed_ms": 309284,
+      "main_pss_kib": 201028,
+      "inference_pss_kib": 982006
+    },
+    {
+      "elapsed_ms": 320524,
+      "main_pss_kib": 199288,
+      "inference_pss_kib": 982010
+    },
+    {
+      "elapsed_ms": 331754,
+      "main_pss_kib": 199304,
+      "inference_pss_kib": 982010
+    },
+    {
+      "elapsed_ms": 342981,
+      "main_pss_kib": 199332,
+      "inference_pss_kib": 982010
+    },
+    {
+      "elapsed_ms": 354274,
+      "main_pss_kib": 199324,
+      "inference_pss_kib": 982002
+    },
+    {
+      "elapsed_ms": 365528,
+      "main_pss_kib": 199497,
+      "inference_pss_kib": 982156
+    },
+    {
+      "elapsed_ms": 376752,
+      "main_pss_kib": 199517,
+      "inference_pss_kib": 982156
+    },
+    {
+      "elapsed_ms": 387987,
+      "main_pss_kib": 199537,
+      "inference_pss_kib": 982164
+    },
+    {
+      "elapsed_ms": 399226,
+      "main_pss_kib": 199561,
+      "inference_pss_kib": 982172
+    },
+    {
+      "elapsed_ms": 410461,
+      "main_pss_kib": 199581,
+      "inference_pss_kib": 982168
+    },
+    {
+      "elapsed_ms": 421687,
+      "main_pss_kib": 199605,
+      "inference_pss_kib": 982168
+    },
+    {
+      "elapsed_ms": 432925,
+      "main_pss_kib": 199625,
+      "inference_pss_kib": 982168
+    },
+    {
+      "elapsed_ms": 444152,
+      "main_pss_kib": 199649,
+      "inference_pss_kib": 982168
+    },
+    {
+      "elapsed_ms": 455778,
+      "main_pss_kib": 199669,
+      "inference_pss_kib": 982164
+    },
+    {
+      "elapsed_ms": 467670,
+      "main_pss_kib": 199693,
+      "inference_pss_kib": 982164
+    },
+    {
+      "elapsed_ms": 479354,
+      "main_pss_kib": 199713,
+      "inference_pss_kib": 982164
+    },
+    {
+      "elapsed_ms": 490645,
+      "main_pss_kib": 199737,
+      "inference_pss_kib": 982172
+    },
+    {
+      "elapsed_ms": 501979,
+      "main_pss_kib": 199757,
+      "inference_pss_kib": 982180
+    },
+    {
+      "elapsed_ms": 514377,
+      "main_pss_kib": 199781,
+      "inference_pss_kib": 982180
+    },
+    {
+      "elapsed_ms": 526078,
+      "main_pss_kib": 199801,
+      "inference_pss_kib": 982152
+    },
+    {
+      "elapsed_ms": 537393,
+      "main_pss_kib": 199825,
+      "inference_pss_kib": 982176
+    },
+    {
+      "elapsed_ms": 548678,
+      "main_pss_kib": 199845,
+      "inference_pss_kib": 982180
+    },
+    {
+      "elapsed_ms": 560132,
+      "main_pss_kib": 199805,
+      "inference_pss_kib": 982112
+    },
+    {
+      "elapsed_ms": 571615,
+      "main_pss_kib": 199825,
+      "inference_pss_kib": 982164
+    },
+    {
+      "elapsed_ms": 583620,
+      "main_pss_kib": 199845,
+      "inference_pss_kib": 981932
+    },
+    {
+      "elapsed_ms": 595000,
+      "main_pss_kib": 199869,
+      "inference_pss_kib": 982192
+    },
+    {
+      "elapsed_ms": 606385,
+      "main_pss_kib": 199889,
+      "inference_pss_kib": 982176
+    },
+    {
+      "elapsed_ms": 617686,
+      "main_pss_kib": 199913,
+      "inference_pss_kib": 982184
+    },
+    {
+      "elapsed_ms": 628923,
+      "main_pss_kib": 199933,
+      "inference_pss_kib": 982187
+    },
+    {
+      "elapsed_ms": 640168,
+      "main_pss_kib": 199957,
+      "inference_pss_kib": 982179
+    },
+    {
+      "elapsed_ms": 651398,
+      "main_pss_kib": 199977,
+      "inference_pss_kib": 982183
+    },
+    {
+      "elapsed_ms": 662624,
+      "main_pss_kib": 200001,
+      "inference_pss_kib": 982175
+    },
+    {
+      "elapsed_ms": 673851,
+      "main_pss_kib": 200021,
+      "inference_pss_kib": 982183
+    },
+    {
+      "elapsed_ms": 685075,
+      "main_pss_kib": 200045,
+      "inference_pss_kib": 982183
+    },
+    {
+      "elapsed_ms": 696298,
+      "main_pss_kib": 200065,
+      "inference_pss_kib": 982103
+    },
+    {
+      "elapsed_ms": 707529,
+      "main_pss_kib": 199812,
+      "inference_pss_kib": 981932
+    },
+    {
+      "elapsed_ms": 718758,
+      "main_pss_kib": 199824,
+      "inference_pss_kib": 981929
+    },
+    {
+      "elapsed_ms": 729983,
+      "main_pss_kib": 199847,
+      "inference_pss_kib": 981917
+    },
+    {
+      "elapsed_ms": 741225,
+      "main_pss_kib": 199871,
+      "inference_pss_kib": 981917
+    },
+    {
+      "elapsed_ms": 752454,
+      "main_pss_kib": 199891,
+      "inference_pss_kib": 981921
+    },
+    {
+      "elapsed_ms": 763685,
+      "main_pss_kib": 199915,
+      "inference_pss_kib": 981913
+    },
+    {
+      "elapsed_ms": 774918,
+      "main_pss_kib": 199935,
+      "inference_pss_kib": 981921
+    },
+    {
+      "elapsed_ms": 786425,
+      "main_pss_kib": 199959,
+      "inference_pss_kib": 981921
+    },
+    {
+      "elapsed_ms": 798347,
+      "main_pss_kib": 199067,
+      "inference_pss_kib": 981929
+    },
+    {
+      "elapsed_ms": 809757,
+      "main_pss_kib": 199083,
+      "inference_pss_kib": 981929
+    },
+    {
+      "elapsed_ms": 821200,
+      "main_pss_kib": 199111,
+      "inference_pss_kib": 981921
+    },
+    {
+      "elapsed_ms": 832959,
+      "main_pss_kib": 199131,
+      "inference_pss_kib": 981681
+    },
+    {
+      "elapsed_ms": 844698,
+      "main_pss_kib": 199155,
+      "inference_pss_kib": 981933
+    },
+    {
+      "elapsed_ms": 857105,
+      "main_pss_kib": 199175,
+      "inference_pss_kib": 981897
+    },
+    {
+      "elapsed_ms": 868517,
+      "main_pss_kib": 199199,
+      "inference_pss_kib": 981913
+    },
+    {
+      "elapsed_ms": 880025,
+      "main_pss_kib": 199223,
+      "inference_pss_kib": 981913
+    },
+    {
+      "elapsed_ms": 891974,
+      "main_pss_kib": 199243,
+      "inference_pss_kib": 981913
+    }
+  ],
+  "runtime_aar_sha256": "db5e489fb948e98a3c5cba14b1a5fe4e32aff68e238e971c4f27cb2db968677e",
+  "page_bytes": 4096
+}

@@ -50,6 +50,9 @@ jobs:
       - name: Test rolling CI publication policy
         run: bash .github/scripts/test-publish-ci-debug.sh
 
+      - name: Test phone ABI packaging
+        run: python3 .github/scripts/test-package-phone.py
+
       - uses: gradle/actions/wrapper-validation@v4
 
       - name: Set up JDK 17
@@ -129,7 +132,7 @@ jobs:
 
       - name: Build phone release AAB
         if: ${{ steps.vars.outputs.app_bundle_task != '' }}
-        run: ./gradlew ${{ steps.vars.outputs.app_bundle_task }} --stacktrace
+        run: ./gradlew ${{ steps.vars.outputs.app_bundle_task }} -Pownkey.apkSplits=false --stacktrace
 
       - name: Build wear release AAB
         if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
@@ -147,10 +150,7 @@ jobs:
           VERSION="${{ steps.vars.outputs.version }}"
           SHORT_SHA="${{ steps.vars.outputs.short_sha }}"
 
-          APP_APK_SRC=$(ls app/build/outputs/apk/${BUILD_TYPE}/*.apk | head -n1)
-          APP_APK_NAME="ownkey-phone-${BUILD_TYPE}-v${VERSION}-${SHORT_SHA}.apk"
-          cp "$APP_APK_SRC" "dist/phone/${APP_APK_NAME}"
-          echo "app_apk=dist/phone/${APP_APK_NAME}" >> "$GITHUB_OUTPUT"
+          python3 .github/scripts/package-phone.py --build-type "$BUILD_TYPE" --version "$VERSION" --sha "$SHORT_SHA" >> "$GITHUB_OUTPUT"
 
           if [[ "${{ steps.vars.outputs.include_wear }}" == "true" ]]; then
             WEAR_APK_SRC=$(ls wear/build/outputs/apk/${WEAR_BUILD_TYPE}/*.apk | head -n1)
@@ -173,6 +173,15 @@ jobs:
             echo "wear_aab=dist/wear/${WEAR_AAB_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          files = sorted(path for path in Path("dist").glob("*/*") if path.suffix in (".apk", ".aab"))
+          with Path("dist/SHA256SUMS").open("w") as output:
+              for path in files:
+                  with path.open("rb") as source:
+                      output.write(f"{hashlib.file_digest(source, 'sha256').hexdigest()}  {path.name}\n")
+          PY
           echo "Prepared distributables:"
           find dist -type f -maxdepth 3 | sort
 
@@ -180,7 +189,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ownkey-phone-${{ steps.vars.outputs.build_type }}-v${{ steps.vars.outputs.version }}
-          path: ${{ steps.package.outputs.app_apk }}
+          path: dist/phone/*.apk
           if-no-files-found: error
 
       - name: Upload wear APK artifact
@@ -222,6 +231,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            dist/SHA256SUMS
             dist/phone/*.apk
             dist/phone/*.aab
             dist/wear/*.apk

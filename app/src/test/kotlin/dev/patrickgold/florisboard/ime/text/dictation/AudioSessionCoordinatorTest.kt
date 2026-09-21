@@ -18,6 +18,15 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 
 class AudioSessionCoordinatorTest : FunSpec({
+    test("owner-scoped cancellation cannot cancel a rewrite recording") {
+        val coordinator = AudioSessionCoordinator()
+        val started = coordinator.tryStart(AudioSessionOwner.VOICE_REWRITE, AudioSessionMode.MOCK, FakeAudioRecorder())
+        val lease = (started as AudioSessionStartResult.Started).lease
+        coordinator.invalidate(AudioSessionInvalidation.OWNER_CANCELLED, AudioSessionOwner.DICTATION) shouldBe false
+        coordinator.state.value?.owner shouldBe AudioSessionOwner.VOICE_REWRITE
+        lease.cancel()
+        coordinator.state.value shouldBe null
+    }
     test("one owner holds the recorder and state exposes only content-free session metadata") {
         var nowMs = 100L
         val coordinator = AudioSessionCoordinator(nowMs = { nowMs })

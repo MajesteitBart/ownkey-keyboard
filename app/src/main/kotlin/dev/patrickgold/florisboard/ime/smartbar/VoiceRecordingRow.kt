@@ -129,9 +129,9 @@ fun VoiceRecordingRowContent(
                 modifier = Modifier.width(if (compact) 56.dp else 62.dp),
             )
             SmartbarDivider()
-            if (availableWidth >= 420.dp) {
+            if (availableWidth >= 420.dp || state.local) {
                 Text(
-                    text = state.status.label(),
+                    text = state.label(),
                     modifier = Modifier
                         // The label may use only the space left after the fixed meter and controls.
                         .weight(1f, fill = false)
@@ -144,15 +144,18 @@ fun VoiceRecordingRowContent(
                 )
                 SmartbarDivider()
             }
-            MeasuredLevelWaveform(
-                levels = levels,
-                barCount = layout.barCount,
-                paused = state.phase == VoiceRecordingPhase.PAUSED,
-                modifier = Modifier
-                    .width(layout.waveformWidthDp.dp)
-                    .height(if (compact) 28.dp else 32.dp),
-            )
-            SmartbarDivider()
+            // Reserve narrow rows for the local status and controls before allocating a meter.
+            if (!state.local || availableWidth >= 420.dp) {
+                MeasuredLevelWaveform(
+                    levels = levels,
+                    barCount = layout.barCount,
+                    paused = state.phase == VoiceRecordingPhase.PAUSED,
+                    modifier = Modifier
+                        .width(layout.waveformWidthDp.dp)
+                        .height(if (compact) 28.dp else 32.dp),
+                )
+                SmartbarDivider()
+            }
             RecordingIconButton(
                 size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
                 iconSize = 20.dp,
@@ -302,7 +305,7 @@ private fun ProcessingStatus(
             trackColor = OwnkeyBrand.Bone.copy(alpha = 0.08f),
         )
         Text(
-            text = state.status.label(),
+            text = state.label(),
             modifier = Modifier
                 .weight(1f)
                 .semantics { liveRegion = LiveRegionMode.Polite },
@@ -322,7 +325,7 @@ private fun ProcessingStatus(
  */
 @Composable
 private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
-    val announcement = state.status.label()
+    val announcement = state.label()
     Box(
         modifier = Modifier
             .size(1.dp)
@@ -332,6 +335,11 @@ private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
             },
     )
 }
+
+@Composable
+private fun VoiceRecordingRowState.label(): String = if (local && phase != VoiceRecordingPhase.PAUSED) {
+    stringRes(if (phase == VoiceRecordingPhase.PROCESSING) R.string.orukeet__transcribing else R.string.orukeet__recording)
+} else status.label()
 
 @Composable
 private fun VoiceRecordingStatus.label(): String = stringRes(

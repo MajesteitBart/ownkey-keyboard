@@ -65,7 +65,10 @@ data class AudioRecording(
     val durationMs: Long,
     val mimeType: String,
     val fileName: String,
-)
+    val file: File? = null,
+) : AutoCloseable {
+    override fun close() { file?.delete() }
+}
 
 /**
  * Recorder used in MVP mock mode.
@@ -140,6 +143,7 @@ class NoOpAudioRecorder(
 class MediaRecorderAudioRecorder(
     private val context: Context,
     private val nowMs: () -> Long = { System.currentTimeMillis() },
+    private val fileBacked: Boolean = false,
 ) : AudioRecorder {
     private var recorder: MediaRecorder? = null
     private var outputFile: File? = null
@@ -151,7 +155,9 @@ class MediaRecorderAudioRecorder(
         if (startedAtMs != null) return false
 
         val file = runCatching {
-            File.createTempFile("voxtral_dictation_", ".m4a", context.cacheDir ?: context.filesDir)
+            val directory = if (fileBacked) File(context.noBackupFilesDir, "ai-audio").apply { mkdirs() }
+                else context.cacheDir ?: context.filesDir
+            File.createTempFile("dictation_", ".m4a", directory)
         }.getOrElse {
             return false
         }
@@ -243,8 +249,8 @@ class MediaRecorderAudioRecorder(
         val durationMs = (nowMs() - startedAt - pausedDurationMs).coerceAtLeast(0L)
         pausedDurationMs = 0L
         return runCatching {
-            val bytes = file.readBytes()
-            file.delete()
+            val bytes = if (fileBacked) ByteArray(0) else file.readBytes()
+            if (!fileBacked) file.delete()
             AudioRecording(
                 bytes = bytes,
                 sampleRateHz = 16_000,
@@ -252,8 +258,9 @@ class MediaRecorderAudioRecorder(
                 durationMs = durationMs,
                 mimeType = "audio/mp4",
                 fileName = "recording.m4a",
+                file = file.takeIf { fileBacked },
             )
-        }
+        }.onFailure { file.delete() }
     }
 
     override fun cancel() {

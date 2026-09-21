@@ -79,12 +79,22 @@ configure<ApplicationExtension> {
         buildConfigField("String", "BUILD_COMMIT_HASH", "\"${getGitCommitHash().get()}\"")
         buildConfigField("String", "FLADDONS_API_VERSION", "\"v~draft2\"")
         buildConfigField("String", "FLADDONS_STORE_URL", "\"beta.addons.florisboard.org\"")
+        // Physical arm64 performance/quality gates remain outstanding. Internal builds exercise the integration.
+        buildConfigField("boolean", "ORUKEET_INTERNAL", "false")
 
         sourceSets {
             maybeCreate("main").apply {
                 assets.directories += "src/main/assets"
             }
         }
+    }
+
+    // Every standalone APK contains one ABI. Play derives device splits from the AAB.
+    splits.abi {
+        isEnable = providers.gradleProperty("ownkey.apkSplits").orNull != "false"
+        reset()
+        include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+        isUniversalApk = false
     }
 
     bundle {
@@ -122,6 +132,7 @@ configure<ApplicationExtension> {
 
     buildTypes {
         named("debug") {
+            buildConfigField("boolean", "ORUKEET_INTERNAL", "true")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug+${getGitCommitHash(short = true).get()}"
 
@@ -130,6 +141,7 @@ configure<ApplicationExtension> {
         }
 
         create("beta") {
+            buildConfigField("boolean", "ORUKEET_INTERNAL", "true")
             applicationIdSuffix = ".beta"
             versionNameSuffix = projectVersionNameSuffix
 
@@ -157,6 +169,7 @@ configure<ApplicationExtension> {
 
         create("benchmark") {
             initWith(getByName("release"))
+            buildConfigField("boolean", "ORUKEET_INTERNAL", "true")
 
             applicationIdSuffix = ".bench"
             versionNameSuffix = "-bench+${getGitCommitHash(short = true).get()}"
@@ -229,6 +242,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.window.core)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.cache4k)
     implementation(libs.kotlin.reflect)
     implementation(libs.kotlinx.coroutines)
@@ -243,6 +257,7 @@ dependencies {
     implementation(libs.play.services.wearable)
 
     implementation(projects.lib.android)
+    implementation(projects.lib.offlineAsr)
     implementation(projects.lib.color)
     implementation(projects.lib.compose)
     implementation(projects.lib.kotlin)

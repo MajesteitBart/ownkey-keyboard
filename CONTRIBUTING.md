@@ -10,6 +10,8 @@ The FlorisBoard community is international, as such we require all contributions
 
 ### Translations
 
+Ownkey-specific translations, such as Orukeet settings, belong in `app/src/main/res/values-<locale>/ownkey.xml` and can be reviewed in feature pull requests. Keep the inherited localized `strings.xml` files managed by FlorisBoard's Crowdin project; the upstream policy below applies to those files.
+
 To make FlorisBoard accessible in as many languages as possible, the platform [Crowdin](https://crowdin.florisboard.org) is used to crowdsource and manage translations.  The list of languages in Crowdin covers a good range of languages, but feel free to email [florisboard@patrickgold.dev](mailto:florisboard@patrickgold.dev) to request a new language.
 
 > [!IMPORTANT]

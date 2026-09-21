@@ -1,0 +1,16 @@
+{
+  "aab": "app-release.aab",
+  "bytes": 51110753,
+  "sha256": "2d5e298bc380ff6fcd5a9c745b78912c372037e4652b2ec3c03321037717403d",
+  "native_libraries": [
+    "base/lib/arm64-v8a/libandroidx.graphics.path.so",
+    "base/lib/arm64-v8a/libonnxruntime.so",
+    "base/lib/arm64-v8a/libsherpa-onnx-jni.so",
+    "base/lib/armeabi-v7a/libandroidx.graphics.path.so",
+    "base/lib/x86/libandroidx.graphics.path.so",
+    "base/lib/x86_64/libandroidx.graphics.path.so",
+    "base/lib/x86_64/libonnxruntime.so",
+    "base/lib/x86_64/libsherpa-onnx-jni.so"
+  ],
+  "weights_bundled": false
+}

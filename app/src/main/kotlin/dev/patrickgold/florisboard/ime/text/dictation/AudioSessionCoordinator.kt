@@ -30,6 +30,7 @@ enum class AudioSessionOwner {
 enum class AudioSessionMode {
     MOCK,
     CONFIGURED_PROVIDER,
+    LOCAL,
 }
 
 enum class AudioSessionPhase {
@@ -91,11 +92,14 @@ class AudioSessionCoordinator(
         val recorder: AudioRecorder,
         var state: AudioSessionState,
         var stopResult: AudioSessionStopResult? = null,
+        var stopping: Boolean = false,
+        val cleanup: () -> Unit = {},
     )
 
     private val lock = Any()
     private var nextSessionId = 0L
     private var activeSession: ActiveSession? = null
+    private var starting: Pair<Long, AudioSessionOwner>? = null
     private val _state = MutableStateFlow<AudioSessionState?>(null)
     val state: StateFlow<AudioSessionState?> = _state
 
@@ -103,42 +107,49 @@ class AudioSessionCoordinator(
         owner: AudioSessionOwner,
         mode: AudioSessionMode,
         recorder: AudioRecorder,
-    ): AudioSessionStartResult = synchronized(lock) {
-        activeSession?.let { active ->
-            return@synchronized AudioSessionStartResult.Busy(
-                owner = active.state.owner,
-                phase = active.state.phase,
-            )
+        cleanup: () -> Unit = {},
+    ): AudioSessionStartResult {
+        val sessionId = synchronized(lock) {
+            activeSession?.let { return AudioSessionStartResult.Busy(it.state.owner, it.state.phase) }
+            starting?.let { return AudioSessionStartResult.Busy(it.second, AudioSessionPhase.RECORDING) }
+            (++nextSessionId).also { starting = it to owner }
         }
-        if (!recorder.start()) {
-            return@synchronized AudioSessionStartResult.RecorderUnavailable
+        // MediaRecorder.prepare/start may block. Never hold the coordinator lock while it runs.
+        val started = runCatching { recorder.start() }.getOrDefault(false)
+        val result = synchronized(lock) {
+            if (starting?.first != sessionId) null else {
+                starting = null
+                if (!started) null else {
+                    val lease = AudioSessionLease(this, sessionId)
+                    val state = AudioSessionState(sessionId, owner, mode, AudioSessionPhase.RECORDING, nowMs())
+                    activeSession = ActiveSession(lease, recorder, state, cleanup = cleanup)
+                    _state.value = state
+                    beginTrace(state)
+                    AudioSessionStartResult.Started(lease)
+                }
+            }
         }
-
-        val sessionId = ++nextSessionId
-        val lease = AudioSessionLease(this, sessionId)
-        val state = AudioSessionState(
-            sessionId = sessionId,
-            owner = owner,
-            mode = mode,
-            phase = AudioSessionPhase.RECORDING,
-            startedAtMs = nowMs(),
-        )
-        activeSession = ActiveSession(lease = lease, recorder = recorder, state = state)
-        _state.value = state
-        beginTrace(state)
-        AudioSessionStartResult.Started(lease)
+        if (result == null) {
+            recorder.cancel()
+            return AudioSessionStartResult.RecorderUnavailable
+        }
+        return result
     }
 
-    fun invalidate(reason: AudioSessionInvalidation): Boolean {
+    fun invalidate(reason: AudioSessionInvalidation, owner: AudioSessionOwner? = null): Boolean {
         @Suppress("UNUSED_VARIABLE") val recordedReason = reason
         val session = synchronized(lock) {
-            val current = activeSession ?: return false
+            if (owner != null && (activeSession?.state?.owner ?: starting?.second) != owner) return false
+            val wasStarting = starting != null
+            starting = null
+            val current = activeSession ?: return wasStarting
             activeSession = null
             _state.value = null
             nextSessionId += 1
             current
         }
-        session.recorder.cancel()
+        if (!session.stopping) session.recorder.cancel()
+        dispose(session)
         endTrace(session.state)
         return true
     }
@@ -190,29 +201,38 @@ class AudioSessionCoordinator(
         level
     }
 
-    internal fun stop(sessionId: Long): AudioSessionStopResult = synchronized(lock) {
-        val session = activeSession?.takeIf { it.state.sessionId == sessionId }
-            ?: return AudioSessionStopResult.Stale
-        if (session.stopResult != null) return AudioSessionStopResult.AlreadyStopped
-        if (session.state.phase == AudioSessionPhase.PROCESSING) {
-            return AudioSessionStopResult.AlreadyStopped
+    internal fun stop(sessionId: Long): AudioSessionStopResult {
+        val session = synchronized(lock) {
+            val current = activeSession?.takeIf { it.state.sessionId == sessionId } ?: return AudioSessionStopResult.Stale
+            if (current.stopResult != null || current.stopping || current.state.phase == AudioSessionPhase.PROCESSING) {
+                return AudioSessionStopResult.AlreadyStopped
+            }
+            current.stopping = true
+            endTrace(current.state)
+            updateState(current, current.state.copy(phase = AudioSessionPhase.PROCESSING, pausedAtMs = null, measuredLevel = 0f))
+            beginTrace(current.state)
+            current
         }
-        val result = session.recorder.stopAndRead().fold(
-            onSuccess = { AudioSessionStopResult.Stopped(it) },
-            onFailure = { AudioSessionStopResult.Failed(it) },
-        )
-        session.stopResult = result
-        endTrace(session.state)
-        updateState(
-            session,
-            session.state.copy(
-                phase = AudioSessionPhase.PROCESSING,
-                pausedAtMs = null,
-                measuredLevel = 0f,
-            ),
-        )
-        beginTrace(session.state)
-        result
+        val result = try {
+            session.recorder.stopAndRead().fold(
+                onSuccess = { AudioSessionStopResult.Stopped(it) },
+                onFailure = { AudioSessionStopResult.Failed(it) },
+            )
+        } catch (error: Exception) {
+            synchronized(lock) { session.stopping = false }
+            cancel(sessionId, AudioSessionInvalidation.OWNER_CANCELLED)
+            throw error
+        }
+        return synchronized(lock) {
+            session.stopping = false
+            if (activeSession !== session) {
+                (result as? AudioSessionStopResult.Stopped)?.recording?.close()
+                AudioSessionStopResult.Stale
+            } else {
+                session.stopResult = result
+                result
+            }
+        }
     }
 
     internal fun cancel(sessionId: Long, reason: AudioSessionInvalidation): Boolean {
@@ -224,18 +244,28 @@ class AudioSessionCoordinator(
             nextSessionId += 1
             current
         }
-        session.recorder.cancel()
+        if (!session.stopping) session.recorder.cancel()
+        dispose(session)
         endTrace(session.state)
         return true
     }
 
-    internal fun complete(sessionId: Long): Boolean = synchronized(lock) {
-        val session = activeSession?.takeIf { it.state.sessionId == sessionId } ?: return false
-        if (session.state.phase != AudioSessionPhase.PROCESSING) return false
-        endTrace(session.state)
-        activeSession = null
-        _state.value = null
-        true
+    internal fun complete(sessionId: Long): Boolean {
+        val session = synchronized(lock) {
+            val current = activeSession?.takeIf { it.state.sessionId == sessionId } ?: return false
+            if (current.state.phase != AudioSessionPhase.PROCESSING || current.stopping) return false
+            endTrace(current.state)
+            activeSession = null
+            _state.value = null
+            current
+        }
+        dispose(session)
+        return true
+    }
+
+    private fun dispose(session: ActiveSession) {
+        (session.stopResult as? AudioSessionStopResult.Stopped)?.recording?.close()
+        session.cleanup()
     }
 
     private fun updateState(session: ActiveSession, state: AudioSessionState) {

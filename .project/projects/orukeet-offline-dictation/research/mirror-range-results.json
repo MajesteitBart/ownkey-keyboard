@@ -1,0 +1,14 @@
+[
+  {
+    "name": "encoder.int8.onnx",
+    "status": 206,
+    "content_range": "bytes 1024-2047/653182378",
+    "bytes": 1024
+  },
+  {
+    "name": "NOTICE.md",
+    "status": 206,
+    "content_range": "bytes 1024-2047/5271",
+    "bytes": 1024
+  }
+]

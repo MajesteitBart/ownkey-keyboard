@@ -72,6 +72,8 @@ import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.horizontalTween
@@ -194,6 +196,22 @@ private fun SmartbarMainRow(
     // Closing cancels any voice-rewrite session and the preset flow explicitly, so no recorder or
     // provider job can outlive the panel even for the frame before it leaves the composition.
     val rewritePanelVisible = keyboardManager.isRewriteOptionsVisible
+    val dictationFixController = remember(context) {
+        (context.applicationContext as dev.patrickgold.florisboard.FlorisApplication).dictationFixController.value
+    }
+    // Only the two strip-relevant phases are observed, so preview updates while a word is retyped
+    // never recompose the smartbar.
+    fun phaseOf(state: dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState): Int = when (state) {
+        is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Offered -> 1
+        is dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixState.Choosing -> 2
+        else -> 0
+    }
+    // Seeded from the current state, so a recreated composition never flashes the wrong strip.
+    val dictationFixPhase by remember(dictationFixController) {
+        dictationFixController.state.map(::phaseOf).distinctUntilChanged()
+    }.collectAsState(initial = phaseOf(dictationFixController.state.value))
+    val dictationFixOffered = dictationFixPhase == 1
+    val dictationFixChoosing = dictationFixPhase == 2
     val voiceRewriteUiController by context.voiceRewriteUiController()
     val llmRewriteManager by context.llmRewriteManager()
     val closeRewritePanel = remember(voiceRewriteUiController, llmRewriteManager) {
@@ -271,6 +289,21 @@ private fun SmartbarMainRow(
             // still the user's toolbar and its toggle keeps working while the panel is open.
             if (rewritePanelVisible && !expanded) {
                 RewritePanelSmartbarTitle(modifier = Modifier.fillMaxSize())
+                return@Box
+            }
+            // Right after dictation inserted text there is no composing word, so the strip offers
+            // the fix instead of predictions; the first keystroke brings the predictions back. The
+            // offer is short-lived and explicit, so it also takes the expanded toolbar's place.
+            if (dictationFixOffered) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixChip()
+                }
+                return@Box
+            }
+            if (dictationFixChoosing && !expanded) {
+                dev.patrickgold.florisboard.ime.text.dictation.dictionary.DictationFixSmartbarTitle(
+                    modifier = Modifier.fillMaxSize(),
+                )
                 return@Box
             }
             val enterTransition = if (shouldAnimate) HorizontalEnterTransition else NoEnterTransition
@@ -396,7 +429,9 @@ private fun SmartbarMainRow(
         ) {
             when (smartbarLayout) {
                 SmartbarLayout.SUGGESTIONS_ONLY -> {
-                    if (recordingRowState != null || rewritePanelVisible) {
+                    // The fix offer and chooser title live in the centre content, so they need the
+                    // same route as recording and the rewrite panel in the single-row layouts.
+                    if (recordingRowState != null || rewritePanelVisible || dictationFixOffered || dictationFixChoosing) {
                         CenterContent()
                         StickyAction()
                     } else if (shouldShowInlineSuggestionsUi) {
@@ -407,7 +442,7 @@ private fun SmartbarMainRow(
                 }
 
                 SmartbarLayout.ACTIONS_ONLY -> {
-                    if (recordingRowState != null || rewritePanelVisible) {
+                    if (recordingRowState != null || rewritePanelVisible || dictationFixOffered || dictationFixChoosing) {
                         CenterContent()
                         StickyAction()
                     } else if (shouldShowInlineSuggestionsUi) {

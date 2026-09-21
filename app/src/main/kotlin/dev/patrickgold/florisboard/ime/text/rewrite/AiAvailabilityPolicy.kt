@@ -27,13 +27,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-data class CloudAiEditorSession(
+data class AiEditorSession(
     val sessionId: Long,
     val isIncognito: Boolean,
     val isSecureField: Boolean,
 ) {
     companion object {
-        val None = CloudAiEditorSession(
+        val None = AiEditorSession(
             sessionId = 0L,
             isIncognito = false,
             isSecureField = false,
@@ -41,15 +41,15 @@ data class CloudAiEditorSession(
     }
 }
 
-enum class CloudAiUnavailableReason {
+enum class AiUnavailableReason {
     NO_ACTIVE_EDITOR,
     SECURE_FIELD,
     INCOGNITO,
 }
 
-sealed interface CloudAiAvailability {
-    data object Available : CloudAiAvailability
-    data class Unavailable(val reason: CloudAiUnavailableReason) : CloudAiAvailability
+sealed interface AiAvailability {
+    data object Available : AiAvailability
+    data class Unavailable(val reason: AiUnavailableReason) : AiAvailability
 }
 
 /**
@@ -59,11 +59,11 @@ sealed interface CloudAiAvailability {
  * constructing a provider request. [state] exists for UI controls and active jobs which need to
  * react when the editor session becomes private or secure.
  */
-class CloudAiAvailabilityPolicy(
+class AiAvailabilityPolicy(
     scope: CoroutineScope,
-    private val editorSession: StateFlow<CloudAiEditorSession>,
+    private val editorSession: StateFlow<AiEditorSession>,
 ) {
-    val state: StateFlow<CloudAiAvailability> = editorSession
+    val state: StateFlow<AiAvailability> = editorSession
         .map(::evaluate)
         .stateIn(
             scope = scope,
@@ -71,43 +71,43 @@ class CloudAiAvailabilityPolicy(
             initialValue = evaluate(editorSession.value),
         )
 
-    fun current(): CloudAiAvailability = evaluate(editorSession.value)
+    fun current(): AiAvailability = evaluate(editorSession.value)
 
     companion object {
-        fun evaluate(session: CloudAiEditorSession): CloudAiAvailability = when {
-            session.sessionId <= 0L -> CloudAiAvailability.Unavailable(CloudAiUnavailableReason.NO_ACTIVE_EDITOR)
-            session.isSecureField -> CloudAiAvailability.Unavailable(CloudAiUnavailableReason.SECURE_FIELD)
-            session.isIncognito -> CloudAiAvailability.Unavailable(CloudAiUnavailableReason.INCOGNITO)
-            else -> CloudAiAvailability.Available
+        fun evaluate(session: AiEditorSession): AiAvailability = when {
+            session.sessionId <= 0L -> AiAvailability.Unavailable(AiUnavailableReason.NO_ACTIVE_EDITOR)
+            session.isSecureField -> AiAvailability.Unavailable(AiUnavailableReason.SECURE_FIELD)
+            session.isIncognito -> AiAvailability.Unavailable(AiUnavailableReason.INCOGNITO)
+            else -> AiAvailability.Available
         }
     }
 }
 
-fun createCloudAiAvailabilityPolicy(
+fun createAiAvailabilityPolicy(
     scope: CoroutineScope,
     editorInstance: EditorInstance,
     keyboardManager: KeyboardManager,
-): CloudAiAvailabilityPolicy {
-    val initialSession = editorInstance.toCloudAiEditorSession(keyboardManager)
+): AiAvailabilityPolicy {
+    val initialSession = editorInstance.toAiEditorSession(keyboardManager)
     val sessionState = combine(
         editorInstance.activeInputSessionIdFlow,
         editorInstance.activeInfoFlow,
         keyboardManager.activeState,
     ) { sessionId, editorInfo, keyboardState ->
-        CloudAiEditorSession(
+        AiEditorSession(
             sessionId = sessionId,
             isIncognito = keyboardState.isIncognitoMode,
-            isSecureField = editorInfo.isCloudAiSecureField(),
+            isSecureField = editorInfo.isAiSecureField(),
         )
     }.stateIn(
         scope = scope,
         started = SharingStarted.Eagerly,
         initialValue = initialSession,
     )
-    return CloudAiAvailabilityPolicy(scope, sessionState)
+    return AiAvailabilityPolicy(scope, sessionState)
 }
 
-fun FlorisEditorInfo.isCloudAiSecureField(): Boolean = when (inputAttributes.variation) {
+fun FlorisEditorInfo.isAiSecureField(): Boolean = when (inputAttributes.variation) {
     InputAttributes.Variation.PASSWORD,
     InputAttributes.Variation.VISIBLE_PASSWORD,
     InputAttributes.Variation.WEB_PASSWORD,
@@ -115,8 +115,8 @@ fun FlorisEditorInfo.isCloudAiSecureField(): Boolean = when (inputAttributes.var
     else -> false
 }
 
-private fun EditorInstance.toCloudAiEditorSession(keyboardManager: KeyboardManager) = CloudAiEditorSession(
+private fun EditorInstance.toAiEditorSession(keyboardManager: KeyboardManager) = AiEditorSession(
     sessionId = activeInputSessionId,
     isIncognito = keyboardManager.activeState.isIncognitoMode,
-    isSecureField = activeInfo.isCloudAiSecureField(),
+    isSecureField = activeInfo.isAiSecureField(),
 )

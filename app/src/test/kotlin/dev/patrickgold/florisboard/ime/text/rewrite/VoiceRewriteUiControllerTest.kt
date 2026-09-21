@@ -36,7 +36,7 @@ import kotlin.coroutines.ContinuationInterceptor
 
 private class ControllerFixture(
     val controller: VoiceRewriteUiController,
-    val sessions: MutableStateFlow<CloudAiEditorSession>,
+    val sessions: MutableStateFlow<AiEditorSession>,
     val panelVisibility: MutableList<Boolean>,
     val selectionReads: MutableList<String>,
     val providerReads: MutableList<String>,
@@ -44,7 +44,7 @@ private class ControllerFixture(
     val audioSessionCoordinator: AudioSessionCoordinator,
 )
 
-private fun availableSession() = CloudAiEditorSession(
+private fun availableSession() = AiEditorSession(
     sessionId = 4L,
     isIncognito = false,
     isSecureField = false,
@@ -65,7 +65,7 @@ private fun resolvedTarget() = VoiceRewriteTargetResolution.Resolved(
 
 private fun controllerFixture(
     scope: CoroutineScope,
-    session: CloudAiEditorSession = availableSession(),
+    session: AiEditorSession = availableSession(),
     selectionCharacterCount: Int? = 184,
     transcriptionConfigured: Boolean = true,
     rewriteConfigured: Boolean = true,
@@ -75,7 +75,7 @@ private fun controllerFixture(
         VoiceRewriteTargetResolution.Rejected(VoiceRewriteTargetFailure.EMPTY_TARGET),
 ): ControllerFixture {
     val sessions = MutableStateFlow(session)
-    val policy = CloudAiAvailabilityPolicy(scope, sessions)
+    val policy = AiAvailabilityPolicy(scope, sessions)
     val panelVisibility = mutableListOf<Boolean>()
     val selectionReads = mutableListOf<String>()
     val providerReads = mutableListOf<String>()
@@ -199,7 +199,7 @@ class VoiceRewriteUiControllerTest : FunSpec({
             val card = fixture.controller.hubCardState()
 
             card.isAvailable shouldBe false
-            card.unavailableReason shouldBe CloudAiUnavailableReason.INCOGNITO
+            card.unavailableReason shouldBe AiUnavailableReason.INCOGNITO
             card.selectionCharacterCount.shouldBeNull()
             fixture.selectionReads.isEmpty() shouldBe true
             fixture.providerReads.isEmpty() shouldBe true
@@ -214,7 +214,7 @@ class VoiceRewriteUiControllerTest : FunSpec({
             )
             runCurrent()
 
-            fixture.controller.hubCardState().unavailableReason shouldBe CloudAiUnavailableReason.SECURE_FIELD
+            fixture.controller.hubCardState().unavailableReason shouldBe AiUnavailableReason.SECURE_FIELD
             fixture.selectionReads.isEmpty() shouldBe true
         }
     }
