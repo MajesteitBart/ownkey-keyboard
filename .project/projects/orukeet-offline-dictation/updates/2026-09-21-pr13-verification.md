@@ -25,3 +25,11 @@ stream: WS-B
 ## Next Actions
 
 - Address confirmed review findings and verify the final reviewed commit before merge.
+
+## Review repairs
+
+- Orukeet compatibility now requires a 64-bit app process, as well as the supported device ABI and internal-build gates. A 32-bit APK on a dual-ABI device can no longer offer a model download without the packaged native runtime. Three regression cases cover dual-ABI 32-bit installs, supported internal builds and unsupported/public configurations.
+- Runtime dependency preparation replaces a corrupt cached AAR with a verified download using a replacing move. Exercised the actual Gradle task in an isolated fixture cache seeded with corrupt bytes; the recovered artifact matches the pinned SHA-256 and extraction succeeds.
+- All 466 app tests and 19 offline-ASR tests pass, alongside debug APK assembly and release Kotlin compilation.
+
+References: [process ABI](https://github.com/MajesteitBart/ownkey-keyboard/pull/13#discussion_r4066550851), [runtime cache replacement](https://github.com/MajesteitBart/ownkey-keyboard/pull/13#discussion_r4066550856).

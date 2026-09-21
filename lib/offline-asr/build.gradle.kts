@@ -1,4 +1,7 @@
 import java.security.MessageDigest
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -27,7 +30,11 @@ val prepareSherpa by tasks.registering {
             connection.readTimeout = 60000
             connection.getInputStream().use { source -> partial.outputStream().use { source.copyTo(it) } }
             check(digest(partial) == sherpaDigest) { "sherpa-onnx checksum mismatch" }
-            check(partial.renameTo(cache)) { "Cannot install verified runtime" }
+            try {
+                Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
         }
         val output = nativeOutput.get().asFile
         output.deleteRecursively(); output.mkdirs()
