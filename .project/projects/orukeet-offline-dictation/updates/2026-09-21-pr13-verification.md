@@ -52,7 +52,7 @@ References: [process ABI](https://github.com/MajesteitBart/ownkey-keyboard/pull/
 - Probe conversion uses unique temporary files, frees the codec on muxer-construction failure, and serializes cancellation/result delivery. Scoring reads UTF-8, mirror output must be empty, and the standalone build centralizes dependency repositories. Runtime cache downloads use unique temporary paths. Benchmark dismissal waits until insets are known, and WAV fixture parsing checks its header length.
 - Verification: 476 app tests and 23 offline-ASR tests pass with zero failures/errors/skips. App debug assembly, release Kotlin compilation, benchmark APK, Android instrumentation APK and standalone probe APK build. Five evidence-tool tests pass under Python optimization. Instrumentation/device execution and public qualification remain pending.
 
-## Fourth review repair batch
+## Fourth review repair batch — 0e5c8fb
 
 - Retry-state publication and token cancellation share a monitor; stale requests cannot publish a waiting or failed state after revocation. Only IO failures retry; permanent HTTP/protocol rejection remains a failure.
 - Availability collection starts immediately even when subsequent scope work is queued. A regression confirms the first valid offer remains visible. Filler capitalization preserves line separators between consecutive markers, covered for LF, CRLF and Unicode line/paragraph separators.

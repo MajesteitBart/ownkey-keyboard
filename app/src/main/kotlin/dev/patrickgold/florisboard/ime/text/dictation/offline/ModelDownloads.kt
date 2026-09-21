@@ -45,6 +45,9 @@ object ModelDownloads {
                     .setInputData(workDataOf("token" to token, "wifiOnly" to !allowMobileData)).build()
                 WorkManager.getInstance(app).enqueueUniqueWork(WORK, ExistingWorkPolicy.REPLACE, request)
             }
+        } catch (cancelled: CancellationException) {
+            cancel(app)
+            throw cancelled
         } catch (failure: Exception) {
             cancel(app)
             app.offlineDictation().downloadFailed()
