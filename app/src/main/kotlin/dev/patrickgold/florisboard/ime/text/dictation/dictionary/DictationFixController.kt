@@ -96,7 +96,9 @@ class DictationFixController(
 
     init {
         scope.launch { editor.contentFlow.collect(::onEditorContent) }
-        scope.launch { available.collect { ok -> isAvailable = ok; if (!ok) abort() } }
+        scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            available.collect { ok -> isAvailable = ok; if (!ok) abort() }
+        }
     }
 
     /**

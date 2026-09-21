@@ -160,6 +160,8 @@ fun RestoreScreen() = FlorisScreen {
                     SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)).also {
                         context.speechDictionary().value.validateRestore(it)
                     }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
                 } catch (_: Exception) {
                     // Do not retain decoder excerpts or IO paths, including through an exception cause.
                     throw IllegalStateException(context.stringRes(R.string.speech_dictionary__restore_invalid))

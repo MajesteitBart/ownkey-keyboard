@@ -24,21 +24,23 @@ val prepareSherpa by tasks.registering {
         if (!cache.isFile || digest(cache) != sherpaDigest) {
             cache.parentFile.mkdirs()
             val partial = File.createTempFile(cache.name, ".partial", cache.parentFile)
-            val connection = uri("https://github.com/MajesteitBart/ownkey-keyboard/releases/download/orukeet-runtime-sherpa-$sherpaVersion/ownkey-sherpa-onnx-$sherpaVersion.aar").toURL().openConnection()
-            connection.connectTimeout = 30000
-            connection.readTimeout = 60000
-            connection.getInputStream().use { source -> partial.outputStream().use { source.copyTo(it) } }
-            check(digest(partial) == sherpaDigest) { "sherpa-onnx checksum mismatch" }
             try {
-                Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            } catch (atomicFailure: java.io.IOException) {
+                val connection = uri("https://github.com/MajesteitBart/ownkey-keyboard/releases/download/orukeet-runtime-sherpa-$sherpaVersion/ownkey-sherpa-onnx-$sherpaVersion.aar").toURL().openConnection()
+                connection.connectTimeout = 30000
+                connection.readTimeout = 60000
+                connection.getInputStream().use { source -> partial.outputStream().use { source.copyTo(it) } }
+                check(digest(partial) == sherpaDigest) { "sherpa-onnx checksum mismatch" }
                 try {
-                    Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.REPLACE_EXISTING)
-                } catch (replacementFailure: java.io.IOException) {
-                    atomicFailure.addSuppressed(replacementFailure)
-                    throw atomicFailure
+                    Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                } catch (atomicFailure: java.io.IOException) {
+                    try {
+                        Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    } catch (replacementFailure: java.io.IOException) {
+                        atomicFailure.addSuppressed(replacementFailure)
+                        throw atomicFailure
+                    }
                 }
-            }
+            } finally { partial.delete() }
         }
         val output = nativeOutput.get().asFile
         output.deleteRecursively(); output.mkdirs()

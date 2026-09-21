@@ -193,7 +193,7 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                         }
                     },
                 )
-                if (undoFailed) NoticeBanner(text = userStringRes(R.string.speech_dictionary__undo_failed), warning = true)
+                if (undoFailed && removed != null) NoticeBanner(text = userStringRes(R.string.speech_dictionary__undo_failed), warning = true)
                 FillerWordsCard(document = state.document, repository = repository, saveError = state.saveError)
                 RecognitionHintsCard(
                     words = state.document.words.map { it.word },

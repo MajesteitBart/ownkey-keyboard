@@ -21,6 +21,12 @@ import io.kotest.matchers.shouldBe
  * replacements.
  */
 class TranscriptCleanupTest : FunSpec({
+    test("consecutive line-start fillers retain line separators") {
+        for (separator in listOf("\n", "\r\n", "\u2028", "\u2029")) {
+            TranscriptCleanup.removeFillers("Start.${separator}Uh.${separator}Um. next", listOf("uh", "um")) shouldBe
+                "Start.$separator${separator}Next"
+        }
+    }
     test("sentence fillers preserve capitalization and Latin dotted names") {
         TranscriptCleanup.removeFillers("Uh. Um. hello", listOf("uh", "um")) shouldBe "Hello"
         TranscriptCleanup.removeFillers("foo.um next", listOf("um")) shouldBe "foo.um next"

@@ -337,6 +337,21 @@ class DictationFixControllerTest : FunSpec({
         }
     }
 
+    test("initial availability is collected before an offer on a queued scope") {
+        val h = Harness()
+        val owner = SupervisorJob()
+        val controller = DictationFixController(
+            scope = CoroutineScope(owner + kotlinx.coroutines.test.StandardTestDispatcher()),
+            repository = h.repository,
+            editor = h.editor,
+            openDictionary = {},
+        )
+        try {
+            controller.offer(h.insertion())
+            controller.state.value.shouldBeInstanceOf<DictationFixState.Offered>()
+        } finally { owner.cancel() }
+    }
+
     test("an insertion offers a fix until the user types, and only after the commit grace period") {
         val h = Harness()
         h.controller.offer(h.insertion(agoMs = 0L))

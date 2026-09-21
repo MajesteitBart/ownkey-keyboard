@@ -62,9 +62,24 @@ object ModelDownloads {
             .setExtras(PersistableBundle().apply { putString("token", token); putBoolean("allowMobileData", allowMobileData) })
             .build()
 
+    @Synchronized
     fun authorized(context: Context, token: String?): Boolean = token != null &&
         runCatching { record(context).readText() == "${ModelCatalog.current.id}:$token" }.getOrDefault(false)
+    @Synchronized
     fun finished(context: Context, token: String?) { if (authorized(context, token)) record(context).delete() }
+    @Synchronized
+    fun waitingIfAuthorized(context: Context, token: String?, allowMobileData: Boolean): Boolean {
+        if (!authorized(context, token)) return false
+        context.offlineDictation().waitingForNetwork(allowMobileData)
+        return true
+    }
+    @Synchronized
+    fun failedIfAuthorized(context: Context, token: String?) {
+        if (!authorized(context, token)) return
+        if (context.offlineDictation().state.value.error == null) context.offlineDictation().downloadFailed()
+        finished(context, token)
+    }
+    @Synchronized
     fun cancel(context: Context) {
         record(context).delete()
         context.getSystemService(JobScheduler::class.java).cancel(JOB_ID)
@@ -110,8 +125,7 @@ class ModelDownloadJob : JobService() {
                 ModelDownloads.finished(this@ModelDownloadJob, params.extras.getString("token"))
             } catch (_: CancellationException) { return@launch
             } catch (_: Exception) {
-                if (offlineDictation().state.value.error == null) offlineDictation().downloadFailed()
-                ModelDownloads.finished(this@ModelDownloadJob, params.extras.getString("token"))
+                ModelDownloads.failedIfAuthorized(this@ModelDownloadJob, params.extras.getString("token"))
             } finally { withContext(NonCancellable + Dispatchers.Main) {
                 // onStopJob owns retry after the scheduler revokes this run.
                 if (runningParams === params) {
@@ -119,7 +133,7 @@ class ModelDownloadJob : JobService() {
                     jobFinished(params, false)
                 } else if (ModelDownloads.authorized(this@ModelDownloadJob, params.extras.getString("token")) &&
                     offlineDictation().state.value.transferPhase == null) {
-                    offlineDictation().waitingForNetwork(params.extras.getBoolean("allowMobileData"))
+                    ModelDownloads.waitingIfAuthorized(this@ModelDownloadJob, params.extras.getString("token"), params.extras.getBoolean("allowMobileData"))
                 }
             } }
         }
@@ -158,13 +172,12 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
             Result.success()
         } catch (cancel: CancellationException) { throw cancel
         } catch (error: Exception) {
-            val transient = error is java.io.IOException || (error as? LocalAsrException)?.reason == LocalAsrFailure.DOWNLOAD
-            if (transient && runAttemptCount < 3 && ModelDownloads.authorized(applicationContext, token)) {
-                applicationContext.offlineDictation().waitingForNetwork(allowMobileData = !wifiOnly)
+            val transient = error is java.io.IOException
+            if (transient && runAttemptCount < 3 &&
+                ModelDownloads.waitingIfAuthorized(applicationContext, token, allowMobileData = !wifiOnly)) {
                 return Result.retry()
             }
-            if (applicationContext.offlineDictation().state.value.error == null) applicationContext.offlineDictation().downloadFailed()
-            ModelDownloads.finished(applicationContext, token)
+            ModelDownloads.failedIfAuthorized(applicationContext, token)
             Result.failure()
         }
     }

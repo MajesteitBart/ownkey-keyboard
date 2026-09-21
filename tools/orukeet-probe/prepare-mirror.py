@@ -15,7 +15,7 @@ pins = json.loads((Path(__file__).parent / 'pins.json').read_text())
 if not (verified(args.cache / 'manifest.json', pins['manifest'])):
     raise ValueError('Probe integrity validation failed')
 manifest = json.loads((args.cache / 'manifest.json').read_text())
-if args.output.exists() and any(args.output.iterdir()):
+if args.output.exists() and (not args.output.is_dir() or any(args.output.iterdir())):
     raise ValueError('Mirror output directory must be empty')
 args.output.mkdir(parents=True, exist_ok=True)
 for entry in manifest['files']:

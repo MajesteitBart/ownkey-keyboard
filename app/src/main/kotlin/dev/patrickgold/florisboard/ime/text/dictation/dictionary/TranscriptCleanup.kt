@@ -129,7 +129,10 @@ object TranscriptCleanup {
             previous = current
             current = substituteFillers(current, pattern)
         }
-        current = replaceAll(markedWord, current) { match -> capitalize(match.group(1)!!) }
+        current = replaceAll(markedWord, current) { match ->
+            val prefix = match.group().substring(0, match.start(1) - match.start())
+            prefix.filter { it in "\r\n\u000b\u000c\u0085\u2028\u2029" } + capitalize(match.group(1)!!)
+        }
         current = current.replace(MARK.toString(), "")
         current = spaceBeforePunctuation.matcher(current).replaceAll("$1")
         current = repeatedSpaces.matcher(current).replaceAll(" ")

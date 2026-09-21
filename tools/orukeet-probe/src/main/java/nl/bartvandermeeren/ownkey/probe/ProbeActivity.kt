@@ -15,6 +15,7 @@ class ProbeActivity : Activity() {
     private val main = Handler(Looper.getMainLooper())
     private val preparation = Executors.newSingleThreadExecutor()
     private var connection: ServiceConnection? = null
+    private var pendingAudio: File? = null
     private var remote: Messenger? = null
     private var busy = false
     private var generation = 0
@@ -88,6 +89,7 @@ class ProbeActivity : Activity() {
     }
 
     private fun bind(currentGeneration: Int, root: File, audio: File, format: String) {
+        pendingAudio = audio.takeIf { format == "aac" }
         val reply = Messenger(Handler(Looper.getMainLooper()) { message ->
             if (currentGeneration != generation || completed) return@Handler true
             val event = JSONObject(message.data.getString("json") ?: "{}")
@@ -170,6 +172,7 @@ class ProbeActivity : Activity() {
 
     private fun finish(result: JSONObject) {
         if (completed) return
+        pendingAudio?.delete(); pendingAudio = null
         evidence.keys().forEach { key -> if (!result.has(key)) result.put(key, evidence.get(key)) }
         completed = true; busy = false
         result.put("run_id", runId).put("mode", mode).put("requested_failure", failure)
@@ -185,6 +188,7 @@ class ProbeActivity : Activity() {
     }
 
     override fun onDestroy() {
+        pendingAudio?.delete(); pendingAudio = null
         if (busy) runCatching { remote?.send(Message.obtain(null, ProbeService.CANCEL)) }
         connection?.let { runCatching { unbindService(it) } }
         generation++
