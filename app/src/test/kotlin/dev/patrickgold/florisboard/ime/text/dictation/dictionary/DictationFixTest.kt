@@ -583,6 +583,11 @@ class DictationFixControllerTest : FunSpec({
         available.value = false
         controller.state.value shouldBe DictationFixState.Hidden
         // Nothing is offered while unavailable either.
+        controller.offer(insertion)
+        controller.openChooser()
+        controller.save()
+        controller.state.value shouldBe DictationFixState.Hidden
+        runBlocking { repository.export() }.corrections shouldBe emptyList()
         available.value = true
         controller.abort()
         controller.state.value shouldBe DictationFixState.Hidden

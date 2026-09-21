@@ -144,15 +144,18 @@ fun VoiceRecordingRowContent(
                 )
                 SmartbarDivider()
             }
-            MeasuredLevelWaveform(
-                levels = levels,
-                barCount = layout.barCount,
-                paused = state.phase == VoiceRecordingPhase.PAUSED,
-                modifier = Modifier
-                    .width(layout.waveformWidthDp.dp)
-                    .height(if (compact) 28.dp else 32.dp),
-            )
-            SmartbarDivider()
+            // Reserve narrow rows for the local status and controls before allocating a meter.
+            if (!state.local || availableWidth >= 420.dp) {
+                MeasuredLevelWaveform(
+                    levels = levels,
+                    barCount = layout.barCount,
+                    paused = state.phase == VoiceRecordingPhase.PAUSED,
+                    modifier = Modifier
+                        .width(layout.waveformWidthDp.dp)
+                        .height(if (compact) 28.dp else 32.dp),
+                )
+                SmartbarDivider()
+            }
             RecordingIconButton(
                 size = RecordingRowLayoutPolicy.ControlSizeDp.dp,
                 iconSize = 20.dp,

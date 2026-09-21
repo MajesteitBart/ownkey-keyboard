@@ -121,6 +121,7 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
             .speechDictionaryUse(hasCloudKey, localModelReady)
         var editing by remember { mutableStateOf<SpeechDictionaryEntry?>(null) }
         var removed by remember { mutableStateOf<RemovedEntry?>(null) }
+        var undoFailed by remember { mutableStateOf(false) }
 
         LaunchedEffect(removed) {
             if (removed != null) {
@@ -179,15 +180,21 @@ fun SpeechDictionaryScreen(heard: String? = null) = FlorisScreen {
                     removed = removed,
                     onEdit = { editing = it },
                     onDelete = { entry ->
-                        scope.launch { removed = repository.remove(entry.id) }
+                        scope.launch { undoFailed = false; removed = repository.remove(entry.id) }
                     },
                     onUndo = {
                         val toRestore = removed ?: return@EntriesCard
-                        removed = null
-                        scope.launch { repository.restoreRemoved(toRestore) }
+                        scope.launch {
+                            val restored = repository.restoreRemoved(toRestore)
+                            if (removed === toRestore) {
+                                if (restored) removed = null
+                                undoFailed = !restored
+                            }
+                        }
                     },
                 )
-                FillerWordsCard(document = state.document, repository = repository)
+                if (undoFailed) NoticeBanner(text = userStringRes(R.string.speech_dictionary__undo_failed), warning = true)
+                FillerWordsCard(document = state.document, repository = repository, saveError = state.saveError)
                 RecognitionHintsCard(
                     words = state.document.words.map { it.word },
                     endpointUrl = endpointUrl,
@@ -690,7 +697,7 @@ private fun EditEntryDialog(
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-private fun FillerWordsCard(document: SpeechDictionaryDocument, repository: SpeechDictionaryRepository) {
+private fun FillerWordsCard(document: SpeechDictionaryDocument, repository: SpeechDictionaryRepository, saveError: Boolean) {
     val scope = rememberCoroutineScope()
     val fillers = document.fillers
     val selected = FillerRules.normalizeLanguages(fillers.languages)
@@ -738,7 +745,7 @@ private fun FillerWordsCard(document: SpeechDictionaryDocument, repository: Spee
         OwnkeyButton(
             label = userStringRes(R.string.speech_dictionary__fillers_custom_save),
             onClick = { scope.launch { repository.setCustomFillers(normalizedDraft) } },
-            enabled = fillers.enabled && normalizedDraft != fillers.custom,
+            enabled = fillers.enabled && (normalizedDraft != fillers.custom || saveError),
             secondary = true,
         )
         if (fillers.enabled) {

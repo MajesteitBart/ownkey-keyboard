@@ -92,10 +92,11 @@ class DictationFixController(
     private var timer: Job? = null
     private var saveJob: Job? = null
     private var lastContent: EditorContent? = null
+    private var isAvailable = false
 
     init {
         scope.launch { editor.contentFlow.collect(::onEditorContent) }
-        scope.launch { available.collect { ok -> if (!ok) abort() } }
+        scope.launch { available.collect { ok -> isAvailable = ok; if (!ok) abort() } }
     }
 
     /**
@@ -110,6 +111,7 @@ class DictationFixController(
     }
 
     fun offer(insertion: DictationInsertion) {
+        if (!isAvailable || !sameField(insertion)) return
         // Dictating over the selected word is a valid way to retype it: the replacing row stays and
         // shows the dictated text through the editor content, so a new offer must not replace it.
         if (_state.value is DictationFixState.Replacing) return
@@ -192,6 +194,7 @@ class DictationFixController(
 
     fun save() {
         val current = _state.value as? DictationFixState.Replacing ?: return
+        if (!isAvailable || !sameField(current.insertion)) { abort(); return }
         if (!current.canSave) return
         val source = current.source
         val replacement = TranscriptCleanup.normalizeTerm(current.replacement)

@@ -15,6 +15,7 @@ import java.nio.ByteOrder
 internal object PublicFixtureAudio {
     fun readWav(bytes: ByteArray): FloatArray {
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        require(bytes.size >= 12) { "Truncated WAV header" }
         require(String(bytes, 0, 4) == "RIFF" && String(bytes, 8, 4) == "WAVE")
         var cursor = 12
         var pcm: ByteArray? = null

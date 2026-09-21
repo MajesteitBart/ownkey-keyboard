@@ -128,13 +128,17 @@ class LlmRewriteClient(
             else -> rawProviderId
         }
         val providerPreset = LlmRewriteProviders.byId(providerId)
+        val rawModel = modelProvider().trim()
+        if (providerPreset.isCustom && (rawEndpointUrl.isBlank() || rawModel.isBlank())) {
+            return Result.failure(IllegalStateException("Configure the custom rewrite endpoint and model first."))
+        }
 
         val endpointUrl = rawEndpointUrl.ifBlank { providerPreset.endpointUrl.ifBlank { DefaultEndpointUrl } }
         if (!endpointUrl.startsWith("https://") && !endpointUrl.startsWith("http://")) {
             return Result.failure(IllegalStateException("LLM endpoint URL must start with https:// or http://"))
         }
 
-        val model = modelProvider().trim().ifBlank { providerPreset.defaultModel.ifBlank { DefaultModel } }
+        val model = rawModel.ifBlank { providerPreset.defaultModel.ifBlank { DefaultModel } }
         val preparedInput = if (voiceInstruction != null) input else input.trim()
         if (preparedInput.isBlank()) {
             return Result.failure(IllegalStateException("Select or type text before rewriting."))

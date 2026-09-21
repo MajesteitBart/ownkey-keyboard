@@ -136,9 +136,10 @@ class AudioSessionCoordinator(
         return result
     }
 
-    fun invalidate(reason: AudioSessionInvalidation): Boolean {
+    fun invalidate(reason: AudioSessionInvalidation, owner: AudioSessionOwner? = null): Boolean {
         @Suppress("UNUSED_VARIABLE") val recordedReason = reason
         val session = synchronized(lock) {
+            if (owner != null && (activeSession?.state?.owner ?: starting?.second) != owner) return false
             val wasStarting = starting != null
             starting = null
             val current = activeSession ?: return wasStarting
@@ -249,14 +250,17 @@ class AudioSessionCoordinator(
         return true
     }
 
-    internal fun complete(sessionId: Long): Boolean = synchronized(lock) {
-        val session = activeSession?.takeIf { it.state.sessionId == sessionId } ?: return false
-        if (session.state.phase != AudioSessionPhase.PROCESSING || session.stopping) return false
-        endTrace(session.state)
-        activeSession = null
-        _state.value = null
+    internal fun complete(sessionId: Long): Boolean {
+        val session = synchronized(lock) {
+            val current = activeSession?.takeIf { it.state.sessionId == sessionId } ?: return false
+            if (current.state.phase != AudioSessionPhase.PROCESSING || current.stopping) return false
+            endTrace(current.state)
+            activeSession = null
+            _state.value = null
+            current
+        }
         dispose(session)
-        true
+        return true
     }
 
     private fun dispose(session: ActiveSession) {

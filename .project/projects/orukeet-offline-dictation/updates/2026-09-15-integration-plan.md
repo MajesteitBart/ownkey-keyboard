@@ -1,3 +1,10 @@
+---
+timestamp: 2026-09-15T12:00:00Z
+status: review
+task:
+stream:
+---
+
 # Optional Orukeet integration plan
 
 Date: 2026-09-15

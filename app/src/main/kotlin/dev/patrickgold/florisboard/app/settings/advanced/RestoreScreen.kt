@@ -157,15 +157,20 @@ fun RestoreScreen() = FlorisScreen {
             val file = workspace.outputDir.subDir(Backup.SPEECH_DIR_NAME).subFile(Backup.SPEECH_DICTIONARY_JSON_NAME)
             if (file.exists()) {
                 val document = try {
-                    SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8))
+                    SpeechDictionaryDocument.decode(file.readText(Charsets.UTF_8)).also {
+                        context.speechDictionary().value.validateRestore(it)
+                    }
                 } catch (_: Exception) {
                     // Do not retain decoder excerpts or IO paths, including through an exception cause.
                     throw IllegalStateException(context.stringRes(R.string.speech_dictionary__restore_invalid))
                 }
-                context.speechDictionary().value.validateRestore(document)
                 document
             } else null
         } else null
+        // Fail speech persistence before changing the other selected restore targets.
+        if (speechDocument != null && !context.speechDictionary().value.restore(speechDocument, merge = !shouldReset)) {
+            throw IllegalStateException(context.stringRes(R.string.speech_dictionary__save_error))
+        }
         if (restoreFilesSelector.jetprefDatastore) {
             val file = workspace.outputDir
                 .subDir(AndroidAppDataStorage.JETPREF_DIR_NAME)
@@ -194,12 +199,6 @@ fun RestoreScreen() = FlorisScreen {
             }
             if (srcDir.exists()) {
                 srcDir.copyRecursively(dstDir, overwrite = true)
-            }
-        }
-        if (speechDocument != null) {
-            // Storage failure remains a failed restore, not success to navigate away from.
-            if (!context.speechDictionary().value.restore(speechDocument, merge = !shouldReset)) {
-                throw IllegalStateException(context.stringRes(R.string.speech_dictionary__save_error))
             }
         }
         val clipboardManager = context.clipboardManager().value

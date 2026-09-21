@@ -21,6 +21,19 @@ import io.kotest.matchers.shouldBe
  * replacements.
  */
 class TranscriptCleanupTest : FunSpec({
+    test("sentence fillers preserve capitalization and Latin dotted names") {
+        TranscriptCleanup.removeFillers("Uh. Um. hello", listOf("uh", "um")) shouldBe "Hello"
+        TranscriptCleanup.removeFillers("foo.um next", listOf("um")) shouldBe "foo.um next"
+    }
+
+    test("stored whitespace cannot bypass duplicate validation") {
+        val document = SpeechDictionaryDocument(
+            words = listOf(VocabularyEntry(1, "  Ownkey  ")),
+            corrections = listOf(CorrectionEntry(2, " own   key ", "Ownkey")),
+        )
+        SpeechDictionaryValidation.validateWord(document, "Ownkey") shouldBe EntryError.DUPLICATE_WORD
+        SpeechDictionaryValidation.validateCorrection(document, "own key", "Ownkey") shouldBe EntryError.DUPLICATE_CORRECTION
+    }
     val words = FillerRules.fillerWords(listOf("en", "nl"))
     fun clean(text: String) = TranscriptCleanup.removeFillers(text, words)
     fun cleaner(

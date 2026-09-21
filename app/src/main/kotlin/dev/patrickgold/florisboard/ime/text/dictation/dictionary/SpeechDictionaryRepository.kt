@@ -103,6 +103,10 @@ class SpeechDictionaryRepository(
     private val supportedVersion: Int = SpeechDictionaryDocument.CURRENT_VERSION,
     /** Removes a kept file after its entries were merged; a parameter so a failing deletion can be tested. */
     private val deleteKeptFile: (File) -> Boolean = File::delete,
+    /** Filesystem seam for testing providers that reject atomic overwrite. */
+    private val atomicReplace: (File, File) -> Unit = { source, target ->
+        Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    },
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(SpeechDictionaryState(SpeechDictionaryDocument(), loaded = false))
@@ -534,12 +538,17 @@ class SpeechDictionaryRepository(
         try {
             beforeCommit()
             try {
-                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                atomicReplace(temp, file)
+            } catch (atomicFailure: java.io.IOException) {
                 // Keep a durable previous copy before the non-atomic replacement.
-                if (file.exists()) Files.copy(file.toPath(), backupFile().toPath(), StandardCopyOption.REPLACE_EXISTING)
-                beforeCommit()
-                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                try {
+                    if (file.exists()) Files.copy(file.toPath(), backupFile().toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    beforeCommit()
+                    Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                } catch (fallbackFailure: java.io.IOException) {
+                    atomicFailure.addSuppressed(fallbackFailure)
+                    throw atomicFailure
+                }
             }
         } catch (cancelled: CancellationException) {
             // The authoritative file is untouched, and the cancelled draft is never retried.
@@ -680,8 +689,13 @@ class SpeechDictionaryRepository(
                 }
                 try {
                     Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-                } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-                    Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                } catch (atomicFailure: java.io.IOException) {
+                    try {
+                        Files.move(temp.toPath(), marker.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    } catch (fallbackFailure: java.io.IOException) {
+                        atomicFailure.addSuppressed(fallbackFailure)
+                        throw atomicFailure
+                    }
                 }
             }
         }.isSuccess

@@ -13,6 +13,8 @@ package dev.patrickgold.florisboard.ime.text.dictation.dictionary
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -270,7 +272,7 @@ private fun RowScope.ReplacingContent(
         Row(
             modifier = Modifier
                 .clip(PillShape)
-                .clickable(role = Role.Checkbox, onClickLabel = addWordLabel, onClick = controller::toggleAddAsWord)
+                .toggleable(value = state.addAsWord, role = Role.Checkbox, onValueChange = { controller.toggleAddAsWord() })
                 .padding(end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -366,7 +368,7 @@ private fun TokenChip(
     Surface(
         modifier = Modifier
             .heightIn(min = MinTouchTarget)
-            .clickable(role = Role.Button, onClick = onClick)
+            .selectable(selected = selected, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = text },
         color = if (selected) accent else OwnkeyBrand.Glass.Key,
         contentColor = OwnkeyBrand.Glass.Ink,

@@ -23,7 +23,7 @@ val prepareSherpa by tasks.registering {
         }
         if (!cache.isFile || digest(cache) != sherpaDigest) {
             cache.parentFile.mkdirs()
-            val partial = File(cache.path + ".partial")
+            val partial = File.createTempFile(cache.name, ".partial", cache.parentFile)
             val connection = uri("https://github.com/MajesteitBart/ownkey-keyboard/releases/download/orukeet-runtime-sherpa-$sherpaVersion/ownkey-sherpa-onnx-$sherpaVersion.aar").toURL().openConnection()
             connection.connectTimeout = 30000
             connection.readTimeout = 60000

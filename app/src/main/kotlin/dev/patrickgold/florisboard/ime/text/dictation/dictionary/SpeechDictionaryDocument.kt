@@ -110,7 +110,7 @@ object SpeechDictionaryValidation {
         val normalized = TranscriptCleanup.normalizeTerm(word)
         if (normalized.isEmpty()) return EntryError.BLANK_WORD
         val key = normalized.lowercase()
-        val duplicate = document.words.any { it.id != editingId && it.word.lowercase() == key }
+        val duplicate = document.words.any { it.id != editingId && TranscriptCleanup.normalizeTerm(it.word).lowercase() == key }
         return if (duplicate) EntryError.DUPLICATE_WORD else null
     }
 
@@ -127,7 +127,7 @@ object SpeechDictionaryValidation {
         // Case-only corrections such as `bart → Bart` are valid; only exactly identical pairs are rejected.
         if (normalizedSource == normalizedReplacement) return EntryError.IDENTICAL
         val key = normalizedSource.lowercase()
-        val duplicate = document.corrections.any { it.id != editingId && it.source.lowercase() == key }
+        val duplicate = document.corrections.any { it.id != editingId && TranscriptCleanup.normalizeTerm(it.source).lowercase() == key }
         return if (duplicate) EntryError.DUPLICATE_CORRECTION else null
     }
 }

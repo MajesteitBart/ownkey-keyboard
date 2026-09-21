@@ -47,7 +47,8 @@ object ProbeAudio {
         val pcm = ByteBuffer.allocate(samples.size * 2).order(ByteOrder.LITTLE_ENDIAN)
         samples.forEach { pcm.putShort((it * 32768).toInt().coerceIn(-32768, 32767).toShort()) }
         val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-        val muxer = MediaMuxer(output.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+        val muxer = try { MediaMuxer(output.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4) }
+        catch (error: Throwable) { codec.release(); throw error }
         var muxerStarted = false
         try {
             codec.configure(MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, 16000, 1).apply {

@@ -243,7 +243,13 @@ class VoxtralDictationManager(
     }
 
     fun cancelDictation() {
-        val lease = activeLease ?: run { invalidateSession(AudioSessionInvalidation.OWNER_CANCELLED); return }
+        val lease = activeLease ?: run {
+            sessionGeneration++
+            operationJob?.cancel(); operationJob = null
+            audioSessionCoordinator.invalidate(AudioSessionInvalidation.OWNER_CANCELLED, AudioSessionOwner.DICTATION)
+            _stateFlow.value = DictationState.IDLE
+            return
+        }
         sessionGeneration++
         autoStopJob?.cancel(); autoStopJob = null
         operationJob?.cancel()

@@ -264,7 +264,7 @@ fun VoxtralScreen() = FlorisScreen {
                         },
                         label = stringRes(R.string.pref__voxtral__model__label),
                     )
-                    if (selectedBackend != "orukeet") {
+                    if (selectedBackend != dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend.ORUKEET.preference) {
                     SectionLabel(text = stringRes(R.string.pref__voxtral__language_hint__group))
                     StatusText(text = stringRes(R.string.pref__voxtral__language_hint__summary))
                     DictationLanguageOptions(

@@ -157,7 +157,12 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
             ModelDownloads.finished(applicationContext, token)
             Result.success()
         } catch (cancel: CancellationException) { throw cancel
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            val transient = error is java.io.IOException || (error as? LocalAsrException)?.reason == LocalAsrFailure.DOWNLOAD
+            if (transient && runAttemptCount < 3 && ModelDownloads.authorized(applicationContext, token)) {
+                applicationContext.offlineDictation().waitingForNetwork(allowMobileData = !wifiOnly)
+                return Result.retry()
+            }
             if (applicationContext.offlineDictation().state.value.error == null) applicationContext.offlineDictation().downloadFailed()
             ModelDownloads.finished(applicationContext, token)
             Result.failure()

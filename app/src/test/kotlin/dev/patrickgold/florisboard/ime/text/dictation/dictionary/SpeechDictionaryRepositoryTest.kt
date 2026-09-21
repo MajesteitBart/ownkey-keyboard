@@ -26,6 +26,18 @@ import java.nio.file.Files
 
 /** Uses real files in a temporary directory: persistence, atomicity, reload and restore are all disk-backed. */
 class SpeechDictionaryRepositoryTest : FunSpec({
+    test("atomic overwrite rejection falls back and edits survive reopening") {
+        val file = Files.createTempDirectory("dictionary-overwrite").resolve("dictionary.json").toFile()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val repository = SpeechDictionaryRepository(file, scope, atomicReplace = { source, target ->
+            if (target.exists()) throw java.nio.file.FileAlreadyExistsException(target.name)
+            Files.move(source.toPath(), target.toPath())
+        })
+        repository.addWord("first").shouldBeInstanceOf<EntryResult.Saved>()
+        repository.addWord("second").shouldBeInstanceOf<EntryResult.Saved>()
+        repository.state.value.saveError shouldBe false
+        SpeechDictionaryRepository(file, scope).awaitLoaded().document.words.map { it.word } shouldBe listOf("first", "second")
+    }
     fun temp(): File = Files.createTempDirectory("speech-dictionary").toFile()
     fun repository(dir: File, clock: () -> Long = { 1_000L }) = SpeechDictionaryRepository(
         file = File(dir, "personal_dictionary.json"),

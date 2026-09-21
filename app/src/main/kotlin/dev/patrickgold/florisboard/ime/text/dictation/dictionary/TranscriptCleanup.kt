@@ -58,7 +58,7 @@ object TranscriptCleanup {
     private const val FLAGS = Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE
 
     private val whitespace = Regex("$SPACE+")
-    private val markedWord = Pattern.compile("$MARK$SPACE*($NON_SPACE+)")
+    private val markedWord = Pattern.compile("(?:$MARK$SPACE*)+($NON_SPACE+)")
     private val spaceBeforePunctuation = Pattern.compile("[ \\t]+(${TranscriptPunctuation.followingPattern})")
     private val repeatedSpaces = Pattern.compile("[ \\t]{2,}")
     private val spacedLineBreak = Pattern.compile(" *\\n *")

@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.dictationFixController
 import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.clipboard.ClipboardManager
@@ -114,7 +115,10 @@ fun createVoiceRewriteUiController(
         replacementGateway = {
             EditorInstanceVoiceRewriteReplacementGateway(editorInstance, clipboardManager)
         },
-        setPanelVisible = { visible -> keyboardManager.isRewriteOptionsVisible = visible },
+        setPanelVisible = { visible ->
+            if (visible) appContext.dictationFixController().value.interrupt()
+            keyboardManager.isRewriteOptionsVisible = visible
+        },
         openAiSettingsRoute = { appContext.openSettingsDeepLink(AI_SETTINGS_DEEPLINK) },
         openIncognitoSettingRoute = { appContext.openSettingsDeepLink(INCOGNITO_SETTINGS_DEEPLINK) },
     )

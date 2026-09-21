@@ -50,6 +50,6 @@ def score(rows):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('input', type=argparse.FileType())
+    parser.add_argument('input', type=argparse.FileType(encoding='utf-8'))
     args = parser.parse_args()
     print(json.dumps({'normalization': 'NFKC, casefold, punctuation to spaces; no number/name expansion', 'groups': score(json.loads(line) for line in args.input if line.strip())}, indent=2))

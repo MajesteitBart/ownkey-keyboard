@@ -72,8 +72,23 @@ class ModelDownloader(
     }
 
     private suspend fun transfer(url: URL, partial: File, expected: Long, progress: (Long) -> Unit) {
+        var destination = url
+        repeat(6) {
+            if (destination.protocol != "https") throw LocalAsrException(LocalAsrFailure.DOWNLOAD)
+            try {
+                transferOnce(destination, partial, expected, progress)
+                return
+            } catch (redirect: Redirect) {
+                destination = redirect.destination
+            }
+        }
+        throw LocalAsrException(LocalAsrFailure.DOWNLOAD)
+    }
+
+    private suspend fun transferOnce(url: URL, partial: File, expected: Long, progress: (Long) -> Unit) {
         suspendCancellableCoroutine<Unit> { continuation ->
             val connection = open(url).apply {
+                instanceFollowRedirects = false
                 connectTimeout = 15_000; readTimeout = 15_000
                 setRequestProperty("Accept-Encoding", "identity")
                 setRequestProperty("User-Agent", "Ownkey-model-download/1")
@@ -90,6 +105,12 @@ class ModelDownloader(
                 if (!continuation.isActive) return@suspendCancellableCoroutine
                 val status = connection.responseCode
                 if (connection.url.protocol != "https") throw LocalAsrException(LocalAsrFailure.DOWNLOAD)
+                if (status in setOf(301, 302, 303, 307, 308)) {
+                    val location = connection.getHeaderField("Location") ?: throw LocalAsrException(LocalAsrFailure.DOWNLOAD)
+                    val destination = URL(url, location)
+                    if (destination.protocol != "https") throw LocalAsrException(LocalAsrFailure.DOWNLOAD)
+                    throw Redirect(destination)
+                }
                 if (status == 429 || status in 500..599 || status == 408) {
                     throw RetryableHttp(connection.getHeaderField("Retry-After")?.toLongOrNull()?.times(1000) ?: 2000)
                 }
@@ -143,6 +164,7 @@ class ModelDownloader(
     }
 
     private class RetryableHttp(val delayMs: Long) : IOException()
+    private class Redirect(val destination: URL) : IOException()
 
     data class ContentRange(val first: Long, val last: Long, val total: Long)
     companion object {

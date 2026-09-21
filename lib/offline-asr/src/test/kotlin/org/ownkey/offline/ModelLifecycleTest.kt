@@ -10,6 +10,30 @@ import kotlin.test.*
 import kotlinx.coroutines.runBlocking
 
 class ModelLifecycleTest {
+    @Test fun `redirects remain HTTPS and preserve resume headers`() = fixture { store, _ ->
+        val staging = store.stagingDirectory("test-v1").apply { mkdirs() }
+        File(staging, "encoder.onnx.part").writeBytes(payload.take(5).toByteArray())
+        val redirect = Response(302, byteArrayOf(), mapOf("Location" to "https://cdn.invalid/model"))
+        val response = Response(206, payload.drop(5).toByteArray(), mapOf("Content-Range" to "bytes 5-${payload.lastIndex}/${payload.size}"))
+        var opened = 0
+        ModelDownloader(store, { if (opened++ == 0) redirect else response }, { Long.MAX_VALUE }).download(release()) {}
+        assertFalse(redirect.instanceFollowRedirects)
+        assertTrue(redirect.disconnected)
+        assertEquals("bytes=5-", response.getRequestProperty("Range"))
+        assertEquals(2, opened)
+    }
+
+    @Test fun `HTTP redirect is rejected before opening the target`() = fixture { store, _ ->
+        var opened = 0
+        val error = assertFailsWith<LocalAsrException> {
+            ModelDownloader(store, {
+                opened++
+                Response(302, byteArrayOf(), mapOf("Location" to "http://insecure.invalid/model"))
+            }, { Long.MAX_VALUE }).download(release()) {}
+        }
+        assertEquals(LocalAsrFailure.DOWNLOAD, error.reason)
+        assertEquals(1, opened)
+    }
     private val payload = "pinned-model-content".toByteArray()
     private fun entry() = ModelFile("encoder.onnx", payload.size.toLong(),
         MessageDigest.getInstance("SHA-256").digest(payload).joinToString("") { "%02x".format(it) })

@@ -73,8 +73,14 @@ class ProbeActivity : Activity() {
                 val root = File(filesDir, "probe-data")
                 val wave = File(root, "sample.wav")
                 require(wave.isFile)
-                val audio = if (format == "aac") File(root, "sample.m4a").also { ProbeAudio.encodeAac(wave, it) } else wave
-                main.post { if (generation == currentGeneration) bind(currentGeneration, root, audio, format) }
+                val audio = if (format == "aac") File.createTempFile("sample-", ".m4a", root).also {
+                    try { ProbeAudio.encodeAac(wave, it) }
+                    catch (error: Throwable) { it.delete(); throw error }
+                } else wave
+                main.post {
+                    if (generation == currentGeneration) bind(currentGeneration, root, audio, format)
+                    else if (format == "aac") audio.delete()
+                }
             } catch (error: Throwable) {
                 main.post { if (generation == currentGeneration) finish(JSONObject().put("status", "error").put("error_type", error.javaClass.simpleName).put("phase", "prepare")) }
             }
@@ -133,7 +139,10 @@ class ProbeActivity : Activity() {
                     })
                 } catch (error: Throwable) {
                     finish(JSONObject().put("status", "error").put("error_type", error.javaClass.simpleName).put("phase", "handoff"))
-                } finally { fds.forEach { runCatching { it.close() } } }
+                } finally {
+                    fds.forEach { runCatching { it.close() } }
+                    if (format == "aac") audio.delete()
+                }
             }
             override fun onServiceDisconnected(name: ComponentName) = died()
             override fun onBindingDied(name: ComponentName) = died()

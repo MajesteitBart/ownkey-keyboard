@@ -23,6 +23,7 @@ open class ProbeService : Service() {
     private val worker = Executors.newSingleThreadExecutor()
     private var reply: Messenger? = null
     private var started = false
+    private val cancelled = AtomicBoolean(false)
     @Volatile private var phase = "bind"
     private val messenger = Messenger(Handler(Looper.getMainLooper()) { message ->
         when (message.what) {
@@ -33,6 +34,7 @@ open class ProbeService : Service() {
                 worker.execute { runProbe(data) }
             }
             CANCEL -> {
+                cancelled.set(true)
                 emit(JSONObject().put("event", "cancel_ack").put("service_pid", Process.myPid()))
                 // Native decode is synchronous; never release its recognizer from this thread.
                 main.postDelayed({ Process.killProcess(Process.myPid()) }, 100)
@@ -169,7 +171,8 @@ open class ProbeService : Service() {
             measure.set(false)
             sampler.join(200)
             result.put("sampled_peak_rss_kb", JSONObject(peaks.toMap()))
-            emit(result)
+            // Serialize result delivery with the main-thread cancellation acknowledgment.
+            main.post { if (!cancelled.get()) emit(result) }
             // Guarantee a fresh process for the next activation measurement.
             main.postDelayed({ Process.killProcess(Process.myPid()) }, 150)
         }
