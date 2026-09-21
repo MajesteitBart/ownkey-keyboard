@@ -23,16 +23,26 @@ def load_alignments(data):
 def inspect(path, zipalign):
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
-        assert not any(name.endswith('.onnx') for name in names), 'Weights bundled in APK'
+        if not (not any(name.endswith('.onnx') for name in names)):
+            raise ValueError('Weights bundled in APK')
         libraries = [name for name in names if name.startswith('lib/') and name.endswith('.so')]
         abis = {name.split('/')[1] for name in libraries}
-        assert len(abis) == 1, 'Expected exactly one ABI'
+        if not (len(abis) == 1):
+            raise ValueError('Expected exactly one ABI')
         abi = next(iter(abis))
+        abi_headers = {'arm64-v8a': (2, 183), 'x86_64': (2, 62), 'armeabi-v7a': (1, 40), 'x86': (1, 3)}
+        if abi not in abi_headers:
+            raise ValueError('Unknown ABI')
         for name in libraries:
-            alignments = load_alignments(archive.read(name))
-            assert alignments, 'No load segments'
+            data = archive.read(name)
+            if len(data) < 20 or data[5] != 1 or (data[4], struct.unpack_from('<H', data, 18)[0]) != abi_headers[abi]:
+                raise ValueError('ELF architecture does not match APK ABI')
+            alignments = load_alignments(data)
+            if not (alignments):
+                raise ValueError('No load segments')
             if abi in ('arm64-v8a','x86_64'):
-                assert min(alignments) >= 16384, 'Unaligned native library: ' + name
+                if not (min(alignments) >= 16384):
+                    raise ValueError('Unaligned native library: ' + name)
     subprocess.run([zipalign,'-c','-P','16','4',str(path)], check=True, capture_output=True)
     with path.open('rb') as stream:
         digest = hashlib.file_digest(stream,'sha256').hexdigest()

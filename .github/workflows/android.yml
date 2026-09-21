@@ -50,6 +50,9 @@ jobs:
       - name: Test rolling CI publication policy
         run: bash .github/scripts/test-publish-ci-debug.sh
 
+      - name: Test phone ABI packaging
+        run: python3 .github/scripts/test-package-phone.py
+
       - uses: gradle/actions/wrapper-validation@v4
 
       - name: Set up JDK 17
@@ -170,7 +173,15 @@ jobs:
             echo "wear_aab=dist/wear/${WEAR_AAB_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
-          (cd dist && find phone wear -type f \( -name "*.apk" -o -name "*.aab" \) -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          files = sorted(path for path in Path("dist").glob("*/*") if path.suffix in (".apk", ".aab"))
+          with Path("dist/SHA256SUMS").open("w") as output:
+              for path in files:
+                  with path.open("rb") as source:
+                      output.write(f"{hashlib.file_digest(source, 'sha256').hexdigest()}  {path.name}\n")
+          PY
           echo "Prepared distributables:"
           find dist -type f -maxdepth 3 | sort
 

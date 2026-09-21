@@ -12,12 +12,14 @@ parser.add_argument('--cache', type=Path, default=Path.home() / '.cache/ownkey-o
 parser.add_argument('--output', type=Path, required=True)
 args = parser.parse_args()
 pins = json.loads((Path(__file__).parent / 'pins.json').read_text())
-assert verified(args.cache / 'manifest.json', pins['manifest'])
+if not (verified(args.cache / 'manifest.json', pins['manifest'])):
+    raise ValueError('Probe integrity validation failed')
 manifest = json.loads((args.cache / 'manifest.json').read_text())
 args.output.mkdir(parents=True, exist_ok=True)
 for entry in manifest['files']:
     name = entry['path']
-    assert Path(name).name == name and verified(args.cache / 'model' / name, entry)
+    if not (Path(name).name == name and verified(args.cache / 'model' / name, entry)):
+        raise ValueError('Probe integrity validation failed')
     shutil.copyfile(args.cache / 'model' / name, args.output / name)
 shutil.copyfile(args.cache / 'manifest.json', args.output / 'upstream-manifest.json')
 (args.output / 'provenance.json').write_text(json.dumps({

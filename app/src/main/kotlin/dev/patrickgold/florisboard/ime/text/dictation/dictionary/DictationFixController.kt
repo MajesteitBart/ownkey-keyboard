@@ -246,7 +246,7 @@ class DictationFixController(
                 judgeOffer(current, content)
             }
             is DictationFixState.Replacing -> {
-                if (editor.activeSessionId != current.insertion.editorSessionId) {
+                if (!sameField(current.insertion)) {
                     publish(DictationFixState.Hidden)
                     return
                 }
@@ -262,7 +262,7 @@ class DictationFixController(
                 }
             }
             is DictationFixState.Choosing -> {
-                if (editor.activeSessionId != current.insertion.editorSessionId) publish(DictationFixState.Hidden)
+                if (!sameField(current.insertion)) publish(DictationFixState.Hidden)
             }
             is DictationFixState.Manual, is DictationFixState.Saved, is DictationFixState.SaveFailed, DictationFixState.Hidden -> Unit
         }
@@ -270,7 +270,7 @@ class DictationFixController(
 
     /** Typing, moving the cursor or switching fields all retire the offer. */
     private fun judgeOffer(current: DictationFixState.Offered, content: EditorContent) {
-        val stillThere = editor.activeSessionId == current.insertion.editorSessionId &&
+        val stillThere = sameField(current.insertion) &&
             DictationFixModel.locateCommitted(content, current.insertion.committedText) != null
         if (!stillThere) publish(DictationFixState.Hidden)
     }
@@ -280,6 +280,10 @@ class DictationFixController(
         timer = null
         _state.value = next
     }
+
+    private fun sameField(insertion: DictationInsertion): Boolean =
+        editor.activeSessionId == insertion.editorSessionId &&
+            editor.activeHostPackage == insertion.hostPackage && editor.activeFieldId == insertion.fieldId
 
     companion object {
         const val OFFER_TIMEOUT_MS = 15_000L

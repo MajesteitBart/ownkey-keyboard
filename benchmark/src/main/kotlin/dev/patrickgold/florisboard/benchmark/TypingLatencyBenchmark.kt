@@ -31,23 +31,31 @@ class TypingLatencyBenchmark {
         require(target.matches(Regex("[a-zA-Z0-9_.]+")))
         val device = UiDevice.getInstance(instrumentation)
         val oldIme = device.executeShellCommand("settings get secure default_input_method").trim()
-        device.executeShellCommand("ime enable $target/dev.patrickgold.florisboard.FlorisImeService")
-        device.executeShellCommand("ime set $target/dev.patrickgold.florisboard.FlorisImeService")
         val oldHardwareIme = device.executeShellCommand("settings get secure show_ime_with_hard_keyboard").trim()
-        device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
-        val context = instrumentation.context
-        val activity = instrumentation.startActivitySync(Intent(context, TypingLatencyActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as TypingLatencyActivity
-        val typing = JSONArray()
-        val opening = JSONArray()
-        val rounds = (args.getString("rounds")?.toInt() ?: 20).coerceIn(1, 100)
-        val taps = (args.getString("taps")?.toInt() ?: 100).coerceIn(1, 500)
-        val opens = (args.getString("opens")?.toInt() ?: 10).coerceIn(1, 100)
+        var launched: TypingLatencyActivity? = null
         try {
+            device.executeShellCommand("ime enable $target/dev.patrickgold.florisboard.FlorisImeService")
+            device.executeShellCommand("ime set $target/dev.patrickgold.florisboard.FlorisImeService")
+            device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+            val context = instrumentation.context
+            val activity = instrumentation.startActivitySync(Intent(context, TypingLatencyActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as TypingLatencyActivity
+            launched = activity
+            val typing = JSONArray()
+            val opening = JSONArray()
+            val rounds = (args.getString("rounds")?.toInt() ?: 20).coerceIn(1, 100)
+            val taps = (args.getString("taps")?.toInt() ?: 100).coerceIn(1, 500)
+            val opens = (args.getString("opens")?.toInt() ?: 10).coerceIn(1, 100)
             repeat(rounds) {
                 val openBatch = JSONArray()
                 repeat(opens + 1) { index ->
                     instrumentation.runOnMainSync { activity.hideKeyboard(); activity.input.setText("") }
-                    SystemClock.sleep(700)
+                    val hiddenDeadline = SystemClock.elapsedRealtime() + 10_000
+                    var visible = true
+                    while (visible && SystemClock.elapsedRealtime() < hiddenDeadline) {
+                        instrumentation.runOnMainSync { visible = activity.isKeyboardVisible() }
+                        if (visible) SystemClock.sleep(50)
+                    }
+                    check(!visible) { "Keyboard did not become hidden" }
                     activity.openings.clear()
                     instrumentation.runOnMainSync { activity.showKeyboard() }
                     val open = activity.openings.poll(10, TimeUnit.SECONDS)
@@ -80,7 +88,7 @@ class TypingLatencyBenchmark {
                 .put("metric", "touch injection to next host pre-draw after editor update")
             File(context.getExternalFilesDir(null), "typing-latency.json").writeText(result.toString())
         } finally {
-            instrumentation.runOnMainSync { activity.finish() }
+            instrumentation.runOnMainSync { launched?.finish() }
             if (oldIme.matches(Regex("[A-Za-z0-9_./]+")) && oldIme.contains('/')) device.executeShellCommand("ime set $oldIme")
             if (oldHardwareIme == "null") device.executeShellCommand("settings delete secure show_ime_with_hard_keyboard")
             else if (oldHardwareIme in setOf("0", "1")) device.executeShellCommand("settings put secure show_ime_with_hard_keyboard $oldHardwareIme")

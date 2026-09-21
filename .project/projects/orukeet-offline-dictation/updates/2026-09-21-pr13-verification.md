@@ -33,3 +33,13 @@ stream: WS-B
 - All 466 app tests and 19 offline-ASR tests pass, alongside debug APK assembly and release Kotlin compilation.
 
 References: [process ABI](https://github.com/MajesteitBart/ownkey-keyboard/pull/13#discussion_r4066550851), [runtime cache replacement](https://github.com/MajesteitBart/ownkey-keyboard/pull/13#discussion_r4066550856).
+
+## Full-review repair batch
+
+- Dictionary backup rejects unreadable/newer fallback state; unreadable-main recovery absorbs readable quarantines and preserves newer-file warnings. Quarantine decoding checks the actual schema. Keyboard correction checks the host/field, rejects relocation away from an end-of-field replacement, and only hides offers after recording or a successful external-IME switch. Automatic cloud hints require HTTPS.
+- Damaged selected models can be repaired, directory symlinks are rejected, transfer suffixes are reserved, cancellation remains unloaded, and atomic replacement failures use a replacing fallback. An injected provider rejection exercised the fallback and recovered the pinned runtime checksum.
+- Public builds hide the local feature card except when an existing local selection needs deactivation. Paused recordings retain their announcement, search filters remain clearable, and disclosure acknowledgment is immediately visible while preference persistence completes. The upstream MIT notice is packaged and included in the notices dialog.
+- Probe integrity checks survive Python optimization. Package checks verify ELF architecture; input downloads are bounded; decoder format and process continuity are checked; stale probe callbacks and orphan processes are stopped. Latency comparison requires matching schema/metrics and interpolates quantiles, and scoring includes normalized character error counts. Benchmark cleanup covers startup failures and openings wait for confirmed IME dismissal. These changes build, but new physical measurements remain pending.
+- The packaging regression now runs in CI, and release checksums use downloadable asset basenames. Device task notes include the September 18 phone activation stall and successful emulator attempt.
+- Verification: 471 app tests and 21 offline-ASR tests pass with zero failures/errors/skips; debug assembly, release Kotlin compilation, benchmark APK and standalone probe APK build. Five evidence-tool tests pass under `python -O`. No new physical device run is claimed.
+- The restart-readiness finding is refuted: every inference command loads the requested model in `InferenceService` before decoding when the engine is absent or its model ID differs. Readiness intentionally represents the verified model selection, not permanent native residency.

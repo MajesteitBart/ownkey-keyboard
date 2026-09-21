@@ -59,7 +59,8 @@ class ProbeActivity : Activity() {
     }
 
     private fun start(selectedMode: String, format: String, fault: String) {
-        require(selectedMode in setOf("normal", "isolated") && format in setOf("wav", "aac"))
+        if (selectedMode !in setOf("normal", "isolated") || format !in setOf("wav", "aac") ||
+            fault !in setOf("", "cancel", "load", "inference", "oom")) return
         mode = selectedMode; failure = fault
         runId = "$mode-$format-${fault.ifEmpty { "success" }}-${System.currentTimeMillis()}"
         busy = true; completed = false; generation++; events.clear(); cancelAt = 0
@@ -75,7 +76,7 @@ class ProbeActivity : Activity() {
                 val audio = if (format == "aac") File(root, "sample.m4a").also { ProbeAudio.encodeAac(wave, it) } else wave
                 main.post { if (generation == currentGeneration) bind(currentGeneration, root, audio, format) }
             } catch (error: Throwable) {
-                main.post { finish(JSONObject().put("status", "error").put("error_type", error.javaClass.simpleName).put("phase", "prepare")) }
+                main.post { if (generation == currentGeneration) finish(JSONObject().put("status", "error").put("error_type", error.javaClass.simpleName).put("phase", "prepare")) }
             }
         }
     }

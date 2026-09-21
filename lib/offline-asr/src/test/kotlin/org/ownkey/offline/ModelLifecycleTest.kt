@@ -132,7 +132,35 @@ class ModelLifecycleTest {
         assertFalse(store.verify("test-v1"))
     }
 
+    @Test fun `damaged selected model can be downloaded and activated again`() = fixture { store, _ ->
+        install(store); store.commit("test-v1")
+        File(store.modelDirectory("test-v1"), entry().name).writeText("broken")
+        assertFalse(store.verify("test-v1"))
+        assertNull(store.currentId)
+        install(store); store.commit("test-v1")
+        assertEquals("test-v1", store.currentId)
+    }
+
+    @Test fun `symlink model directories and parents cannot bypass verification`() = fixture { store, root ->
+        val outside = Files.createTempDirectory("ownkey-model-outside").toFile()
+        try {
+            File(outside, entry().name).writeBytes(payload)
+            val models = File(root, "models").apply { mkdirs() }
+            Files.createSymbolicLink(File(models, "test-v1").toPath(), outside.toPath())
+            assertFalse(store.verify("test-v1"))
+            Files.delete(File(models, "test-v1").toPath())
+            models.delete()
+            File(outside, "test-v1").mkdirs()
+            File(outside, "test-v1/${entry().name}").writeBytes(payload)
+            Files.createSymbolicLink(models.toPath(), outside.toPath())
+            assertFalse(store.verify("test-v1"))
+            Files.delete(models.toPath())
+        } finally { outside.deleteRecursively() }
+    }
+
     @Test fun `unknown or unsafe model metadata is rejected`() {
+        assertFailsWith<IllegalArgumentException> { ModelFile("encoder.part", 1, "0".repeat(64)) }
+        assertFailsWith<IllegalArgumentException> { ModelFile("encoder.etag", 1, "0".repeat(64)) }
         assertFailsWith<IllegalArgumentException> { ModelFile("../encoder", 1, "0".repeat(64)) }
         assertFailsWith<IllegalArgumentException> { ModelRelease("../escape", "https://example.invalid", listOf(entry())) }
         assertFailsWith<IllegalArgumentException> { ModelRelease("v1", "http://example.invalid", listOf(entry())) }

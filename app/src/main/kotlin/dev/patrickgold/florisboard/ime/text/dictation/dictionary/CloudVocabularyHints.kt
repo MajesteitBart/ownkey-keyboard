@@ -96,7 +96,7 @@ object CloudVocabularyHints {
     private fun hostOf(endpointUrl: String): String? {
         // Use the HTTP client's parser: fragments and user-info must never impersonate a host.
         val url = runCatching { URL(endpointUrl.trim()) }.getOrNull() ?: return null
-        if (url.protocol != "https" && url.protocol != "http") return null
+        if (url.protocol != "https") return null
         return url.host.lowercase().ifEmpty { null }
     }
 }

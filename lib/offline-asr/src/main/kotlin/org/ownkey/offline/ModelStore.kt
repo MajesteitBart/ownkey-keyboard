@@ -2,7 +2,6 @@ package org.ownkey.offline
 
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
@@ -40,12 +39,24 @@ class ModelStore(val root: File, val catalog: List<ModelRelease> = ModelCatalog.
 
     suspend fun verify(id: String): Boolean {
         val valid = verifyDirectory(modelDirectory(id), release(id))
-        synchronized(lock) { if (valid) verified.add(id) else verified.remove(id) }
+        synchronized(lock) {
+            if (valid) verified.add(id) else {
+                verified.remove(id)
+                if (current == id) current = null
+            }
+        }
         return valid
     }
 
     suspend fun verifyDirectory(directory: File, release: ModelRelease): Boolean {
         if (!directory.isDirectory) return false
+        val rootPath = root.toPath().toAbsolutePath().normalize()
+        var path = directory.toPath().toAbsolutePath().normalize()
+        if (!path.startsWith(rootPath)) return false
+        while (path.startsWith(rootPath)) {
+            if (Files.isSymbolicLink(path)) return false
+            path = path.parent ?: break
+        }
         return release.files.all { matches(File(directory, it.name), it) }
     }
 
@@ -120,8 +131,13 @@ class ModelStore(val root: File, val catalog: List<ModelRelease> = ModelCatalog.
             FileOutputStream(partial).use { it.write(text.toByteArray()); it.fd.sync() }
             try {
                 Files.move(partial.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            } catch (_: AtomicMoveNotSupportedException) {
-                Files.move(partial.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } catch (atomicFailure: java.io.IOException) {
+                try {
+                    Files.move(partial.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                } catch (replacementFailure: java.io.IOException) {
+                    atomicFailure.addSuppressed(replacementFailure)
+                    throw atomicFailure
+                }
             }
         }
     }

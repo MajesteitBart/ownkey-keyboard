@@ -1,5 +1,4 @@
 import java.security.MessageDigest
-import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.zip.ZipFile
@@ -32,8 +31,13 @@ val prepareSherpa by tasks.registering {
             check(digest(partial) == sherpaDigest) { "sherpa-onnx checksum mismatch" }
             try {
                 Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            } catch (_: AtomicMoveNotSupportedException) {
-                Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            } catch (atomicFailure: java.io.IOException) {
+                try {
+                    Files.move(partial.toPath(), cache.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                } catch (replacementFailure: java.io.IOException) {
+                    atomicFailure.addSuppressed(replacementFailure)
+                    throw atomicFailure
+                }
             }
         }
         val output = nativeOutput.get().asFile

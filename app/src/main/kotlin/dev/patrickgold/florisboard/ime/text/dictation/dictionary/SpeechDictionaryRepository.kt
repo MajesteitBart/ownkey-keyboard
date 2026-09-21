@@ -273,7 +273,10 @@ class SpeechDictionaryRepository(
     /** A portable copy for backups. */
     suspend fun export(): SpeechDictionaryDocument {
         initialized.await()
-        return _state.value.document.stamped().copy(consumedQuarantines = emptySet())
+        return mutex.withLock {
+            check(_state.value.loadError == null) { "Personal dictionary could not be loaded for backup." }
+            _state.value.document.stamped().copy(consumedQuarantines = emptySet())
+        }
     }
 
     /**
@@ -493,11 +496,16 @@ class SpeechDictionaryRepository(
             val recovered = recoverFromBackup()
             _state.value = if (recovered != null) {
                 // The warning only goes once the recovered copy is safely back at the main path.
-                val writtenBack = movedAside && runCatching { write(recovered) }.isSuccess
+                val absorbed = absorbQuarantined(recovered, recovered.consumedQuarantines + readMergedMarker())
+                pendingConsumed = pendingConsumed + absorbed.skipped
+                val writtenBack = if (movedAside) persistAbsorbed(absorbed) else {
+                    pendingConsumed = pendingConsumed + absorbed.consumed
+                    false
+                }
                 SpeechDictionaryState(
-                    recovered.stamped(),
+                    absorbed.document.stamped(),
                     loaded = true,
-                    loadError = if (writtenBack) null else SpeechDictionaryLoadError.UNREADABLE,
+                    loadError = quarantineError() ?: if (writtenBack) null else SpeechDictionaryLoadError.UNREADABLE,
                     saveError = !writtenBack,
                 )
             } else {
@@ -615,6 +623,7 @@ class SpeechDictionaryRepository(
             if (version > supportedVersion) continue
             if (kept.name in alreadyMerged) { skipped.add(kept); continue }
             val document = runCatching { SpeechDictionaryDocument.decode(kept.readText(Charsets.UTF_8)) }.getOrNull() ?: continue
+            if (document.version !in 1..supportedVersion) continue
             next = merged(next, document)
             consumed.add(kept)
         }

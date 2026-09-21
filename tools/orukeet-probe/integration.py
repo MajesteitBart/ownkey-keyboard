@@ -22,14 +22,18 @@ def main():
     parser.add_argument('--soak-seconds', type=int, default=0)
     args = parser.parse_args()
     pins = json.loads((Path(__file__).parent / 'pins.json').read_text())
-    assert verified(args.cache / 'manifest.json', pins['manifest'])
+    if not (verified(args.cache / 'manifest.json', pins['manifest'])):
+        raise ValueError('Probe integrity validation failed')
     manifest = json.loads((args.cache / 'manifest.json').read_text())
-    assert all(verified(args.cache / 'model' / x['path'], x) for x in manifest['files'])
-    assert verified(args.cache / 'sample.wav', pins['fixture'])
+    if not (all(verified(args.cache / 'model' / x['path'], x) for x in manifest['files'])):
+        raise ValueError('Probe integrity validation failed')
+    if not (verified(args.cache / 'sample.wav', pins['fixture'])):
+        raise ValueError('Probe integrity validation failed')
     def adb(*command, **kwargs):
         return subprocess.run([args.adb, '-s', args.serial, *command], check=True, **kwargs)
     abi = adb('shell', 'getprop', 'ro.product.cpu.abi', capture_output=True, text=True).stdout.strip()
-    assert abi in ('x86_64', 'arm64-v8a')
+    if not (abi in ('x86_64', 'arm64-v8a')):
+        raise ValueError('Probe integrity validation failed')
     adb('install', '-r', str(ROOT / f'app/build/outputs/apk/debug/app-{abi}-debug.apk'))
     adb('install', '-r', str(ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'))
     adb('shell', 'am', 'force-stop', PACKAGE)
@@ -37,7 +41,8 @@ def main():
     adb('shell', 'run-as', PACKAGE, 'mkdir', '-p', model, 'no_backup/orukeet-test')
     for entry in manifest['files']:
         name = entry['path']
-        assert Path(name).name == name
+        if not (Path(name).name == name):
+            raise ValueError('Probe integrity validation failed')
         with (args.cache / 'model' / name).open('rb') as source:
             adb('exec-in', 'run-as', PACKAGE, 'sh', '-c', f'cat > {model}/{name}', stdin=source)
     with (args.cache / 'sample.wav').open('rb') as source:

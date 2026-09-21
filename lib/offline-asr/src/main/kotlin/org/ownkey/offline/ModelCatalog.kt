@@ -4,6 +4,7 @@ package org.ownkey.offline
 data class ModelFile(val name: String, val bytes: Long, val sha256: String) {
     init {
         require(name.matches(Regex("[A-Za-z0-9][A-Za-z0-9_.-]*")) && name != "." && name != "..")
+        require(!name.endsWith(".part") && !name.endsWith(".etag"))
         require(bytes > 0 && sha256.matches(Regex("[0-9a-f]{64}")))
     }
 }

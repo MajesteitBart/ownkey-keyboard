@@ -69,9 +69,9 @@ class InferenceConnection(context: Context) {
                     } catch (_: Exception) { died() }
                 }
                 if (result.getString("state") != "ok") {
-                    _state.value = RuntimeState.FAILED
                     val failure = runCatching { LocalAsrFailure.valueOf(result.getString("failure")!!) }
                         .getOrDefault(LocalAsrFailure.PROCESS_DIED)
+                    _state.value = if (failure == LocalAsrFailure.CANCELLED) RuntimeState.UNLOADED else RuntimeState.FAILED
                     val detail = result.getString(InferenceService.KEY_DETAIL)
                     Log.w(TAG, "Request failed: $failure${detail?.let { " ($it)" }.orEmpty()}")
                     throw LocalAsrException(failure, detail)

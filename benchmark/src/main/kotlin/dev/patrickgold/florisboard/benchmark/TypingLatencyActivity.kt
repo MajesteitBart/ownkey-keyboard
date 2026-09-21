@@ -47,9 +47,13 @@ class TypingLatencyActivity : Activity() {
     }
     fun showKeyboard() {
         input.requestFocus()
-        openAt = System.nanoTime()
-        getSystemService(InputMethodManager::class.java).showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        input.post {
+            openAt = System.nanoTime()
+            getSystemService(InputMethodManager::class.java).showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        }
     }
+    fun isKeyboardVisible(): Boolean = android.os.Build.VERSION.SDK_INT >= 30 &&
+        input.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true
     fun hideKeyboard() {
         getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(input.windowToken, 0)
     }

@@ -25,7 +25,7 @@ def distance(a, b):
 
 
 def score(rows):
-    groups = defaultdict(lambda: {'phrases': 0, 'reference_words': 0, 'edits': 0, 'silence_false_positives': 0})
+    groups = defaultdict(lambda: {'phrases': 0, 'reference_words': 0, 'edits': 0, 'reference_characters': 0, 'character_edits': 0, 'silence_false_positives': 0})
     seen = set()
     for row in rows:
         if row['id'] in seen:
@@ -39,9 +39,12 @@ def score(rows):
             record['phrases'] += 1
             record['reference_words'] += len(reference)
             record['edits'] += distance(reference, hypothesis)
+            record['reference_characters'] += len(''.join(reference))
+            record['character_edits'] += distance(''.join(reference), ''.join(hypothesis))
             record['silence_false_positives'] += int(not reference and bool(hypothesis))
     for record in groups.values():
         record['wer'] = record['edits'] / record['reference_words'] if record['reference_words'] else None
+        record['cer'] = record['character_edits'] / record['reference_characters'] if record['reference_characters'] else None
     return dict(sorted(groups.items()))
 
 

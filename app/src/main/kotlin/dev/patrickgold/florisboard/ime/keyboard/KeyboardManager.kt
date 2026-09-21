@@ -837,8 +837,6 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.VOICE_INPUT -> {
                 isRewriteOptionsVisible = false
                 activeState.isActionsOverflowVisible = false
-                // Dictating over the selected word is a valid replacement, so that state survives.
-                dictationFixController.onDictationStarted()
                 FlorisImeService.handleVoiceInputAction()
             }
             KeyCode.KANA_SWITCHER -> handleKanaSwitch()

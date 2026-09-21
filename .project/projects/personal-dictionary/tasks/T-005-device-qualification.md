@@ -6,7 +6,7 @@ blocked_owner: ownkey-keyboard-team
 blocked_check_back: 2026-09-24T09:00:00Z
 workstream: WS-A
 created: 2026-09-17T21:40:00Z
-updated: 2026-09-17T21:40:00Z
+updated: 2026-09-21T21:40:00Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -41,7 +41,7 @@ Measure Orukeet with the beam-search hotword profile against greedy search on a 
 
 ## Technical Notes
 
-Blocked in the implementation session: no phone was connected and the emulator is x86_64 without a downloaded model. The on-device hint preference defaults to off; the toggle in Personal dictionary → Recognition hints turns the beam profile on for the measurements without touching saved words.
+The September 18 Galaxy Z Fold7 attempt downloaded the model but stalled during activation; no phone log was available. The API 35 x86_64 emulator activates with both side-loaded and app-downloaded models. No device is connected in the September 21 review session. The on-device hint preference stays off until physical qualification; the Recognition hints toggle enables the beam profile for measurement without changing saved words.
 
 ## Definition of Done
 - [ ] Implementation complete
@@ -51,3 +51,5 @@ Blocked in the implementation session: no phone was connected and the emulator i
 
 ## Evidence Log
 - 2026-09-17: blocked, no arm64 device available.
+- 2026-09-18: [First phone attempt](../updates/2026-09-18T1010Z-first-phone-attempt.md) records the Galaxy Z Fold7 activation stall and successful emulator activation. Physical qualification remains blocked on a new phone attempt with diagnostics.
+- 2026-09-21: no connected Android device during PR verification; no new physical result claimed.

@@ -89,15 +89,18 @@ def main():
             '-DCMAKE_CXX_FLAGS=-DEIGEN_MPL2_ONLY -ffile-prefix-map='+str(source)+'=sherpa-onnx',
             *['-DSHERPA_ONNX_ENABLE_'+feature+'=OFF' for feature in off]],env=env,check=True)
         subprocess.run([str(cmake),'--build',str(build),'--target','sherpa-onnx-jni','--parallel',str(args.jobs)],env=env,check=True)
-        assert not any((build/'_deps').glob('*espeak*')) and not any((build/'_deps').glob('*piper*'))
+        if not (not any((build/'_deps').glob('*espeak*')) and not any((build/'_deps').glob('*piper*'))):
+            raise ValueError('Probe integrity validation failed')
         candidates = list(build.rglob('libsherpa-onnx-jni.so'))
-        assert len(candidates) == 1
+        if not (len(candidates) == 1):
+            raise ValueError('Probe integrity validation failed')
         temporary = args.output / f'{abi}-jni.so'
         shutil.copyfile(candidates[0], temporary)
         subprocess.run([str(strip),'--strip-unneeded',str(temporary)],check=True)
         data = temporary.read_bytes(); temporary.unlink()
         # ASR-only configuration must not carry eSpeak implementation strings.
-        assert b'ESPEAK_DATA_PATH' not in data and b'espeak-ng-data' not in data
+        if not (b'ESPEAK_DATA_PATH' not in data and b'espeak-ng-data' not in data):
+            raise ValueError('Probe integrity validation failed')
         entries[f'jni/{abi}/libsherpa-onnx-jni.so'] = data
         entries[f'jni/{abi}/libonnxruntime.so'] = (cache/'ort-android/jni'/abi/'libonnxruntime.so').read_bytes()
         binaries.append({'abi':abi,'jni_sha256':hashlib.sha256(data).hexdigest()})

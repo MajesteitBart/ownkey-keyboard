@@ -144,7 +144,9 @@ object DictationFixModel {
         if (cursor < absoluteStart) return ReplacementPreview.CursorLeft
         // The editor keeps at least 128 characters after the cursor and the remembered suffix is at
         // most 64, so a shorter or different suffix means the cursor moved or the text changed.
-        if (!content.textAfterSelection.startsWith(expectedAfter)) return ReplacementPreview.CursorLeft
+        if (expectedAfter.isEmpty()) {
+            if (content.textAfterSelection.isNotEmpty()) return ReplacementPreview.CursorLeft
+        } else if (!content.textAfterSelection.startsWith(expectedAfter)) return ReplacementPreview.CursorLeft
         val localStart = absoluteStart - content.offset
         val localCursor = cursor - content.offset
         if (localStart < 0 || localCursor > content.text.length) return ReplacementPreview.OutOfWindow

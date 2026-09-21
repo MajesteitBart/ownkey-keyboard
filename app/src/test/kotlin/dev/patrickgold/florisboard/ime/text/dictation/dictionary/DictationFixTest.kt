@@ -96,6 +96,10 @@ private class FakeEditor : DictationFixEditorGateway {
 }
 
 class DictationFixModelTest : FunSpec({
+    test("replacement at field end rejects movement into earlier text") {
+        DictationFixModel.replacementPreview(cursorContent("Before word", cursor = 9), 7, "") shouldBe ReplacementPreview.CursorLeft
+        DictationFixModel.replacementPreview(cursorContent("Before better"), 7, "") shouldBe ReplacementPreview.Text("better")
+    }
     test("tokenizes words with offsets, keeping inner apostrophes, hyphens and dots") {
         val tokens = DictationFixModel.tokenize(" Hello, Bart's e-mail v1.2 works! ")
         tokens.map { it.text } shouldBe listOf("Hello", "Bart's", "e-mail", "v1.2", "works")
@@ -130,12 +134,12 @@ class DictationFixModelTest : FunSpec({
     }
 
     test("replacement preview is the text between the word start and the cursor") {
-        DictationFixModel.replacementPreview(selectedContent("Before own key works", 7, 14), 7) shouldBe ReplacementPreview.Text("")
-        DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 13), 7) shouldBe ReplacementPreview.Text("Ownkey")
+        DictationFixModel.replacementPreview(selectedContent("Before own key works", 7, 14), 7, " works") shouldBe ReplacementPreview.Text("")
+        DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 13), 7, " works") shouldBe ReplacementPreview.Text("Ownkey")
         DictationFixModel.replacementPreview(cursorContent("Before Ownkey works", cursor = 3), 7) shouldBe ReplacementPreview.CursorLeft
-        DictationFixModel.replacementPreview(cursorContent("yy Ownkey works", cursor = 109, offset = 100), 103) shouldBe ReplacementPreview.Text("Ownkey")
+        DictationFixModel.replacementPreview(cursorContent("yy Ownkey works", cursor = 109, offset = 100), 103, " works") shouldBe ReplacementPreview.Text("Ownkey")
         // The window starts after the word: unknown for now, not the end of the fix.
-        DictationFixModel.replacementPreview(cursorContent("nkey works", cursor = 106, offset = 100), 98) shouldBe ReplacementPreview.OutOfWindow
+        DictationFixModel.replacementPreview(cursorContent("nkey works", cursor = 104, offset = 100), 98, " works") shouldBe ReplacementPreview.OutOfWindow
         DictationFixModel.replacementPreview(EditorContent.Unspecified, 7) shouldBe ReplacementPreview.CursorLeft
     }
 
@@ -351,6 +355,18 @@ class DictationFixControllerTest : FunSpec({
         val h = Harness()
         h.controller.offer(h.insertion().copy(committedText = " ... "))
         h.controller.state.value shouldBe DictationFixState.Hidden
+    }
+
+    test("replacement aborts when host package or field changes within the same session") {
+        for (changePackage in listOf(true, false)) {
+            val h = Harness()
+            h.offerAndChoose(0)
+            h.controller.beginReplacement(cursorContent(h.hostText))
+            h.controller.state.value.shouldBeInstanceOf<DictationFixState.Replacing>()
+            if (changePackage) h.editor.activeHostPackage = "com.example.other" else h.editor.activeFieldId++
+            h.editor.emit(cursorContent("Before Ownkey key works", cursor = 13))
+            h.controller.state.value shouldBe DictationFixState.Hidden
+        }
     }
 
     test("the chooser selects single words and phrases") {

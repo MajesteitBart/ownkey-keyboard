@@ -150,7 +150,7 @@ class VoxtralDictationManager(
 
         when (currentMode) {
             TranscriptionBackend.EXTERNAL_IME -> {
-                FlorisImeService.switchToVoiceInputMethod()
+                if (FlorisImeService.switchToVoiceInputMethod()) insertionListener?.onDictationStarted()
                 return
             }
 

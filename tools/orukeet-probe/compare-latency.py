@@ -8,10 +8,16 @@ import math
 
 def quantile(values, q):
     ordered = sorted(values)
-    return ordered[round((len(ordered)-1)*q)]
+    position = (len(ordered)-1)*q
+    lower, upper = math.floor(position), math.ceil(position)
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
 
 
 def compare(baseline, candidate):
+    if baseline.get('schema') != 2 or candidate.get('schema') != 2:
+        raise ValueError('Expected benchmark schema 2')
+    if not baseline.get('metric') or baseline['metric'] != candidate.get('metric'):
+        raise ValueError('Metric definitions differ or are missing')
     if len(baseline['rounds_ms']) != len(candidate['rounds_ms']):
         raise ValueError('Round counts differ')
     count = len(baseline['rounds_ms'])

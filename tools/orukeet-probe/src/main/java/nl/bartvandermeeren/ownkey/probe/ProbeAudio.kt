@@ -110,6 +110,7 @@ object ProbeAudio {
             }
             extractor.selectTrack(track)
             val format = extractor.getTrackFormat(track)
+            format.setInteger(MediaFormat.KEY_PCM_ENCODING, android.media.AudioFormat.ENCODING_PCM_16BIT)
             codec = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
             codec.configure(format, null, null, 0); codec.start()
             val pcm = ByteArrayOutputStream()
@@ -133,6 +134,8 @@ object ProbeAudio {
                 when (val index = codec.dequeueOutputBuffer(info, 10000)) {
                     MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                         val actual = codec.outputFormat
+                        require(!actual.containsKey(MediaFormat.KEY_PCM_ENCODING) ||
+                            actual.getInteger(MediaFormat.KEY_PCM_ENCODING) == android.media.AudioFormat.ENCODING_PCM_16BIT)
                         require(actual.getInteger(MediaFormat.KEY_SAMPLE_RATE) == 16000 &&
                             actual.getInteger(MediaFormat.KEY_CHANNEL_COUNT) == 1)
                     }

@@ -334,7 +334,7 @@ private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
 }
 
 @Composable
-private fun VoiceRecordingRowState.label(): String = if (local) {
+private fun VoiceRecordingRowState.label(): String = if (local && phase != VoiceRecordingPhase.PAUSED) {
     stringRes(if (phase == VoiceRecordingPhase.PROCESSING) R.string.orukeet__transcribing else R.string.orukeet__recording)
 } else status.label()
 

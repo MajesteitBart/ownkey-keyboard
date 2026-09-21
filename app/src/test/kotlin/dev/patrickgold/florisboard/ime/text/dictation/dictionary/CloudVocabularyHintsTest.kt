@@ -22,6 +22,8 @@ class CloudVocabularyHintsTest : FunSpec({
             "https://evil.example#@api.openai.com/path",
             "api.mistral.ai/path",
             "ftp://api.mistral.ai/path",
+            "http://api.mistral.ai/v1/audio/transcriptions",
+            "http://api.openai.com/v1/audio/transcriptions",
             "https://api.mistral.ai:bad/path",
             "https://api.mistral.ai.evil.example/path",
             "https://api.mistral.ai@evil.example/path",

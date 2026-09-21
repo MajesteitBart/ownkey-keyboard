@@ -175,6 +175,11 @@ open class ProbeService : Service() {
         }
     }
 
+    override fun onUnbind(intent: android.content.Intent?): Boolean {
+        Process.killProcess(Process.myPid())
+        return false
+    }
+
     override fun onDestroy() {
         worker.shutdown()
         super.onDestroy()

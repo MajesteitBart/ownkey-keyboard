@@ -451,7 +451,7 @@ private fun EntriesCard(
             StatusText(text = userStringRes(R.string.speech_dictionary__entries_empty))
             return@AiSectionCard
         }
-        if (entries.size > SEARCH_THRESHOLD) {
+        if (entries.size > SEARCH_THRESHOLD || query.isNotEmpty()) {
             OwnkeyOutlinedTextField(
                 value = query,
                 onValueChange = { query = it },

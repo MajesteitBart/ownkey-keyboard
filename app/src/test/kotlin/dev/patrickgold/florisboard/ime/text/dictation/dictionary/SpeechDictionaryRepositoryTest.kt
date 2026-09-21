@@ -811,8 +811,32 @@ class SpeechDictionaryRepositoryTest : FunSpec({
         val state = runBlocking { repository.awaitLoaded() }
         state.loadError shouldBe SpeechDictionaryLoadError.UNREADABLE
         state.document.words shouldBe emptyList()
-        runBlocking { repository.export() }.words shouldBe emptyList()
+        shouldThrow<IllegalStateException> { runBlocking { repository.export() } }
         dir.listFiles()!!.single { it.name.contains(".unreadable-") }.readText() shouldBe invalid
+    }
+
+    test("newer dictionaries cannot be silently exported as empty backups") {
+        val dir = temp()
+        File(dir, "personal_dictionary.json").writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(version = 99)))
+        val store = repository(dir)
+        runBlocking { store.awaitLoaded() }.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+        shouldThrow<IllegalStateException> { runBlocking { store.export() } }
+    }
+
+    test("unreadable main recovery keeps the warning for a newer quarantine") {
+        val dir = temp()
+        File(dir, "personal_dictionary.json").writeText("broken")
+        File(dir, "personal_dictionary.json.bak").writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument()))
+        File(dir, "personal_dictionary.json.newer-v99-1").writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(version = 99)))
+        runBlocking { repository(dir).awaitLoaded() }.loadError shouldBe SpeechDictionaryLoadError.NEWER_VERSION
+    }
+
+    test("quarantine names cannot relabel an invalid schema as supported") {
+        val dir = temp()
+        val kept = File(dir, "personal_dictionary.json.newer-v1-1")
+        kept.writeText(SpeechDictionaryDocument.encode(SpeechDictionaryDocument(version = 0, words = listOf(VocabularyEntry(1, "Ghost")))))
+        runBlocking { repository(dir).awaitLoaded() }.document.words shouldBe emptyList()
+        kept.exists() shouldBe true
     }
 
     test("a storage failure during an ordinary edit is reported in the state, not thrown") {

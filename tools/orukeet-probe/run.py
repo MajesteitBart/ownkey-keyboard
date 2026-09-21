@@ -40,13 +40,15 @@ def run(args):
         return [json.loads(line) for line in output.stdout.splitlines() if line]
 
     pins = json.loads((ROOT / 'pins.json').read_text())
-    assert verified(args.cache / 'manifest.json', pins['manifest']), 'Run prepare.py first'
+    if not (verified(args.cache / 'manifest.json', pins['manifest'])):
+        raise ValueError('Run prepare.py first')
     manifest = json.loads((args.cache / 'manifest.json').read_text())
     payloads = [(args.cache / 'model' / entry['path'], 'model/' + entry['path'], entry)
                 for entry in manifest['files']]
     payloads.append((args.cache / 'sample.wav', 'sample.wav', pins['fixture']))
     for path, _, pin in payloads:
-        assert verified(path, pin), 'Unverified input: ' + path.name
+        if not (verified(path, pin)):
+            raise ValueError('Unverified input: ' + path.name)
     apk = args.apk or next((ROOT / 'build/outputs/apk/debug').glob('*.apk'))
     adb('install', '-r', str(apk))
     adb('shell', 'am', 'force-stop', PACKAGE, stdout=subprocess.DEVNULL)
@@ -63,6 +65,7 @@ def run(args):
     metadata['source_sha256'] = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
                                  for path in sorted(ROOT.glob('src/main/**/*')) if path.is_file()}
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    original_main_pid = None
     for mode, audio_format, failure in SCENARIOS:
         count = len(results())
         query = urllib.parse.urlencode({'mode': mode, 'format': audio_format, 'failure': failure})
@@ -77,7 +80,14 @@ def run(args):
             time.sleep(0.5)
         else:
             raise TimeoutError('No result for ' + query)
-        assert result['mode'] == mode and result['requested_failure'] == failure, 'Unexpected result'
+        if not (result['mode'] == mode and result['requested_failure'] == failure):
+            raise ValueError('Unexpected result')
+        if result.get('sample_format') != audio_format:
+            raise ValueError('Unexpected decoder format')
+        if original_main_pid is None:
+            original_main_pid = result['main_pid']
+        if result['main_pid'] != original_main_pid:
+            raise ValueError('Main process restarted during the probe')
         pid = result.get('service_pid')
         if pid:
             # Binder death and an absent process are separate observations.

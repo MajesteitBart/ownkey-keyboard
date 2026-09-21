@@ -31,7 +31,15 @@ def prepare(cache):
             print('Downloading', pin['name'], flush=True)
             partial = path.with_suffix(path.suffix + '.partial')
             with urllib.request.urlopen(pin['url'], timeout=60) as source, partial.open('wb') as target:
-                shutil.copyfileobj(source, target)
+                remaining = pin['bytes']
+                while remaining:
+                    chunk = source.read(min(65536, remaining))
+                    if not chunk:
+                        raise ValueError('Truncated pinned download')
+                    target.write(chunk)
+                    remaining -= len(chunk)
+                if source.read(1):
+                    raise ValueError('Oversized pinned download')
             if not verified(partial, pin):
                 raise ValueError('Download checksum/size mismatch: ' + pin['name'])
             partial.replace(path)

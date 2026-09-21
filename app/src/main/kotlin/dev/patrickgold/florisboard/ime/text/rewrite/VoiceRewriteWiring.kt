@@ -144,9 +144,11 @@ private class PreferenceVoiceRewriteDisclosureStore(
 ) : VoiceRewriteDisclosureStore {
     private val prefs by FlorisPreferenceStore
 
-    override fun acknowledgedVersion(): Int = prefs.voxtral.voiceRewriteDisclosureVersion.get()
+    private var acknowledgedInMemory: Int? = null
+    override fun acknowledgedVersion(): Int = acknowledgedInMemory ?: prefs.voxtral.voiceRewriteDisclosureVersion.get()
 
     override fun acknowledge(version: Int) {
+        acknowledgedInMemory = version
         scope.launch { prefs.voxtral.voiceRewriteDisclosureVersion.set(version) }
     }
 }

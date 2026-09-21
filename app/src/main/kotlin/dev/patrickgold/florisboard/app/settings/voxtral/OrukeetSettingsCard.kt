@@ -27,6 +27,9 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
     val selected by prefs.voxtral.dictationBackend.collectAsState()
+    // Keep a way back to cloud for an imported/older local selection, but do not advertise the
+    // internal feature to public-build users who have not selected it.
+    if (!BuildConfig.ORUKEET_INTERNAL && selected != TranscriptionBackend.ORUKEET.preference) return
     val previous by prefs.voxtral.previousDictationBackend.collectAsState()
     val controller = remember { context.offlineDictation() }
     val state by controller.state.collectAsState()
@@ -189,7 +192,7 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
     if (noticesDialog) {
         LaunchedEffect(Unit) {
             notices = withContext(Dispatchers.IO) {
-                listOf("NOTICE.md", "LICENSE-WEIGHTS").joinToString("\n\n") { name ->
+                listOf("NOTICE.md", "LICENSE-WEIGHTS", "LICENSE").joinToString("\n\n") { name ->
                     context.assets.open("thirdparty/orukeet/$name").bufferedReader().use { it.readText() }
                 }
             }
