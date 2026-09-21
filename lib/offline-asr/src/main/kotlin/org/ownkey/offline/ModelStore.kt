@@ -2,6 +2,9 @@ package org.ownkey.offline
 
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.currentCoroutineContext
@@ -48,7 +51,7 @@ class ModelStore(val root: File, val catalog: List<ModelRelease> = ModelCatalog.
 
     suspend fun matches(file: File, expected: ModelFile): Boolean {
         try {
-            if (!file.isFile || file.length() != expected.bytes || file.canonicalFile != File(file.parentFile!!.canonicalFile, file.name)) return false
+            if (Files.isSymbolicLink(file.toPath()) || !file.isFile || file.length() != expected.bytes || file.canonicalFile != File(file.parentFile!!.canonicalFile, file.name)) return false
             val digest = MessageDigest.getInstance("SHA-256")
             file.inputStream().buffered(65536).use { input ->
                 val buffer = ByteArray(65536)
@@ -115,7 +118,11 @@ class ModelStore(val root: File, val catalog: List<ModelRelease> = ModelCatalog.
             file.parentFile?.mkdirs()
             val partial = File(file.path + ".new")
             FileOutputStream(partial).use { it.write(text.toByteArray()); it.fd.sync() }
-            if (!partial.renameTo(file)) throw LocalAsrException(LocalAsrFailure.DOWNLOAD)
+            try {
+                Files.move(partial.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(partial.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
         }
     }
 }
