@@ -1,0 +1,14 @@
+{
+  "uniqueId": "opentaal-wordlist",
+  "name": "OpenTaal Dutch word list",
+  "developers": [
+    {
+      "name": "Stichting OpenTaal",
+      "organisationUrl": "https://opentaal.org"
+    }
+  ],
+  "website": "https://github.com/OpenTaal/opentaal-wordlist",
+  "licenses": [
+    "BSD-3-Clause"
+  ]
+}

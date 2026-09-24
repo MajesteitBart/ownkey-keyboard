@@ -36,11 +36,17 @@ internal data class TypoPair(
 internal data class Tap(val char: Char, val x: Double, val y: Double)
 
 /**
- * [words] is the raw FrequencyWords list; [model] is built from the list as the app ships it, after
- * [LatinDictionaryCleanup]. [rawModel] reproduces the 2026-09-24 baseline, which ran on the raw list.
+ * [words] is the raw FrequencyWords list, used to sample typo sets. [model] is what the app ships: the built
+ * dictionary from `tools/dictionary-build` when present, after [LatinDictionaryCleanup]. [rawModel] reproduces the
+ * 2026-09-24 baseline, which ran on the raw list.
  */
-internal class BenchmarkLanguage(val code: String, val words: Map<String, Int>, removals: Set<String>) {
-    val shippedWords: Map<String, Int> by lazy { LatinDictionaryCleanup.apply(words, code, removals) }
+internal class BenchmarkLanguage(
+    val code: String,
+    val words: Map<String, Int>,
+    removals: Set<String>,
+    builtWords: Map<String, Int>?,
+) {
+    val shippedWords: Map<String, Int> by lazy { LatinDictionaryCleanup.apply(builtWords ?: words, code, removals) }
     val model: LatinWordModel by lazy { LatinWordModel.build(shippedWords) }
     val rawModel: LatinWordModel by lazy { LatinWordModel.build(words) }
     val locale: Locale = Locale.forLanguageTag(code)
@@ -74,7 +80,9 @@ internal object BenchmarkData {
     fun language(code: String, dictionaryFile: File = File(dictionaryDir, "${code}_50k.txt")): BenchmarkLanguage {
         return languages.getOrPut("$code:${dictionaryFile.path}") {
             val words = dictionaryFile.bufferedReader().useLines { LatinText.parseFrequencyList(it) }
-            BenchmarkLanguage(code, words, removals(code))
+            val built = File(moduleDir, "src/main/assets/ime/dict/latin/$code.txt").takeIf { it.isFile }
+                ?.bufferedReader()?.useLines { LatinText.parseDictionary(it) }
+            BenchmarkLanguage(code, words, removals(code), built)
         }
     }
 

@@ -37,6 +37,8 @@ data class NoisyChannelParams(
     val adjacentInsertionCost: Double = 5.5,
     val otherInsertionCost: Double = 8.0,
     val transpositionCost: Double = 5.0,
+    /** Leaving out an apostrophe ("dont") is a habit, not a slip. */
+    val apostropheOmissionCost: Double = 1.5,
     /** Spelling (not tapping) errors: one vowel written for another, as in "seperate". */
     val vowelSubstitutionCost: Double = 5.5,
     /** Spelling errors: a doubled letter written once ("acomodate") or a single letter doubled ("untill"). */
@@ -283,7 +285,11 @@ internal class NoisyChannelLatinScorer(
                 if (j < m) {
                     // Leaving out one letter of a doubled pair is a common spelling error.
                     val isDoubled = intended.getOrNull(j - 1) == intended[j] || intended.getOrNull(j + 1) == intended[j]
-                    val cost = current + if (isDoubled) params.doubledLetterCost else params.omissionCost
+                    val cost = current + when {
+                        intended[j] == '\'' -> params.apostropheOmissionCost
+                        isDoubled -> params.doubledLetterCost
+                        else -> params.omissionCost
+                    }
                     if (cost < d[i][j + 1]) d[i][j + 1] = cost
                 }
                 if (i < n) {

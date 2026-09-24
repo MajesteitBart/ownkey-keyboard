@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T19:55:57Z
+updated: 2026-09-24T20:13:47Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -25,6 +25,8 @@ updated: 2026-09-24T19:55:57Z
 - 2026-09-24: T-005 removals are reviewed lists applied at load time, not edits to the FrequencyWords files, so T-007 can reuse them and the raw source stays intact.
 - 2026-09-24: The error model also prices spelling errors, not only tapping errors: vowel-for-vowel substitution and doubled or undoubled letters are cheaper than their key distance suggests.
 - 2026-09-24: Strength levels are calibrated on usage-weighted tap-noise sets with the recall step averaged over EN, NL and NL+EN, and rare-word sets are capped by wrong-correction rate instead of precision. The previous per-set precision wording could be failed by a handful of corrections.
+- 2026-09-24: License check for T-007. SCOWL (notice license: keep the copyright and permission notice with copies and in documentation) and OpenTaal (BSD-3-Clause or CC BY 3.0) are compatible with shipping inside an Apache-2.0 app. FrequencyWords stays CC BY-SA 4.0, and the adapted lists are offered under the same license. All three are credited in the third-party licenses screen and in `ime/dict/latin/ATTRIBUTION.md`.
+- 2026-09-24: The built dictionary keeps plain text in a log100 format instead of a binary trie. Warm load times on the emulator match the raw lists within 10%, and heap is unchanged, so the conditional trie phase has no trigger yet.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.

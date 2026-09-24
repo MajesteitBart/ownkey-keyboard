@@ -1,12 +1,10 @@
 ---
 id: T-008
 name: Apostrophe and capitalization fixes
-status: blocked
-blocked_owner: ownkey-keyboard-team
-blocked_check_back: After dependencies are done: T-007
+status: ready
 workstream: WS-A
 created: 2026-09-24T11:31:43Z
-updated: 2026-09-24T11:31:43Z
+updated: 2026-09-24T20:13:47Z
 linear_issue_id:
 github_issue:
 github_pr:

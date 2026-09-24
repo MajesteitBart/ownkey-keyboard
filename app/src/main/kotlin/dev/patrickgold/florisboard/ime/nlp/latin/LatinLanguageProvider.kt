@@ -76,9 +76,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val AutoCommitCandidateCount = 8
         private const val UserDictionarySnapshotMaxAgeMs = 30_000L
 
+        // Built by tools/dictionary-build/build.py. The raw FrequencyWords lists stay as a fallback for one release.
         private val FrequencyDictionaryAssets = mapOf(
-            "en" to "ime/dict/frequencywords/en_50k.txt",
-            "nl" to "ime/dict/frequencywords/nl_50k.txt",
+            "en" to listOf("ime/dict/latin/en.txt", "ime/dict/frequencywords/en_50k.txt"),
+            "nl" to listOf("ime/dict/latin/nl.txt", "ime/dict/frequencywords/nl_50k.txt"),
         )
     }
 
@@ -546,10 +547,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     private suspend fun loadLanguageModel(language: String): LatinWordModel {
-        val dictionaryAsset = FrequencyDictionaryAssets[language]
-        if (dictionaryAsset != null) {
+        for (dictionaryAsset in FrequencyDictionaryAssets[language].orEmpty()) {
             try {
-                return buildLanguageModelFromFrequencyAsset(dictionaryAsset, language)
+                val start = SystemClock.uptimeMillis()
+                val model = buildLanguageModelFromFrequencyAsset(dictionaryAsset, language)
+                flogDebug { "Loaded '$language' dictionary: ${model.words.size} words in ${SystemClock.uptimeMillis() - start} ms" }
+                return model
             } catch (e: Exception) {
                 flogError { "Failed loading frequency dictionary for '$language' from '$dictionaryAsset': $e" }
             }
@@ -577,7 +580,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private fun buildLanguageModelFromFrequencyAsset(assetPath: String, language: String): LatinWordModel {
         val words = appContext.assets.open(assetPath).bufferedReader().useLines { lines ->
-            LatinText.parseFrequencyList(lines)
+            LatinText.parseDictionary(lines)
         }
         val removals = try {
             appContext.assets.open("${LatinDictionaryCleanup.RemovalAssetDir}/$language.txt").bufferedReader()

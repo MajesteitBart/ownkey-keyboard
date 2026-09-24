@@ -49,8 +49,14 @@ class LatinDictionaryCleanupTest : FunSpec({
         BenchmarkData.en().shippedWords.keys.filter { it.length == 1 }.sorted() shouldBe listOf("a", "i", "k", "u", "x")
     }
 
-    test("apostrophe-less forms and accepted variants stay") {
-        BenchmarkData.en().model.isKnown("dont").shouldBeTrue()
+    test("built dictionaries have contractions instead of apostrophe-less forms, and keep accepted variants") {
+        BenchmarkData.en().model.isKnown("dont").shouldBeFalse()
+        BenchmarkData.en().model.isKnown("don't").shouldBeTrue()
+        BenchmarkData.en().model.isKnown("i'm").shouldBeTrue()
+        BenchmarkData.en().model.isKnown("cant").shouldBeTrue()
+        BenchmarkData.nl().model.isKnown("z'n").shouldBeTrue()
+        BenchmarkData.nl().model.isKnown("m'n").shouldBeTrue()
+        BenchmarkData.nl().model.isKnown("d'r").shouldBeTrue()
         BenchmarkData.nl().model.isKnown("kado").shouldBeTrue()
         BenchmarkData.nl().model.isKnown("ongelofelijk").shouldBeTrue()
     }

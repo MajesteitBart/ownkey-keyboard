@@ -68,6 +68,32 @@ internal object LatinText {
         return words
     }
 
+    private const val Log100Header = "# ownkey-latin-dictionary v1 format=log100"
+
+    /**
+     * Parses a shipped dictionary: either the built format (header line, then `word<TAB>round(100 * ln(count))`)
+     * or a plain FrequencyWords `word count` list.
+     */
+    fun parseDictionary(lines: Sequence<String>): Map<String, Int> {
+        val iterator = lines.iterator()
+        if (!iterator.hasNext()) return emptyMap()
+        val first = iterator.next()
+        if (!first.startsWith(Log100Header)) {
+            return parseFrequencyList(sequenceOf(first) + iterator.asSequence())
+        }
+        val words = LinkedHashMap<String, Int>()
+        iterator.forEach { line ->
+            if (line.isEmpty() || line.startsWith("#")) return@forEach
+            val tab = line.lastIndexOf('\t')
+            if (tab <= 0) return@forEach
+            val word = normalizeDictionaryWord(line.substring(0, tab))
+            val value = line.substring(tab + 1).trim().toIntOrNull() ?: return@forEach
+            val count = kotlin.math.exp(value / 100.0).toInt().coerceAtLeast(1)
+            if (word.isNotBlank() && count > (words[word] ?: 0)) words[word] = count
+        }
+        return words
+    }
+
     fun extractWordTokens(text: String, locale: Locale): List<String> {
         val tokens = mutableListOf<String>()
         val builder = StringBuilder()

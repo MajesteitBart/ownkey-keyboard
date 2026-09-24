@@ -1,0 +1,14 @@
+{
+  "uniqueId": "scowl",
+  "name": "SCOWL (Spell Checker Oriented Word Lists)",
+  "developers": [
+    {
+      "name": "Kevin Atkinson",
+      "organisationUrl": "http://wordlist.aspell.net"
+    }
+  ],
+  "website": "http://wordlist.aspell.net",
+  "licenses": [
+    "scowl"
+  ]
+}
