@@ -296,8 +296,8 @@ internal class AutocorrectBenchmark(
         return NextWordResult(set, n, first, top3)
     }
 
-    /** Types each word after a short neutral prefix, the way a name or term appears mid-sentence. */
-    suspend fun evaluateOov(set: String, languages: List<LatinScoringLanguage>, words: List<String>): OovResult {
+    /** Types each word after [prefix], by default a short neutral one, the way a name or term appears mid-sentence. */
+    suspend fun evaluateOov(set: String, languages: List<LatinScoringLanguage>, words: List<String>, prefix: String = "ok "): OovResult {
         var inDictionary = 0
         var changed = 0
         val examples = mutableListOf<String>()
@@ -305,7 +305,7 @@ internal class AutocorrectBenchmark(
         for (word in words) {
             val normalized = LatinText.normalizeInputWord(word, locale)
             if (languages.any { it.model.isKnown(normalized) }) inDictionary++
-            val result = score(languages, word, "ok $word")
+            val result = score(languages, word, prefix + word)
             val auto = result.firstOrNull { it.isAutoCommit } ?: continue
             if (auto.word != normalized) {
                 changed++

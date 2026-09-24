@@ -118,6 +118,13 @@ internal suspend fun runFullBenchmark(
     report.add(benchmark.evaluateCleanText("clean NL, NL+EN", nlEn, s.cleanNl))
     report.add(benchmark.evaluateOov("oov.txt, NL+EN", nlEn, s.oov))
     report.add(benchmark.evaluateOov("oov.txt, EN", enOnly, s.oov))
+    // Names and terms typed in lowercase, without context and after words that predict their neighbors.
+    val oovLower = s.oov.map { it.lowercase() }
+    report.add(benchmark.evaluateOov("oov.txt lowercase, no words before, EN", enOnly, oovLower, prefix = ""))
+    report.add(benchmark.evaluateOov("oov.txt lowercase, after 'talk to', EN", enOnly, oovLower, prefix = "talk to "))
+    report.add(benchmark.evaluateOov("oov.txt lowercase, after 'I went to the', EN", enOnly, oovLower, prefix = "I went to the "))
+    report.add(benchmark.evaluateOov("oov.txt lowercase, no words before, NL", nlOnly, oovLower, prefix = ""))
+    report.add(benchmark.evaluateOov("oov.txt lowercase, after 'ik ga naar de', NL", nlOnly, oovLower, prefix = "ik ga naar de "))
     return report
 }
 

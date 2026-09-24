@@ -177,6 +177,7 @@ internal class NoisyChannelLatinScorer(
         // The word before the typed one in the same sentence. The first word of a sentence gets no word context: the
         // sentence starts in the bigram counts are dominated by a few stock openings ("Tom", "What").
         val contextWord = sentenceTokens.lastOrNull()
+        val pairContexts = languages.associate { it.language to contextWord?.let { word -> it.model.bigrams.context(word) } }
 
         val inputKnown = languages.any { it.model.isKnown(input) } ||
             hooks.isUserDictionaryWord(input) ||
@@ -215,7 +216,7 @@ internal class NoisyChannelLatinScorer(
             for (language in languages) {
                 val frequency = language.model.words[word] ?: continue
                 val unigram = frequency / language.model.totalFrequency
-                val probability = if (contextWord == null) unigram else withContext(language.model.bigrams, contextWord, word, unigram)
+                val probability = withContext(language.model.bigrams, pairContexts[language.language], word, unigram)
                 val languageScore = logWeights.getValue(language.language) + ln(probability)
                 logPrior = logSumExp(logPrior, languageScore)
                 if (languageScore > bestLanguageScore) {
@@ -369,15 +370,15 @@ internal class NoisyChannelLatinScorer(
     private fun contextLogProbability(language: LatinScoringLanguage, previous: String?, token: String): Double {
         val frequency = language.model.words[token] ?: return params.unknownWordLogProb
         val unigram = frequency / language.model.totalFrequency
-        return ln(if (previous == null) unigram else withContext(language.model.bigrams, previous, token, unigram))
+        val context = previous?.let { language.model.bigrams.context(it) }
+        return ln(withContext(language.model.bigrams, context, token, unigram))
     }
 
     /** P(word | previous word), interpolated with the plain word probability [unigram]. */
-    private fun withContext(bigrams: LatinBigramModel, previous: String, word: String, unigram: Double): Double {
-        val total = bigrams.totalAfter(previous)
-        if (total <= 0.0) return unigram
-        val weight = total / (total + params.bigramBackoffWeight * bigrams.distinctAfter(previous))
-        return weight * bigrams.count(previous, word) / total + (1.0 - weight) * unigram
+    private fun withContext(bigrams: LatinBigramModel, context: LatinBigramModel.Context?, word: String, unigram: Double): Double {
+        if (context == null) return unigram
+        val weight = context.total / (context.total + params.bigramBackoffWeight * context.distinct)
+        return weight * bigrams.count(context, word) / context.total + (1.0 - weight) * unigram
     }
 
     /**

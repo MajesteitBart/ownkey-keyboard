@@ -613,6 +613,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 .also { flogDebug { "Loaded '$language' bigrams: ${it.pairCount} pairs in ${SystemClock.uptimeMillis() - start} ms" } }
         } catch (_: java.io.IOException) {
             LatinBigramModel.Empty
+        } catch (e: Exception) {
+            // A broken pair list must not cost the word list: the language keeps working without word context.
+            flogError { "Failed loading bigrams for '$language': $e" }
+            LatinBigramModel.Empty
         }
         return LatinWordModel.build(LatinDictionaryCleanup.apply(words, language, removals), bigrams)
     }

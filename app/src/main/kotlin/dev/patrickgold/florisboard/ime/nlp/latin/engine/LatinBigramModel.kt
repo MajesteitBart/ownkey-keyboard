@@ -153,14 +153,27 @@ internal class LatinBigramModel private constructor(
     /** How many different words were seen after [previous]. */
     fun distinctAfter(previous: String): Int = idOf(previous).let { if (it < 0) 0 else offsets[it + 1] - offsets[it] }
 
+    /** A previous word with its successor statistics, looked up once and reused for many successors. */
+    class Context internal constructor(internal val id: Int, val total: Double, val distinct: Int)
+
+    /** The statistics after [previous], or null when it was never seen with a successor. */
+    fun context(previous: String): Context? {
+        val id = idOf(previous)
+        if (id < 0) return null
+        val distinct = offsets[id + 1] - offsets[id]
+        if (distinct == 0) return null
+        return Context(id, totals[id].toDouble(), distinct)
+    }
+
     /** How often [next] was seen right after [previous]; 0 when never. */
-    fun count(previous: String, next: String): Double {
-        val previousId = idOf(previous)
-        if (previousId < 0) return 0.0
+    fun count(previous: String, next: String): Double = context(previous)?.let { count(it, next) } ?: 0.0
+
+    /** How often [next] was seen right after the previous word of [context]; 0 when never. */
+    fun count(context: Context, next: String): Double {
         val id = idOf(next)
         if (id < 0) return 0.0
-        var low = offsets[previousId]
-        var high = offsets[previousId + 1] - 1
+        var low = offsets[context.id]
+        var high = offsets[context.id + 1] - 1
         while (low <= high) {
             val mid = (low + high) ushr 1
             val midId = successorIds[mid]

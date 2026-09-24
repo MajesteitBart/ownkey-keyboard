@@ -4,26 +4,26 @@
 
 | Set | n | Right | Wrong | Precision | Top-1 | Top-3 | Typed is dict word | p50 us | p95 us |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tap EN usage, EN | 1500 | 70.5 | 0.7 | 99.0 | 86.9 | 91.5 | 0.0 | 52 | 136 |
-| tap EN uniform, EN | 1500 | 44.5 | 1.1 | 97.5 | 80.3 | 87.5 | 0.0 | 49 | 115 |
-| tap NL usage, NL | 1500 | 69.3 | 0.3 | 99.5 | 86.6 | 90.6 | 0.0 | 47 | 134 |
-| tap NL uniform, NL | 1500 | 48.3 | 1.1 | 97.8 | 82.4 | 86.9 | 0.0 | 42 | 87 |
-| tap NL usage, NL+EN | 1500 | 62.3 | 0.8 | 98.7 | 85.3 | 90.1 | 1.1 | 65 | 237 |
-| tap EN usage, NL+EN | 1500 | 59.7 | 0.8 | 98.7 | 84.4 | 91.3 | 0.7 | 58 | 185 |
-| tap NL uniform, NL+EN | 1500 | 38.6 | 0.7 | 98.3 | 81.4 | 86.9 | 0.6 | 58 | 158 |
-| harness EN usage, EN (optimistic) | 1113 | 69.1 | 0.9 | 98.7 | 91.6 | 98.4 | 0.0 | 42 | 100 |
-| real EN curated, EN | 100 | 82.0 | 0.0 | 100.0 | 95.0 | 95.0 | 0.0 | 39 | 84 |
-| real EN Wikipedia, EN | 3941 | 29.3 | 0.7 | 97.6 | 62.4 | 64.1 | 0.1 | 16 | 36 |
-| EN missing apostrophes, EN | 14 | 100.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 32 | 68 |
-| real NL curated, NL | 60 | 90.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 40 | 74 |
-| real NL extra, NL | 141 | 86.5 | 0.0 | 100.0 | 94.3 | 97.9 | 0.0 | 29 | 62 |
-| real NL all, NL+EN | 201 | 86.1 | 0.0 | 100.0 | 95.5 | 98.5 | 0.0 | 50 | 94 |
-| context EN, EN | 1557 | 77.1 | 0.6 | 99.2 | 88.5 | 90.2 | 0.0 | 43 | 124 |
-| context NL, NL | 1564 | 68.6 | 0.9 | 98.7 | 85.5 | 88.7 | 0.0 | 48 | 124 |
-| context NL, NL+EN | 1564 | 66.7 | 0.8 | 98.8 | 85.2 | 88.5 | 1.2 | 91 | 235 |
-| context EN, NL+EN | 1557 | 75.3 | 0.8 | 99.0 | 88.4 | 90.1 | 1.3 | 85 | 208 |
-| context EN, EN, words before removed | 1557 | 66.3 | 0.5 | 99.2 | 85.8 | 89.9 | 0.0 | 40 | 100 |
-| context NL, NL, words before removed | 1564 | 62.1 | 1.0 | 98.5 | 82.4 | 88.3 | 0.0 | 45 | 117 |
+| tap EN usage, EN | 1500 | 70.5 | 0.7 | 99.0 | 86.9 | 91.5 | 0.0 | 37 | 95 |
+| tap EN uniform, EN | 1500 | 44.5 | 1.1 | 97.5 | 80.3 | 87.5 | 0.0 | 30 | 66 |
+| tap NL usage, NL | 1500 | 69.3 | 0.3 | 99.5 | 86.6 | 90.6 | 0.0 | 43 | 121 |
+| tap NL uniform, NL | 1500 | 48.3 | 1.1 | 97.8 | 82.4 | 86.9 | 0.0 | 39 | 96 |
+| tap NL usage, NL+EN | 1500 | 62.3 | 0.8 | 98.7 | 85.3 | 90.1 | 1.1 | 65 | 234 |
+| tap EN usage, NL+EN | 1500 | 59.7 | 0.8 | 98.7 | 84.4 | 91.3 | 0.7 | 54 | 179 |
+| tap NL uniform, NL+EN | 1500 | 38.6 | 0.7 | 98.3 | 81.4 | 86.9 | 0.6 | 33 | 66 |
+| harness EN usage, EN (optimistic) | 1113 | 69.1 | 0.9 | 98.7 | 91.6 | 98.4 | 0.0 | 26 | 62 |
+| real EN curated, EN | 100 | 82.0 | 0.0 | 100.0 | 95.0 | 95.0 | 0.0 | 24 | 47 |
+| real EN Wikipedia, EN | 3941 | 29.3 | 0.7 | 97.6 | 62.4 | 64.1 | 0.1 | 19 | 34 |
+| EN missing apostrophes, EN | 14 | 100.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 21 | 50 |
+| real NL curated, NL | 60 | 90.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 25 | 37 |
+| real NL extra, NL | 141 | 86.5 | 0.0 | 100.0 | 94.3 | 97.9 | 0.0 | 22 | 40 |
+| real NL all, NL+EN | 201 | 86.1 | 0.0 | 100.0 | 95.5 | 98.5 | 0.0 | 32 | 57 |
+| context EN, EN | 1557 | 77.1 | 0.6 | 99.2 | 88.5 | 90.2 | 0.0 | 29 | 68 |
+| context NL, NL | 1564 | 68.6 | 0.9 | 98.7 | 85.5 | 88.7 | 0.0 | 29 | 73 |
+| context NL, NL+EN | 1564 | 66.7 | 0.8 | 98.8 | 85.2 | 88.5 | 1.2 | 61 | 142 |
+| context EN, NL+EN | 1557 | 75.3 | 0.8 | 99.0 | 88.4 | 90.1 | 1.3 | 60 | 144 |
+| context EN, EN, words before removed | 1557 | 66.3 | 0.5 | 99.2 | 85.8 | 89.9 | 0.0 | 27 | 71 |
+| context NL, NL, words before removed | 1564 | 62.1 | 1.0 | 98.5 | 82.4 | 88.3 | 0.0 | 34 | 93 |
 
 | Clean text | Words | False corrections | Per 1,000 | Examples | Known word not first | Examples |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -36,6 +36,11 @@
 | --- | --- | --- | --- | --- |
 | oov.txt, NL+EN | 313 | 79 | 1 | mergen->morgen |
 | oov.txt, EN | 313 | 29 | 1 | Thijs->This |
+| oov.txt lowercase, no words before, EN | 313 | 29 | 7 | lieke->like, thijs->this, noor->nor, siem->seem, bakker->baker, prins->prints, async->sync |
+| oov.txt lowercase, after 'talk to', EN | 313 | 29 | 8 | joost->boost, lieke->like, thijs->this, hidde->hide, kees->keep, siem->seem, smit->sit, deno->deny |
+| oov.txt lowercase, after 'I went to the', EN | 313 | 29 | 9 | lieke->like, thijs->this, eline->line, mees->mess, bakker->baker, breda->bread, gboard->board, funda->funds, joh->job |
+| oov.txt lowercase, no words before, NL | 313 | 74 | 3 | deno->denk, async->sync, mergen->morgen |
+| oov.txt lowercase, after 'ik ga naar de', NL | 313 | 74 | 5 | meeren->meren, bosman->boeman, breda->brede, deno->denk, linter->winter |
 
 | Real-word errors | n | Intended first | Intended in top 3 | Autocorrected |
 | --- | --- | --- | --- | --- |
