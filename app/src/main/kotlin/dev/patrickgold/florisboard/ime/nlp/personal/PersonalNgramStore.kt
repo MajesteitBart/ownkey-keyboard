@@ -204,6 +204,20 @@ class PersonalNgramStore(context: Context) {
         }
     }
 
+    /**
+     * Like [continuationScore], but never waits and never loads from disk: returns 0 while the store is busy or not
+     * loaded yet. Safe to call on the main thread.
+     */
+    fun continuationScoreIfLoaded(language: String, prev1: String, word: String): Double {
+        if (!mutex.tryLock()) return 0.0
+        try {
+            if (!isLoaded) return 0.0
+            return models[language]?.continuationScore(prev1, word) ?: 0.0
+        } finally {
+            mutex.unlock()
+        }
+    }
+
     suspend fun clearAll() {
         mutex.withLock {
             models.values.forEach { it.clear() }

@@ -29,6 +29,8 @@ import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.han.HanShapeBasedLanguageProvider
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
+import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.ime.nlp.latin.LatinLanguageProvider
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
@@ -73,6 +75,8 @@ class NlpManager(context: Context) {
     private val providersForceSuggestionOn = mutableMapOf<String, Boolean>()
 
     private val internalSuggestionsGuard = Mutex()
+    @Volatile
+    private var wordSuggestionBatch = WordSuggestionBatch.Empty
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -139,13 +143,19 @@ class NlpManager(context: Context) {
     fun preload(subtype: Subtype) {
         scope.launch {
             emojiSuggestionProvider.preload(subtype)
-            providers.withLock { providers ->
-                subtype.nlpProviders.forEach { _, providerId ->
-                    providers[providerId]?.let { provider ->
-                        provider.createIfNecessary()
-                        provider.preload(subtype)
+            // Only look the providers up under the lock. Preloading loads dictionaries for seconds, and the main
+            // thread takes this lock on every text commit (composing region lookup), so holding it while loading
+            // froze typing right after the keyboard process started.
+            val wrappers = providers.withLock { providers ->
+                buildList {
+                    subtype.nlpProviders.forEach { _, providerId ->
+                        providers[providerId]?.let { add(it) }
                     }
                 }
+            }.distinct()
+            wrappers.forEach { wrapper ->
+                wrapper.createIfNecessary()
+                wrapper.preload(subtype)
             }
         }
     }
@@ -181,12 +191,15 @@ class NlpManager(context: Context) {
     }
 
     fun providerForcesSuggestionOn(subtype: Subtype): Boolean {
-        // Using a cache because I have no idea how fast the runBlocking is
-        return providersForceSuggestionOn.getOrPut(subtype.nlpProviders.suggestion) {
-            runBlocking {
-                getSuggestionProvider(subtype).forcesSuggestionOn
-            }
-        }
+        val providerId = subtype.nlpProviders.suggestion
+        providersForceSuggestionOn[providerId]?.let { return it }
+        // Called on the main thread. While a provider preloads its dictionaries the lock is held for seconds, so
+        // never wait for it: answer "not forced" for now and cache the real value once the lock is free.
+        val forcesSuggestionOn = providers.tryWithLock { it[providerId] }
+            ?.let { wrapper -> (wrapper.provider as? SuggestionProvider)?.forcesSuggestionOn ?: false }
+            ?: return false
+        providersForceSuggestionOn[providerId] = forcesSuggestionOn
+        return forcesSuggestionOn
     }
 
     fun isSuggestionOn(): Boolean =
@@ -225,6 +238,7 @@ class NlpManager(context: Context) {
             }
             internalSuggestionsGuard.withLock {
                 if (internalSuggestions.first < reqTime) {
+                    wordSuggestionBatch = WordSuggestionBatch(WordSuggestionBatch.inputOf(content), suggestions)
                     internalSuggestions = reqTime to buildList {
                         addAll(emojiSuggestions)
                         addAll(suggestions)
@@ -268,6 +282,7 @@ class NlpManager(context: Context) {
 
     fun suggestDirectly(suggestions: List<SuggestionCandidate>) {
         val reqTime = SystemClock.uptimeMillis()
+        wordSuggestionBatch = WordSuggestionBatch.Empty
         runBlocking {
             internalSuggestions = reqTime to suggestions
         }
@@ -275,15 +290,52 @@ class NlpManager(context: Context) {
 
     fun clearSuggestions() {
         val reqTime = SystemClock.uptimeMillis()
+        wordSuggestionBatch = WordSuggestionBatch.Empty
         runBlocking {
             internalSuggestions = reqTime to emptyList()
         }
     }
 
-    fun getAutoCommitCandidate(): SuggestionCandidate? {
+    /**
+     * Returns the candidate that should replace the word the user just finished in [content], or null to keep the
+     * word as typed. Only uses suggestions computed for exactly this word; when the latest suggestions belong to an
+     * earlier prefix (fast typing), the provider decides on the spot from in-memory data.
+     */
+    fun autoCommitCandidateFor(content: EditorContent): SuggestionCandidate? {
         // The toggle can flip between the last suggestion run and the next space press.
         if (!prefs.correction.highCertaintyAutocorrectEnabled.get()) return null
-        return activeCandidates.firstOrNull { it.isEligibleForAutoCommit }
+        if (!isSuggestionOn()) return null
+        // Right after an accepted suggestion the keyboard is predicting the next word; the accepted word stays.
+        if (editorInstance.phantomSpace.isActive) return null
+        val editorInfo = editorInstance.activeInfo
+        if (!AutocorrectTriggerPolicy.allowsField(
+                variation = editorInfo.inputAttributes.variation,
+                flagTextNoSuggestions = editorInfo.inputAttributes.flagTextNoSuggestions,
+                isRichInputEditor = editorInfo.isRichInputEditor,
+            )
+        ) {
+            return null
+        }
+        if (!AutocorrectTriggerPolicy.isCorrectableToken(AutocorrectTriggerPolicy.tokenBeforeCursor(content.textBeforeSelection))) {
+            return null
+        }
+        val selection = AutoCommitSelector.select(
+            input = WordSuggestionBatch.inputOf(content),
+            batch = wordSuggestionBatch,
+        ) {
+            val start = SystemClock.uptimeMillis()
+            val subtype = subtypeManager.activeSubtype
+            // Never wait for the provider lock on the main thread; keep the word as typed if it is busy.
+            val provider = providers.tryWithLock { it[subtype.nlpProviders.suggestion] }?.provider as? SuggestionProvider
+            val decided = provider?.let { runBlocking { it.decideAutoCommit(subtype, content) } }
+            val latencyMs = SystemClock.uptimeMillis() - start
+            TypingSpeedMetrics.recordAutoCommitDecidedNow(latencyMs)
+            flogDebug { "Autocorrect decided on the spot in $latencyMs ms" }
+            decided
+        }
+        // Never log the typed word itself.
+        flogDebug { "Autocorrect decision source=${selection.source} applies=${selection.candidate != null}" }
+        return selection.candidate
     }
 
     fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {

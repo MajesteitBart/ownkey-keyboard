@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T11:31:43Z
+updated: 2026-09-24T19:16:27Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -15,6 +15,8 @@ updated: 2026-09-24T11:31:43Z
 - 2026-09-24: Keep the current candidate indexes for Phase 1 and make a trie or binary dictionary conditional. The independent review measured the same results from noisy-channel scoring on the current indexes as from a full-vocabulary, distance-2 search. Triggers for the conditional phase are listed in `plan.md`.
 - 2026-09-24: Order the work by relief per effort: toggle fix, input-keyed commit path, scoring swap, curated dictionary removals. The commit path goes before the scoring swap, because the stale-candidate race only causes wrong corrections once corrections become eligible.
 - 2026-09-24: Autocorrect triggers only on space and token-ending sentence punctuation. It never triggers on apostrophe, hyphen, digits, `@` or `/`, and enter keeps today's no-autocorrect behavior.
+- 2026-09-24: No autocorrect in password, e-mail, URL and person-name fields or with `flagTextNoSuggestions`, and none right after an accepted suggestion. Legacy scoring never fired, so these fields were never exposed before; the new scorer would expose them.
+- 2026-09-24: Fix the first-input freeze found during T-003 inside this project. It is not an autocorrect bug, but the on-the-spot decision path shares the same lock, and the spec requires typing to stay responsive.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.

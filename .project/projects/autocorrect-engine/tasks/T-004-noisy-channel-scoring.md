@@ -1,12 +1,10 @@
 ---
 id: T-004
 name: Noisy-channel scoring on the existing candidate indexes
-status: blocked
-blocked_owner: ownkey-keyboard-team
-blocked_check_back: After dependencies are done: T-001, T-003
+status: ready
 workstream: WS-A
 created: 2026-09-24T11:31:43Z
-updated: 2026-09-24T18:38:49Z
+updated: 2026-09-24T19:16:27Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -37,6 +35,7 @@ Replace `calculateConfidence`, `rankSuggestionCandidate` and the high-certainty 
 - [ ] `spell()` and suggestion ranking use the same scorer.
 - [ ] The benchmark meets every provisional Phase 1 benchmark gate in `spec.md`, as updated by T-001, for EN, NL and NL+EN (AC-001).
 - [ ] The devtools switch cannot enable the new scoring unless T-003's input-keyed commit path is active.
+- [ ] On device, a correction fires on space and one backspace restores the typed word (AC-004, moved here from T-003).
 
 ## Traceability
 

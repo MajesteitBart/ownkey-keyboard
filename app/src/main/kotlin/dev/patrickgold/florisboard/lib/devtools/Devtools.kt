@@ -187,6 +187,8 @@ object Devtools {
             append("Autocorrect undos                   : ").appendLine(snapshot.autoCorrectUndoCount)
             append("False autocorrect ratio             : ").appendLine(String.format("%.4f", snapshot.falseAutocorrectRatio))
             append("Undo autocorrect frequency          : ").appendLine(String.format("%.4f", snapshot.undoAutocorrectFrequency))
+            append("Autocorrect decided on the spot     : ").appendLine(snapshot.autoCommitDecidedNowCount)
+            append("On-the-spot decision p95 (ms)       : ").appendLine(String.format("%.2f", snapshot.autoCommitDecisionLatencyP95Ms))
         }
     }
 

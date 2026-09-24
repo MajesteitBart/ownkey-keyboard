@@ -17,6 +17,7 @@
 package dev.patrickgold.florisboard.ime.nlp.latin
 
 import android.content.Context
+import android.os.SystemClock
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.editorInstance
@@ -46,6 +47,8 @@ import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -65,6 +68,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val MaxLookupCandidateCount = 16
         private const val SuggestionCacheMaxSize = 128
         private const val SuggestionContextTailLength = 96
+        private const val AutoCommitCandidateCount = 8
+        private const val UserDictionarySnapshotMaxAgeMs = 30_000L
 
         private val FrequencyDictionaryAssets = mapOf(
             "en" to "ime/dict/frequencywords/en_50k.txt",
@@ -117,9 +122,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val editorInstance by context.editorInstance()
     private val prefs by FlorisPreferenceStore
     private val languageModels = guardedByLock { mutableMapOf<String, LatinWordModel>() }
+    // Serializes model loading, so a suggestion request during preload waits for the load in progress instead of
+    // loading a second copy of the same dictionary.
+    private val modelLoadMutex = Mutex()
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
     private val emptyModel = LatinWordModel.Empty
     private val legacyScorer: LatinCurrentWordScorer = LegacyLatinScorer()
+
+    // In-memory copy of the user dictionaries, so autocorrect decisions on the main thread never query a database.
+    @Volatile
+    private var userDictionarySnapshot: Set<String> = emptySet()
+    @Volatile
+    private var userDictionarySnapshotUptimeMs = 0L
     private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
     private val mixedLanguageScoringPolicy = MixedLanguageScoringPolicy()
     private val personalNgramStore by lazy { PersonalNgramStore(appContext) }
@@ -142,6 +156,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         subtype.locales().forEach { locale ->
             ensureLanguageModelLoaded(locale.language)
         }
+        refreshUserDictionarySnapshotIfStale()
     }
 
     override suspend fun spell(
@@ -225,6 +240,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         suggestionCache.withLock { cache ->
             cache[cacheKey]?.let { return it }
         }
+        refreshUserDictionarySnapshotIfStale()
 
         val primaryLocale = subtype.primaryLocale.base
         val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
@@ -271,6 +287,50 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             cache[cacheKey] = mergedSuggestions
         }
         return mergedSuggestions
+    }
+
+    override suspend fun decideAutoCommit(subtype: Subtype, content: EditorContent): SuggestionCandidate? {
+        val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
+        if (rawInput.isBlank()) return null
+        val languages = loadedScoringLanguages(subtype)
+        if (languages.isEmpty()) return null
+        val policySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
+        val scored = legacyScorer.score(
+            request = LatinScoringRequest(
+                rawInput = rawInput,
+                primaryLocale = subtype.primaryLocale.base,
+                languages = languages,
+                textBeforeSelection = content.textBeforeSelection,
+                maxCandidateCount = AutoCommitCandidateCount,
+                policy = policySnapshot.policy,
+            ),
+            hooks = inMemoryScoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language)),
+        )
+        val chosen = scored.firstOrNull { it.isAutoCommit } ?: return null
+        return WordSuggestionCandidate(
+            text = chosen.text,
+            confidence = chosen.confidence,
+            isEligibleForAutoCommit = true,
+            sourceProvider = this@LatinLanguageProvider,
+        )
+    }
+
+    /**
+     * Languages of [subtype] whose models are already loaded. Never loads a model and never waits for the model
+     * lock, so it is safe on the main thread. Returns an empty list while models are being registered.
+     */
+    private fun loadedScoringLanguages(subtype: Subtype): List<LatinScoringLanguage> {
+        val seenLanguages = LinkedHashSet<String>()
+        val languages = mutableListOf<LatinScoringLanguage>()
+        languageModels.tryWithLock { models ->
+            subtype.locales().forEachIndexed { index, locale ->
+                val language = normalizeLanguageCode(locale.language)
+                if (!seenLanguages.add(language)) return@forEachIndexed
+                val model = models[language] ?: return@forEachIndexed
+                languages.add(LatinScoringLanguage(language, locale.base, model, isPrimary = index == 0))
+            }
+        }
+        return languages
     }
 
     override suspend fun notifyTextBoundary(subtype: Subtype, content: EditorContent) {
@@ -427,14 +487,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private suspend fun ensureLanguageModelLoaded(languageCode: String) {
         val language = normalizeLanguageCode(languageCode)
-        val isLoaded = languageModels.withLock { models ->
-            models.containsKey(language)
-        }
-        if (isLoaded) return
+        if (languageModels.withLock { models -> models.containsKey(language) }) return
 
-        val model = loadLanguageModel(language)
-        languageModels.withLock { models ->
-            models.putIfAbsent(language, model)
+        modelLoadMutex.withLock {
+            if (languageModels.withLock { models -> models.containsKey(language) }) return
+            val model = loadLanguageModel(language)
+            languageModels.withLock { models ->
+                models.putIfAbsent(language, model)
+            }
         }
     }
 
@@ -746,6 +806,51 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
+    private fun inMemoryScoringHooks(subtype: Subtype, language: String): LatinScoringHooks {
+        val userWords = userDictionarySnapshot
+        return object : LatinScoringHooks {
+            override fun isUserDictionaryWord(normalizedWord: String): Boolean {
+                return normalizedWord in userWords
+            }
+
+            override fun isBlockedByUserPreference(normalizedWord: String): Boolean {
+                return isAutoCorrectBlockedByUserPreference(subtype, normalizedWord)
+            }
+
+            override suspend fun personalContinuationScore(previousWord: String, candidateWord: String): Double {
+                return personalNgramStore.continuationScoreIfLoaded(language, previousWord, candidateWord)
+            }
+        }
+    }
+
+    /**
+     * Refreshes [userDictionarySnapshot] from both user dictionaries. Must run off the main thread.
+     */
+    private fun refreshUserDictionarySnapshotIfStale() {
+        val now = SystemClock.uptimeMillis()
+        val last = userDictionarySnapshotUptimeMs
+        if (last != 0L && now - last < UserDictionarySnapshotMaxAgeMs) return
+        userDictionarySnapshotUptimeMs = now
+        userDictionarySnapshot = try {
+            val dictionaryManager = DictionaryManager.default()
+            dictionaryManager.loadUserDictionariesIfNecessary()
+            buildSet {
+                listOfNotNull(
+                    dictionaryManager.florisUserDictionaryDao(),
+                    dictionaryManager.systemUserDictionaryDao(),
+                ).forEach { dao ->
+                    dao.queryAll().forEach { entry ->
+                        add(normalizeDictionaryWord(entry.word))
+                        entry.shortcut?.let { add(normalizeDictionaryWord(it)) }
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            flogError { "Failed refreshing user dictionary snapshot: $e" }
+            userDictionarySnapshot
+        }
+    }
+
     private fun isEmailInputField(): Boolean {
         return when (editorInstance.activeInfo.inputAttributes.variation) {
             InputAttributes.Variation.EMAIL_ADDRESS,
@@ -900,6 +1005,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         } catch (e: Throwable) {
             flogError { "Failed promoting rapid personal vocabulary entry: $e" }
         }
+        // Pick up the promoted word in the next snapshot.
+        userDictionarySnapshotUptimeMs = 0L
     }
 
     private suspend fun resolveBestLocaleForWord(subtype: Subtype, candidateWord: String): FlorisLocale {

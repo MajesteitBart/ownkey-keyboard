@@ -17,7 +17,6 @@
 package dev.patrickgold.florisboard.ime.keyboard
 
 import android.content.Context
-import android.icu.lang.UCharacter
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.compose.runtime.getValue
@@ -50,6 +49,7 @@ import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
@@ -625,7 +625,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * but skips handling changing to characters keyboard and double space periods.
      */
     fun handleHardwareKeyboardSpace() {
-        val candidate = nlpManager.getAutoCommitCandidate()
+        val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
         TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         // Skip handling changing to characters keyboard and double space periods
@@ -641,7 +641,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * enabled by the user.
      */
     private fun handleSpace(data: KeyData) {
-        val candidate = nlpManager.getAutoCommitCandidate()
+        val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
         TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
@@ -907,7 +907,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.VIEW_SYMBOLS2 -> activeState.keyboardMode = KeyboardMode.SYMBOLS2
             else -> {
                 if (activeState.imeUiMode == ImeUiMode.MEDIA) {
-                    nlpManager.getAutoCommitCandidate()?.let {
+                    nlpManager.autoCommitCandidateFor(editorInstance.activeContent)?.let {
                         commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
                     }
                     val text = data.asString(isForDisplay = false)
@@ -937,8 +937,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     else -> when (data.type) {
                         KeyType.CHARACTER, KeyType.NUMERIC ->{
                             val text = data.asString(isForDisplay = false)
-                            if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0))) {
-                                nlpManager.getAutoCommitCandidate()?.let {
+                            if (AutocorrectTriggerPolicy.isTrigger(text)) {
+                                nlpManager.autoCommitCandidateFor(editorInstance.activeContent)?.let {
                                     commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
                                 }
                             }
