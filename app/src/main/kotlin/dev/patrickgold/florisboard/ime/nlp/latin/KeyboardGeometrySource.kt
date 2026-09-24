@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.nlp.latin
 
 import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.KeyGeometry
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinTap
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKey
 
 /**
@@ -31,6 +32,10 @@ object KeyboardGeometrySource {
 
     @Volatile
     private var cached: Pair<Long, KeyGeometry>? = null
+
+    /** Median key width in pixels of the cached geometry: the unit of [KeyGeometry] coordinates. */
+    @Volatile
+    private var cachedUnit: Float = 0f
 
     fun update(characterKeys: List<TextKey>) {
         keys = characterKeys
@@ -57,8 +62,17 @@ object KeyboardGeometrySource {
             heights.add(height)
         }
         val geometry = KeyGeometry.fromPixels(centers, widths, heights) ?: return null
+        cachedUnit = widths.sorted()[widths.size / 2]
         cached = signature to geometry
         return geometry
+    }
+
+    /** A touch point of the keyboard view in pixels, in the key-width units of [current]; null before layout. */
+    internal fun toKeyUnits(x: Float, y: Float): LatinTap? {
+        current() ?: return null
+        val unit = cachedUnit
+        if (unit <= 0f) return null
+        return LatinTap(x / unit.toDouble(), y / unit.toDouble())
     }
 
     private fun signatureOf(keys: List<TextKey>): Long {

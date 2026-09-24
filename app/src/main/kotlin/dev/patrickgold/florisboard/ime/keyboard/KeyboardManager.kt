@@ -49,6 +49,7 @@ import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
+import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
 import dev.patrickgold.florisboard.ime.text.composing.Composer
@@ -324,6 +325,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         origin: CandidateCommitOrigin = CandidateCommitOrigin.MANUAL,
     ) {
         val candidateIndex = nlpManager.activeCandidates.indexOf(candidate).takeIf { it >= 0 }
+        TapTrail.clear()
         TypingSpeedMetrics.recordSuggestionAccepted(candidateIndex)
         TypingSpeedMetrics.recordWordCommittedBySuggestion()
         if (origin == CandidateCommitOrigin.AUTO_COMMIT && candidate.isEligibleForAutoCommit) {
@@ -515,6 +517,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         revertPreviouslyAcceptedCandidate()
         editorInstance.deleteBackwards(unit)
+        if (unit == OperationUnit.CHARACTERS) TapTrail.removeLast() else TapTrail.clear()
     }
 
     /**
@@ -534,6 +537,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles a [KeyCode.ENTER] event.
      */
     private fun handleEnter() {
+        TapTrail.clear()
         val info = editorInstance.activeInfo
         val isShiftPressed = inputEventDispatcher.isPressed(KeyCode.SHIFT)
         if (editorInstance.tryPerformEnterCommitRaw()) {
@@ -627,6 +631,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     fun handleHardwareKeyboardSpace() {
         val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
+        TapTrail.clear()
         TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         // Skip handling changing to characters keyboard and double space periods
         // TODO: this is whether we commit space after selecting candidate. Should be determined by SuggestionProvider
@@ -643,6 +648,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private fun handleSpace(data: KeyData) {
         val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
+        TapTrail.clear()
         TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
             when (activeState.keyboardMode) {
@@ -941,6 +947,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                                 nlpManager.autoCommitCandidateFor(editorInstance.activeContent, trigger = text)?.let {
                                     commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
                                 }
+                                TapTrail.clear()
                             }
                             TypingSpeedMetrics.recordTextInput(text)
                             editorInstance.commitChar(text)

@@ -74,6 +74,7 @@ import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.glideTypingManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
 import dev.patrickgold.florisboard.ime.nlp.latin.KeyboardGeometrySource
+import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCue
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCues
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
@@ -83,6 +84,7 @@ import dev.patrickgold.florisboard.ime.editor.OperationUnit
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
 import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
@@ -753,6 +755,7 @@ private class TextKeyboardLayoutController(
                 val retData = popupUiController.getActiveKeyData(activeKey)
                 if (retData != null && !pointer.hasTriggeredGestureMove) {
                     if (retData == activeKey.computedData) {
+                        recordTap(activeKey.computedData, event, pointer)
                         if (activeKey.computedData != activeKey.computedDataOnDown) {
                             inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                             inputEventDispatcher.sendDownUp(activeKey.computedData)
@@ -760,6 +763,8 @@ private class TextKeyboardLayoutController(
                             inputEventDispatcher.sendUp(activeKey.computedDataOnDown)
                         }
                     } else {
+                        // A popup alternative: the tap position belongs to the popup, not to a key.
+                        if (retData.type == KeyType.CHARACTER) TapTrail.recordWithoutPosition(retData.code)
                         inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                         inputEventDispatcher.sendDownUp(retData)
                     }
@@ -771,6 +776,7 @@ private class TextKeyboardLayoutController(
                 if (pointer.hasTriggeredGestureMove) {
                     inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                 } else {
+                    recordTap(activeKey.computedData, event, pointer)
                     if (activeKey.computedData != activeKey.computedDataOnDown) {
                         inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                         inputEventDispatcher.sendDownUp(activeKey.computedData)
@@ -782,6 +788,12 @@ private class TextKeyboardLayoutController(
             pointer.activeKey = null
         }
         pointer.hasTriggeredGestureMove = false
+    }
+
+    /** Remembers where a character key was tapped, for the touch model of autocorrect. */
+    private fun recordTap(data: KeyData, event: MotionEvent, pointer: TouchPointer) {
+        if (data.type != KeyType.CHARACTER || data.code <= 0) return
+        TapTrail.record(data.code, event.getX(pointer.index), event.getY(pointer.index))
     }
 
     private fun onTouchCancelInternal(event: MotionEvent, pointer: TouchPointer) {

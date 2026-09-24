@@ -40,6 +40,7 @@ import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringHooks
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringRequest
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinTap
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LegacyLatinScorer
@@ -97,6 +98,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val isPrivateSession: Boolean,
         val autocorrectPolicySignature: String,
         val isEmailField: Boolean,
+        /** Where the word was tapped: the same word tapped differently can get a different correction. */
+        val taps: List<LatinTap>?,
     )
 
     private data class AutocorrectPolicySnapshot(
@@ -314,6 +317,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     policy = autocorrectPolicySnapshot.policy,
                     autocorrect = autocorrectPolicySnapshot.settings,
                     geometry = KeyboardGeometrySource.current(),
+                    taps = cacheKey.taps,
                 ),
                 hooks = scoringHooks(subtype, language),
             )
@@ -355,9 +359,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 policy = policySnapshot.policy,
                 autocorrect = policySnapshot.settings,
                 geometry = KeyboardGeometrySource.current(),
+                taps = TapTrail.tapsFor(rawInput),
             ),
             hooks = inMemoryScoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language)),
         )
+        // Tap count and mean distance from the typed keys only; never the word itself.
+        flogDebug { "Autocorrect taps: ${describeTaps(rawInput)}" }
         val chosen = scored.firstOrNull { it.isAutoCommit } ?: return null
         return WordSuggestionCandidate(
             text = chosen.text,
@@ -849,6 +856,22 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
+    /** For debug logs: how many taps matched the word and how far, on average, they landed from their keys. */
+    private fun describeTaps(rawInput: String): String {
+        val taps = TapTrail.tapsFor(rawInput) ?: return "none"
+        val geometry = KeyboardGeometrySource.current() ?: return "${taps.size}, no geometry"
+        var sum = 0.0
+        var count = 0
+        taps.forEachIndexed { index, tap ->
+            val center = geometry.center(rawInput[index]) ?: return@forEachIndexed
+            if (tap.x.isNaN()) return@forEachIndexed
+            sum += kotlin.math.hypot(tap.x - center.first, tap.y - center.second)
+            count++
+        }
+        val mean = if (count == 0) "n/a" else String.format(Locale.ROOT, "%.2f", sum / count)
+        return "${taps.size}, mean distance from key centers $mean key widths"
+    }
+
     private fun normalizeLanguageCode(languageCode: String): String = LatinText.normalizeLanguageCode(languageCode)
 
     private fun currentAutocorrectAppContext(): AutocorrectAppContext {
@@ -1072,6 +1095,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             isPrivateSession = isPrivateSession,
             autocorrectPolicySignature = autocorrectPolicySignature,
             isEmailField = isEmailField,
+            taps = TapTrail.tapsFor(content.composingText.ifBlank { content.currentWordText }.trim()),
         )
     }
 
