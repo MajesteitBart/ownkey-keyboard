@@ -37,6 +37,10 @@ data class NoisyChannelParams(
     val adjacentInsertionCost: Double = 5.5,
     val otherInsertionCost: Double = 8.0,
     val transpositionCost: Double = 5.0,
+    /** Spelling (not tapping) errors: one vowel written for another, as in "seperate". */
+    val vowelSubstitutionCost: Double = 5.5,
+    /** Spelling errors: a doubled letter written once ("acomodate") or a single letter doubled ("untill"). */
+    val doubledLetterCost: Double = 4.0,
     /** Log-probability that a word the user typed is a real word missing from the dictionaries. */
     val unknownWordLogProb: Double = -20.0,
     /** Extra weight for keeping a three-letter word as typed; short words have many near neighbors. */
@@ -86,6 +90,7 @@ internal class NoisyChannelLatinScorer(
         private const val CorrectionLookupCount = 32
         private const val SuggestionContextTailLength = 96
         private const val Unreachable = 1e9
+        private val Vowels = setOf('a', 'e', 'i', 'o', 'u', 'y')
     }
 
     private class Scored(
@@ -245,8 +250,11 @@ internal class NoisyChannelLatinScorer(
                     val cost = if (typed[i] == intended[j]) 0.0 else substitutionCost(typed[i], intended[j], geometry)
                     if (current + cost < d[i + 1][j + 1]) d[i + 1][j + 1] = current + cost
                 }
-                if (j < m && current + params.omissionCost < d[i][j + 1]) {
-                    d[i][j + 1] = current + params.omissionCost
+                if (j < m) {
+                    // Leaving out one letter of a doubled pair is a common spelling error.
+                    val isDoubled = intended.getOrNull(j - 1) == intended[j] || intended.getOrNull(j + 1) == intended[j]
+                    val cost = current + if (isDoubled) params.doubledLetterCost else params.omissionCost
+                    if (cost < d[i][j + 1]) d[i][j + 1] = cost
                 }
                 if (i < n) {
                     val cost = current + insertionCost(typed, i, geometry)
@@ -264,18 +272,24 @@ internal class NoisyChannelLatinScorer(
     }
 
     private fun substitutionCost(typed: Char, intended: Char, geometry: KeyGeometry): Double {
-        if (stripDiacritics(typed) == stripDiacritics(intended)) return params.diacriticSubstitutionCost
-        val distance = geometry.distance(stripDiacritics(typed), stripDiacritics(intended))
-            ?: return params.maxSubstitutionCost
-        return (params.substitutionBaseCost + params.substitutionDistanceCost * distance * distance)
-            .coerceAtMost(params.maxSubstitutionCost)
+        val a = stripDiacritics(typed)
+        val b = stripDiacritics(intended)
+        if (a == b) return params.diacriticSubstitutionCost
+        val distance = geometry.distance(a, b)
+        val tapCost = if (distance == null) {
+            params.maxSubstitutionCost
+        } else {
+            (params.substitutionBaseCost + params.substitutionDistanceCost * distance * distance)
+                .coerceAtMost(params.maxSubstitutionCost)
+        }
+        return if (a in Vowels && b in Vowels) minOf(tapCost, params.vowelSubstitutionCost) else tapCost
     }
 
     private fun insertionCost(typed: String, index: Int, geometry: KeyGeometry): Double {
         val ch = typed[index]
         val previous = typed.getOrNull(index - 1)
         val next = typed.getOrNull(index + 1)
-        if (ch == previous || ch == next) return params.doubledInsertionCost
+        if (ch == previous || ch == next) return minOf(params.doubledInsertionCost, params.doubledLetterCost)
         val nearPrevious = previous?.let { geometry.distance(ch, it) }?.let { it <= 1.3 } == true
         val nearNext = next?.let { geometry.distance(ch, it) }?.let { it <= 1.3 } == true
         return if (nearPrevious || nearNext) params.adjacentInsertionCost else params.otherInsertionCost

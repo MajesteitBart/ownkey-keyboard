@@ -1,0 +1,36 @@
+# Words removed from en_50k.txt at load time. The subtitle-based list counts these misspellings as correct words,
+# so autocorrect could never fix them. Reviewed by hand; see .project/projects/autocorrect-engine/tasks/T-005.
+# Apostrophe-less forms (dont, im, youre, didnt, ...) stay until their replacements exist (T-007, T-008).
+# Also removed by rule, not listed here: tokens with a backtick or U+FFFD, and single letters other than a, i, k, u, x.
+accidently
+adress
+alot
+appartment
+begining
+belive
+carefull
+comming
+commited
+ect
+embarassed
+embarassing
+everthing
+goverment
+happend
+heared
+holliday
+loosing
+noth
+occured
+payed
+realy
+rember
+seperate
+sherif
+strenght
+superintendant
+tommorow
+transfered
+untill
+wich
+youself

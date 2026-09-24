@@ -35,6 +35,7 @@ import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.ChatShorthand
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinCurrentWordScorer
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringHooks
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringRequest
@@ -548,7 +549,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val dictionaryAsset = FrequencyDictionaryAssets[language]
         if (dictionaryAsset != null) {
             try {
-                return buildLanguageModelFromFrequencyAsset(dictionaryAsset)
+                return buildLanguageModelFromFrequencyAsset(dictionaryAsset, language)
             } catch (e: Exception) {
                 flogError { "Failed loading frequency dictionary for '$language' from '$dictionaryAsset': $e" }
             }
@@ -574,11 +575,17 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return legacyModel
     }
 
-    private fun buildLanguageModelFromFrequencyAsset(assetPath: String): LatinWordModel {
+    private fun buildLanguageModelFromFrequencyAsset(assetPath: String, language: String): LatinWordModel {
         val words = appContext.assets.open(assetPath).bufferedReader().useLines { lines ->
             LatinText.parseFrequencyList(lines)
         }
-        return LatinWordModel.build(words)
+        val removals = try {
+            appContext.assets.open("${LatinDictionaryCleanup.RemovalAssetDir}/$language.txt").bufferedReader()
+                .useLines { lines -> LatinDictionaryCleanup.parseRemovalList(lines) }
+        } catch (_: java.io.IOException) {
+            emptySet()
+        }
+        return LatinWordModel.build(LatinDictionaryCleanup.apply(words, language, removals))
     }
 
     private fun buildLanguageModelFromLegacyAsset(): LatinWordModel {

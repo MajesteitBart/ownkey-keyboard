@@ -54,6 +54,12 @@ class NoisyChannelAcceptanceTest : FunSpec({
         autoCorrection(BenchmarkData.nlEn(), "natuurlik") shouldBe "natuurlijk"
     }
 
+    test("AC-002: mischien becomes misschien on the NL+EN subtype") {
+        autoCorrection(BenchmarkData.nlEn(), "mischien") shouldBe "misschien"
+        autoCorrection(BenchmarkData.enOnly(), "untill") shouldBe "until"
+        autoCorrection(BenchmarkData.enOnly(), "seperate") shouldBe "separate"
+    }
+
     test("AC-003: product names and jargon stay as typed") {
         autoCorrection(BenchmarkData.nlEn(), "Voxtral", "ik gebruik ").shouldBeNull()
         autoCorrection(BenchmarkData.nlEn(), "webhook", "check de ").shouldBeNull()

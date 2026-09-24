@@ -1,12 +1,10 @@
 ---
 id: T-005
 name: Curated dictionary removals
-status: blocked
-blocked_owner: ownkey-keyboard-team
-blocked_check_back: After dependencies are done: T-001
+status: done
 workstream: WS-A
 created: 2026-09-24T11:31:43Z
-updated: 2026-09-24T11:31:43Z
+updated: 2026-09-24T19:46:44Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -27,11 +25,11 @@ Misspellings in the current word lists count as correct words and can never be c
 
 ## Acceptance Criteria
 
-- [ ] A reviewed removal list per language, checked into the repo, covering known misspellings, backtick forms (`` don`t ``) and OCR single letters (`l`, `s`, `o`, `t` in English).
-- [ ] Split contraction fragments (`don`, `didn`, `isn`) stay for now. They go in T-007, once contraction forms exist to replace them.
-- [ ] Apostrophe-less forms (`dont`, `im`) stay until T-008 adds their replacements.
-- [ ] The benchmark shows no word from the removal list as an exact match, and AC-002 passes with the T-004 scoring.
-- [ ] The clean-text false-correction rate does not rise.
+- [x] A reviewed removal list per language, checked into the repo, covering known misspellings, backtick forms (`` don`t ``) and OCR single letters (`l`, `s`, `o`, `t` in English).
+- [x] Split contraction fragments (`don`, `didn`, `isn`) stay for now. They go in T-007, once contraction forms exist to replace them.
+- [x] Apostrophe-less forms (`dont`, `im`) stay until T-008 adds their replacements.
+- [x] The benchmark shows no word from the removal list as an exact match, and AC-002 passes with the T-004 scoring.
+- [x] The clean-text false-correction rate does not rise.
 
 ## Traceability
 
@@ -45,11 +43,14 @@ Misspellings in the current word lists count as correct words and can never be c
 
 ## Definition of Done
 
-- [ ] Implementation complete
-- [ ] Tests pass
-- [ ] Review complete
-- [ ] Docs updated
+- [x] Implementation complete
+- [x] Tests pass
+- [x] Review complete
+- [x] Docs updated
 
 ## Evidence Log
+
+- 2026-09-24: Reviewed removal lists in `app/src/main/assets/ime/dict/removals/{en,nl}.txt` (32 EN, 13 NL words), applied at load time by `LatinDictionaryCleanup`, which also drops backtick and U+FFFD tokens and English single letters other than a, i, k, u and x. EN candidates came from the Wikipedia misspelling list intersected with `en_50k.txt` (40 hits, 8 kept as real or deliberate words: thru, toke, momento, quitted, vermillion, dum, plus the apostrophe-less forms left for T-008). `LatinDictionaryCleanupTest` checks that every listed word exists in the raw list and none survives in the shipped model. The legacy reproduction test now runs on the raw lists.
+- 2026-09-24: Benchmark after removals (`research/benchmark-noisy-channel-t005.md`): real EN curated 66% → 81%, real NL curated 81.7% → 88.3%, real NL on NL+EN 81.6% → 85.6%, all with 0 wrong; clean-text false corrections did not rise (at most 0.13 per 1,000). AC-002 (`mischien` → misschien on NL+EN) and `untill`, `seperate` pass in `NoisyChannelAcceptanceTest`. `seperate` also exposed a gap in the T-004 error model: spelling errors (vowel for vowel, doubled letters) were priced as unlikely taps. Added vowel-substitution (5.5) and doubled-letter (4.0) costs; Wikipedia misspellings 24% → 29% at 97.7% precision, tap sets unchanged or better. New out-of-dictionary change: `mergen` → morgen (2 of 313, within the gate). 494 `ime` unit tests pass.
 
 - 2026-09-24: Task created. Moved into Phase 1 after the independent review found that AC-002 cannot pass without it.

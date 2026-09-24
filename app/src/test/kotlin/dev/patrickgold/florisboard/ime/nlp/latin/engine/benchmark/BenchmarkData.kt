@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.nlp.latin.engine.benchmark
 
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
@@ -34,11 +35,18 @@ internal data class TypoPair(
 
 internal data class Tap(val char: Char, val x: Double, val y: Double)
 
-internal class BenchmarkLanguage(val code: String, val words: Map<String, Int>) {
-    val model: LatinWordModel by lazy { LatinWordModel.build(words) }
+/**
+ * [words] is the raw FrequencyWords list; [model] is built from the list as the app ships it, after
+ * [LatinDictionaryCleanup]. [rawModel] reproduces the 2026-09-24 baseline, which ran on the raw list.
+ */
+internal class BenchmarkLanguage(val code: String, val words: Map<String, Int>, removals: Set<String>) {
+    val shippedWords: Map<String, Int> by lazy { LatinDictionaryCleanup.apply(words, code, removals) }
+    val model: LatinWordModel by lazy { LatinWordModel.build(shippedWords) }
+    val rawModel: LatinWordModel by lazy { LatinWordModel.build(words) }
     val locale: Locale = Locale.forLanguageTag(code)
 
-    fun slot(isPrimary: Boolean) = LatinScoringLanguage(code, locale, model, isPrimary)
+    fun slot(isPrimary: Boolean, raw: Boolean = false) =
+        LatinScoringLanguage(code, locale, if (raw) rawModel else model, isPrimary)
 }
 
 /**
@@ -55,19 +63,27 @@ internal object BenchmarkData {
 
     private val languages = mutableMapOf<String, BenchmarkLanguage>()
 
+    val removalDir: File get() = File(moduleDir, "src/main/assets/${LatinDictionaryCleanup.RemovalAssetDir}")
+
+    fun removals(code: String): Set<String> {
+        val file = File(removalDir, "$code.txt")
+        if (!file.isFile) return emptySet()
+        return file.bufferedReader().useLines { LatinDictionaryCleanup.parseRemovalList(it) }
+    }
+
     fun language(code: String, dictionaryFile: File = File(dictionaryDir, "${code}_50k.txt")): BenchmarkLanguage {
         return languages.getOrPut("$code:${dictionaryFile.path}") {
             val words = dictionaryFile.bufferedReader().useLines { LatinText.parseFrequencyList(it) }
-            BenchmarkLanguage(code, words)
+            BenchmarkLanguage(code, words, removals(code))
         }
     }
 
     fun en() = language("en")
     fun nl() = language("nl")
 
-    fun enOnly() = listOf(en().slot(isPrimary = true))
-    fun nlOnly() = listOf(nl().slot(isPrimary = true))
-    fun nlEn() = listOf(nl().slot(isPrimary = true), en().slot(isPrimary = false))
+    fun enOnly(raw: Boolean = false) = listOf(en().slot(isPrimary = true, raw = raw))
+    fun nlOnly(raw: Boolean = false) = listOf(nl().slot(isPrimary = true, raw = raw))
+    fun nlEn(raw: Boolean = false) = listOf(nl().slot(isPrimary = true, raw = raw), en().slot(isPrimary = false, raw = raw))
 
     fun resourceLines(name: String): List<String> {
         val stream = BenchmarkData::class.java.getResourceAsStream("/autocorrect/$name")

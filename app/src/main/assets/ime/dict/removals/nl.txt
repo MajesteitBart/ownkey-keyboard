@@ -1,0 +1,16 @@
+# Words removed from nl_50k.txt at load time. The subtitle-based list counts these misspellings as correct words,
+# so autocorrect could never fix them. Reviewed by hand; see .project/projects/autocorrect-engine/tasks/T-005.
+# Accepted variants stay (kado, ongelofelijk, enigste). Also removed by rule: tokens with a backtick or U+FFFD.
+alsjeblief
+apartement
+direkt
+eigelijk
+kontakt
+mischien
+moelijk
+onmiddelijk
+ongeloofelijk
+overnieuw
+sorrie
+verassing
+waneer

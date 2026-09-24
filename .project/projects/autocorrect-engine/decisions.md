@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T19:40:05Z
+updated: 2026-09-24T19:46:44Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -22,6 +22,8 @@ updated: 2026-09-24T19:40:05Z
 - 2026-09-24: A small built-in list of EN and NL chat abbreviations (`ChatShorthand`) is never corrected; without it the tuned scorer changed `idd`, `wss` and `egt`.
 - 2026-09-24: The new scorer is the default in this branch so dogfooding needs no switch; the legacy scorer stays one devtools switch away. The release default still waits for the Phase 1 dogfood gate on Bart's phone.
 - 2026-09-24: On-the-spot decisions are the normal path, not a rare fallback: the editor confirms each keystroke asynchronously, so the suggestion batch for a word's last letter lands after space is pressed. The main thread therefore reads a volatile snapshot of loaded models and the constant provider map, never a lock.
+- 2026-09-24: T-005 removals are reviewed lists applied at load time, not edits to the FrequencyWords files, so T-007 can reuse them and the raw source stays intact.
+- 2026-09-24: The error model also prices spelling errors, not only tapping errors: vowel-for-vowel substitution and doubled or undoubled letters are cheaper than their key distance suggests.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.
