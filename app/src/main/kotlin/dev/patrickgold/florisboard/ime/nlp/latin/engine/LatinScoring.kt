@@ -27,6 +27,8 @@ internal data class LatinScoringLanguage(
     val locale: Locale,
     val model: LatinWordModel,
     val isPrimary: Boolean,
+    /** False when the language has no dictionary of its own and borrows the legacy (English) word list. */
+    val hasOwnDictionary: Boolean = true,
 )
 
 /**

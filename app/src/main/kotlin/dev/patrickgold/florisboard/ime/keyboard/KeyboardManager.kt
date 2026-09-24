@@ -938,7 +938,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                         KeyType.CHARACTER, KeyType.NUMERIC ->{
                             val text = data.asString(isForDisplay = false)
                             if (AutocorrectTriggerPolicy.isTrigger(text)) {
-                                nlpManager.autoCommitCandidateFor(editorInstance.activeContent)?.let {
+                                nlpManager.autoCommitCandidateFor(editorInstance.activeContent, trigger = text)?.let {
                                     commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
                                 }
                             }

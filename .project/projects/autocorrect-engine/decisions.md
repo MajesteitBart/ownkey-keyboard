@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T20:13:47Z
+updated: 2026-09-24T20:57:41Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -27,6 +27,10 @@ updated: 2026-09-24T20:13:47Z
 - 2026-09-24: Strength levels are calibrated on usage-weighted tap-noise sets with the recall step averaged over EN, NL and NL+EN, and rare-word sets are capped by wrong-correction rate instead of precision. The previous per-set precision wording could be failed by a handful of corrections.
 - 2026-09-24: License check for T-007. SCOWL (notice license: keep the copyright and permission notice with copies and in documentation) and OpenTaal (BSD-3-Clause or CC BY 3.0) are compatible with shipping inside an Apache-2.0 app. FrequencyWords stays CC BY-SA 4.0, and the adapted lists are offered under the same license. All three are credited in the third-party licenses screen and in `ime/dict/latin/ATTRIBUTION.md`.
 - 2026-09-24: The built dictionary keeps plain text in a log100 format instead of a binary trie. Warm load times on the emulator match the raw lists within 10%, and heap is unchanged, so the conditional trie phase has no trigger yet.
+- 2026-09-24: Apostrophe-less forms come from a reviewed per-language table (`ApostropheForms`) with zero channel cost, not from a cheaper general apostrophe edit. A cheaper general edit also corrected unlisted strings such as `aint` and cost Gentle its 99% precision floor on NL+EN.
+- 2026-09-24: "I" capitalization on mixed-language keyboards uses a word-frequency comparison of the words in the current sentence (at most the last four), not the dictionary-membership language weights. The Dutch list knows many common English words from subtitles, so membership alone never lets English lead.
+- 2026-09-24: Phase 3 bigrams come from Tatoeba (CC BY 2.0 FR), with sentence ids divisible by 10 held out for the benchmark. OpenSubtitles through OPUS has no stated redistribution license, and the Leipzig Corpora Collection terms could not be confirmed, so neither ships. Probe numbers are in T-009.
+- 2026-09-24: `predictive-typing-quality-trust` T-001 and T-003 stay as they are for now. Every other task in that project depends on one of them, and they are linked to Linear, so a status change would cascade into Linear at the next sync. The content is covered here (benchmark: T-001; policy: T-004 and T-006); the status change is Bart's call.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.
@@ -40,7 +44,7 @@ updated: 2026-09-24T20:13:47Z
 
 ## Open decision questions
 
-1. Bigram corpus and size budget for Phase 3. Options: OpenSubtitles bigrams through OPUS (closest to chat register, license needs checking per sub-corpus), Wikipedia (CC BY-SA, formal register), Tatoeba sentences (CC BY, small and conversational). Recommendation: probe OpenSubtitles plus Tatoeba first, with a budget of at most 3 MB compressed per language.
-2. Default strength once Phase 1 passes. Recommendation: Normal, because the precision gate (97% or better) already encodes the trust requirement, and Gentle would hide most of the improvement.
-3. Validity whitelists for Phase 2. Recommendation: SCOWL for English and OpenTaal for Dutch. Both have permissive licenses that look compatible with Apache-2.0, but that needs a check before they ship.
+1. Resolved 2026-09-24 (T-009: Tatoeba, well under budget). Bigram corpus and size budget for Phase 3. Options: OpenSubtitles bigrams through OPUS (closest to chat register, license needs checking per sub-corpus), Wikipedia (CC BY-SA, formal register), Tatoeba sentences (CC BY, small and conversational). Recommendation: probe OpenSubtitles plus Tatoeba first, with a budget of at most 3 MB compressed per language.
+2. Resolved 2026-09-24 (Normal, see T-006). Default strength once Phase 1 passes. Recommendation: Normal, because the precision gate (97% or better) already encodes the trust requirement, and Gentle would hide most of the improvement.
+3. Resolved 2026-09-24 (SCOWL and OpenTaal, license check in T-007). Validity whitelists for Phase 2. Recommendation: SCOWL for English and OpenTaal for Dutch. Both have permissive licenses that look compatible with Apache-2.0, but that needs a check before they ship.
 4. Whether to mark `predictive-typing-quality-trust` T-001 and T-003 as superseded, and whether to sync this project to Linear. Both are delivery-state changes outside this project, so they wait for Bart.

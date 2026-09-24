@@ -296,9 +296,10 @@ class NlpManager(context: Context) {
     /**
      * Returns the candidate that should replace the word the user just finished in [content], or null to keep the
      * word as typed. Only uses suggestions computed for exactly this word; when the latest suggestions belong to an
-     * earlier prefix (fast typing), the provider decides on the spot from in-memory data.
+     * earlier prefix (fast typing), the provider decides on the spot from in-memory data. [trigger] is the character
+     * that ends the word.
      */
-    fun autoCommitCandidateFor(content: EditorContent): SuggestionCandidate? {
+    fun autoCommitCandidateFor(content: EditorContent, trigger: String = " "): SuggestionCandidate? {
         // The toggle can flip between the last suggestion run and the next space press.
         if (!prefs.correction.highCertaintyAutocorrectEnabled.get()) return null
         if (!isSuggestionOn()) return null
@@ -313,7 +314,7 @@ class NlpManager(context: Context) {
         ) {
             return null
         }
-        if (!AutocorrectTriggerPolicy.isCorrectableToken(AutocorrectTriggerPolicy.tokenBeforeCursor(content.textBeforeSelection))) {
+        if (!AutocorrectTriggerPolicy.isCorrectableToken(AutocorrectTriggerPolicy.tokenBeforeCursor(content.textBeforeSelection), trigger)) {
             return null
         }
         val selection = AutoCommitSelector.select(

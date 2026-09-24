@@ -39,6 +39,8 @@ data class NoisyChannelParams(
     val transpositionCost: Double = 5.0,
     /** Leaving out an apostrophe ("dont") is a habit, not a slip. */
     val apostropheOmissionCost: Double = 1.5,
+    /** A form listed in [ApostropheForms] ("dont") is how many people spell the word, so it is not an error. */
+    val listedApostropheFormCost: Double = 0.0,
     /** Spelling (not tapping) errors: one vowel written for another, as in "seperate". */
     val vowelSubstitutionCost: Double = 5.5,
     /** Spelling errors: a doubled letter written once ("acomodate") or a single letter doubled ("untill"). */
@@ -119,6 +121,10 @@ internal class NoisyChannelLatinScorer(
         private const val SuggestionContextTailLength = 96
         private const val Unreachable = 1e9
         private val Vowels = setOf('a', 'e', 'i', 'o', 'u', 'y')
+        private const val EnglishLanguage = "en"
+        private val EnglishPronounForms = setOf("i", "i'm", "i've", "i'll", "i'd")
+        private const val LanguageContextWindow = 4
+        private const val MaxTokenLanguageMargin = 3.0
     }
 
     private class Scored(
@@ -146,13 +152,24 @@ internal class NoisyChannelLatinScorer(
             .takeLast(LatinText.RecentContextTokenWindowSize)
         val previousWord = if (endsWithInput) tokens.getOrNull(tokens.size - 2) else null
         val logWeights = languageLogWeights(languages, contextTokens)
+        // Language checks for "I" and apostrophe forms only look at the sentence being written.
+        val sentenceTokens = currentSentenceTokens(request.textBeforeSelection.takeLast(SuggestionContextTailLength), input, request.primaryLocale)
 
         val inputKnown = languages.any { it.model.isKnown(input) } ||
             hooks.isUserDictionaryWord(input) ||
             ChatShorthand.contains(input)
 
+        // A listed form only counts as written in lowercase (or capitalized at the start of a sentence) and when its
+        // language fits the words before it: "MN" is an abbreviation, and "the mn" is not Dutch.
+        val typedAsWord = rawInput == input ||
+            (rawInput == input.replaceFirstChar { it.uppercaseChar() } && isSentenceStart(request.textBeforeSelection, rawInput))
+        val listedForms = if (!typedAsWord) emptySet() else languages.mapNotNull { language ->
+            ApostropheForms.lookup(language.language, input)
+                ?.takeIf { language.model.isKnown(it) && contextFavors(language, languages, sentenceTokens) }
+        }.toSet()
         val candidateWords = LinkedHashSet<String>()
         if (languages.any { it.model.isKnown(input) }) candidateWords.add(input)
+        candidateWords.addAll(listedForms)
         for (language in languages) {
             language.model.lookupPrefixCandidates(input, PrefixLookupCount).forEach { candidateWords.add(it.word) }
             if (input.length >= 2) {
@@ -182,7 +199,11 @@ internal class NoisyChannelLatinScorer(
                 val continuation = hooks.personalContinuationScore(previousWord, word)
                 if (continuation > 0.0) logPrior += ln(1.0 + params.personalContinuationWeight * continuation)
             }
-            val channel = if (word == input) 0.0 else channelCost(input, word, geometry)
+            val channel = when (word) {
+                input -> 0.0
+                in listedForms -> params.listedApostropheFormCost
+                else -> channelCost(input, word, geometry)
+            }
             val finishedScore = logPrior - channel
             val isCompletion = word.length > input.length && word.startsWith(input)
             val displayScore = if (isCompletion) {
@@ -205,10 +226,11 @@ internal class NoisyChannelLatinScorer(
 
         val bestCorrection = scored.filter { it.word != input }.maxByOrNull { it.finishedScore }
         val settings = request.autocorrect
+        // A listed apostrophe form ("im", "zn") is not a guess, so it may fire below the minimum length.
         val isAutoCommit = bestCorrection != null &&
             settings.enabled &&
             !inputKnown &&
-            input.length >= settings.minInputLength &&
+            (input.length >= settings.minInputLength || bestCorrection.word in listedForms) &&
             rawInput.none { it == '\'' || it == '’' || it == '-' } &&
             !hooks.isBlockedByUserPreference(input) &&
             posterior(bestCorrection.finishedScore) >= settings.threshold
@@ -219,21 +241,75 @@ internal class NoisyChannelLatinScorer(
             params.bestFinishedWordFirst -> bestFinished
             else -> null
         }
+        // A lowercase "i", "i'm", "i've", ... becomes "I" when the words before it read as English. Not next to a
+        // language that borrows the English word list: there, "i" may be a word of that language ("and" in Polish).
+        val english = languages.firstOrNull { it.language == EnglishLanguage }
+        val pronounCandidate = scored.firstOrNull { it.word == input && it.locale.language == EnglishLanguage }
+            ?.takeIf {
+                !isAutoCommit && settings.enabled && input in EnglishPronounForms && rawInput.first() == 'i' &&
+                    english != null && languages.all { it === english || it.hasOwnDictionary } &&
+                    contextFavors(english, languages, sentenceTokens) &&
+                    !hooks.isBlockedByUserPreference(input)
+            }
+
         val ranked = scored
             .sortedWith(compareByDescending<Scored> { it.displayScore }.thenByDescending { it.frequency }.thenBy { it.word })
             .let { list -> if (lead != null) listOf(lead) + (list - lead) else list }
+            .let { list -> if (pronounCandidate != null) listOf(pronounCandidate) + (list - pronounCandidate) else list }
             .take(request.maxCandidateCount)
 
         return ranked.map { candidate ->
             LatinScoredCandidate(
                 word = candidate.word,
-                text = LatinText.applyInputCase(rawInput, candidate.word, candidate.locale),
+                text = pronounCase(rawInput, LatinText.applyInputCase(rawInput, candidate.word, candidate.locale), candidate),
                 locale = candidate.locale,
                 confidence = posterior(candidate.finishedScore).coerceIn(0.0, 1.0),
                 editDistance = LatinText.boundedDamerauLevenshtein(input, candidate.word, 3),
-                isAutoCommit = isAutoCommit && candidate === bestCorrection,
+                isAutoCommit = (isAutoCommit && candidate === bestCorrection) || candidate === pronounCandidate,
             )
         }
+    }
+
+    /** English writes the pronoun "I" and its contractions with a capital letter. */
+    private fun pronounCase(rawInput: String, text: String, candidate: Scored): String {
+        if (candidate.locale.language != EnglishLanguage || candidate.word !in EnglishPronounForms) return text
+        // The typed word itself keeps its apostrophe ("i’m" becomes "I’m").
+        if (LatinText.normalizeInputWord(rawInput, candidate.locale) == candidate.word) return "I" + rawInput.drop(1)
+        return text.replaceFirstChar { it.uppercaseChar() }
+    }
+
+    /** The words of the sentence being written, before [input]. A line break also ends a sentence. */
+    private fun currentSentenceTokens(textBefore: String, input: String, locale: Locale): List<String> {
+        val start = textBefore.indexOfLast { it == '.' || it == '!' || it == '?' || it == '\n' } + 1
+        val tokens = LatinText.extractWordTokens(textBefore.substring(start), locale)
+        return if (tokens.lastOrNull() == input) tokens.dropLast(1) else tokens
+    }
+
+    /**
+     * Whether the last few words fit [target] better than any other active language. The Dutch list contains common
+     * English words ("and", "then") from subtitles, so this compares word frequencies instead of only checking which
+     * dictionaries know a word. The primary language keeps the lead unless the words lean clearly toward another
+     * language; a secondary language needs at least one clearly matching word. Chat abbreviations such as "lol" (also
+     * a Dutch word) count for no language.
+     */
+    private fun contextFavors(
+        target: LatinScoringLanguage,
+        languages: List<LatinScoringLanguage>,
+        sentenceTokens: List<String>,
+    ): Boolean {
+        val others = languages.filter { it !== target }
+        if (others.isEmpty()) return true
+        val recent = sentenceTokens.filterNot { ChatShorthand.contains(it) }.takeLast(LanguageContextWindow)
+        if (recent.isEmpty()) return target.isPrimary
+        fun logProbability(language: LatinScoringLanguage, token: String): Double {
+            val frequency = language.model.words[token] ?: return params.unknownWordLogProb
+            return ln(frequency.toDouble()) - ln(language.model.totalFrequency)
+        }
+        val lead = recent.sumOf { token ->
+            val margin = logProbability(target, token) - others.maxOf { logProbability(it, token) }
+            margin.coerceIn(-MaxTokenLanguageMargin, MaxTokenLanguageMargin)
+        }
+        return if (target.isPrimary) lead > -MaxTokenLanguageMargin else lead >= MaxTokenLanguageMargin
     }
 
     private fun literalScore(rawInput: String, input: String, textBeforeSelection: String): Double {

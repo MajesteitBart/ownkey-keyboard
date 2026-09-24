@@ -1,5 +1,5 @@
 # ownkey-latin-dictionary v1 format=log100
-# language=en words=40821
+# language=en words=40818
 # source: FrequencyWords 2018 en_50k (hermitdave, CC BY-SA 4.0)
 # source: SCOWL 2020.12.07 sizes 10-70, names 10-95 (Kevin Atkinson, see SCOWL Copyright) as validity list
 you	1718
@@ -38611,7 +38611,6 @@ unsophisticated	521
 viability	521
 victimless	521
 visionaries	521
-wheres	521
 wolfsbane	521
 aberrant	520
 achy	520
@@ -38993,7 +38992,6 @@ lucerne	518
 madelyn	518
 maples	518
 melton	518
-mn	518
 monologues	518
 muskrat	518
 nari	518
@@ -40369,7 +40367,6 @@ gilgamesh	509
 hadron	509
 heatstroke	509
 herbalist	509
-heres	509
 hideki	509
 hin	509
 impeccably	509

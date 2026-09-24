@@ -46,6 +46,12 @@ class AutocorrectTriggerPolicyTest : FunSpec({
         ).forEach { AutocorrectTriggerPolicy.isCorrectableToken(it).shouldBeFalse() }
     }
 
+    test("a single letter before a period is an abbreviation or a list marker") {
+        AutocorrectTriggerPolicy.isCorrectableToken("i", trigger = ".").shouldBeFalse()
+        AutocorrectTriggerPolicy.isCorrectableToken("i", trigger = " ").shouldBeTrue()
+        AutocorrectTriggerPolicy.isCorrectableToken("teh", trigger = ".").shouldBeTrue()
+    }
+
     test("a trailing dot does not make a word a domain") {
         AutocorrectTriggerPolicy.isCorrectableToken("Dr.").shouldBeTrue()
     }

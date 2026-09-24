@@ -70,7 +70,8 @@ EN_APOSTROPHE_LESS = {
     "shouldnt": "shouldn't", "havent": "haven't", "arent": "aren't", "hasnt": "hasn't", "werent": "weren't",
     "theyre": "they're", "whats": "what's", "hes": "he's", "shes": "she's", "theres": "there's",
     "youve": "you've", "youll": "you'll", "theyll": "they'll", "theyve": "they've", "wouldve": "would've",
-    "couldve": "could've", "shouldve": "should've", "aint": "ain't", "whos": "who's",
+    "couldve": "could've", "shouldve": "should've", "aint": "ain't", "whos": "who's", "heres": "here's",
+    "wheres": "where's",
 }
 EN_SINGLE_LETTERS = {"a", "i", "k", "u", "x"}
 

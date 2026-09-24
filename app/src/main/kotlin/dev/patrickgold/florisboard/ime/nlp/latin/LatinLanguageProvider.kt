@@ -119,12 +119,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val locale: FlorisLocale,
         val model: LatinWordModel,
         val isPrimary: Boolean,
+        val hasOwnDictionary: Boolean,
     ) {
         fun toScoringLanguage() = LatinScoringLanguage(
             language = language,
             locale = locale.base,
             model = model,
             isPrimary = isPrimary,
+            hasOwnDictionary = hasOwnDictionary,
         )
     }
 
@@ -373,7 +375,15 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 val language = normalizeLanguageCode(locale.language)
                 if (!seenLanguages.add(language)) return@forEachIndexed
                 val model = models[language] ?: return@forEachIndexed
-                languages.add(LatinScoringLanguage(language, locale.base, model, isPrimary = index == 0))
+                languages.add(
+                    LatinScoringLanguage(
+                        language = language,
+                        locale = locale.base,
+                        model = model,
+                        isPrimary = index == 0,
+                        hasOwnDictionary = model !== models[LegacyModelKey],
+                    )
+                )
             }
         }
         return languages
@@ -502,8 +512,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             if (!seenLanguages.add(language)) return@forEachIndexed
 
             ensureLanguageModelLoaded(language)
-            val model = languageModels.withLock { models ->
-                models[language] ?: models[LegacyModelKey] ?: emptyModel
+            val (model, hasOwnDictionary) = languageModels.withLock { models ->
+                val model = models[language] ?: models[LegacyModelKey] ?: emptyModel
+                model to (model !== models[LegacyModelKey])
             }
             contexts.add(
                 SubtypeLanguageContext(
@@ -511,6 +522,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     locale = locale,
                     model = model,
                     isPrimary = index == 0,
+                    hasOwnDictionary = hasOwnDictionary,
                 )
             )
         }
@@ -519,8 +531,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         val primaryLanguage = normalizeLanguageCode(subtype.primaryLocale.language)
         ensureLanguageModelLoaded(primaryLanguage)
-        val fallbackModel = languageModels.withLock { models ->
-            models[primaryLanguage] ?: models[LegacyModelKey] ?: emptyModel
+        val (fallbackModel, hasOwnDictionary) = languageModels.withLock { models ->
+            val model = models[primaryLanguage] ?: models[LegacyModelKey] ?: emptyModel
+            model to (model !== models[LegacyModelKey])
         }
         return listOf(
             SubtypeLanguageContext(
@@ -528,6 +541,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 locale = subtype.primaryLocale,
                 model = fallbackModel,
                 isPrimary = true,
+                hasOwnDictionary = hasOwnDictionary,
             )
         )
     }
@@ -1003,12 +1017,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         autocorrectPolicySignature: String,
         isEmailField: Boolean,
     ): SuggestCacheKey {
-        val hasCurrentWordInput = content.composingText.isNotBlank() || content.currentWordText.isNotBlank()
-        val textBeforeTail = if (hasCurrentWordInput) {
-            ""
-        } else {
-            content.textBeforeSelection.takeLast(SuggestionContextTailLength)
-        }
+        // Also while a word is typed: the words before it decide "I" and apostrophe forms such as "z'n".
+        val textBeforeTail = content.textBeforeSelection.takeLast(SuggestionContextTailLength)
         return SuggestCacheKey(
             language = subtype.locales()
                 .joinToString(separator = ",") { locale -> normalizeLanguageCode(locale.language) },

@@ -92,6 +92,7 @@ internal object BenchmarkData {
     fun enOnly(raw: Boolean = false) = listOf(en().slot(isPrimary = true, raw = raw))
     fun nlOnly(raw: Boolean = false) = listOf(nl().slot(isPrimary = true, raw = raw))
     fun nlEn(raw: Boolean = false) = listOf(nl().slot(isPrimary = true, raw = raw), en().slot(isPrimary = false, raw = raw))
+    fun enNl(raw: Boolean = false) = listOf(en().slot(isPrimary = true, raw = raw), nl().slot(isPrimary = false, raw = raw))
 
     fun resourceLines(name: String): List<String> {
         val stream = BenchmarkData::class.java.getResourceAsStream("/autocorrect/$name")

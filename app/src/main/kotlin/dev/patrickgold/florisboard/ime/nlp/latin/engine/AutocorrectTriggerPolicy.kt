@@ -40,12 +40,14 @@ object AutocorrectTriggerPolicy {
     }
 
     /**
-     * Whether the whitespace-delimited token directly before the cursor may be autocorrected. Tokens that look like
-     * e-mail addresses, URLs, paths, handles or numbers are left alone.
+     * Whether the whitespace-delimited token directly before the cursor may be autocorrected when [trigger] is typed.
+     * Tokens that look like e-mail addresses, URLs, paths, handles or numbers are left alone, and so is a single
+     * letter before a period ("i.e.", or "i." in a list).
      */
-    fun isCorrectableToken(tokenBeforeCursor: String): Boolean {
+    fun isCorrectableToken(tokenBeforeCursor: String, trigger: String = " "): Boolean {
         val token = tokenBeforeCursor.trimStart('(', '"', '\'', '“', '‘', '[')
         if (token.isEmpty()) return false
+        if (trigger == "." && token.length == 1) return false
         if (token.any { it.isDigit() || it == '@' || it == '/' || it == '\\' || it == '#' || it == '_' }) return false
         val lowercase = token.lowercase()
         if (lowercase.startsWith("www") || lowercase.startsWith("http")) return false
