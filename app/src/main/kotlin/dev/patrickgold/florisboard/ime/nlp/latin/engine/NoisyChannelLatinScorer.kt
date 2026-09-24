@@ -57,12 +57,38 @@ data class NoisyChannelParams(
 )
 
 /**
- * When autocorrect may replace a word: [threshold] is the minimum posterior probability of the correction.
+ * How eagerly autocorrect replaces words. Calibrated on the tap-noise benchmark sets; see
+ * `AutocorrectStrengthCalibrationTest`. Off is the separate autocorrect switch.
+ */
+enum class AutocorrectStrength(val threshold: Double, val literalBias: Double) {
+    /** Only the clearest typos: at least 99% precision on the tap-noise sets. */
+    GENTLE(threshold = 0.985, literalBias = 2.0),
+    /** Common typos: at least 97% precision. The default. */
+    NORMAL(threshold = 0.95, literalBias = 0.0),
+    /** More typos, at the cost of an occasional wrong correction: at least 95% precision. */
+    STRONG(threshold = 0.80, literalBias = -1.0);
+
+    fun toSettings(enabled: Boolean) = AutocorrectSettings(enabled = enabled, threshold = threshold, literalBias = literalBias)
+
+    companion object {
+        /** Maps the pre-rebuild minimum-confidence pref (hidden, default 88%) to the nearest level. */
+        fun fromLegacyMinConfidencePercent(percent: Int): AutocorrectStrength = when {
+            percent >= 95 -> GENTLE
+            percent <= 75 -> STRONG
+            else -> NORMAL
+        }
+    }
+}
+
+/**
+ * When autocorrect may replace a word: [threshold] is the minimum posterior probability of the correction, and
+ * [literalBias] is added to the log-probability of keeping the typed word.
  */
 data class AutocorrectSettings(
     val enabled: Boolean = true,
     val threshold: Double = DefaultThreshold,
     val minInputLength: Int = 3,
+    val literalBias: Double = 0.0,
 ) {
     /**
      * Shifts the threshold for an app profile. [percent] above 100 corrects more eagerly, below 100 more carefully.
@@ -166,7 +192,11 @@ internal class NoisyChannelLatinScorer(
         }
 
         // "Keep what I typed" competes with every candidate. A known word is already a candidate itself.
-        val literalScore = if (input in candidateWords) null else literalScore(rawInput, input, request.textBeforeSelection)
+        val literalScore = if (input in candidateWords) {
+            null
+        } else {
+            literalScore(rawInput, input, request.textBeforeSelection) + request.autocorrect.literalBias
+        }
         var logNormalizer = literalScore ?: Double.NEGATIVE_INFINITY
         scored.forEach { logNormalizer = logSumExp(logNormalizer, it.finishedScore) }
         fun posterior(score: Double) = exp(score - logNormalizer)

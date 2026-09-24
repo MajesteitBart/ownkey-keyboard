@@ -1,12 +1,10 @@
 ---
 id: T-007
 name: Dictionary build pipeline and contraction rebuild
-status: blocked
-blocked_owner: ownkey-keyboard-team
-blocked_check_back: After dependencies are done: T-004, T-005
+status: ready
 workstream: WS-A
 created: 2026-09-24T11:31:43Z
-updated: 2026-09-24T11:31:43Z
+updated: 2026-09-24T19:55:57Z
 linear_issue_id:
 github_issue:
 github_pr:

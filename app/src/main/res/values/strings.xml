@@ -523,6 +523,13 @@
     <string name="pref__correction__title" comment="Preference group title">Corrections</string>
     <string name="pref__correction__autocorrect__label" comment="Preference title">Autocorrect</string>
     <string name="pref__correction__autocorrect__summary" comment="Preference summary">Replace a mistyped word with the word you meant when you press space</string>
+    <string name="pref__correction__autocorrect_strength__label" comment="Preference title">Autocorrect strength</string>
+    <string name="enum__autocorrect_strength__gentle" comment="Enum value label">Gentle</string>
+    <string name="enum__autocorrect_strength__gentle__description" comment="Enum value description">Fixes only the clearest typos</string>
+    <string name="enum__autocorrect_strength__normal" comment="Enum value label">Normal</string>
+    <string name="enum__autocorrect_strength__normal__description" comment="Enum value description">Fixes common typos. Recommended</string>
+    <string name="enum__autocorrect_strength__strong" comment="Enum value label">Strong</string>
+    <string name="enum__autocorrect_strength__strong__description" comment="Enum value description">Fixes more typos, and now and then changes a word you meant</string>
     <string name="pref__correction__auto_capitalization__label" comment="Preference title">Auto-capitalization</string>
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Capitalize words based on the current input context</string>
     <string name="pref__correction__app_specific_autocorrect_profiles_enabled__label" comment="Preference title">App-specific autocorrect profiles</string>

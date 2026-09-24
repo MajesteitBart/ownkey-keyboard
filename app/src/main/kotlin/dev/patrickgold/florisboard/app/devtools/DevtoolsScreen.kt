@@ -32,6 +32,7 @@ import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionArrangeme
 import dev.patrickgold.florisboard.lib.compose.FlorisConfirmDeleteDialog
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
@@ -87,6 +88,25 @@ fun DevtoolsScreen() = FlorisScreen {
                 prefs.devtools.autocorrectLegacyEngine,
                 title = stringRes(R.string.devtools__autocorrect_legacy_engine__label),
                 summary = stringRes(R.string.devtools__autocorrect_legacy_engine__summary),
+                enabledIf = { prefs.devtools.enabled isEqualTo true },
+            )
+            // Autocorrect calibration: per-profile threshold shifts relative to the chosen strength.
+            DialogSliderPreference(
+                prefs.correction.appSpecificAutocorrectChatAggressivenessPercent,
+                title = stringRes(R.string.pref__correction__app_specific_autocorrect_chat_aggressiveness__label),
+                valueLabel = { percent -> stringRes(R.string.unit__percent__symbol, "v" to percent) },
+                min = 70,
+                max = 130,
+                stepIncrement = 2,
+                enabledIf = { prefs.devtools.enabled isEqualTo true },
+            )
+            DialogSliderPreference(
+                prefs.correction.appSpecificAutocorrectEmailAggressivenessPercent,
+                title = stringRes(R.string.pref__correction__app_specific_autocorrect_email_aggressiveness__label),
+                valueLabel = { percent -> stringRes(R.string.unit__percent__symbol, "v" to percent) },
+                min = 70,
+                max = 130,
+                stepIncrement = 2,
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
             SwitchPreference(

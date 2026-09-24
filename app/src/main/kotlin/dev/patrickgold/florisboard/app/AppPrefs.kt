@@ -42,6 +42,7 @@ import dev.patrickgold.florisboard.ime.media.emoji.EmojiSkinTone
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
 import dev.patrickgold.florisboard.ime.nlp.latin.NeverCorrectWords
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectStrength
 import dev.patrickgold.florisboard.ime.smartbar.CandidatesDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
@@ -174,6 +175,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val highCertaintyAutocorrectEnabled = boolean(
             key = "correction__high_certainty_autocorrect_enabled",
             default = true,
+        )
+        /** Off is [highCertaintyAutocorrectEnabled]; this picks how eagerly autocorrect works when on. */
+        val autocorrectStrength = enum(
+            key = "correction__autocorrect_strength",
+            default = AutocorrectStrength.NORMAL,
+        )
+        val autocorrectStrengthMigrated = boolean(
+            key = "correction__autocorrect_strength_migrated",
+            default = false,
         )
         val highCertaintyAutocorrectMinConfidencePercent = int(
             key = "correction__high_certainty_autocorrect_min_confidence_percent",

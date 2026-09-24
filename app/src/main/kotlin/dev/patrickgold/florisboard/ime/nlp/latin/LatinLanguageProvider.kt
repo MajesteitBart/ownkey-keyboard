@@ -824,7 +824,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         )
         val profile = appSpecificPolicy.resolveProfile(appContext)
         val effectiveConfig = appSpecificPolicy.applyProfile(baseConfig, profile)
-        val baseSettings = AutocorrectSettings(enabled = baseConfig.enabled)
+        val baseSettings = prefs.correction.autocorrectStrength.get().toSettings(enabled = baseConfig.enabled)
         val settings = if (prefs.correction.appSpecificAutocorrectProfilesEnabled.get()) {
             baseSettings.withAggressiveness(appSpecificPolicy.profileAggressivenessPercent(profile))
         } else {
