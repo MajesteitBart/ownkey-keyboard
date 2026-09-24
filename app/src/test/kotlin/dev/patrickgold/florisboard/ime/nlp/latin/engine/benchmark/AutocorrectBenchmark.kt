@@ -94,7 +94,13 @@ internal data class CleanTextResult(
     val words: Int,
     val falseCorrections: Int,
     val examples: List<String>,
+    /** Correctly typed dictionary words, and how many of them were not the first suggestion. */
+    val knownWords: Int = 0,
+    val firstChanged: Int = 0,
+    val firstChangedExamples: List<String> = emptyList(),
 ) {
+    val firstChangedPct: Double get() = if (knownWords == 0) 0.0 else 100.0 * firstChanged / knownWords
+
     val perThousand: Double get() = if (words == 0) 0.0 else 1000.0 * falseCorrections / words
 }
 
@@ -204,7 +210,10 @@ internal class AutocorrectBenchmark(
     suspend fun evaluateCleanText(set: String, languages: List<LatinScoringLanguage>, sentences: List<String>): CleanTextResult {
         var words = 0
         var falseCorrections = 0
+        var knownWords = 0
+        var firstChanged = 0
         val examples = mutableListOf<String>()
+        val firstChangedExamples = mutableListOf<String>()
         val locale = languages.first().locale
         for (sentence in sentences) {
             var searchFrom = 0
@@ -217,14 +226,23 @@ internal class AutocorrectBenchmark(
                 words++
                 val wordEnd = sentence.indexOf(word, start) + word.length
                 val result = score(languages, word, sentence.substring(0, wordEnd))
+                val normalized = LatinText.normalizeInputWord(word, locale)
+                if (languages.any { it.model.isKnown(normalized) }) {
+                    knownWords++
+                    val first = result.firstOrNull()?.word
+                    if (first != null && first != normalized) {
+                        firstChanged++
+                        if (firstChangedExamples.size < 12) firstChangedExamples.add("$word->$first")
+                    }
+                }
                 val auto = result.firstOrNull { it.isAutoCommit } ?: continue
-                if (auto.word != LatinText.normalizeInputWord(word, locale)) {
+                if (auto.word != normalized) {
                     falseCorrections++
                     if (examples.size < 12) examples.add("$word->${auto.text}")
                 }
             }
         }
-        return CleanTextResult(set, words, falseCorrections, examples)
+        return CleanTextResult(set, words, falseCorrections, examples, knownWords, firstChanged, firstChangedExamples)
     }
 
     /**
@@ -337,10 +355,13 @@ internal class BenchmarkReport(private val title: String) {
         }
         if (cleanResults.isNotEmpty()) {
             appendLine()
-            appendLine("| Clean text | Words | False corrections | Per 1,000 | Examples |")
-            appendLine("| --- | --- | --- | --- | --- |")
+            appendLine("| Clean text | Words | False corrections | Per 1,000 | Examples | Known word not first | Examples |")
+            appendLine("| --- | --- | --- | --- | --- | --- | --- |")
             cleanResults.forEach { r ->
-                appendLine("| ${r.set} | ${r.words} | ${r.falseCorrections} | ${f(r.perThousand, 2)} | ${r.examples.joinToString(", ")} |")
+                appendLine(
+                    "| ${r.set} | ${r.words} | ${r.falseCorrections} | ${f(r.perThousand, 2)} | ${r.examples.joinToString(", ")} | " +
+                        "${f(r.firstChangedPct, 2)}% | ${r.firstChangedExamples.joinToString(", ")} |"
+                )
             }
         }
         if (oovResults.isNotEmpty()) {

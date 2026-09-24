@@ -56,6 +56,22 @@ data class NoisyChannelParams(
     /** Display ranking only: cost per letter the user has not typed yet. */
     val completionCostPerLetter: Double = 0.8,
     val personalContinuationWeight: Double = 4.0,
+    /**
+     * Word context (Witten-Bell): after a previous word seen N times with T different successors, the pair
+     * probability gets weight N / (N + [bigramBackoffWeight] * T) and the plain word frequency the rest.
+     */
+    val bigramBackoffWeight: Double = 1.0,
+    /** Writing one word of a [ConfusionSets] pair for the other ("then" for "than"): a spelling habit. */
+    val confusionCost: Double = 3.0,
+    /**
+     * Language weights on mixed keyboards: every recent word adds how much better it fits each language (word-pair
+     * probability, capped at [languageEvidenceCap] nats per word), and each language keeps at least
+     * [languageSwitchFloor] of the weight so a word from the other language can still be corrected.
+     */
+    val languageEvidenceCap: Double = 3.0,
+    val languageSwitchFloor: Double = 0.05,
+    /** Off: language weights from which dictionaries know the recent words, as before T-012. */
+    val languageWeightsFromContext: Boolean = true,
     /** Put the most likely finished word first; later slots favor completions of the typed prefix. */
     val bestFinishedWordFirst: Boolean = true,
 )
@@ -125,6 +141,7 @@ internal class NoisyChannelLatinScorer(
         private val EnglishPronounForms = setOf("i", "i'm", "i've", "i'll", "i'd")
         private const val LanguageContextWindow = 4
         private const val MaxTokenLanguageMargin = 3.0
+        private val SentenceEnds = setOf('.', '!', '?', ';', ':', '\n')
     }
 
     private class Scored(
@@ -153,7 +170,11 @@ internal class NoisyChannelLatinScorer(
         val previousWord = if (endsWithInput) tokens.getOrNull(tokens.size - 2) else null
         val logWeights = languageLogWeights(languages, contextTokens)
         // Language checks for "I" and apostrophe forms only look at the sentence being written.
-        val sentenceTokens = currentSentenceTokens(request.textBeforeSelection.takeLast(SuggestionContextTailLength), input, request.primaryLocale)
+        val textBefore = request.textBeforeSelection.takeLast(SuggestionContextTailLength)
+        val sentenceTokens = currentSentenceTokens(textBefore, input, request.primaryLocale)
+        // The word before the typed one in the same sentence. The first word of a sentence gets no word context: the
+        // sentence starts in the bigram counts are dominated by a few stock openings ("Tom", "What").
+        val contextWord = sentenceTokens.lastOrNull()
 
         val inputKnown = languages.any { it.model.isKnown(input) } ||
             hooks.isUserDictionaryWord(input) ||
@@ -170,6 +191,11 @@ internal class NoisyChannelLatinScorer(
         val candidateWords = LinkedHashSet<String>()
         if (languages.any { it.model.isKnown(input) }) candidateWords.add(input)
         candidateWords.addAll(listedForms)
+        // Real words that are often written for another word; they only reorder suggestions.
+        val confusions = if (!languages.any { it.model.isKnown(input) }) emptySet() else languages.flatMap { language ->
+            ConfusionSets.alternatives(language.language, input) { language.model.isKnown(it) }
+        }.toSet()
+        candidateWords.addAll(confusions)
         for (language in languages) {
             language.model.lookupPrefixCandidates(input, PrefixLookupCount).forEach { candidateWords.add(it.word) }
             if (input.length >= 2) {
@@ -186,8 +212,9 @@ internal class NoisyChannelLatinScorer(
             var logPrior = Double.NEGATIVE_INFINITY
             for (language in languages) {
                 val frequency = language.model.words[word] ?: continue
-                val languageScore = logWeights.getValue(language.language) +
-                    ln(frequency.toDouble()) - ln(language.model.totalFrequency)
+                val unigram = frequency / language.model.totalFrequency
+                val probability = if (contextWord == null) unigram else withContext(language.model.bigrams, contextWord, word, unigram)
+                val languageScore = logWeights.getValue(language.language) + ln(probability)
                 logPrior = logSumExp(logPrior, languageScore)
                 if (languageScore > bestLanguageScore) {
                     bestLanguageScore = languageScore
@@ -202,6 +229,7 @@ internal class NoisyChannelLatinScorer(
             val channel = when (word) {
                 input -> 0.0
                 in listedForms -> params.listedApostropheFormCost
+                in confusions -> minOf(params.confusionCost, channelCost(input, word, geometry))
                 else -> channelCost(input, word, geometry)
             }
             val finishedScore = logPrior - channel
@@ -278,9 +306,27 @@ internal class NoisyChannelLatinScorer(
         return text.replaceFirstChar { it.uppercaseChar() }
     }
 
-    /** The words of the sentence being written, before [input]. A line break also ends a sentence. */
+    /** ln P(token | previous) in [language], or the unknown-word probability when the language lacks the word. */
+    private fun contextLogProbability(language: LatinScoringLanguage, previous: String?, token: String): Double {
+        val frequency = language.model.words[token] ?: return params.unknownWordLogProb
+        val unigram = frequency / language.model.totalFrequency
+        return ln(if (previous == null) unigram else withContext(language.model.bigrams, previous, token, unigram))
+    }
+
+    /** P(word | previous word), interpolated with the plain word probability [unigram]. */
+    private fun withContext(bigrams: LatinBigramModel, previous: String, word: String, unigram: Double): Double {
+        val total = bigrams.totalAfter(previous)
+        if (total <= 0.0) return unigram
+        val weight = total / (total + params.bigramBackoffWeight * bigrams.distinctAfter(previous))
+        return weight * bigrams.count(previous, word) / total + (1.0 - weight) * unigram
+    }
+
+    /**
+     * The words of the sentence being written, before [input]. A line break, ";" and ":" also end a sentence, as in
+     * the bigram counts.
+     */
     private fun currentSentenceTokens(textBefore: String, input: String, locale: Locale): List<String> {
-        val start = textBefore.indexOfLast { it == '.' || it == '!' || it == '?' || it == '\n' } + 1
+        val start = textBefore.indexOfLast { it in SentenceEnds } + 1
         val tokens = LatinText.extractWordTokens(textBefore.substring(start), locale)
         return if (tokens.lastOrNull() == input) tokens.dropLast(1) else tokens
     }
@@ -331,6 +377,28 @@ internal class NoisyChannelLatinScorer(
     }
 
     private fun languageLogWeights(languages: List<LatinScoringLanguage>, contextTokens: List<String>): Map<String, Double> {
+        if (languages.size == 1) return mapOf(languages.first().language to 0.0)
+        val recent = contextTokens.filterNot { ChatShorthand.contains(it) }
+        if (params.languageWeightsFromContext && recent.isNotEmpty()) {
+            val priors = mixedLanguageScoringPolicy.computeLanguageWeights(
+                languages.map { LanguageConfidenceSignal(it.language, it.isPrimary, 0.0, hasExactInputMatch = false) }
+            )
+            val scores = languages.associate { it.language to ln(priors.getValue(it.language).coerceAtLeast(1e-6)) }.toMutableMap()
+            recent.forEachIndexed { index, token ->
+                val previous = recent.getOrNull(index - 1)
+                val fits = languages.map { language -> language.language to contextLogProbability(language, previous, token) }
+                val best = fits.maxOf { it.second }
+                for ((language, fit) in fits) {
+                    scores[language] = scores.getValue(language) + maxOf(fit - best, -params.languageEvidenceCap)
+                }
+            }
+            val max = scores.values.max()
+            val sum = scores.values.sumOf { exp(it - max) }
+            val floor = params.languageSwitchFloor
+            return scores.mapValues { (_, score) ->
+                ln(floor + (1.0 - floor * languages.size) * exp(score - max) / sum)
+            }
+        }
         val signals = languages.map { language ->
             val evidence = contextTokens.mapIndexed { index, token ->
                 if (!language.model.isKnown(token)) 0.0 else 0.6 + 0.4 * ((index + 1).toDouble() / contextTokens.size)

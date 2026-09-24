@@ -62,5 +62,22 @@ class AutocorrectBenchmarkReportTest : FunSpec({
         report.oovResults.forEach { result ->
             withClue(result.set) { result.changed shouldBeLessThanOrEqual 3 }
         }
+
+        // Phase 3 floors, just below the values measured when T-012 passed.
+        typos.getValue("context EN, EN").rightPct shouldBeGreaterThanOrEqual 75.0
+        typos.getValue("context NL, NL").rightPct shouldBeGreaterThanOrEqual 66.0
+        typos.getValue("context NL, NL+EN").rightPct shouldBeGreaterThanOrEqual 65.0
+        typos.getValue("context EN, NL+EN").rightPct shouldBeGreaterThanOrEqual 73.0
+        val realWords = report.realWordResults.associateBy { it.set }
+        realWords.getValue("real-word EN, EN").firstPct shouldBeGreaterThanOrEqual 60.0
+        realWords.getValue("real-word NL, NL").firstPct shouldBeGreaterThanOrEqual 45.0
+        report.realWordResults.forEach { result ->
+            withClue("${result.set} is never autocorrected") { result.autoCorrected shouldBeLessThanOrEqual 0 }
+        }
+        report.cleanResults.forEach { result ->
+            withClue("${result.set}: correctly typed word replaced as first suggestion") {
+                result.firstChangedPct shouldBeLessThanOrEqual 2.0
+            }
+        }
     }
 })

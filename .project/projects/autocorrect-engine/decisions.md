@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T20:57:41Z
+updated: 2026-09-24T21:38:03Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -31,6 +31,9 @@ updated: 2026-09-24T20:57:41Z
 - 2026-09-24: "I" capitalization on mixed-language keyboards uses a word-frequency comparison of the words in the current sentence (at most the last four), not the dictionary-membership language weights. The Dutch list knows many common English words from subtitles, so membership alone never lets English lead.
 - 2026-09-24: Phase 3 bigrams come from Tatoeba (CC BY 2.0 FR), with sentence ids divisible by 10 held out for the benchmark. OpenSubtitles through OPUS has no stated redistribution license, and the Leipzig Corpora Collection terms could not be confirmed, so neither ships. Probe numbers are in T-009.
 - 2026-09-24: `predictive-typing-quality-trust` T-001 and T-003 stay as they are for now. Every other task in that project depends on one of them, and they are linked to Linear, so a status change would cascade into Linear at the next sync. The content is covered here (benchmark: T-001; policy: T-004 and T-006); the status change is Bart's call.
+- 2026-09-24: Word context scores the typed word against the previous word of the same sentence only. The first word of a sentence gets no context, because Tatoeba's sentence starts are a few stock openings; next-word predictions may still use the sentence start.
+- 2026-09-24: Real-word errors (then/than, word/wordt) are handled by confusion alternatives that only reorder suggestions. They never auto-commit (AC-011), since a wrong replacement of a correctly spelled word costs more trust than a missed fix.
+- 2026-09-24: The Phase 3 targets for Dutch context typos (72%) and Dutch real-word errors (60%) move to Phase 4. Left context and pair counts from 1.2M Dutch tokens do not carry the missing signal; touch positions and a better candidate search do.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.
