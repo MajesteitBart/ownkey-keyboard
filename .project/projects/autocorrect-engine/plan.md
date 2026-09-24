@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 status: active
 lead: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T20:57:41Z
+updated: 2026-09-24T21:52:01Z
 linear_project_id:
 risk_level: medium
 spec_status_at_plan_time: planned
@@ -98,11 +98,13 @@ Gate: the spec's final real-world and mixed-language targets, plus a real-word e
 
 Tasks: T-009 corpus probe (done: Tatoeba), T-010 context benchmark sets, T-011 bigram asset and loader, T-012 context in scoring, T-013 next-word predictions. The isolated-word tap sets cannot show a context gain, so the mixed-language recall target is measured on the context typo sets.
 
-### Phase 4: touch model (tasks created after Phase 3)
+### Phase 4: touch model (T-014 to T-016)
 
 Pass per-character tap positions for the composing word from the key input path to the engine, next to `EditorContent`. Substitution cost becomes the negative log likelihood of the tap under each key's Gaussian. Optionally learn a per-user offset on device. This is the signal that tells `yout` meaning "your" apart from "you".
 
 Gate: the spec's final synthetic targets on the tap-noise set.
+
+Tasks: T-014 tap positions from the keyboard, T-015 touch likelihood in the error model, T-016 candidate search for two-edit typos. Two Phase 3 targets moved here: Dutch context typos >= 72% (T-016) and Dutch real-word errors >= 60% (open; they mostly need the word after the error, which no phase provides yet).
 
 ### Phase 5: trust polish (tasks created later)
 
