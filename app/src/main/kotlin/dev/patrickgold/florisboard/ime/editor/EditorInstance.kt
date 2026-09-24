@@ -19,6 +19,10 @@ package dev.patrickgold.florisboard.ime.editor
 import android.content.ClipDescription
 import android.content.ContentUris
 import android.content.Context
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextUtils
+import android.text.style.SuggestionSpan
 import android.view.KeyEvent
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
@@ -339,12 +343,16 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * Phantom space will be activated if the text is committed.
      *
      * @param candidate The candidate to complete in this editor.
+     * @param autocorrectedFrom The word the user typed, when [candidate] replaces it as an autocorrection. The editor
+     *  then gets the standard autocorrection mark, so text fields that support it underline the word and offer
+     *  the typed word on tap.
      *
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
-    fun commitCompletion(candidate: SuggestionCandidate): Boolean {
+    fun commitCompletion(candidate: SuggestionCandidate, autocorrectedFrom: String? = null): Boolean {
         val text = candidate.text.toString()
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
+        val styled = autocorrectionMarked(text, autocorrectedFrom)
         val content = activeContent
         return if (content.composing.isValid) {
             val spacingDecision = AcceptedSuggestionSpacingPolicy.forComposingReplacement(content)
@@ -353,20 +361,36 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                 candidate = candidate,
                 insertSeparator = spacingDecision.shouldActivatePhantomSpace,
             )
-            super.finalizeComposingText(text, cursorAdvanceAfterText = spacingDecision.cursorAdvanceAfterCommit)
+            super.finalizeComposingText(text, cursorAdvanceAfterText = spacingDecision.cursorAdvanceAfterCommit, styledText = styled)
         } else {
             val isPhantomSpaceActive = phantomSpace.determine(text)
             val isDeferredAutoSpaceActive = resolveDeferredAutoSpace(text).insertSpace
             autoSpace.setInactive()
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
             return if (isPhantomSpaceActive || isDeferredAutoSpaceActive) {
-                super.commitText("$SPACE$text")
+                commitStyledText("$SPACE$text", TextUtils.concat(SPACE, styled))
             } else {
-                super.commitText(text)
+                commitStyledText(text, styled)
             }.also {
                 // handled in finalizeComposingText if content.composing.isValid
                 updateLastCommitPosition()
             }
+        }
+    }
+
+    /**
+     * [text] with a [SuggestionSpan] flagged as an autocorrection that offers [typed] back, or plain [text] when
+     * nothing was corrected or only the case changed ("i" to "I").
+     */
+    private fun autocorrectionMarked(text: String, typed: String?): CharSequence {
+        if (typed.isNullOrBlank() || typed.equals(text, ignoreCase = true)) return text
+        return SpannableString(text).apply {
+            setSpan(
+                SuggestionSpan(appContext, arrayOf(typed), SuggestionSpan.FLAG_AUTO_CORRECTION),
+                0,
+                text.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
         }
     }
 

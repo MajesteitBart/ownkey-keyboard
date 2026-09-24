@@ -386,7 +386,9 @@ class NlpManager(context: Context) {
                 }
                 else -> emptyList()
             }
-            activeCandidates = candidates
+            // Right after an autocorrection, the typed word comes first so one tap restores it.
+            val revert = if (isSuggestionOn()) keyboardManager.autocorrectRevertCandidate() else null
+            activeCandidates = if (revert != null) listOf(revert) + candidates.filter { it.text != revert.text } else candidates
             autoExpandCollapseSmartbarActions(candidates, NlpInlineAutofill.suggestions.value)
         }
     }

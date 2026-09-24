@@ -1,10 +1,10 @@
 ---
 id: T-018
 name: Mark autocorrections in the text
-status: ready
+status: done
 workstream: WS-A
 created: 2026-09-24T22:22:47Z
-updated: 2026-09-24T22:22:47Z
+updated: 2026-09-24T22:55:31Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -25,10 +25,10 @@ After an autocorrection, the text field should show that a word was changed and 
 
 ## Acceptance Criteria
 
-- [ ] Auto-committed corrections are committed with `SuggestionSpan.FLAG_AUTO_CORRECTION` and the original word as its suggestion, so standard text fields underline the word and offer the original on tap.
-- [ ] Manual suggestion taps, casing-only changes ("I") and apostrophe forms keep committing plain text or follow the same rule consistently; nothing else about committing changes.
-- [ ] Backspace right after an autocorrection still restores the typed word (AC-004).
-- [ ] Checked in a standard Android text field and in Chrome on the emulator; editors that ignore the span behave as before.
+- [x] Auto-committed corrections are committed with `SuggestionSpan.FLAG_AUTO_CORRECTION` and the original word as its suggestion. How editors show it varies (see the evidence log), so the keyboard also offers the typed word itself: right after an autocorrection it is the first chip in the suggestion strip, and one tap restores it.
+- [x] Manual suggestion taps, casing-only changes ("I") and apostrophe forms keep committing plain text or follow the same rule consistently; nothing else about committing changes.
+- [x] Backspace right after an autocorrection still restores the typed word (AC-004).
+- [x] Checked in a standard Android text field and in Chrome on the emulator; editors that ignore the span behave as before.
 
 ## Traceability
 
@@ -41,11 +41,14 @@ After an autocorrection, the text field should show that a word was changed and 
 
 ## Definition of Done
 
-- [ ] Implementation complete
-- [ ] Tests pass
+- [x] Implementation complete
+- [x] Tests pass
 - [ ] Review complete
-- [ ] Docs updated
+- [x] Docs updated
 
 ## Evidence Log
 
+- 2026-09-24: Auto-commits now reach the editor as the corrected word with a `SuggestionSpan` (`FLAG_AUTO_CORRECTION`, suggestion: the typed word); manual taps, casing-only changes ("i" to "I") and everything else commit plain text as before. The span is passed through `finalizeComposingText` and `commitText` as styled text while the editor bookkeeping keeps using the plain string.
+- 2026-09-24: Emulator: Chrome draws a blue underline under the corrected word ("store" for `stoer`) that stays until the text is edited, but tapping the word only places the cursor. The Google Contacts notes field (a standard Android field) shows no lasting underline once typing continues and offers no popup either. So the span alone does not give "tap to restore". Added `AutocorrectRevertCandidate`: while the last autocorrection can be undone, the typed word leads the suggestion strip with an undo icon ("↶becuase"), and tapping it runs the same undo as the toolbar undo, which also puts the word on the never-correct list.
+- 2026-09-24: Found and fixed while testing: undo replaced only the word, so the cursor ended between the restored word and the space after it, and the next word ran on ("stoerand"). The chip and toolbar undo now keep the space and put the cursor back after it ("becuase it was"); backspace takes the space as well and leaves the cursor right after the restored word, as other keyboards do (`thsi` -> "this " -> backspace -> "thsi", then "x" gives "thsix"). Full `ime` suite: 546 tests pass (the keyboard and editor code is Android-only and was checked on the emulator).
 - 2026-09-24: Task created with Phase 5.

@@ -45,6 +45,7 @@ import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
+import dev.patrickgold.florisboard.ime.nlp.AutocorrectRevertCandidate
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
@@ -324,15 +325,21 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         candidate: SuggestionCandidate,
         origin: CandidateCommitOrigin = CandidateCommitOrigin.MANUAL,
     ) {
+        if (candidate is AutocorrectRevertCandidate) {
+            handleUndoLastAutocorrect()
+            return
+        }
         val candidateIndex = nlpManager.activeCandidates.indexOf(candidate).takeIf { it >= 0 }
         TapTrail.clear()
         TypingSpeedMetrics.recordSuggestionAccepted(candidateIndex)
         TypingSpeedMetrics.recordWordCommittedBySuggestion()
+        var autocorrectedFrom: String? = null
         if (origin == CandidateCommitOrigin.AUTO_COMMIT && candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectApplied()
             val content = editorInstance.activeContent
             val originalToken = content.composingText.ifBlank { content.currentWordText }
             autocorrectUndoTracker.trackAutoCorrect(originalToken = originalToken, correctedCandidate = candidate)
+            autocorrectedFrom = originalToken
         } else {
             autocorrectUndoTracker.clearPending()
         }
@@ -341,7 +348,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
-            else -> editorInstance.commitCompletion(candidate)
+            else -> editorInstance.commitCompletion(candidate, autocorrectedFrom)
         }
     }
 
@@ -470,20 +477,38 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
+    /** The typed word to offer in the suggestion strip while the last autocorrection can still be undone. */
+    fun autocorrectRevertCandidate(): AutocorrectRevertCandidate? {
+        val replacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return null
+        if (!replacement.candidate.isEligibleForAutoCommit) return null
+        return AutocorrectRevertCandidate(replacement.originalToken)
+    }
+
     private fun handleUndoLastAutocorrect(): Boolean {
         val undoReplacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return false
-        return restoreTrackedAutocorrect(undoReplacement)
+        return restoreTrackedAutocorrect(undoReplacement, keepSeparator = true)
     }
 
     private fun handleBackspaceAutocorrectRestore(unit: OperationUnit): Boolean {
         if (unit != OperationUnit.CHARACTERS) return false
         val restoreReplacement = autocorrectUndoTracker.findBackspaceRestoreReplacement(editorInstance.activeContent) ?: return false
-        return restoreTrackedAutocorrect(restoreReplacement)
+        return restoreTrackedAutocorrect(restoreReplacement, keepSeparator = false)
     }
 
-    private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement): Boolean {
-        if (!editorInstance.setSelection(replacement.range.start, replacement.range.end)) return false
+    /**
+     * Puts the typed word back in place of the correction. Backspace ([keepSeparator] false) also takes the space
+     * typed after the word, so the cursor ends right after the restored word; undo and the revert chip keep the
+     * space and put the cursor back where it was.
+     */
+    private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement, keepSeparator: Boolean): Boolean {
+        val cursor = editorInstance.activeContent.selection.end
+        val end = if (keepSeparator) replacement.range.end else maxOf(replacement.range.end, cursor)
+        if (!editorInstance.setSelection(replacement.range.start, end)) return false
         if (!editorInstance.commitText(replacement.originalToken)) return false
+        if (keepSeparator && cursor > replacement.range.end) {
+            val shifted = cursor + replacement.originalToken.length - (replacement.range.end - replacement.range.start)
+            editorInstance.setSelection(shifted, shifted)
+        }
         autocorrectUndoTracker.clearPending()
         if (replacement.candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectUndone()

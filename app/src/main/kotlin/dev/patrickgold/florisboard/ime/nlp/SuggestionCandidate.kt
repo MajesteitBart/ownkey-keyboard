@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.nlp
 
 import android.content.Context
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Image
@@ -168,4 +169,22 @@ data class EmojiSuggestionCandidate(
 ) : SuggestionCandidate {
     override val text = emoji.value
     override val secondaryText = if (showName) emoji.name else null
+}
+
+/**
+ * The word the user typed, offered right after autocorrect replaced it. Tapping it undoes the correction, the same
+ * way backspace does, so the keyboard stops correcting that word.
+ *
+ * @see SuggestionCandidate
+ */
+data class AutocorrectRevertCandidate(
+    val originalToken: String,
+) : SuggestionCandidate {
+    override val text: CharSequence = originalToken
+    override val secondaryText: CharSequence? = null
+    override val confidence: Double = 1.0
+    override val isEligibleForAutoCommit: Boolean = false
+    override val isEligibleForUserRemoval: Boolean = false
+    override val icon: ImageVector = Icons.AutoMirrored.Filled.Undo
+    override val sourceProvider: SuggestionProvider? = null
 }

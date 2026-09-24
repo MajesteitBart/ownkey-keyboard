@@ -391,7 +391,10 @@ abstract class AbstractEditorInstance(context: Context) {
 
     open fun commitText(text: String): Boolean = commitTextInternal(text)
 
-    private fun commitTextInternal(text: String): Boolean {
+    /** Commits [text], handing the editor [styledText] (the same characters, with spans) instead. */
+    protected fun commitStyledText(text: String, styledText: CharSequence): Boolean = commitTextInternal(text, styledText)
+
+    private fun commitTextInternal(text: String, styledText: CharSequence = text): Boolean {
         val ic = currentInputConnection() ?: return false
         val content = activeContent
         val selection = content.selection
@@ -399,7 +402,7 @@ abstract class AbstractEditorInstance(context: Context) {
         return try {
             ic.finishComposingText()
             if (activeInfo.isRawInputEditor) {
-                ic.commitText(text, 1)
+                ic.commitText(styledText, 1)
             } else runBlocking {
                 val newSelection = EditorRange.cursor(selection.start + text.length)
                 val newContent = content.generateCopy(
@@ -410,7 +413,7 @@ abstract class AbstractEditorInstance(context: Context) {
                     },
                     selectedText = "",
                 )
-                val committed = ic.commitText(text, 1)
+                val committed = ic.commitText(styledText, 1)
                 if (committed) {
                     expectedContentQueue.push(newContent)
                     ic.setComposingRegion(newContent.composing)
@@ -422,7 +425,8 @@ abstract class AbstractEditorInstance(context: Context) {
         }
     }
 
-    open fun finalizeComposingText(text: String, cursorAdvanceAfterText: Int = 0): Boolean {
+    /** [styledText] is what the editor receives: [text] itself, or the same characters with spans. */
+    open fun finalizeComposingText(text: String, cursorAdvanceAfterText: Int = 0, styledText: CharSequence = text): Boolean {
         val ic = currentInputConnection() ?: return false
         val content = activeContent
         val composing = content.composing
@@ -445,7 +449,7 @@ abstract class AbstractEditorInstance(context: Context) {
                 selectedText = "",
             )
             expectedContentQueue.push(newContent)
-            ic.setComposingText(text, 1)
+            ic.setComposingText(styledText, 1)
             ic.finishComposingText()
             if (safeCursorAdvance > 0) {
                 ic.setSelection(newSelection.start, newSelection.end)
