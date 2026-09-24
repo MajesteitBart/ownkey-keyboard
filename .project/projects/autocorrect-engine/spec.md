@@ -4,7 +4,7 @@ slug: autocorrect-engine
 owner: ownkey-keyboard-team
 status: active
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T19:40:05Z
+updated: 2026-09-24T20:57:41Z
 outcome: On the in-repo benchmark, autocorrect fixes at least 70% of EN, 65% of NL and 60% of mixed NL+EN touch typos with at least 98% precision on every typo set and no more than 0.5 false corrections per 1,000 correctly typed words, while suggestion latency stays under 30 ms p95 on device.
 uncertainty: medium
 probe_required: false
@@ -66,6 +66,7 @@ The undo rate comes from the existing `TypingSpeedMetrics` counters for applied 
 - US-003: As someone who types names and jargon, I want words I meant to type left alone, so that I can trust autocorrect.
 - US-004: As any user, I want one clear strength setting and a working on/off toggle, so that I can control autocorrect without understanding confidence percentages.
 - US-005: As an English typer, I want `dont` and `im` to become "don't" and "I'm", so that I do not have to switch to the symbols layer for apostrophes.
+- US-006: As any typer, I want suggestions and corrections to fit the words before the cursor, so that `rather then` suggests "than" and the word after `ik` is a Dutch verb.
 
 ## Acceptance scenarios
 
@@ -78,6 +79,9 @@ The undo rate comes from the existing `TypingSpeedMetrics` counters for applied 
 - AC-007: Given autocorrect is switched off with the quick-action toggle, when the user types `teh` and presses space, then the word is unchanged and suggestions still show.
 - AC-008: Given the user is typing `isn't` or `bart@example.com` character by character, when the apostrophe, `@` or a mid-token `.` is typed, then no autocorrection fires on the text typed so far.
 - AC-009: Given the EN subtype, when the user types `becaus` and presses space, then the field contains "because ".
+- AC-010: Given the EN subtype and the text `I would rather`, when the user types `then`, then "than" is the first suggestion and pressing space keeps "then".
+- AC-011: Given any subtype, when the user types a correctly spelled word that is one side of a confusion pair, then autocorrect never replaces it on space.
+- AC-012: Given the NL subtype and the text `ik `, when the suggestion strip shows predictions, then the first three are words that commonly follow "ik" in Dutch.
 
 ## Scope
 

@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 status: active
 lead: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T19:40:05Z
+updated: 2026-09-24T20:57:41Z
 linear_project_id:
 risk_level: medium
 spec_status_at_plan_time: planned
@@ -90,11 +90,13 @@ Replace the sliders with Off, Gentle, Normal and Strong, calibrated on the bench
 
 Gate: 14 of 14 contraction forms producible, 0 words from the curated misspelling list in the shipped assets, thresholds recalibrated, and every Phase 1 gate still met. The real-word error rate is re-measured, because a cleaner dictionary should lower it.
 
-### Phase 3: context (tasks created after Phase 2)
+### Phase 3: context (T-009 to T-013)
 
 Static bigram model per language from a license-compatible corpus, interpolated with personal n-grams. It enables `then`/`than`, `your`/`you` and ambiguous contractions, and improves next-word prediction and NL/EN language weighting. Real-word corrections start as suggestion-only. Starts with a short sourcing probe on corpus license and size (see `decisions.md`).
 
 Gate: the spec's final real-world and mixed-language targets, plus a real-word error set where the correct word is the top suggestion at least 60% of the time.
+
+Tasks: T-009 corpus probe (done: Tatoeba), T-010 context benchmark sets, T-011 bigram asset and loader, T-012 context in scoring, T-013 next-word predictions. The isolated-word tap sets cannot show a context gain, so the mixed-language recall target is measured on the context typo sets.
 
 ### Phase 4: touch model (tasks created after Phase 3)
 
