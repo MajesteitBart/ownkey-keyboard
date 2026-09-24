@@ -38,9 +38,13 @@ class AutocorrectBenchmarkReportTest : FunSpec({
     }
 
     test("noisy-channel scorer report and Phase 1 floors") {
+        val scorer = NoisyChannelLatinScorer()
         val report = runFullBenchmark(
             "Noisy-channel scorer, default settings",
-            AutocorrectBenchmark(NoisyChannelLatinScorer(), BenchmarkPolicies.default()),
+            AutocorrectBenchmark(scorer, BenchmarkPolicies.default()),
+            predictNextWord = { languages, text ->
+                scorer.predictNextWords(languages, languages.first().locale, text, 3).map { it.word }
+            },
         )
         report.write("noisy-channel.md").length().toInt() shouldBeGreaterThan 0
 
@@ -77,6 +81,14 @@ class AutocorrectBenchmarkReportTest : FunSpec({
         report.cleanResults.forEach { result ->
             withClue("${result.set}: correctly typed word replaced as first suggestion") {
                 result.firstChangedPct shouldBeLessThanOrEqual 2.0
+            }
+        }
+        // T-013: word-pair predictions beat the frequency-only list they replace.
+        val nextWord = report.nextWordResults.associateBy { it.set }
+        for (language in listOf("EN", "NL")) {
+            withClue("next word $language") {
+                nextWord.getValue("next word $language, $language").top3Pct shouldBeGreaterThanOrEqual
+                    nextWord.getValue("next word $language, $language, frequency only").top3Pct + 10.0
             }
         }
     }

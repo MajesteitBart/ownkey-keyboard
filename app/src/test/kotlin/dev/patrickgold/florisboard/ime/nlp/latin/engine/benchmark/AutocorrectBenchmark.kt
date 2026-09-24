@@ -274,11 +274,11 @@ internal class AutocorrectBenchmark(
      * Walks through each sentence and asks [predict] for the next word after every word boundary. Counts how often
      * the word that follows is the first prediction or among the first three.
      */
-    fun evaluateNextWord(
+    suspend fun evaluateNextWord(
         set: String,
         languages: List<LatinScoringLanguage>,
         sentences: List<String>,
-        predict: (languages: List<LatinScoringLanguage>, textBefore: String) -> List<String>,
+        predict: suspend (languages: List<LatinScoringLanguage>, textBefore: String) -> List<String>,
     ): NextWordResult {
         var n = 0
         var first = 0

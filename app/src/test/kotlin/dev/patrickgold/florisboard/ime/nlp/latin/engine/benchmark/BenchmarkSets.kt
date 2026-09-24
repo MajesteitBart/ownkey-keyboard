@@ -71,7 +71,7 @@ internal suspend fun runFullBenchmark(
     title: String,
     benchmark: AutocorrectBenchmark,
     useTaps: Boolean = false,
-    predictNextWord: (List<LatinScoringLanguage>, String) -> List<String> = ::frequencyOnlyNextWords,
+    predictNextWord: suspend (List<LatinScoringLanguage>, String) -> List<String> = { languages, text -> frequencyOnlyNextWords(languages, text) },
 ): BenchmarkReport {
     val report = BenchmarkReport(title)
     val s = BenchmarkSets
@@ -109,6 +109,9 @@ internal suspend fun runFullBenchmark(
     report.add(benchmark.evaluateRealWords("real-word NL, NL+EN", nlEn, s.realWordNl))
     report.add(benchmark.evaluateNextWord("next word EN, EN", enOnly, s.contextSentencesEn, predictNextWord))
     report.add(benchmark.evaluateNextWord("next word NL, NL", nlOnly, s.contextSentencesNl, predictNextWord))
+    report.add(benchmark.evaluateNextWord("next word NL, NL+EN", nlEn, s.contextSentencesNl, predictNextWord))
+    report.add(benchmark.evaluateNextWord("next word EN, EN, frequency only", enOnly, s.contextSentencesEn) { l, t -> frequencyOnlyNextWords(l, t) })
+    report.add(benchmark.evaluateNextWord("next word NL, NL, frequency only", nlOnly, s.contextSentencesNl) { l, t -> frequencyOnlyNextWords(l, t) })
     report.add(benchmark.evaluateCleanText("clean EN, EN", enOnly, s.cleanEn))
     report.add(benchmark.evaluateCleanText("clean NL, NL", nlOnly, s.cleanNl))
     report.add(benchmark.evaluateCleanText("clean EN, NL+EN", nlEn, s.cleanEn))

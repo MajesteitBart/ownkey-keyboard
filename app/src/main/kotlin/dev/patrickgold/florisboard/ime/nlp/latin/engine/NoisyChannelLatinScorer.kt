@@ -138,10 +138,12 @@ internal class NoisyChannelLatinScorer(
         private const val Unreachable = 1e9
         private val Vowels = setOf('a', 'e', 'i', 'o', 'u', 'y')
         private const val EnglishLanguage = "en"
-        private val EnglishPronounForms = setOf("i", "i'm", "i've", "i'll", "i'd")
+        private val EnglishPronounForms = LatinText.EnglishPronounForms
         private const val LanguageContextWindow = 4
         private const val MaxTokenLanguageMargin = 3.0
         private val SentenceEnds = setOf('.', '!', '?', ';', ':', '\n')
+        /** Successors looked at per language, as a multiple of the predictions asked for. */
+        private const val PredictionPoolFactor = 4
     }
 
     private class Scored(
@@ -294,6 +296,63 @@ internal class NoisyChannelLatinScorer(
                 confidence = posterior(candidate.finishedScore).coerceIn(0.0, 1.0),
                 editDistance = LatinText.boundedDamerauLevenshtein(input, candidate.word, 3),
                 isAutoCommit = (isAutoCommit && candidate === bestCorrection) || candidate === pronounCandidate,
+            )
+        }
+    }
+
+    /**
+     * The most likely next words after the text before the cursor, from the bigram models of [languages]. After a
+     * sentence end or at the start of the text the sentence-start statistics apply. Empty when no language has pair
+     * counts for the previous word.
+     */
+    suspend fun predictNextWords(
+        languages: List<LatinScoringLanguage>,
+        primaryLocale: Locale,
+        textBeforeSelection: String,
+        maxCount: Int,
+        hooks: LatinScoringHooks = LatinScoringHooks.None,
+    ): List<LatinScoredCandidate> {
+        val usable = languages.filter { !it.model.bigrams.isEmpty() }
+        if (usable.isEmpty() || maxCount <= 0) return emptyList()
+        val textBefore = textBeforeSelection.takeLast(SuggestionContextTailLength)
+        val tokens = LatinText.extractWordTokens(textBefore, primaryLocale)
+        val logWeights = languageLogWeights(languages, tokens.takeLast(LatinText.RecentContextTokenWindowSize))
+        // The text ends at a word boundary, so the last word of the sentence (if any) is the previous word.
+        val previous = currentSentenceTokens(textBefore, "", primaryLocale).lastOrNull() ?: LatinBigramModel.SentenceStart
+
+        val scores = HashMap<String, Double>()
+        val locales = HashMap<String, Pair<Locale, Double>>()
+        for (language in usable) {
+            val bigrams = language.model.bigrams
+            if (bigrams.totalAfter(previous) <= 0.0) continue
+            val weight = logWeights[language.language] ?: continue
+            for ((word, count) in bigrams.successors(previous, maxCount * PredictionPoolFactor)) {
+                // The pair's share of all pairs, not of the pairs after [previous]: a language that rarely sees the
+                // previous word ("de" in English, mostly "de Janeiro") must not win with its few successors.
+                val score = weight + ln(count / bigrams.totalPairs)
+                scores[word] = logSumExp(scores[word] ?: Double.NEGATIVE_INFINITY, score)
+                if (score > (locales[word]?.second ?: Double.NEGATIVE_INFINITY)) locales[word] = language.locale to score
+            }
+        }
+        if (scores.isEmpty()) return emptyList()
+        if (previous != LatinBigramModel.SentenceStart) {
+            for (word in scores.keys.toList()) {
+                val continuation = hooks.personalContinuationScore(previous, word)
+                if (continuation > 0.0) scores[word] = scores.getValue(word) + ln(1.0 + params.personalContinuationWeight * continuation)
+            }
+        }
+        val ranked = scores.entries.sortedWith(compareByDescending<Map.Entry<String, Double>> { it.value }.thenBy { it.key })
+            .take(maxCount)
+        return ranked.map { (word, score) ->
+            val locale = locales.getValue(word).first
+            val isPronoun = locale.language == EnglishLanguage && word in EnglishPronounForms
+            LatinScoredCandidate(
+                word = word,
+                text = if (isPronoun) word.replaceFirstChar { it.uppercaseChar() } else word,
+                locale = locale,
+                confidence = exp(score).coerceIn(0.0, 1.0),
+                editDistance = 0,
+                isAutoCommit = false,
             )
         }
     }

@@ -74,6 +74,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val MaxLookupCandidateCount = 16
         private const val SuggestionCacheMaxSize = 128
         private const val SuggestionContextTailLength = 96
+        // Next-word scores: field matches add 3 to 9, personal n-grams 6 to 14, word pairs 1.5 to 5.5.
+        private const val PairPredictionBaseScore = 1.5
+        private const val PairPredictionScoreRange = 4.0
         private const val AutoCommitCandidateCount = 8
         private const val UserDictionarySnapshotMaxAgeMs = 30_000L
 
@@ -144,7 +147,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
     private val emptyModel = LatinWordModel.Empty
     private val legacyScorer: LatinCurrentWordScorer = LegacyLatinScorer()
-    private val noisyChannelScorer: LatinCurrentWordScorer = NoisyChannelLatinScorer()
+    private val noisyChannelScorer = NoisyChannelLatinScorer()
 
     @Volatile
     private var speechWordsCache: Pair<Any, Set<String>>? = null
@@ -702,6 +705,24 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
 
+        // What usually follows the previous word, from the bigram models. Ranks below the user's own sequences.
+        if (!prefs.devtools.autocorrectLegacyEngine.get()) {
+            val pairPredictions = noisyChannelScorer.predictNextWords(
+                languages = nonEmptyLanguageContexts.map { it.toScoringLanguage() },
+                primaryLocale = locale,
+                textBeforeSelection = textBeforeSelection,
+                maxCount = maxCandidateCount,
+            )
+            val maxConfidence = pairPredictions.maxOfOrNull { it.confidence }?.takeIf { it > 0.0 } ?: 1.0
+            for (prediction in pairPredictions) {
+                if (prediction.word == previousWord) continue
+                scores[prediction.word] = scores.getOrDefault(prediction.word, 0.0) +
+                    PairPredictionBaseScore + PairPredictionScoreRange * prediction.confidence / maxConfidence
+                val modelFrequency = nonEmptyLanguageContexts.maxOf { context -> context.model.words[prediction.word] ?: 0 }
+                frequencies[prediction.word] = maxOf(frequencies.getOrDefault(prediction.word, 0), modelFrequency, 1)
+            }
+        }
+
         if (scores.isEmpty()) {
             return suggestFallbackNextWordCandidates(
                 languageContexts = nonEmptyLanguageContexts,
@@ -734,12 +755,20 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 ).coerceIn(0.05, 0.98)
 
             WordSuggestionCandidate(
-                text = candidateWord,
+                text = nextWordText(candidateWord, nonEmptyLanguageContexts),
                 confidence = confidence,
                 isEligibleForAutoCommit = false,
                 sourceProvider = this@LatinLanguageProvider,
             )
         }
+    }
+
+    /** English "I" and "I'm" keep their capital as predictions, unless another active language knows the word. */
+    private fun nextWordText(word: String, languageContexts: List<SubtypeLanguageContext>): String {
+        if (word !in LatinText.EnglishPronounForms) return word
+        val hasEnglish = languageContexts.any { it.language == "en" }
+        val otherLanguageKnowsWord = languageContexts.any { it.language != "en" && it.model.isKnown(word) }
+        return if (hasEnglish && !otherLanguageKnowsWord) word.replaceFirstChar { it.uppercaseChar() } else word
     }
 
     private fun isNextWordBoundary(textBeforeSelection: String): Boolean {
@@ -808,7 +837,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             .take(maxCandidateCount)
             .map { entry ->
             WordSuggestionCandidate(
-                text = entry.key,
+                text = nextWordText(entry.key, languageContexts),
                 confidence = entry.value.second,
                 isEligibleForAutoCommit = false,
                 sourceProvider = this@LatinLanguageProvider,

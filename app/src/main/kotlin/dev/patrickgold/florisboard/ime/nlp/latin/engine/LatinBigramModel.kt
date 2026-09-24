@@ -142,6 +142,9 @@ internal class LatinBigramModel private constructor(
 
     val pairCount: Int get() = successorIds.size
 
+    /** How many word pairs were counted in total, to turn a pair count into a probability. */
+    val totalPairs: Double = totals.fold(0.0) { sum, total -> sum + total }
+
     fun isEmpty(): Boolean = successorIds.isEmpty()
 
     /** How often [previous] was seen with any successor; 0 when it never was. */

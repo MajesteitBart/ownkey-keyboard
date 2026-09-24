@@ -26,6 +26,9 @@ import kotlin.math.abs
  */
 internal object LatinText {
     const val RecentContextTokenWindowSize = 6
+    /** English "I" and its contractions, which are always written with a capital I. */
+    val EnglishPronounForms = setOf("i", "i'm", "i've", "i'll", "i'd")
+
     /** Asset folder of the built word lists and their `{language}.bigrams.txt` companions. */
     const val BigramAssetDir = "ime/dict/latin"
 
