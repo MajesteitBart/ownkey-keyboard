@@ -101,6 +101,11 @@ class AutocorrectBenchmarkReportTest : FunSpec({
         report.cleanResults.filter { "with taps" in it.set }.forEach { result ->
             withClue(result.set) { result.perThousand shouldBeLessThanOrEqual 0.3 }
         }
+        // T-019: missed spaces.
+        typos.getValue("run-together EN, EN").top1Pct shouldBeGreaterThanOrEqual 95.0
+        typos.getValue("run-together NL, NL").top1Pct shouldBeGreaterThanOrEqual 70.0
+        typos.getValue("run-together EN, EN").rightPct shouldBeGreaterThanOrEqual 75.0
+        typos.getValue("run-together NL, NL").rightPct shouldBeGreaterThanOrEqual 65.0
         // T-013: word-pair predictions beat the frequency-only list they replace.
         val nextWord = report.nextWordResults.associateBy { it.set }
         for (language in listOf("EN", "NL")) {

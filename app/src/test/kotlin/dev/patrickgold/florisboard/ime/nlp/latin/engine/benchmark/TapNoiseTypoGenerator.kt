@@ -150,6 +150,26 @@ internal class TapNoiseTypoGenerator(
         tap ?: Tap(ch, center.first, center.second)
     }
 
+    /**
+     * One run-together pair per sentence: two adjacent lowercase words that are both in [known], typed without the
+     * space between them, when the joined form is not a word itself. The text before the pair is kept as context.
+     */
+    fun buildRunTogether(known: (String) -> Boolean, sentences: List<String>): List<TypoPair> {
+        val pairs = mutableListOf<TypoPair>()
+        for (sentence in sentences) {
+            val words = WordPattern.findAll(sentence).toList()
+            val eligible = words.zipWithNext().filter { (a, b) ->
+                val gap = sentence.substring(a.range.last + 1, b.range.first)
+                gap == " " && a.value.all { it in 'a'..'z' } && b.value.all { it in 'a'..'z' } &&
+                    known(a.value) && known(b.value) && !known(a.value + b.value)
+            }
+            if (eligible.isEmpty()) continue
+            val (a, b) = eligible[random.nextInt(eligible.size)]
+            pairs.add(TypoPair(a.value + b.value, "${a.value} ${b.value}", before = sentence.substring(0, a.range.first)))
+        }
+        return pairs
+    }
+
     /** Usage-weighted (by frequency) or vocabulary-uniform (ranks 100 to 10,000) word sample. */
     fun sampleWords(words: Map<String, Int>, n: Int, tokenWeighted: Boolean, minLen: Int = 3): List<String> {
         val ranked = HarnessTypoGenerator.rankedWords(words, 10000, minLen)

@@ -113,6 +113,15 @@ internal class AutocorrectUndoTracker {
         }
         if (tokenEnd == 0) return null
 
+        // A correction that added a space ("thisis" became "this is") spans two tokens.
+        if (correctedToken.contains(' ')) {
+            val start = tokenEnd - correctedToken.length
+            if (start < 0 || beforeCursor.substring(start, tokenEnd) != correctedToken) return null
+            if (start > 0 && beforeCursor[start - 1].isUndoTokenChar()) return null
+            val offset = content.selection.end - beforeCursor.length
+            return EditorRange(offset + start, offset + tokenEnd)
+        }
+
         var tokenStart = tokenEnd
         while (tokenStart > 0 && beforeCursor[tokenStart - 1].isUndoTokenChar()) {
             tokenStart--

@@ -56,6 +56,8 @@ internal object BenchmarkSets {
     val contextSentencesNl by lazy { BenchmarkData.sentences("context_nl.txt") }
     val contextEn by lazy { TapNoiseTypoGenerator(2001).buildContextTypos(BenchmarkData.en().words, contextSentencesEn) }
     val contextNl by lazy { TapNoiseTypoGenerator(2002).buildContextTypos(BenchmarkData.nl().words, contextSentencesNl) }
+    val runTogetherEn by lazy { TapNoiseTypoGenerator(5001).buildRunTogether({ BenchmarkData.en().model.isKnown(it) }, contextSentencesEn) }
+    val runTogetherNl by lazy { TapNoiseTypoGenerator(5002).buildRunTogether({ BenchmarkData.nl().model.isKnown(it) }, contextSentencesNl) }
     val realWordEn by lazy { BenchmarkData.realWords("realword_en.tsv") }
     val realWordNl by lazy { BenchmarkData.realWords("realword_nl.tsv") }
 
@@ -116,6 +118,9 @@ internal suspend fun runFullBenchmark(
     report.add(benchmark.evaluateTypos("context NL, NL+EN, with taps", nlEn, s.contextNl.pairs, useTaps = true))
     report.add(benchmark.evaluateTypos("context EN, EN, words before removed", enOnly, s.contextEn.pairs.map { it.copy(before = "") }, useTaps = useTaps))
     report.add(benchmark.evaluateTypos("context NL, NL, words before removed", nlOnly, s.contextNl.pairs.map { it.copy(before = "") }, useTaps = useTaps))
+    report.add(benchmark.evaluateTypos("run-together EN, EN", enOnly, s.runTogetherEn))
+    report.add(benchmark.evaluateTypos("run-together NL, NL", nlOnly, s.runTogetherNl))
+    report.add(benchmark.evaluateTypos("run-together NL, NL+EN", nlEn, s.runTogetherNl))
     report.add(benchmark.evaluateRealWords("real-word EN, EN", enOnly, s.realWordEn))
     report.add(benchmark.evaluateRealWords("real-word NL, NL", nlOnly, s.realWordNl))
     report.add(benchmark.evaluateRealWords("real-word NL, NL+EN", nlEn, s.realWordNl))

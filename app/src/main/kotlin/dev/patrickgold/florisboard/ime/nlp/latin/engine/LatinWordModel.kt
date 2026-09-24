@@ -41,9 +41,13 @@ internal class LatinWordModel private constructor(
     val totalFrequency: Double,
     /** Which words follow which; empty for languages without a bigram list. */
     val bigrams: LatinBigramModel = LatinBigramModel.Empty,
+    /** Frequency of the [CommonWordRank]-th most frequent word: words at or above it are the language's common words. */
+    val commonWordFrequency: Int = Int.MAX_VALUE,
 ) {
     companion object {
         const val MaxEditDistance = 1
+        /** How many of the most frequent words count as common (function) words. */
+        const val CommonWordRank = 200
         private const val ShortcutPrefixDepth = 3
         private const val ShortcutPrefixPoolSize = 48
         private const val ShortcutFallbackPoolSize = 64
@@ -94,11 +98,15 @@ internal class LatinWordModel private constructor(
                 predictionShortcuts = predictionShortcuts,
                 totalFrequency = words.values.fold(0.0) { sum, frequency -> sum + frequency }.coerceAtLeast(1.0),
                 bigrams = bigrams,
+                commonWordFrequency = words.values.sortedDescending().getOrElse(CommonWordRank - 1) { 0 },
             )
         }
     }
 
     fun isKnown(normalizedWord: String): Boolean = words.containsKey(normalizedWord)
+
+    /** Whether [normalizedWord] is one of the language's most frequent words ("the", "of", "is"). */
+    fun isCommonWord(normalizedWord: String): Boolean = (words[normalizedWord] ?: return false) >= commonWordFrequency
 
     fun lookupCorrections(input: String, maxCount: Int): List<RankedCandidate> {
         if (input.isBlank()) return emptyList()

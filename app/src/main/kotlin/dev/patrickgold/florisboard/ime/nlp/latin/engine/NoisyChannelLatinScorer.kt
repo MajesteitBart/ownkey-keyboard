@@ -99,6 +99,12 @@ data class NoisyChannelParams(
      * is often two edits away from a common word.
      */
     val twoEditDoubtFactor: Double = 0.1,
+    /**
+     * Two known words run together ("thisis"): reading them as two words costs this much, on top of how likely the
+     * pair is. Off: no splits.
+     */
+    val missedSpaceCost: Double = 3.0,
+    val missedSpaceSplits: Boolean = true,
     /** Put the most likely finished word first; later slots favor completions of the typed prefix. */
     val bestFinishedWordFirst: Boolean = true,
 )
@@ -170,6 +176,9 @@ internal class NoisyChannelLatinScorer(
         private const val MaxTokenLanguageMargin = 3.0
         private val SentenceEnds = setOf('.', '!', '?', ';', ':', '\n')
         private const val TwoEditLookupCount = 12
+        private const val MinSplitInputLength = 4
+        private const val MaxSplitCandidates = 3
+        private val CompoundingLanguages = setOf("nl", "de")
         /** Keys worth trying instead of a typed letter: neighbors within this distance, or the keys nearest the tap. */
         private const val NeighborDistance = 1.3
         private const val NearestKeysPerTap = 3
@@ -306,6 +315,18 @@ internal class NoisyChannelLatinScorer(
                 }
             }
         }
+        // A missed space: two known words run together. Only exact splits; typos inside the parts are left out. A
+        // split of two uncommon words ("tree house" for "treehouse") is more likely a compound missing from the word
+        // list than a missed space, so it is only suggested.
+        val suggestOnlySplits = HashSet<String>()
+        if (params.missedSpaceSplits && !inputKnown && input.length >= MinSplitInputLength && input.all { it.isLetter() }) {
+            for (split in missedSpaceSplits(input, languages, logWeights, pairContexts)) {
+                if (!candidateWords.add(split.word)) continue
+                scored.add(split)
+                val parts = split.word.split(' ')
+                if (parts.none { part -> languages.any { it.model.isCommonWord(part) } }) suggestOnlySplits.add(split.word)
+            }
+        }
         if (scored.isEmpty()) return emptyList()
 
         val logNormalizer = normalizer(scored)
@@ -325,6 +346,7 @@ internal class NoisyChannelLatinScorer(
             settings.enabled &&
             !inputKnown &&
             (input.length >= settings.minInputLength || bestCorrection.word in listedForms) &&
+            bestCorrection.word !in suggestOnlySplits &&
             rawInput.none { it == '\'' || it == '’' || it == '-' } &&
             !hooks.isBlockedByUserPreference(input) &&
             exp(bestCorrection.finishedScore - decisionNormalizer) >= if (bestCorrection.word in twoEditOnly) {
@@ -367,6 +389,52 @@ internal class NoisyChannelLatinScorer(
             )
         }
     }
+
+    /**
+     * Readings of [input] as two known words ("this is" for "thisis"), best first. Dutch writes compounds as one
+     * word, so a Dutch split also needs the two words to occur as a pair in the example sentences; otherwise a
+     * compound that is missing from the word list would be broken up.
+     */
+    private fun missedSpaceSplits(
+        input: String,
+        languages: List<LatinScoringLanguage>,
+        logWeights: Map<String, Double>,
+        pairContexts: Map<String, LatinBigramModel.Context?>,
+    ): List<Scored> {
+        val splits = ArrayList<Scored>()
+        for (i in 1 until input.length) {
+            val left = input.substring(0, i)
+            val right = input.substring(i)
+            if (!isSplitPart(left) || !isSplitPart(right)) continue
+            var score = Double.NEGATIVE_INFINITY
+            var bestLanguageScore = Double.NEGATIVE_INFINITY
+            var bestLocale: Locale? = null
+            var frequency = 0
+            for (language in languages) {
+                val model = language.model
+                val leftFrequency = model.words[left] ?: continue
+                val rightFrequency = model.words[right] ?: continue
+                val leftContext = model.bigrams.context(left)
+                if (language.language in CompoundingLanguages && (leftContext == null || model.bigrams.count(leftContext, right) <= 0.0)) continue
+                val leftProbability = withContext(model.bigrams, pairContexts[language.language], left, leftFrequency / model.totalFrequency)
+                val rightProbability = withContext(model.bigrams, leftContext, right, rightFrequency / model.totalFrequency)
+                val languageScore = (logWeights[language.language] ?: continue) + ln(leftProbability) + ln(rightProbability)
+                score = logSumExp(score, languageScore)
+                if (languageScore > bestLanguageScore) {
+                    bestLanguageScore = languageScore
+                    bestLocale = language.locale
+                    frequency = minOf(leftFrequency, rightFrequency)
+                }
+            }
+            val locale = bestLocale ?: continue
+            val finished = score - params.missedSpaceCost
+            splits.add(Scored("$left $right", locale, finished, finished, frequency))
+        }
+        return splits.sortedByDescending { it.finishedScore }.take(MaxSplitCandidates)
+    }
+
+    /** One-letter parts only for "a", "i" and the Dutch "u"; anything else would split far too eagerly. */
+    private fun isSplitPart(part: String): Boolean = part.length >= 2 || part == "a" || part == "i" || part == "u"
 
     /**
      * The most likely next words after the text before the cursor, from the bigram models of [languages]. After a

@@ -60,6 +60,20 @@ class AutocorrectUndoTrackerTest : FunSpec({
         )
     }
 
+    test("undoes a missed-space correction that spans two words") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "this is", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "thisis", correctedCandidate = correctedCandidate)
+
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I think this is ")) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 8, end = 15),
+            originalToken = "thisis",
+            candidate = correctedCandidate,
+        )
+        // Only the whole pair counts: "xthis is" does not end with the corrected words as separate words.
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I think xthis is ")).shouldBeNull()
+    }
+
     test("does not return undo replacement when token near cursor does not match") {
         val tracker = AutocorrectUndoTracker()
         tracker.trackAutoCorrect(
