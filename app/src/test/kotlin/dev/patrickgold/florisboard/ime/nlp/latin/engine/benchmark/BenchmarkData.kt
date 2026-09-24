@@ -25,13 +25,18 @@ import java.util.Locale
 
 /**
  * A misspelling and the word the user meant. [taps] holds simulated tap positions (in key widths) for each typed
- * character when the typo came from the tap-noise generator.
+ * character when the typo came from the tap-noise generator. [before] is the text before the typed word, empty for
+ * the isolated-word sets.
  */
 internal data class TypoPair(
     val typed: String,
     val intended: String,
     val taps: List<Tap>? = null,
+    val before: String = "",
 )
+
+/** A correctly spelled but wrong word in a sentence ("rather [then]"), and the word that was meant. */
+internal data class RealWordCase(val before: String, val typed: String, val intended: String)
 
 internal data class Tap(val char: Char, val x: Double, val y: Double)
 
@@ -113,4 +118,15 @@ internal object BenchmarkData {
 
     /** Clean sentences, one per line. */
     fun sentences(name: String): List<String> = resourceLines(name)
+
+    /** Lines of `text with [typed] word<TAB>intended`. */
+    fun realWords(name: String): List<RealWordCase> {
+        return resourceLines(name).map { line ->
+            val (sentence, intended) = line.split('\t', limit = 2)
+            val open = sentence.indexOf('[')
+            val close = sentence.indexOf(']', open)
+            require(open >= 0 && close > open) { "No [marked] word in: $line" }
+            RealWordCase(sentence.substring(0, open), sentence.substring(open + 1, close), intended)
+        }
+    }
 }

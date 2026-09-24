@@ -96,6 +96,42 @@ internal class TapNoiseTypoGenerator(
         return Generated(pairs, realWord, total)
     }
 
+    /**
+     * One typo per sentence, in a lowercase word of at least three letters that has at least one word before it and
+     * is in [words]. The text before that word is kept as context. A word is typed again until at least one letter
+     * comes out different (at most 20 tries).
+     */
+    fun buildContextTypos(words: Map<String, Int>, sentences: List<String>): Generated {
+        val pairs = mutableListOf<TypoPair>()
+        var realWord = 0
+        var total = 0
+        for (sentence in sentences) {
+            val eligible = WordPattern.findAll(sentence).drop(1)
+                .filter { match -> match.value.length >= 3 && match.value.all { it in 'a'..'z' } && words.containsKey(match.value) }
+                .toList()
+            if (eligible.isEmpty()) continue
+            val target = eligible[random.nextInt(eligible.size)]
+            val word = target.value
+            var typed = word
+            var taps = emptyList<Tap>()
+            var tries = 0
+            while (typed == word && tries < 20) {
+                val result = type(word)
+                typed = result.first
+                taps = result.second
+                tries++
+            }
+            if (typed == word || typed.isEmpty()) continue
+            total++
+            if (words.containsKey(typed)) {
+                realWord++
+                continue
+            }
+            pairs.add(TypoPair(typed, word, taps, before = sentence.substring(0, target.range.first)))
+        }
+        return Generated(pairs, realWord, total)
+    }
+
     /** Usage-weighted (by frequency) or vocabulary-uniform (ranks 100 to 10,000) word sample. */
     fun sampleWords(words: Map<String, Int>, n: Int, tokenWeighted: Boolean, minLen: Int = 3): List<String> {
         val ranked = HarnessTypoGenerator.rankedWords(words, 10000, minLen)
@@ -122,6 +158,7 @@ internal class TapNoiseTypoGenerator(
     }
 
     companion object {
+        private val WordPattern = Regex("[\\p{L}]+(?:['\u2019][\\p{L}]+)*")
         const val RowHeight = 1.4
         private val Rows = listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
         private val RowOffsets = listOf(0.0, 0.5, 1.5)

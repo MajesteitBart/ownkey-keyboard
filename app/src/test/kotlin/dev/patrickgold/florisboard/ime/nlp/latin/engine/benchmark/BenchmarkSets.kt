@@ -16,6 +16,9 @@
 
 package dev.patrickgold.florisboard.ime.nlp.latin.engine.benchmark
 
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
+
 /**
  * The fixed datasets every scorer is measured on. Synthetic sets use fixed seeds, so results are comparable
  * between runs and between scorers.
@@ -49,6 +52,13 @@ internal object BenchmarkSets {
     val realNlExtra by lazy { BenchmarkData.pairs("real_nl_extra.tsv") }
     val realNlAll by lazy { realNlCurated + realNlExtra }
 
+    val contextSentencesEn by lazy { BenchmarkData.sentences("context_en.txt") }
+    val contextSentencesNl by lazy { BenchmarkData.sentences("context_nl.txt") }
+    val contextEn by lazy { TapNoiseTypoGenerator(2001).buildContextTypos(BenchmarkData.en().words, contextSentencesEn) }
+    val contextNl by lazy { TapNoiseTypoGenerator(2002).buildContextTypos(BenchmarkData.nl().words, contextSentencesNl) }
+    val realWordEn by lazy { BenchmarkData.realWords("realword_en.tsv") }
+    val realWordNl by lazy { BenchmarkData.realWords("realword_nl.tsv") }
+
     val cleanEn by lazy { BenchmarkData.sentences("clean_en.txt") }
     val cleanNl by lazy { BenchmarkData.sentences("clean_nl.txt") }
     val oov by lazy { BenchmarkData.words("oov.txt") }
@@ -57,13 +67,19 @@ internal object BenchmarkSets {
 /**
  * Runs every dataset against one scorer configuration and returns the filled report.
  */
-internal suspend fun runFullBenchmark(title: String, benchmark: AutocorrectBenchmark, useTaps: Boolean = false): BenchmarkReport {
+internal suspend fun runFullBenchmark(
+    title: String,
+    benchmark: AutocorrectBenchmark,
+    useTaps: Boolean = false,
+    predictNextWord: (List<LatinScoringLanguage>, String) -> List<String> = ::frequencyOnlyNextWords,
+): BenchmarkReport {
     val report = BenchmarkReport(title)
     val s = BenchmarkSets
     report.note(
         "Tap-noise real-word rates (excluded from sets): EN usage ${pct(s.tapEnUsage.realWordRate)}, " +
             "EN uniform ${pct(s.tapEnUniform.realWordRate)}, NL usage ${pct(s.tapNlUsage.realWordRate)}, " +
-            "NL uniform ${pct(s.tapNlUniform.realWordRate)}"
+            "NL uniform ${pct(s.tapNlUniform.realWordRate)}, context EN ${pct(s.contextEn.realWordRate)}, " +
+            "context NL ${pct(s.contextNl.realWordRate)}"
     )
     val enOnly = BenchmarkData.enOnly()
     val nlOnly = BenchmarkData.nlOnly()
@@ -82,6 +98,17 @@ internal suspend fun runFullBenchmark(title: String, benchmark: AutocorrectBench
     report.add(benchmark.evaluateTypos("real NL curated, NL", nlOnly, s.realNlCurated))
     report.add(benchmark.evaluateTypos("real NL extra, NL", nlOnly, s.realNlExtra))
     report.add(benchmark.evaluateTypos("real NL all, NL+EN", nlEn, s.realNlAll))
+    report.add(benchmark.evaluateTypos("context EN, EN", enOnly, s.contextEn.pairs, useTaps = useTaps))
+    report.add(benchmark.evaluateTypos("context NL, NL", nlOnly, s.contextNl.pairs, useTaps = useTaps))
+    report.add(benchmark.evaluateTypos("context NL, NL+EN", nlEn, s.contextNl.pairs, useTaps = useTaps))
+    report.add(benchmark.evaluateTypos("context EN, NL+EN", nlEn, s.contextEn.pairs, useTaps = useTaps))
+    report.add(benchmark.evaluateTypos("context EN, EN, words before removed", enOnly, s.contextEn.pairs.map { it.copy(before = "") }, useTaps = useTaps))
+    report.add(benchmark.evaluateTypos("context NL, NL, words before removed", nlOnly, s.contextNl.pairs.map { it.copy(before = "") }, useTaps = useTaps))
+    report.add(benchmark.evaluateRealWords("real-word EN, EN", enOnly, s.realWordEn))
+    report.add(benchmark.evaluateRealWords("real-word NL, NL", nlOnly, s.realWordNl))
+    report.add(benchmark.evaluateRealWords("real-word NL, NL+EN", nlEn, s.realWordNl))
+    report.add(benchmark.evaluateNextWord("next word EN, EN", enOnly, s.contextSentencesEn, predictNextWord))
+    report.add(benchmark.evaluateNextWord("next word NL, NL", nlOnly, s.contextSentencesNl, predictNextWord))
     report.add(benchmark.evaluateCleanText("clean EN, EN", enOnly, s.cleanEn))
     report.add(benchmark.evaluateCleanText("clean NL, NL", nlOnly, s.cleanNl))
     report.add(benchmark.evaluateCleanText("clean EN, NL+EN", nlEn, s.cleanEn))
@@ -89,6 +116,16 @@ internal suspend fun runFullBenchmark(title: String, benchmark: AutocorrectBench
     report.add(benchmark.evaluateOov("oov.txt, NL+EN", nlEn, s.oov))
     report.add(benchmark.evaluateOov("oov.txt, EN", enOnly, s.oov))
     return report
+}
+
+/**
+ * What the keyboard predicts today when neither the text field nor the personal n-grams have a match: the most
+ * frequent words of the primary language, whatever came before.
+ */
+internal fun frequencyOnlyNextWords(languages: List<LatinScoringLanguage>, textBefore: String): List<String> {
+    val primary = languages.first()
+    val previous = LatinText.extractWordTokens(textBefore, primary.locale).lastOrNull().orEmpty()
+    return primary.model.predictionShortcuts.fallbackCandidates(previous, 3).map { it.word }
 }
 
 private fun pct(value: Double) = String.format(java.util.Locale.ROOT, "%.1f%%", 100 * value)

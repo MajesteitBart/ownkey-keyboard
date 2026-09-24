@@ -70,6 +70,25 @@ internal data class TypoSetResult(
     val precisionPct: Double get() = if (right + wrong == 0) 100.0 else 100.0 * right / (right + wrong)
 }
 
+internal data class RealWordResult(
+    val set: String,
+    val n: Int,
+    val first: Int,
+    val top3: Int,
+    val autoCorrected: Int,
+    val misses: List<String>,
+) {
+    val firstPct: Double get() = if (n == 0) 0.0 else 100.0 * first / n
+    val top3Pct: Double get() = if (n == 0) 0.0 else 100.0 * top3 / n
+}
+
+internal data class NextWordResult(val set: String, val n: Int, val first: Int, val top3: Int) {
+    val firstPct: Double get() = if (n == 0) 0.0 else 100.0 * first / n
+    val top3Pct: Double get() = if (n == 0) 0.0 else 100.0 * top3 / n
+}
+
+private val NextWordPattern = Regex("[\\p{L}]+(?:['\u2019][\\p{L}]+)*")
+
 internal data class CleanTextResult(
     val set: String,
     val words: Int,
@@ -145,7 +164,7 @@ internal class AutocorrectBenchmark(
             val result = score(
                 languages = languages,
                 rawInput = pair.typed,
-                textBeforeSelection = if (withContext) pair.typed else "",
+                textBeforeSelection = if (withContext) pair.before + pair.typed else "",
                 taps = if (useTaps) pair.taps else null,
             )
             times[index] = System.nanoTime() - start
@@ -208,6 +227,57 @@ internal class AutocorrectBenchmark(
         return CleanTextResult(set, words, falseCorrections, examples)
     }
 
+    /**
+     * Types the marked word of each sentence and checks the suggestions. Real-word errors are never autocorrected,
+     * so the metric is how often the intended word is the first suggestion.
+     */
+    suspend fun evaluateRealWords(set: String, languages: List<LatinScoringLanguage>, cases: List<RealWordCase>): RealWordResult {
+        var first = 0
+        var top3 = 0
+        var autoCorrected = 0
+        val misses = mutableListOf<String>()
+        val locale = languages.first().locale
+        for (case in cases) {
+            val result = score(languages, case.typed, case.before + case.typed)
+            val intended = LatinText.normalizeInputWord(case.intended, locale)
+            if (result.firstOrNull()?.word == intended) {
+                first++
+            } else if (misses.size < 12) {
+                misses.add("${case.typed} [${result.take(3).joinToString(", ") { it.word }}] (meant ${case.intended})")
+            }
+            if (result.take(3).any { it.word == intended }) top3++
+            val auto = result.firstOrNull { it.isAutoCommit }
+            if (auto != null && auto.word != LatinText.normalizeInputWord(case.typed, locale)) autoCorrected++
+        }
+        return RealWordResult(set, cases.size, first, top3, autoCorrected, misses)
+    }
+
+    /**
+     * Walks through each sentence and asks [predict] for the next word after every word boundary. Counts how often
+     * the word that follows is the first prediction or among the first three.
+     */
+    fun evaluateNextWord(
+        set: String,
+        languages: List<LatinScoringLanguage>,
+        sentences: List<String>,
+        predict: (languages: List<LatinScoringLanguage>, textBefore: String) -> List<String>,
+    ): NextWordResult {
+        var n = 0
+        var first = 0
+        var top3 = 0
+        val locale = languages.first().locale
+        for (sentence in sentences) {
+            for (match in NextWordPattern.findAll(sentence).drop(1)) {
+                val actual = LatinText.normalizeInputWord(match.value, locale)
+                n++
+                val predictions = predict(languages, sentence.substring(0, match.range.first))
+                if (predictions.firstOrNull() == actual) first++
+                if (predictions.take(3).contains(actual)) top3++
+            }
+        }
+        return NextWordResult(set, n, first, top3)
+    }
+
     /** Types each word after a short neutral prefix, the way a name or term appears mid-sentence. */
     suspend fun evaluateOov(set: String, languages: List<LatinScoringLanguage>, words: List<String>): OovResult {
         var inDictionary = 0
@@ -241,11 +311,15 @@ internal class BenchmarkReport(private val title: String) {
     val typoResults = mutableListOf<TypoSetResult>()
     val cleanResults = mutableListOf<CleanTextResult>()
     val oovResults = mutableListOf<OovResult>()
+    val realWordResults = mutableListOf<RealWordResult>()
+    val nextWordResults = mutableListOf<NextWordResult>()
     private val notes = mutableListOf<String>()
 
     fun add(result: TypoSetResult) = result.also { typoResults.add(it) }
     fun add(result: CleanTextResult) = result.also { cleanResults.add(it) }
     fun add(result: OovResult) = result.also { oovResults.add(it) }
+    fun add(result: RealWordResult) = result.also { realWordResults.add(it) }
+    fun add(result: NextWordResult) = result.also { nextWordResults.add(it) }
     fun note(text: String) = notes.add(text)
 
     fun render(): String = buildString {
@@ -277,8 +351,27 @@ internal class BenchmarkReport(private val title: String) {
                 appendLine("| ${r.set} | ${r.n} | ${r.inDictionary} | ${r.changed} | ${r.examples.joinToString(", ")} |")
             }
         }
+        if (realWordResults.isNotEmpty()) {
+            appendLine()
+            appendLine("| Real-word errors | n | Intended first | Intended in top 3 | Autocorrected |")
+            appendLine("| --- | --- | --- | --- | --- |")
+            realWordResults.forEach { r ->
+                appendLine("| ${r.set} | ${r.n} | ${f(r.firstPct)} | ${f(r.top3Pct)} | ${r.autoCorrected} |")
+            }
+        }
+        if (nextWordResults.isNotEmpty()) {
+            appendLine()
+            appendLine("| Next word | Positions | First prediction | In first 3 |")
+            appendLine("| --- | --- | --- | --- |")
+            nextWordResults.forEach { r ->
+                appendLine("| ${r.set} | ${r.n} | ${f(r.firstPct)} | ${f(r.top3Pct)} |")
+            }
+        }
         appendLine()
         appendLine("## Examples")
+        realWordResults.forEach { r ->
+            if (r.misses.isNotEmpty()) appendLine("- ${r.set}, intended word not first: ${r.misses.joinToString("; ")}")
+        }
         typoResults.forEach { r ->
             if (r.wrongExamples.isNotEmpty()) appendLine("- ${r.set}, wrong: ${r.wrongExamples.joinToString("; ")}")
             if (r.missExamples.isNotEmpty()) appendLine("- ${r.set}, missed: ${r.missExamples.joinToString("; ")}")

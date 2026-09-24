@@ -4,7 +4,7 @@ name: Context in scoring
 status: blocked
 workstream: WS-A
 created: 2026-09-24T20:57:41Z
-updated: 2026-09-24T20:57:41Z
+updated: 2026-09-24T21:04:22Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -16,7 +16,7 @@ estimate: L
 story_id: US-006
 acceptance_criteria_ids: [AC-010, AC-011]
 blocked_owner: ownkey-keyboard-team
-blocked_check_back: After dependencies are done: T-010, T-011
+blocked_check_back: After dependencies are done: T-011
 ---
 
 # Task: Context in scoring
