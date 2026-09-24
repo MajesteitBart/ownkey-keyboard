@@ -40,6 +40,15 @@ class MissedSpaceTest : FunSpec({
         auto(BenchmarkData.nlOnly(), "ikben", "ja ") shouldBe "ik ben"
     }
 
+    test("an English I inside a split keeps its capital") {
+        auto(BenchmarkData.enOnly(), "iknow", "yes ") shouldBe "I know"
+    }
+
+    test("very long tokens skip the expensive lookups") {
+        val long = "thisis".repeat(10)
+        benchmark.score(BenchmarkData.enOnly(), long, "so $long").none { ' ' in it.word } shouldBe true
+    }
+
     test("two uncommon words are only suggested: they may be a compound missing from the word list") {
         val result = benchmark.score(BenchmarkData.enOnly(), "treehouse", "we built a treehouse")
         result.firstOrNull { it.isAutoCommit }.shouldBeNull()

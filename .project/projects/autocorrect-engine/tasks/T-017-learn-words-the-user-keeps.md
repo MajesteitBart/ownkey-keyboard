@@ -4,7 +4,7 @@ name: Learn words the user keeps
 status: done
 workstream: WS-A
 created: 2026-09-24T22:22:47Z
-updated: 2026-09-24T22:42:11Z
+updated: 2026-09-24T23:22:07Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -44,11 +44,12 @@ Words the user types and keeps (names, jargon, slang) should stop being correcte
 
 - [x] Implementation complete
 - [x] Tests pass
-- [ ] Review complete
+- [x] Review complete
 - [x] Docs updated
 
 ## Evidence Log
 
+- 2026-09-24: Review of T-016 to T-019: the counts were rebuilt from the stored pairs after a restart, which also hold words typed with autocorrect off, so a typo could become protected after a restart. Counts are now stored on their own (an old file starts with none), and words typed in fields where autocorrect never runs (passwords, e-mail, no-suggestion fields) do not count either. Never-correct choices still win over the bonus.
 - 2026-09-24: `PersonalNgramModel` now counts how often each word was typed and kept, next to its pairs; the counts are rebuilt from the stored pairs on load, evicted with the same rule, and cleared with personal learning. They only grow while autocorrect is on, so text typed with autocorrect off cannot teach typos. `PersonalNgramStore.timesTypedIfLoaded` reads them without waiting (safe on the main thread) and both scoring hooks pass them to the scorer. From three kept uses on, keeping the typed word gets 4 * ln(1 + times) nats (5.5 at three). A factor of 5 also stopped `teh` from becoming "the"; 4 keeps that correction.
 - 2026-09-24: `LearnedWordsTest`: with every word of the out-of-dictionary set learned three times, lowercase names change 1 of 313 after "talk to" (hidde -> hide) and 0 after "I went to the", after "ik ga naar de" and with no words before (without learning: 8, 9, 5 and 3). Twice is not enough (`thijs` still becomes "this"); `teh` still becomes "the" after three kept uses. `PersonalNgramModelTest` covers counting, restore, clearing and the autocorrect-off case. The benchmark sets use no personal data, so their numbers are unchanged. Full `ime` suite: 546 tests pass.
 - 2026-09-24: Task created with Phase 5.

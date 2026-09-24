@@ -33,6 +33,7 @@ import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.ChatShorthand
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinBigramModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinCurrentWordScorer
@@ -420,9 +421,16 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val tokens = extractWordTokens(textBefore.takeLast(SuggestionContextTailLength), locale).takeLast(4)
         if (tokens.size < 2) return
         val language = normalizeLanguageCode(subtype.primaryLocale.language)
-        // A word only counts as kept when autocorrect had the chance to change it; with autocorrect off, typos
-        // would otherwise be learned as words.
-        personalNgramStore.learn(language, tokens, countWord = prefs.correction.highCertaintyAutocorrectEnabled.get())
+        // A word only counts as kept when autocorrect had the chance to change it: with autocorrect off, or in a field
+        // where it never runs, typos would otherwise be learned as words.
+        val info = editorInstance.activeInfo
+        val autocorrectCouldRun = prefs.correction.highCertaintyAutocorrectEnabled.get() &&
+            AutocorrectTriggerPolicy.allowsField(
+                variation = info.inputAttributes.variation,
+                flagTextNoSuggestions = info.inputAttributes.flagTextNoSuggestions,
+                isRichInputEditor = info.isRichInputEditor,
+            )
+        personalNgramStore.learn(language, tokens, countWord = autocorrectCouldRun)
         suggestionCache.withLock { it.clear() }
     }
 

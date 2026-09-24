@@ -80,6 +80,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
 
     override fun handleStartInput(editorInfo: FlorisEditorInfo) {
         TapTrail.clear()
+        keyboardManager.clearAutocorrectUndo()
         super.handleStartInput(editorInfo)
         _activeInputSessionIdFlow.value = nextInputSessionId.incrementAndGet()
     }

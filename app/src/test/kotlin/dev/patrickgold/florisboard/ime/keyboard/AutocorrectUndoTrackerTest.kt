@@ -74,6 +74,41 @@ class AutocorrectUndoTrackerTest : FunSpec({
         tracker.findBackspaceRestoreReplacement(contentAtCursor("I think xthis is ")).shouldBeNull()
     }
 
+    test("undo only applies right after the correction") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        // "I like teh" became "I like the"; the corrected word ends at 10.
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate, correctedEnd = 10)
+
+        tracker.findUndoReplacement(contentAtCursor("I like the ")) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 7, end = 10),
+            originalToken = "teh",
+            candidate = correctedCandidate,
+        )
+        // Typed on, and ended with the same word again: that "the" was typed correctly and must stay.
+        tracker.findUndoReplacement(contentAtCursor("I like the cat sat on the ")).shouldBeNull()
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I like the cat sat on the ")).shouldBeNull()
+    }
+
+    test("undo does not reach across several separators or a selection") {
+        val tracker = AutocorrectUndoTracker()
+        tracker.trackAutoCorrect(
+            originalToken = "teh",
+            correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true),
+        )
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I saw the.\n\n")).shouldBeNull()
+
+        val text = "I saw the cat"
+        val selected = EditorContent(
+            text = text,
+            offset = 0,
+            localSelection = EditorRange(10, 13),
+            localComposing = EditorRange.Unspecified,
+            localCurrentWord = EditorRange.Unspecified,
+        )
+        tracker.findUndoReplacement(selected).shouldBeNull()
+    }
+
     test("does not return undo replacement when token near cursor does not match") {
         val tracker = AutocorrectUndoTracker()
         tracker.trackAutoCorrect(

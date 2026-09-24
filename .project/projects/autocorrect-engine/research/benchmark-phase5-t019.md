@@ -4,37 +4,37 @@
 
 | Set | n | Right | Wrong | Precision | Top-1 | Top-3 | Typed is dict word | p50 us | p95 us |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tap EN usage, EN | 1500 | 70.4 | 0.8 | 98.9 | 88.8 | 93.7 | 0.0 | 56 | 201 |
-| tap EN uniform, EN | 1500 | 44.2 | 1.2 | 97.4 | 82.5 | 90.3 | 0.0 | 68 | 191 |
-| tap NL usage, NL | 1500 | 69.3 | 0.4 | 99.4 | 88.9 | 93.7 | 0.0 | 52 | 185 |
-| tap NL uniform, NL | 1500 | 48.3 | 1.0 | 98.0 | 84.9 | 89.6 | 0.0 | 56 | 154 |
-| tap NL usage, NL+EN | 1500 | 62.2 | 0.9 | 98.6 | 87.6 | 93.1 | 1.1 | 74 | 271 |
-| tap EN usage, NL+EN | 1500 | 59.6 | 0.8 | 98.7 | 86.1 | 93.3 | 0.7 | 67 | 241 |
-| tap NL uniform, NL+EN | 1500 | 38.6 | 0.6 | 98.5 | 83.9 | 89.6 | 0.6 | 87 | 264 |
-| harness EN usage, EN (optimistic) | 1113 | 68.6 | 0.9 | 98.7 | 91.2 | 98.3 | 0.0 | 50 | 151 |
-| real EN curated, EN | 100 | 82.0 | 0.0 | 100.0 | 96.0 | 97.0 | 0.0 | 37 | 86 |
-| real EN Wikipedia, EN | 3941 | 29.1 | 0.8 | 97.3 | 65.8 | 68.4 | 0.1 | 52 | 141 |
-| EN missing apostrophes, EN | 14 | 100.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 35 | 78 |
-| real NL curated, NL | 60 | 90.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 31 | 82 |
-| real NL extra, NL | 141 | 86.5 | 0.0 | 100.0 | 94.3 | 98.6 | 0.0 | 60 | 245 |
-| real NL all, NL+EN | 201 | 86.1 | 0.0 | 100.0 | 95.0 | 99.0 | 0.0 | 55 | 209 |
-| context EN, EN | 1557 | 77.9 | 0.8 | 99.0 | 91.5 | 93.4 | 0.0 | 42 | 127 |
-| context NL, NL | 1564 | 69.1 | 1.0 | 98.6 | 87.0 | 90.8 | 0.0 | 55 | 152 |
-| context NL, NL+EN | 1564 | 67.3 | 0.8 | 98.8 | 86.6 | 90.3 | 1.2 | 92 | 338 |
-| context EN, NL+EN | 1557 | 75.7 | 0.8 | 99.0 | 91.2 | 93.2 | 1.3 | 88 | 302 |
-| tap EN usage, EN, with taps | 1500 | 81.5 | 0.8 | 99.0 | 92.4 | 95.2 | 0.0 | 51 | 214 |
-| tap EN uniform, EN, with taps | 1500 | 68.3 | 1.0 | 98.6 | 87.4 | 92.5 | 0.0 | 46 | 253 |
-| tap NL usage, NL, with taps | 1500 | 79.7 | 0.4 | 99.5 | 92.1 | 94.8 | 0.0 | 50 | 232 |
-| tap NL uniform, NL, with taps | 1500 | 71.4 | 1.0 | 98.6 | 88.5 | 91.8 | 0.0 | 52 | 277 |
-| tap NL usage, NL+EN, with taps | 1500 | 75.6 | 0.9 | 98.9 | 91.1 | 94.3 | 1.1 | 63 | 361 |
-| context EN, EN, with taps | 1557 | 84.2 | 0.8 | 99.1 | 93.4 | 94.6 | 0.0 | 50 | 192 |
-| context NL, NL, with taps | 1564 | 77.3 | 1.1 | 98.6 | 90.0 | 92.3 | 0.0 | 55 | 225 |
-| context NL, NL+EN, with taps | 1564 | 75.6 | 0.8 | 98.9 | 89.7 | 91.9 | 1.2 | 85 | 397 |
+| tap EN usage, EN | 1500 | 70.4 | 0.8 | 98.9 | 88.8 | 93.7 | 0.0 | 63 | 207 |
+| tap EN uniform, EN | 1500 | 44.2 | 1.2 | 97.4 | 82.5 | 90.3 | 0.0 | 67 | 194 |
+| tap NL usage, NL | 1500 | 69.3 | 0.4 | 99.4 | 88.9 | 93.7 | 0.0 | 63 | 222 |
+| tap NL uniform, NL | 1500 | 48.3 | 1.0 | 98.0 | 84.9 | 89.6 | 0.0 | 71 | 208 |
+| tap NL usage, NL+EN | 1500 | 62.2 | 0.9 | 98.6 | 87.6 | 93.1 | 1.1 | 81 | 333 |
+| tap EN usage, NL+EN | 1500 | 59.6 | 0.8 | 98.7 | 86.1 | 93.3 | 0.7 | 73 | 255 |
+| tap NL uniform, NL+EN | 1500 | 38.6 | 0.6 | 98.5 | 83.9 | 89.6 | 0.6 | 67 | 200 |
+| harness EN usage, EN (optimistic) | 1113 | 68.6 | 0.9 | 98.7 | 91.2 | 98.3 | 0.0 | 44 | 144 |
+| real EN curated, EN | 100 | 82.0 | 0.0 | 100.0 | 96.0 | 97.0 | 0.0 | 62 | 179 |
+| real EN Wikipedia, EN | 3941 | 29.1 | 0.7 | 97.5 | 65.8 | 68.4 | 0.1 | 52 | 131 |
+| EN missing apostrophes, EN | 14 | 100.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 48 | 86 |
+| real NL curated, NL | 60 | 90.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 51 | 123 |
+| real NL extra, NL | 141 | 86.5 | 0.0 | 100.0 | 94.3 | 98.6 | 0.0 | 30 | 121 |
+| real NL all, NL+EN | 201 | 86.1 | 0.0 | 100.0 | 95.0 | 99.0 | 0.0 | 53 | 192 |
+| context EN, EN | 1557 | 77.9 | 0.8 | 99.0 | 91.5 | 93.4 | 0.0 | 46 | 134 |
+| context NL, NL | 1564 | 69.1 | 1.0 | 98.6 | 87.0 | 90.8 | 0.0 | 49 | 138 |
+| context NL, NL+EN | 1564 | 67.3 | 0.8 | 98.8 | 86.6 | 90.3 | 1.2 | 78 | 264 |
+| context EN, NL+EN | 1557 | 75.7 | 0.8 | 99.0 | 91.2 | 93.2 | 1.3 | 69 | 197 |
+| tap EN usage, EN, with taps | 1500 | 81.5 | 0.8 | 99.0 | 92.4 | 95.2 | 0.0 | 51 | 213 |
+| tap EN uniform, EN, with taps | 1500 | 68.3 | 1.0 | 98.6 | 87.4 | 92.5 | 0.0 | 49 | 236 |
+| tap NL usage, NL, with taps | 1500 | 79.7 | 0.4 | 99.5 | 92.1 | 94.8 | 0.0 | 49 | 217 |
+| tap NL uniform, NL, with taps | 1500 | 71.4 | 1.0 | 98.6 | 88.5 | 91.8 | 0.0 | 49 | 287 |
+| tap NL usage, NL+EN, with taps | 1500 | 75.6 | 0.9 | 98.9 | 91.1 | 94.3 | 1.1 | 69 | 363 |
+| context EN, EN, with taps | 1557 | 84.2 | 0.8 | 99.1 | 93.4 | 94.6 | 0.0 | 48 | 180 |
+| context NL, NL, with taps | 1564 | 77.3 | 1.1 | 98.6 | 90.0 | 92.3 | 0.0 | 38 | 190 |
+| context NL, NL+EN, with taps | 1564 | 75.6 | 0.8 | 98.9 | 89.7 | 91.9 | 1.2 | 83 | 393 |
 | context EN, EN, words before removed | 1557 | 66.2 | 0.5 | 99.2 | 88.6 | 93.1 | 0.0 | 47 | 145 |
-| context NL, NL, words before removed | 1564 | 62.0 | 1.0 | 98.5 | 83.8 | 90.2 | 0.0 | 42 | 134 |
-| run-together EN, EN | 1953 | 78.4 | 0.3 | 99.7 | 99.1 | 99.8 | 0.0 | 50 | 124 |
-| run-together NL, NL | 1982 | 69.1 | 0.3 | 99.6 | 75.7 | 75.9 | 0.0 | 59 | 145 |
-| run-together NL, NL+EN | 1982 | 68.8 | 0.2 | 99.7 | 75.8 | 76.3 | 0.2 | 94 | 231 |
+| context NL, NL, words before removed | 1564 | 62.0 | 1.0 | 98.5 | 83.8 | 90.2 | 0.0 | 48 | 166 |
+| run-together EN, EN | 1953 | 75.8 | 0.3 | 99.7 | 99.1 | 99.8 | 0.0 | 58 | 133 |
+| run-together NL, NL | 1982 | 67.4 | 0.3 | 99.6 | 75.7 | 75.9 | 0.0 | 54 | 138 |
+| run-together NL, NL+EN | 1982 | 67.1 | 0.2 | 99.7 | 75.8 | 76.3 | 0.2 | 81 | 194 |
 
 | Clean text | Words | False corrections | Per 1,000 | Examples | Known word not first | Examples |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -49,9 +49,9 @@
 | Out-of-dictionary set | n | Already in dictionary | Changed | Examples |
 | --- | --- | --- | --- | --- |
 | oov.txt, NL+EN | 313 | 79 | 1 | mergen->morgen |
-| oov.txt, EN | 313 | 29 | 2 | Thijs->This, standup->stand up |
+| oov.txt, EN | 313 | 29 | 1 | Thijs->This |
 | oov.txt, NL+EN, with taps | 313 | 79 | 1 | mergen->morgen |
-| oov.txt, EN, with taps | 313 | 29 | 2 | Thijs->This, standup->stand up |
+| oov.txt, EN, with taps | 313 | 29 | 1 | Thijs->This |
 | oov.txt lowercase, no words before, EN | 313 | 29 | 7 | lieke->like, thijs->this, siem->seem, bakker->baker, prins->prints, async->sync, standup->stand up |
 | oov.txt lowercase, after 'talk to', EN | 313 | 29 | 9 | joost->boost, lieke->like, thijs->this, hidde->hide, kees->keep, siem->seem, smit->sit, deno->deny, standup->stand up |
 | oov.txt lowercase, after 'I went to the', EN | 313 | 29 | 9 | lieke->like, thijs->this, eline->line, mees->mess, bakker->baker, breda->bread, gboard->board, standup->stand up, joh->job |
@@ -97,7 +97,7 @@
 - harness EN usage, EN (optimistic), wrong: glood->good (meant blood); desr->dear (meant deer); loh->oh (meant ooh); havej->have (meant haven); whre->where (meant whore); lotf->lot (meant loft); mce->me (meant mice); waht->what (meant want)
 - harness EN usage, EN (optimistic), missed: vefa [vera, vega, eva] (meant vega); ights [lights, nights, rights] (meant lights); przyers [prayers, prayer] (meant prayers); dlin [doin, lin, in] (meant doin); jome [home, joke, come] (meant joke); arres [arrest, arrested, arrests] (meant arrest); fw [few, fa, fe] (meant few); hshh [shh, heh, hush] (meant shhh)
 - real EN curated, EN, missed: tommorow [tomorrow] (meant tomorrow); wierd [weird, wired, word] (meant weird); calender [calendar, slender, calder] (meant calendar); foward [forward, coward, toward] (meant forward); happend [happened, happens, happen] (meant happened); peice [piece, peace, price] (meant piece); truely [truly, true, rely] (meant truly); helo [hello, help, hell] (meant hello)
-- real EN Wikipedia, EN, wrong: acustom->a custom (meant accustom); adviced->advice (meant advised); atain->again (meant attain); bandwith->band with (meant bandwidth); casion->casino (meant caisson); cxan->can (meant cyan); dyas->days (meant dryas); efel->feel (meant evil)
+- real EN Wikipedia, EN, wrong: adviced->advice (meant advised); atain->again (meant attain); bandwith->band with (meant bandwidth); casion->casino (meant caisson); cxan->can (meant cyan); dyas->days (meant dryas); efel->feel (meant evil); eles->else (meant eels)
 - real EN Wikipedia, EN, missed: aberation [abortion, abe ration] (meant aberration); abilityes [abilities, ability, ability es] (meant abilities); abscence [absence, obscene] (meant absence); abondoning [abandoning] (meant abandoning); abondons [abandon] (meant abandons); aborigene [] (meant aborigine); accesories [accessories] (meant accessories); abortificant [] (meant abortifacient)
 - real NL curated, NL, missed: trouwes [trouwens, trouwe, trouwen] (meant trouwens); oko [ook, oké, oke] (meant ook); groejtes [groetjes, groente, groepjes] (meant groetjes); groetn [groeten, groten, groen] (meant groeten); eventeel [eventueel, evenveel] (meant eventueel); eevn [even, een, en] (meant even)
 - real NL extra, NL, missed: wekren [werken, weken, weten] (meant werken); berigt [bright, buigt, berg] (meant bericht); berichtej [berichten, berichtje, bericht] (meant berichtje); groetjse [groetjes, groentje, grietje] (meant groetjes); eetn [een, eten, en] (meant eten); koffe [koffie, koffer, koffers] (meant koffie); betre [beter, betreft, betrek] (meant beter); mooii [mooi, mooie, kooi] (meant mooi)
@@ -131,8 +131,8 @@
 - context NL, NL, words before removed, wrong: ascht->acht (meant wacht); kleiin->klein (meant kleine); verveet->vergeet (meant verveelt); daat->dat (meant daar); vermkoeden->vermoeden (meant vermoorden); mke->me (meant moe); gxaan->gaan (meant gedaan); olgend->volgend (meant volgende)
 - context NL, NL, words before removed, missed: ijn [zijn, in, mijn] (meant zijn); ou [zou, oud, oude] (meant zou); blssenn [bossen, blussen, bussen] (meant bossen); vloeustof [vloeistof] (meant vloeistof); puut [put, puur, punt] (meant put); uzur [uur, zuur, vuur] (meant zuur); tebtamen [tezamen] (meant tentamen); vdrachting [drachtig] (meant verachting)
 - run-together EN, EN, wrong: ofa->of (meant of a); mea->me (meant me a); astop->stop (meant a stop); mea->me (meant me a); unidorm->uniform (meant uni dorm)
-- run-together EN, EN, missed: haspractical [has practical] (meant has practical); searchyou [search you] (meant search you); isit [is it, visit, i sit] (meant is it); rainfalls [rainfall, rain falls] (meant rain falls); policeofficer [police officer] (meant police officer); everwrite [ever write] (meant ever write); ownspeeches [own speeches] (meant own speeches); stingyperson [stingy person] (meant stingy person)
+- run-together EN, EN, missed: haspractical [has practical] (meant has practical); searchyou [search you] (meant search you); isit [is it, visit, i sit] (meant is it); rainfalls [rainfall, rain falls] (meant rain falls); policeofficer [police officer] (meant police officer); everwrite [ever write] (meant ever write); andeffectively [and effectively] (meant and effectively); ownspeeches [own speeches] (meant own speeches)
 - run-together NL, NL, wrong: uvertellen->vertellen (meant u vertellen); ume->me (meant u me); uvoor->voor (meant u voor); uouder->ouder (meant u ouder); vondin->vonden (meant vond in)
-- run-together NL, NL, missed: zijnooit [] (meant zij nooit); bestekappers [] (meant beste kappers); anderensamen [] (meant anderen samen); bossenbranden [] (meant bossen branden); vloeistofis [vloeistof] (meant vloeistof is); hoeveelheiddood [] (meant hoeveelheid dood); rundnog [] (meant rund nog); mannenmet [] (meant mannen met)
+- run-together NL, NL, missed: zijnooit [] (meant zij nooit); bestekappers [] (meant beste kappers); achterhem [achter hem, achteren, achterom] (meant achter hem); anderensamen [] (meant anderen samen); bossenbranden [] (meant bossen branden); vloeistofis [vloeistof] (meant vloeistof is); hoeveelheiddood [] (meant hoeveelheid dood); rundnog [] (meant rund nog)
 - run-together NL, NL+EN, wrong: uvertellen->vertellen (meant u vertellen); uvoor->voor (meant u voor); uouder->ouder (meant u ouder); vondin->vonden (meant vond in)
-- run-together NL, NL+EN, missed: zijnooit [] (meant zij nooit); bestekappers [] (meant beste kappers); anderensamen [] (meant anderen samen); bossenbranden [] (meant bossen branden); vloeistofis [vloeistof] (meant vloeistof is); hoeveelheiddood [] (meant hoeveelheid dood); rundnog [] (meant rund nog); mannenmet [] (meant mannen met)
+- run-together NL, NL+EN, missed: zijnooit [] (meant zij nooit); bestekappers [] (meant beste kappers); achterhem [achter hem, achteren, achterom] (meant achter hem); anderensamen [] (meant anderen samen); bossenbranden [] (meant bossen branden); vloeistofis [vloeistof] (meant vloeistof is); hoeveelheiddood [] (meant hoeveelheid dood); rundnog [] (meant rund nog)

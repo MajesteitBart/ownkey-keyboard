@@ -105,6 +105,8 @@ data class NoisyChannelParams(
      */
     val missedSpaceCost: Double = 3.0,
     val missedSpaceSplits: Boolean = true,
+    /** Like [twoEditDoubtFactor], for auto-committing a split: two words are a bigger change than one letter. */
+    val splitDoubtFactor: Double = 0.5,
     /** Put the most likely finished word first; later slots favor completions of the typed prefix. */
     val bestFinishedWordFirst: Boolean = true,
 )
@@ -177,6 +179,8 @@ internal class NoisyChannelLatinScorer(
         private val SentenceEnds = setOf('.', '!', '?', ';', ':', '\n')
         private const val TwoEditLookupCount = 12
         private const val MinSplitInputLength = 4
+        /** Longer tokens (pasted text, links) skip the two-edit and split lookups, which grow with length. */
+        private const val MaxExpensiveLookupLength = 48
         private const val MaxSplitCandidates = 3
         private val CompoundingLanguages = setOf("nl", "de")
         /** Keys worth trying instead of a typed letter: neighbors within this distance, or the keys nearest the tap. */
@@ -301,7 +305,7 @@ internal class NoisyChannelLatinScorer(
         // Words two edits away are only looked up when no single-edit reading is already confident enough to
         // auto-commit; they cost more time than every other candidate source together.
         val twoEditOnly = HashSet<String>()
-        if (params.twoEditCandidates && !inputKnown && input.length >= 3) {
+        if (params.twoEditCandidates && !inputKnown && input.length in 3..MaxExpensiveLookupLength) {
             val firstBest = scored.filter { it.word != input }.maxByOrNull { it.finishedScore }
             if (firstBest == null || exp(firstBest.finishedScore - normalizer(scored)) < request.autocorrect.threshold) {
                 val alternatives = substitutionAlternatives(input, geometry, taps)
@@ -319,7 +323,9 @@ internal class NoisyChannelLatinScorer(
         // split of two uncommon words ("tree house" for "treehouse") is more likely a compound missing from the word
         // list than a missed space, so it is only suggested.
         val suggestOnlySplits = HashSet<String>()
-        if (params.missedSpaceSplits && !inputKnown && input.length >= MinSplitInputLength && input.all { it.isLetter() }) {
+        if (params.missedSpaceSplits && !inputKnown && input.length in MinSplitInputLength..MaxExpensiveLookupLength &&
+            input.all { it.isLetter() }
+        ) {
             for (split in missedSpaceSplits(input, languages, logWeights, pairContexts)) {
                 if (!candidateWords.add(split.word)) continue
                 scored.add(split)
@@ -349,10 +355,10 @@ internal class NoisyChannelLatinScorer(
             bestCorrection.word !in suggestOnlySplits &&
             rawInput.none { it == '\'' || it == '’' || it == '-' } &&
             !hooks.isBlockedByUserPreference(input) &&
-            exp(bestCorrection.finishedScore - decisionNormalizer) >= if (bestCorrection.word in twoEditOnly) {
-                1.0 - (1.0 - settings.threshold) * params.twoEditDoubtFactor
-            } else {
-                settings.threshold
+            exp(bestCorrection.finishedScore - decisionNormalizer) >= when {
+                bestCorrection.word in twoEditOnly -> 1.0 - (1.0 - settings.threshold) * params.twoEditDoubtFactor
+                ' ' in bestCorrection.word -> 1.0 - (1.0 - settings.threshold) * params.splitDoubtFactor
+                else -> settings.threshold
             }
 
         val bestFinished = scored.maxByOrNull { it.finishedScore }
@@ -493,9 +499,15 @@ internal class NoisyChannelLatinScorer(
         }
     }
 
-    /** English writes the pronoun "I" and its contractions with a capital letter. */
+    /** English writes the pronoun "I" and its contractions with a capital letter, also inside a split ("I think"). */
     private fun pronounCase(rawInput: String, text: String, candidate: Scored): String {
-        if (candidate.locale.language != EnglishLanguage || candidate.word !in EnglishPronounForms) return text
+        if (candidate.locale.language != EnglishLanguage) return text
+        if (' ' in text) {
+            return text.split(' ').joinToString(" ") { part ->
+                if (part.lowercase() in EnglishPronounForms) part.replaceFirstChar { it.uppercaseChar() } else part
+            }
+        }
+        if (candidate.word !in EnglishPronounForms) return text
         // The typed word itself keeps its apostrophe ("i’m" becomes "I’m").
         if (LatinText.normalizeInputWord(rawInput, candidate.locale) == candidate.word) return "I" + rawInput.drop(1)
         return text.replaceFirstChar { it.uppercaseChar() }

@@ -58,7 +58,7 @@ class PersonalNgramModel(
     private val bigrams = HashMap<String, Int>()
     private val trigrams = HashMap<String, Int>()
 
-    /** How often each word was typed and kept. Derived data: rebuilt from the bigrams when the model is restored. */
+    /** How often each word was typed and kept (only while autocorrect was on). Stored next to the pairs. */
     private val wordCounts = HashMap<String, Int>()
 
     val bigramCount: Int get() = bigrams.size
@@ -132,19 +132,20 @@ class PersonalNgramModel(
     fun timesTyped(word: String): Int = wordCounts[word] ?: 0
 
     fun snapshotBigrams(): Map<String, Int> = HashMap(bigrams)
+    fun snapshotWordCounts(): Map<String, Int> = HashMap(wordCounts)
     fun snapshotTrigrams(): Map<String, Int> = HashMap(trigrams)
 
-    fun restore(bigramData: Map<String, Int>, trigramData: Map<String, Int>) {
+    fun restore(bigramData: Map<String, Int>, trigramData: Map<String, Int>, wordCountData: Map<String, Int> = emptyMap()) {
         bigrams.clear()
         trigrams.clear()
         bigrams.putAll(bigramData)
         trigrams.putAll(trigramData)
         evictIfNecessary(bigrams, maxBigrams)
         evictIfNecessary(trigrams, maxTrigrams)
+        // Not rebuilt from the pairs: those also hold words typed while autocorrect was off.
         wordCounts.clear()
-        for ((key, count) in bigrams) {
-            wordCounts.merge(key.substringAfterLast(KEY_SEPARATOR), count, Int::plus)
-        }
+        wordCounts.putAll(wordCountData)
+        evictIfNecessary(wordCounts, MAX_WORDS_DEFAULT)
     }
 
     fun clear() {
@@ -183,6 +184,7 @@ class PersonalNgramStore(context: Context) {
     private data class LanguageNgramData(
         val bigrams: Map<String, Int> = emptyMap(),
         val trigrams: Map<String, Int> = emptyMap(),
+        val words: Map<String, Int> = emptyMap(),
     )
 
     @Serializable
@@ -276,7 +278,7 @@ class PersonalNgramStore(context: Context) {
             if (!file.exists()) return
             val data = json.decodeFromString<NgramFileData>(file.readText())
             for ((language, languageData) in data.languages) {
-                modelForLocked(language).restore(languageData.bigrams, languageData.trigrams)
+                modelForLocked(language).restore(languageData.bigrams, languageData.trigrams, languageData.words)
             }
         } catch (e: Exception) {
             flogError { "Failed loading personal n-gram data: $e" }
@@ -298,6 +300,7 @@ class PersonalNgramStore(context: Context) {
                     LanguageNgramData(
                         bigrams = model.snapshotBigrams(),
                         trigrams = model.snapshotTrigrams(),
+                        words = model.snapshotWordCounts(),
                     )
                 },
             )

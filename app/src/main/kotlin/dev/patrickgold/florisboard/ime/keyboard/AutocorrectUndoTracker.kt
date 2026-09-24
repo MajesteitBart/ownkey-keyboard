@@ -27,10 +27,15 @@ internal data class AutocorrectUndoReplacement(
 )
 
 internal class AutocorrectUndoTracker {
-    // Ephemeral in-memory state only. No persisted text history.
+    // Ephemeral in-memory state only. No persisted text history. Read from the suggestion thread for the revert chip.
+    @Volatile
     private var pendingOperation: PendingAutocorrectOperation? = null
 
-    fun trackAutoCorrect(originalToken: String, correctedCandidate: SuggestionCandidate) {
+    /**
+     * Remembers an autocorrection. [correctedEnd] is where the corrected word ends in the editor, when known; undo
+     * then only applies with the cursor right there or one separator (the space that triggered it) after it.
+     */
+    fun trackAutoCorrect(originalToken: String, correctedCandidate: SuggestionCandidate, correctedEnd: Int? = null) {
         val normalizedOriginalToken = originalToken.trim()
         val correctedToken = correctedCandidate.text.toString().trim()
         pendingOperation = if (
@@ -44,12 +49,14 @@ internal class AutocorrectUndoTracker {
                 originalToken = normalizedOriginalToken,
                 correctedToken = correctedToken,
                 candidate = correctedCandidate,
+                correctedEnd = correctedEnd,
             )
         }
     }
 
     fun findUndoReplacement(content: EditorContent): AutocorrectUndoReplacement? {
         val operation = pendingOperation ?: return null
+        if (!isRightAfterCorrection(content, operation)) return null
         val correctedTokenRange = findCorrectedTokenRange(content, operation.correctedToken) ?: return null
         return AutocorrectUndoReplacement(
             range = correctedTokenRange,
@@ -61,6 +68,7 @@ internal class AutocorrectUndoTracker {
     fun findBackspaceRestoreReplacement(content: EditorContent): AutocorrectUndoReplacement? {
         if (content.selection.isSelectionMode) return null
         val operation = pendingOperation ?: return null
+        if (!isRightAfterCorrection(content, operation)) return null
         val correctedTokenRange = findBackspaceRestoreRange(content, operation.correctedToken) ?: return null
         return AutocorrectUndoReplacement(
             range = correctedTokenRange,
@@ -83,6 +91,24 @@ internal class AutocorrectUndoTracker {
         if (candidate == pending.candidate) {
             pendingOperation = null
         }
+    }
+
+    /**
+     * Undo only applies right after the correction: no selection, and the cursor at the end of the corrected word or
+     * one separator after it. Anything typed or moved since makes the correction final.
+     */
+    private fun isRightAfterCorrection(content: EditorContent, operation: PendingAutocorrectOperation): Boolean {
+        if (content.selection.isSelectionMode) return false
+        val cursor = content.selection.end
+        val end = operation.correctedEnd
+        if (end != null) {
+            if (cursor != end && cursor != end + 1) return false
+        }
+        // Without a known end, at most one character may separate the corrected word from the cursor.
+        val before = content.textBeforeSelection
+        var tokenEnd = before.length
+        while (tokenEnd > 0 && !before[tokenEnd - 1].isUndoTokenChar()) tokenEnd--
+        return before.length - tokenEnd <= 1
     }
 
     private fun findCorrectedTokenRange(content: EditorContent, correctedToken: String): EditorRange? {
@@ -143,5 +169,6 @@ internal class AutocorrectUndoTracker {
         val originalToken: String,
         val correctedToken: String,
         val candidate: SuggestionCandidate,
+        val correctedEnd: Int?,
     )
 }

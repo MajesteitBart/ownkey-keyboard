@@ -128,10 +128,14 @@ class PersonalNgramModelTest : FunSpec({
         model.learn(listOf("to", "teh"), countWord = false)
         model.timesTyped("teh") shouldBe 0
 
-        // Counts come back from the stored pairs; a word never seen after another word is not restored.
+        // Counts are stored on their own; rebuilding them from the pairs would count "teh" typed with autocorrect off.
         val restored = PersonalNgramModel()
-        restored.restore(model.snapshotBigrams(), model.snapshotTrigrams())
-        restored.timesTyped("bart") shouldBe 3
+        restored.restore(model.snapshotBigrams(), model.snapshotTrigrams(), model.snapshotWordCounts())
+        restored.timesTyped("bart") shouldBe 4
+        restored.timesTyped("teh") shouldBe 0
+        val fromOldFile = PersonalNgramModel()
+        fromOldFile.restore(model.snapshotBigrams(), model.snapshotTrigrams())
+        fromOldFile.timesTyped("bart") shouldBe 0
         restored.clear()
         restored.timesTyped("bart") shouldBe 0
     }
