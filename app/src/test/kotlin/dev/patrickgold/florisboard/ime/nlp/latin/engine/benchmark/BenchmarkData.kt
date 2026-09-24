@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.nlp.latin.engine.benchmark
 
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinBigramModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
@@ -50,9 +51,13 @@ internal class BenchmarkLanguage(
     val words: Map<String, Int>,
     removals: Set<String>,
     builtWords: Map<String, Int>?,
+    bigramFile: File? = null,
 ) {
     val shippedWords: Map<String, Int> by lazy { LatinDictionaryCleanup.apply(builtWords ?: words, code, removals) }
-    val model: LatinWordModel by lazy { LatinWordModel.build(shippedWords) }
+    val bigrams: LatinBigramModel by lazy {
+        bigramFile?.bufferedReader()?.useLines { LatinBigramModel.parse(it) } ?: LatinBigramModel.Empty
+    }
+    val model: LatinWordModel by lazy { LatinWordModel.build(shippedWords, bigrams) }
     val rawModel: LatinWordModel by lazy { LatinWordModel.build(words) }
     val locale: Locale = Locale.forLanguageTag(code)
 
@@ -87,7 +92,8 @@ internal object BenchmarkData {
             val words = dictionaryFile.bufferedReader().useLines { LatinText.parseFrequencyList(it) }
             val built = File(moduleDir, "src/main/assets/ime/dict/latin/$code.txt").takeIf { it.isFile }
                 ?.bufferedReader()?.useLines { LatinText.parseDictionary(it) }
-            BenchmarkLanguage(code, words, removals(code), built)
+            val bigrams = File(moduleDir, "src/main/assets/ime/dict/latin/$code.bigrams.txt").takeIf { it.isFile }
+            BenchmarkLanguage(code, words, removals(code), built, bigrams)
         }
     }
 

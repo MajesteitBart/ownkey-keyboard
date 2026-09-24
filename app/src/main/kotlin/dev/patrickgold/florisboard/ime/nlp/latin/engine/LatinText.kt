@@ -26,6 +26,8 @@ import kotlin.math.abs
  */
 internal object LatinText {
     const val RecentContextTokenWindowSize = 6
+    /** Asset folder of the built word lists and their `{language}.bigrams.txt` companions. */
+    const val BigramAssetDir = "ime/dict/latin"
 
     fun normalizeDictionaryWord(word: String): String {
         return word.trim()

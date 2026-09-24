@@ -1,0 +1,6 @@
+{
+  "hash": "tatoeba",
+  "name": "Creative Commons Attribution 2.0 France (CC BY 2.0 FR)",
+  "url": "https://creativecommons.org/licenses/by/2.0/fr/",
+  "content": "The word pair counts in ime/dict/latin/en.bigrams.txt and nl.bigrams.txt are derived from the Tatoeba sentence collection (https://tatoeba.org), by the Tatoeba contributors, which is published under the Creative Commons Attribution 2.0 France license. Ownkey counts which words follow which in those sentences; it does not ship the sentences themselves.\n\nFull license text: https://creativecommons.org/licenses/by/2.0/fr/legalcode"
+}

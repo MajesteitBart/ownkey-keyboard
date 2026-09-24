@@ -39,6 +39,8 @@ internal class LatinWordModel private constructor(
     val predictionShortcuts: LatinPredictionShortcuts,
     /** Sum of all word frequencies, to turn a frequency into a probability. */
     val totalFrequency: Double,
+    /** Which words follow which; empty for languages without a bigram list. */
+    val bigrams: LatinBigramModel = LatinBigramModel.Empty,
 ) {
     companion object {
         const val MaxEditDistance = 1
@@ -57,7 +59,7 @@ internal class LatinWordModel private constructor(
             totalFrequency = 1.0,
         )
 
-        fun build(words: Map<String, Int>): LatinWordModel {
+        fun build(words: Map<String, Int>, bigrams: LatinBigramModel = LatinBigramModel.Empty): LatinWordModel {
             if (words.isEmpty()) return Empty
 
             val deleteIndex = mutableMapOf<String, MutableList<String>>()
@@ -91,6 +93,7 @@ internal class LatinWordModel private constructor(
                 maxFrequency = words.values.maxOrNull()?.coerceAtLeast(1) ?: 1,
                 predictionShortcuts = predictionShortcuts,
                 totalFrequency = words.values.fold(0.0) { sum, frequency -> sum + frequency }.coerceAtLeast(1.0),
+                bigrams = bigrams,
             )
         }
     }

@@ -1,0 +1,14 @@
+{
+  "uniqueId": "tatoeba",
+  "name": "Tatoeba sentences (word pair counts)",
+  "developers": [
+    {
+      "name": "Tatoeba contributors",
+      "organisationUrl": "https://tatoeba.org"
+    }
+  ],
+  "website": "https://tatoeba.org",
+  "licenses": [
+    "tatoeba"
+  ]
+}

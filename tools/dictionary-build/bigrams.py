@@ -9,14 +9,26 @@ sentences are excluded as well.
 
 Output: app/src/main/assets/ime/dict/latin/{en,nl}.bigrams.txt
 
-    # ownkey-latin-bigrams v1 format=log100
-    <s>\tik 812 het 640 ...
-    ik\tben 790 heb 702 ...
+    # ownkey-latin-bigrams v2 format=log100
+    # language=nl source=...
+    @words 18234
+    <s>
+    aan
+    ...
+    @pairs
+    0\t12 1040 3 912 ...
+    1\t...
 
-One line per previous word, "<s>" for the start of a sentence. Each successor is followed by round(100 * ln(count)).
+The words section lists every word that occurs in a pair, sorted by code point; a word's id is its position, and
+"<s>" stands for the start of a sentence. Each pairs line holds a previous-word id, then its successors in
+ascending id order as (id difference to the previous successor, round(100 * ln(count))) pairs. Lines come in
+ascending previous-word id order. The app reads this without building strings or maps per pair.
+
 Only words in the built dictionary ({en,nl}.txt) are counted, and only pairs seen at least MIN_COUNT times.
 
 Usage: py -3 tools/dictionary-build/bigrams.py [--cache DIR] [--min-count N] [--probe]
+
+--min-count overrides MIN_COUNT for both languages.
 """
 
 from __future__ import annotations
@@ -36,7 +48,8 @@ BENCHMARK = ROOT / "app" / "src" / "test" / "resources" / "autocorrect"
 TATOEBA_URL = "https://downloads.tatoeba.org/exports/per_language/{lang}/{lang}_sentences.tsv.bz2"
 LANGUAGES = {"en": "eng", "nl": "nld"}
 HOLDOUT_MODULUS = 10
-MIN_COUNT = 2
+# English has twelve times the Dutch text, so it can drop rarer pairs and still cover more.
+MIN_COUNT = {"en": 3, "nl": 2}
 SENTENCE_START = "<s>"
 # Tatoeba's English and Dutch sentences use a few stock names very often ("Tom", "Mary"). As a context they are
 # fine, but as a predicted next word they would be odd, so their counts are capped at this share of the
@@ -123,21 +136,30 @@ def render(counts: Counter, min_count: int, source_note: str) -> str:
     for (previous, word), count in counts.items():
         if count >= min_count:
             successors[previous].append((word, count))
+    words = sorted({w for p, items in successors.items() for w in [p] + [x for x, _ in items]})
+    ids = {word: index for index, word in enumerate(words)}
     lines = [
-        "# ownkey-latin-bigrams v1 format=log100",
+        "# ownkey-latin-bigrams v2 format=log100",
         f"# {source_note}",
+        f"@words {len(words)}",
+        *words,
+        "@pairs",
     ]
-    for previous in sorted(successors, key=lambda p: (-sum(c for _, c in successors[p]), p)):
-        items = sorted(successors[previous], key=lambda item: (-item[1], item[0]))
-        rendered = " ".join(f"{word} {round(100 * math.log(count))}" for word, count in items)
-        lines.append(f"{previous}\t{rendered}")
+    for previous in sorted(successors, key=lambda p: ids[p]):
+        items = sorted((ids[word], round(100 * math.log(count))) for word, count in successors[previous])
+        last = 0
+        fields = []
+        for word_id, log_count in items:
+            fields.append(f"{word_id - last} {log_count}")
+            last = word_id
+        lines.append(f"{ids[previous]}\t{' '.join(fields)}")
     return "\n".join(lines) + "\n"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path, default=Path.home() / ".cache" / "ownkey-dictionary-build")
-    parser.add_argument("--min-count", type=int, default=MIN_COUNT)
+    parser.add_argument("--min-count", type=int, default=None)
     parser.add_argument("--probe", action="store_true", help="print sizes for several minimum counts, write nothing")
     args = parser.parse_args()
     args.cache.mkdir(parents=True, exist_ok=True)
@@ -147,8 +169,9 @@ def main() -> None:
         vocabulary = load_vocabulary(language)
         counts, sentences, tokens = count_bigrams(path, vocabulary, benchmark_sentences(language))
         counts = cap_stock_names(counts)
+        min_count = args.min_count or MIN_COUNT[language]
         note = (f"language={language} source=Tatoeba (CC BY 2.0 FR) training_sentences={sentences} "
-                f"tokens={tokens} min_count={args.min_count}")
+                f"tokens={tokens} min_count={min_count}")
         if args.probe:
             print(f"{language}: {sentences} sentences, {tokens} tokens, {len(counts)} distinct bigrams")
             for min_count in (1, 2, 3, 5):
@@ -159,8 +182,8 @@ def main() -> None:
                       f"{len(text.encode()) / 1e6:.2f} MB text, {len(gzip.compress(text.encode())) / 1e6:.2f} MB gzip")
             continue
         target = ASSETS / f"{language}.bigrams.txt"
-        target.write_text(render(counts, args.min_count, note), encoding="utf-8", newline="\n")
-        print(f"{target.name}: {sum(1 for c in counts.values() if c >= args.min_count)} bigrams")
+        target.write_text(render(counts, min_count, note), encoding="utf-8", newline="\n")
+        print(f"{target.name}: {sum(1 for c in counts.values() if c >= min_count)} bigrams")
 
 
 if __name__ == "__main__":

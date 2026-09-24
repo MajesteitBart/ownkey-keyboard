@@ -1,10 +1,10 @@
 ---
 id: T-013
 name: Next-word predictions from bigrams
-status: blocked
+status: ready
 workstream: WS-A
 created: 2026-09-24T20:57:41Z
-updated: 2026-09-24T20:57:41Z
+updated: 2026-09-24T21:23:08Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -15,8 +15,6 @@ priority: medium
 estimate: M
 story_id: US-006
 acceptance_criteria_ids: [AC-012]
-blocked_owner: ownkey-keyboard-team
-blocked_check_back: After dependencies are done: T-011
 ---
 
 # Task: Next-word predictions from bigrams

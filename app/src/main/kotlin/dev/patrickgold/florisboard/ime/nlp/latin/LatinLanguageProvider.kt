@@ -34,6 +34,7 @@ import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.ChatShorthand
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinBigramModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinCurrentWordScorer
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringHooks
@@ -602,7 +603,15 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         } catch (_: java.io.IOException) {
             emptySet()
         }
-        return LatinWordModel.build(LatinDictionaryCleanup.apply(words, language, removals))
+        val bigrams = try {
+            val start = SystemClock.uptimeMillis()
+            appContext.assets.open("${LatinText.BigramAssetDir}/$language.bigrams.txt").bufferedReader()
+                .useLines { lines -> LatinBigramModel.parse(lines) }
+                .also { flogDebug { "Loaded '$language' bigrams: ${it.pairCount} pairs in ${SystemClock.uptimeMillis() - start} ms" } }
+        } catch (_: java.io.IOException) {
+            LatinBigramModel.Empty
+        }
+        return LatinWordModel.build(LatinDictionaryCleanup.apply(words, language, removals), bigrams)
     }
 
     private fun buildLanguageModelFromLegacyAsset(): LatinWordModel {
