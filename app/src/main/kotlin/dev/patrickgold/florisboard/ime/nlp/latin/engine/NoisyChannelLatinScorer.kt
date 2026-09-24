@@ -53,6 +53,13 @@ data class NoisyChannelParams(
     val capitalizedLiteralBonus: Double = 6.0,
     /** Extra weight for keeping an all-caps word as typed; it is probably an acronym. */
     val allCapsLiteralBonus: Double = 6.0,
+    /**
+     * Extra weight for keeping a word the user typed and kept at least [learnedWordMinCount] times:
+     * [learnedWordBonus] * ln(1 + times). Three times gives about 5.5 nats: enough to keep a name like "thijs",
+     * not enough to keep "teh" from becoming "the".
+     */
+    val learnedWordBonus: Double = 4.0,
+    val learnedWordMinCount: Int = 3,
     /** Display ranking only: cost per letter the user has not typed yet. */
     val completionCostPerLetter: Double = 0.8,
     val personalContinuationWeight: Double = 4.0,
@@ -276,7 +283,8 @@ internal class NoisyChannelLatinScorer(
         val literalScore = if (input in candidateWords) {
             null
         } else {
-            literalScore(rawInput, input, request.textBeforeSelection) + request.autocorrect.literalBias
+            literalScore(rawInput, input, request.textBeforeSelection) + request.autocorrect.literalBias +
+                learnedWordBonus(hooks.timesTyped(input))
         }
         fun normalizer(candidates: List<Scored>): Double =
             candidates.fold(literalScore ?: Double.NEGATIVE_INFINITY) { sum, candidate -> logSumExp(sum, candidate.finishedScore) }
@@ -475,6 +483,11 @@ internal class NoisyChannelLatinScorer(
             margin.coerceIn(-MaxTokenLanguageMargin, MaxTokenLanguageMargin)
         }
         return if (target.isPrimary) lead > -MaxTokenLanguageMargin else lead >= MaxTokenLanguageMargin
+    }
+
+    private fun learnedWordBonus(timesTyped: Int): Double {
+        if (timesTyped < params.learnedWordMinCount) return 0.0
+        return params.learnedWordBonus * ln(1.0 + timesTyped)
     }
 
     private fun literalScore(rawInput: String, input: String, textBeforeSelection: String): Double {

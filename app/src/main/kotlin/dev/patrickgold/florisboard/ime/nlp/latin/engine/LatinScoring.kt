@@ -62,6 +62,9 @@ internal interface LatinScoringHooks {
     fun isBlockedByUserPreference(normalizedWord: String): Boolean
     suspend fun personalContinuationScore(previousWord: String, candidateWord: String): Double
 
+    /** How often the user typed [normalizedWord] and kept it; 0 when unknown. Must not block. */
+    fun timesTyped(normalizedWord: String): Int = 0
+
     object None : LatinScoringHooks {
         override fun isUserDictionaryWord(normalizedWord: String) = false
         override fun isBlockedByUserPreference(normalizedWord: String) = false

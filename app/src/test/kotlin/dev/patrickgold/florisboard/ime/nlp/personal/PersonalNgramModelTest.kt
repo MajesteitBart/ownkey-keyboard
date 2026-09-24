@@ -114,4 +114,25 @@ class PersonalNgramModelTest : FunSpec({
 
         restored.predictNext(prev2 = "see", prev1 = "you", limit = 5).map { it.word } shouldBe listOf("tomorrow")
     }
+
+    test("counts how often a word was typed and kept") {
+        val model = PersonalNgramModel()
+        repeat(3) { model.learn(listOf("talk", "to", "bart")) }
+        model.learn(listOf("bart"))
+        model.timesTyped("bart") shouldBe 4
+        model.timesTyped("to") shouldBe 0 // only the last word of each call is counted
+        model.timesTyped("nobody") shouldBe 0
+        model.learn(listOf("talk", "to", "b@rt"))
+        model.timesTyped("b@rt") shouldBe 0
+        // Typed with autocorrect off: the pair is learned, the word does not count as kept.
+        model.learn(listOf("to", "teh"), countWord = false)
+        model.timesTyped("teh") shouldBe 0
+
+        // Counts come back from the stored pairs; a word never seen after another word is not restored.
+        val restored = PersonalNgramModel()
+        restored.restore(model.snapshotBigrams(), model.snapshotTrigrams())
+        restored.timesTyped("bart") shouldBe 3
+        restored.clear()
+        restored.timesTyped("bart") shouldBe 0
+    }
 })

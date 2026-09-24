@@ -420,7 +420,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val tokens = extractWordTokens(textBefore.takeLast(SuggestionContextTailLength), locale).takeLast(4)
         if (tokens.size < 2) return
         val language = normalizeLanguageCode(subtype.primaryLocale.language)
-        personalNgramStore.learn(language, tokens)
+        // A word only counts as kept when autocorrect had the chance to change it; with autocorrect off, typos
+        // would otherwise be learned as words.
+        personalNgramStore.learn(language, tokens, countWord = prefs.correction.highCertaintyAutocorrectEnabled.get())
         suggestionCache.withLock { it.clear() }
     }
 
@@ -946,6 +948,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             override suspend fun personalContinuationScore(previousWord: String, candidateWord: String): Double {
                 return personalNgramStore.continuationScore(language, previousWord, candidateWord)
             }
+
+            override fun timesTyped(normalizedWord: String): Int {
+                return personalNgramStore.timesTypedIfLoaded(language, normalizedWord)
+            }
         }
     }
 
@@ -963,6 +969,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
             override suspend fun personalContinuationScore(previousWord: String, candidateWord: String): Double {
                 return personalNgramStore.continuationScoreIfLoaded(language, previousWord, candidateWord)
+            }
+
+            override fun timesTyped(normalizedWord: String): Int {
+                return personalNgramStore.timesTypedIfLoaded(language, normalizedWord)
             }
         }
     }
