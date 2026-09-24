@@ -281,6 +281,8 @@ class NlpManager(context: Context) {
     }
 
     fun getAutoCommitCandidate(): SuggestionCandidate? {
+        // The toggle can flip between the last suggestion run and the next space press.
+        if (!prefs.correction.highCertaintyAutocorrectEnabled.get()) return null
         return activeCandidates.firstOrNull { it.isEligibleForAutoCommit }
     }
 

@@ -80,6 +80,7 @@ import kotlinx.coroutines.sync.withLock
 import org.florisboard.lib.android.AndroidKeyguardManager
 import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.android.showLongToastSync
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.collectIn
@@ -184,6 +185,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             editorInstance.activeContentFlow.collectIn(scope) { content ->
                 resetSuggestions(content)
+            }
+            prefs.correction.highCertaintyAutocorrectEnabled.asFlow().collectLatestIn(scope) { isEnabled ->
+                activeState.isAutocorrectEnabled = isEnabled
             }
             prefs.devtools.enabled.asFlow().collectLatestIn(scope) {
                 reevaluateDebugFlags()
@@ -693,10 +697,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     /**
      * Handles a [KeyCode.TOGGLE_AUTOCORRECT] event.
      */
-    private fun handleToggleAutocorrect() {
+    private suspend fun handleToggleAutocorrect() {
+        val isEnabled = !prefs.correction.highCertaintyAutocorrectEnabled.get()
+        prefs.correction.highCertaintyAutocorrectEnabled.set(isEnabled)
+        activeState.isAutocorrectEnabled = isEnabled
         lastToastReference.get()?.cancel()
         lastToastReference = WeakReference(
-            appContext.showLongToastSync("Autocorrect toggle is a placeholder and not yet implemented")
+            appContext.showShortToast(
+                if (isEnabled) R.string.autocorrect__toast_after_enabled else R.string.autocorrect__toast_after_disabled
+            )
         )
     }
 
@@ -887,7 +896,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 dictationFixController.abort()
                 scope.launch { handleToggleIncognitoMode() }
             }
-            KeyCode.TOGGLE_AUTOCORRECT -> handleToggleAutocorrect()
+            KeyCode.TOGGLE_AUTOCORRECT -> scope.launch { handleToggleAutocorrect() }
             KeyCode.UNDO -> if (!handleUndoLastAutocorrect()) editorInstance.performUndo()
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS
             KeyCode.VIEW_NUMERIC -> activeState.keyboardMode = KeyboardMode.NUMERIC

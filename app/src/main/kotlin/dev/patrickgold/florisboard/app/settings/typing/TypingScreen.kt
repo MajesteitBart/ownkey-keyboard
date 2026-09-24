@@ -134,6 +134,11 @@ fun TypingScreen() = FlorisScreen {
 
         PreferenceGroup(title = stringRes(R.string.pref__correction__title)) {
             SwitchPreference(
+                prefs.correction.highCertaintyAutocorrectEnabled,
+                title = stringRes(R.string.pref__correction__autocorrect__label),
+                summary = stringRes(R.string.pref__correction__autocorrect__summary),
+            )
+            SwitchPreference(
                 prefs.correction.autoCapitalization,
                 title = stringRes(R.string.pref__correction__auto_capitalization__label),
                 summary = stringRes(R.string.pref__correction__auto_capitalization__summary),
@@ -142,6 +147,7 @@ fun TypingScreen() = FlorisScreen {
                 prefs.correction.appSpecificAutocorrectProfilesEnabled,
                 title = stringRes(R.string.pref__correction__app_specific_autocorrect_profiles_enabled__label),
                 summary = stringRes(R.string.pref__correction__app_specific_autocorrect_profiles_enabled__summary),
+                enabledIf = { prefs.correction.highCertaintyAutocorrectEnabled isEqualTo true },
             )
             DialogSliderPreference(
                 prefs.correction.appSpecificAutocorrectChatAggressivenessPercent,

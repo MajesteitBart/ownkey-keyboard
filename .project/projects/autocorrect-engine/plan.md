@@ -21,7 +21,7 @@ No separate probe. The baseline measurement in `research/baseline-2026-09-24.md`
 ## Technical context
 
 - Engine: `app/src/main/kotlin/dev/patrickgold/florisboard/ime/nlp/latin/LatinLanguageProvider.kt` (1,367 lines) does dictionary loading, candidate generation, ranking, confidence, mixed-language weighting, personal boosts, e-mail suggestions and `spell()` in one class that needs an Android `Context`. None of the scoring is unit-testable today.
-- Policy: `HighCertaintyAutocorrectPolicy.kt` and `AppSpecificAutocorrectProfilePolicy.kt` turn confidence into an auto-commit flag. `AppPrefs.Correction` holds the tuning prefs: 4 percentage sliders, a minimum-length slider and 2 switches.
+- Policy: `HighCertaintyAutocorrectPolicy.kt` and `AppSpecificAutocorrectProfilePolicy.kt` turn confidence into an auto-commit flag. `AppPrefs.Correction` holds the tuning prefs: minimum confidence, confidence gap and minimum length (hidden, no settings UI), chat and e-mail aggressiveness sliders, and the profile switch.
 - Commit path: `KeyboardManager.handleSpace()`, hardware space, the media-mode branch and every non-alphabetic character call `nlpManager.getAutoCommitCandidate()`. That returns the first eligible candidate from the last finished async `suggest()` run on `Dispatchers.Default`. `handleEnter()` never autocorrects.
 - Recovery: `AutocorrectUndoTracker`, backspace restore, `NeverCorrectWords` and revert memory already work and stay.
 - Data: `app/src/main/assets/ime/dict/frequencywords/{en,nl}_50k.txt` are FrequencyWords 2018 OpenSubtitles lists (CC BY-SA 4.0). `data.json` is the old FlorisBoard list and the fallback for every other language.

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.FontDownloadOff
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardCapslock
@@ -372,7 +373,7 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             }
         }
         KeyCode.TOGGLE_AUTOCORRECT -> {
-            Icons.Default.FontDownload
+            if (evaluator.state.isAutocorrectEnabled) Icons.Default.FontDownload else Icons.Default.FontDownloadOff
         }
         KeyCode.AI_REWRITE -> {
             styledIcon(R.drawable.ic_tabler_sparkles, Icons.Filled.AutoAwesome, Icons.Rounded.AutoAwesome, Icons.Sharp.AutoAwesome)

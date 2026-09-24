@@ -134,6 +134,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             //!instance.inputAttributes.flagTextAutoComplete &&
             //!instance.inputAttributes.flagTextNoSuggestions
         }
+        activeState.isAutocorrectEnabled = prefs.correction.highCertaintyAutocorrectEnabled.get()
         activeState.isIncognitoMode = when (prefs.suggestion.incognitoMode.get()) {
             IncognitoMode.FORCE_OFF -> false
             IncognitoMode.FORCE_ON -> true

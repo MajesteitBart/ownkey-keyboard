@@ -23,7 +23,7 @@ acceptance_criteria_ids: []
 
 ## Description
 
-Replace the 4 percentage sliders and the minimum-length slider in the typing settings with one strength setting: Off, Gentle, Normal, Strong. Each level maps to a posterior threshold calibrated on the benchmark.
+Replace the chat and e-mail aggressiveness sliders in the typing settings, and the hidden confidence, gap and minimum-length prefs, with one strength setting: Off, Gentle, Normal, Strong. Each level maps to a posterior threshold calibrated on the benchmark.
 
 ## Acceptance Criteria
 

@@ -116,6 +116,8 @@
 
     <!-- Incognito mode strings -->
     <string name="incognito_mode__toast_after_enabled">Incognito mode is now enabled\n\n{app_name} will not learn words from your input, and dictation and rewrite are switched off while this mode is active</string>
+    <string name="autocorrect__toast_after_enabled">Autocorrect is on</string>
+    <string name="autocorrect__toast_after_disabled">Autocorrect is off. Suggestions still show.</string>
     <string name="incognito_mode__toast_after_disabled">Incognito mode is now disabled by default\n\nDictation and rewrite are available again</string>
 
     <!-- Settings UI strings -->
@@ -519,6 +521,8 @@
     <string name="pref__suggestion__clear_personalized_data__confirm_message" comment="Dialog message">This deletes all learned word predictions and remembered personal data (such as e-mail addresses) from this device. This action cannot be undone. Continue?</string>
     <string name="pref__suggestion__clear_personalized_data__done" comment="Toast message">Learned data cleared</string>
     <string name="pref__correction__title" comment="Preference group title">Corrections</string>
+    <string name="pref__correction__autocorrect__label" comment="Preference title">Autocorrect</string>
+    <string name="pref__correction__autocorrect__summary" comment="Preference summary">Replace a mistyped word with the word you meant when you press space</string>
     <string name="pref__correction__auto_capitalization__label" comment="Preference title">Auto-capitalization</string>
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Capitalize words based on the current input context</string>
     <string name="pref__correction__app_specific_autocorrect_profiles_enabled__label" comment="Preference title">App-specific autocorrect profiles</string>

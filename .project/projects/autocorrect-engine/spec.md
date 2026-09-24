@@ -18,7 +18,7 @@ operating_mode: feature
 
 Ownkey's autocorrect barely works. The 2026-09-24 baseline (`research/baseline-2026-09-24.md`) found that the current engine corrected 0 of 2,280 synthetic touch typos and 0 of 160 real-world misspellings in English and Dutch at default settings. At the most aggressive slider settings it corrected under 3%, and about a quarter of those picked the wrong word. An independent review re-ran the measurement and reproduced every number.
 
-The earlier `typing-speed-core` work added recovery and control features on top of this engine: undo, backspace restore, never-correct, revert memory, app profiles and a tuning screen. Those features are sound. The scoring underneath them is not. The confidence formula cannot reach its own threshold, the dictionaries treat common misspellings as correct and contain no English contractions, completions can never become corrections, and nothing in the engine knows which keys are next to each other.
+The earlier `typing-speed-core` work added recovery and control features on top of this engine: undo, backspace restore, never-correct, revert memory and app profiles. The planned tuning screen (T-013) never shipped. Those features are sound. The scoring underneath them is not. The confidence formula cannot reach its own threshold, the dictionaries treat common misspellings as correct and contain no English contractions, completions can never become corrections, and nothing in the engine knows which keys are next to each other.
 
 The fix starts small. Phase 1 swaps the scoring for a standard noisy-channel posterior on the existing candidate indexes, fixes the commit path, removes known misspellings from the dictionaries, and makes the quick toggle work. The review measured that the scoring swap alone matches a full candidate-search rebuild on the benchmark sets, so a trie or binary dictionary only happens if memory or completion measurements call for it. Later phases add cleaned dictionaries, context and touch position, each behind a measured gate.
 
@@ -34,7 +34,7 @@ What goes wrong today, from the baseline:
 
 - Typos stay typos. `teh`, `becuase`, `thnaks`, `bedakt`, `vergaderign` all pass through unchanged at default settings.
 - Some misspellings are dictionary words and can never be corrected: `mischien`, `eigelijk`, `untill`, `seperate`, `dont`.
-- Raising the sliders produces wrong corrections toward frequent words: `yout` becomes "you", `noet` becomes "niet".
+- Pushing the correction prefs to their most aggressive values produces wrong corrections toward frequent words: `yout` becomes "you", `noet` becomes "niet". Most of those prefs have no settings UI, and there was no autocorrect on/off switch in settings either.
 - English contractions cannot be produced at all.
 - The suggestion bar shows the intended word first for only 60 to 81% of typos. A standard scorer reaches about 90 to 94% with the same candidates.
 
@@ -128,7 +128,7 @@ The undo rate comes from the existing `TypingSpeedMetrics` counters for applied 
 
 - Bart's main subtype is Dutch with English as a secondary language, or English only. Both are measured, and NL+EN has its own gate.
 - The Phase 1 gates are reachable with scoring changes and curated dictionary removals, without a context model. Evidence so far is mixed. The untuned reference scorer reached 59% (EN) and 45% (NL) on synthetic typos with 1.2% or fewer wrong, but it misses the NL real-world gate (23%), the EN real-world gate (41%) and the out-of-dictionary gate (2 of 57 changed). A lower unknown-word prior reached 77% (EN) and 68% (NL) synthetic and 59% (EN) and 63% (NL) real-world, but precision on the vocabulary-uniform set fell to 91%. Calibration on non-circular data in T-001 and T-004 settles this.
-- Bart's complaint matches the measured behavior: autocorrect does nothing at defaults, and makes bad corrections toward frequent words when the sliders are raised.
+- Bart's complaint matches the measured behavior: autocorrect does nothing at defaults, and the only reachable tuning (chat and e-mail aggressiveness) cannot change that.
 
 ## Needs clarification
 

@@ -68,7 +68,7 @@ def build_clean_text(cache: Path, lang: str, out_name: str) -> None:
         count += len(text.split())
         if count >= TARGET_WORDS:
             break
-    (OUT / out_name).write_text("\n".join(picked) + "\n", encoding="utf-8")
+    (OUT / out_name).write_text("\n".join(picked) + "\n", encoding="utf-8", newline="\n")
     print(f"{out_name}: {len(picked)} sentences, {count} words")
 
 
@@ -90,7 +90,7 @@ def build_wikipedia_misspellings(cache: Path) -> None:
         seen.add(typo)
         pairs.append((typo, intended))
     lines = [f"{typo}\t{intended}" for typo, intended in pairs]
-    (OUT / "real_en_wikipedia.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (OUT / "real_en_wikipedia.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"real_en_wikipedia.tsv: {len(pairs)} pairs")
 
 
