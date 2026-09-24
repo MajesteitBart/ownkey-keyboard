@@ -61,7 +61,7 @@ import dev.patrickgold.florisboard.ime.theme.ThemeGlassPreset
 import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
-import dev.patrickgold.florisboard.ime.theme.extMyTheme
+import dev.patrickgold.florisboard.ime.theme.extSignalTheme
 import dev.patrickgold.florisboard.ime.window.ImeWindowConfig
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.lib.util.VersionName
@@ -849,12 +849,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         // afterwards persist normally.
         val dayThemeId = custom(
             key = "theme__glass_day_theme_id",
-            default = extMyTheme("ownkey_glass_day_borderless_medium"),
+            default = extSignalTheme("ownkey_signal_bone"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
             key = "theme__glass_night_theme_id",
-            default = extMyTheme("ownkey_glass_night_borderless_medium"),
+            default = extSignalTheme("ownkey_signal_graphite"),
             serializer = ExtensionComponentName.Serializer,
         )
         val showKeyBorders = boolean(
@@ -867,7 +867,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val glassPreset = enum(
             key = "theme__glass_preset",
-            default = ThemeGlassPreset.GLASS,
+            default = ThemeGlassPreset.SIGNAL,
         )
         val iconStyle = enum(
             key = "theme__icon_style",
@@ -884,7 +884,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val accentColor = custom(
             key = "theme__accent_color",
-            default = Color(0xFF0A84FF),
+            default = Color(0xFFDE5F14),
             serializer = ColorPreferenceSerializer,
         )
         val sunriseTime = localTime(

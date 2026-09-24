@@ -217,7 +217,7 @@ fun VoiceRecordingStickyAction(
             CircleControlButton(
                 size = buttonSize,
                 iconSize = 20.dp,
-                background = OwnkeyBrand.Glass.Key,
+                background = OwnkeyBrand.Coal,
                 border = OwnkeyBrand.Bone.copy(alpha = 0.12f),
                 onClick = actions::onCancel,
                 contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
@@ -229,24 +229,17 @@ fun VoiceRecordingStickyAction(
                 )
             }
         } else {
-            CircleControlButton(
+            // The same listening face as the mic key and the voice-only bar.
+            val stopLabel = stringRes(R.string.voice_recording__stop_dictation)
+            MicButtonFace(
+                state = if (state.phase == VoiceRecordingPhase.PAUSED) MicFaceState.PAUSED else MicFaceState.LISTENING,
+                idleStyle = MicIdleStyle.QUIET,
                 size = buttonSize,
-                iconSize = 22.dp,
-                background = if (state.phase == VoiceRecordingPhase.PAUSED) {
-                    OwnkeyBrand.SignalOrange.copy(alpha = 0.55f)
-                } else {
-                    OwnkeyBrand.SignalOrange
-                },
-                border = OwnkeyBrand.SignalAmber.copy(alpha = 0.34f),
-                onClick = actions::onStop,
-                contentDescription = stringRes(R.string.voice_recording__stop_dictation),
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_stop),
-                    contentDescription = null,
-                    tint = Color.White,
-                )
-            }
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(onClickLabel = stopLabel, onClick = actions::onStop)
+                    .semantics { contentDescription = stopLabel },
+            )
         }
     }
 }
@@ -270,7 +263,7 @@ private fun RecordingElapsed(
             modifier = Modifier
                 .size(5.dp)
                 .background(
-                    color = if (paused) OwnkeyBrand.WarningYellow else OwnkeyBrand.SignalOrange,
+                    color = if (paused) OwnkeyBrand.WarningYellow else OwnkeyBrand.Ember,
                     shape = CircleShape,
                 ),
         )
@@ -298,7 +291,7 @@ private fun ProcessingStatus(
         CircularProgressIndicator(
             modifier = Modifier.size(18.dp),
             strokeWidth = 2.5.dp,
-            color = OwnkeyBrand.SignalOrange,
+            color = OwnkeyBrand.Ember,
             trackColor = OwnkeyBrand.Bone.copy(alpha = 0.08f),
         )
         Text(
@@ -431,7 +424,7 @@ fun MeasuredLevelWaveform(
     barCount: Int,
     paused: Boolean,
     modifier: Modifier = Modifier,
-    color: Color = OwnkeyBrand.SignalOrange,
+    color: Color = OwnkeyBrand.Ember,
     barWidth: Dp = RecordingRowLayoutPolicy.BarWidthDp.dp,
     barPitch: Dp = RecordingRowLayoutPolicy.BarPitchDp.dp,
 ) {

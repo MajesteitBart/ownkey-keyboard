@@ -5,12 +5,20 @@ holds the dictation button, the live level meter and status, and a keyboard
 button that brings the full keyboard back. It uses the same dictation pipeline,
 provider, and speech dictionary as the microphone key; nothing else records.
 
-Tap the microphone to start. Tap it again to stop and insert the transcript.
-While the transcript is processed, the button shows a spinner and a close icon,
-and tapping it cancels. Hold-to-rewrite is not available in the bar, because the
-rewrite panel needs the full keyboard. Pause and cancel during a recording are
+Tap the orange microphone to start. While it listens, the button shows a stop
+square inside a white ring; tap it to stop and insert the transcript. While the
+transcript is processed, the button shows only a spinning orange arc, and a tap
+just reports that it is still working. Hold-to-rewrite is not available in the
+bar, because the rewrite panel needs the full keyboard. Pause and cancel are
 also left to the full keyboard: tap the keyboard button, and the recording
 continues in the Smartbar row with its pause, cancel, and stop controls.
+
+When dictation fails, the button shows an exclamation mark and the status line
+names the reason, for example "No API key" or "No microphone access". A cloud
+provider without an API key now fails before recording starts, instead of after
+the user has spoken. Messages that would cover the bar appear just above it and
+close on their own. The button states are shared with the keyboard's mic key;
+see "Dictation button states" in `docs/brandbook/ownkey-brand-token-map-2026-05-31.md`.
 
 The bar starts 16dp above the navigation bar, centered. Drag it anywhere on
 screen to uncover app controls; it cannot move below that starting point or off
@@ -47,3 +55,17 @@ keyboard was active before, docked or floating.
 - Found and fixed a floating split bug while testing: after the keyboard was
   recreated, as when leaving the bar, the split gap was never reported, so the
   panels drew as one surface and the center stopped passing touches through.
+
+## Verification on 2026-09-23: mic states and Signal theme
+
+- `:app:testDebugUnitTest` passed all 500 tests, including the button state
+  mapping and the missing-key check. `:app:assembleDebug` and
+  `:app:assembleRelease` passed.
+- Same emulator, Signal Graphite preset: saw idle, listening, and transcribing
+  in the bar and in the Smartbar row; revoked the microphone permission and saw
+  "No microphone access"; set the stored provider to cloud without a key and saw
+  "No API key" before any recording; restored the permission and the provider.
+- Not checked on a device: the orange AI icon for a ready rewrite result, which
+  needs a configured rewrite provider.
+
+![Signal Graphite keyboard in Messages](screenshots/signal-graphite-keyboard.png)

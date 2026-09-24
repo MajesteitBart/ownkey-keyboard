@@ -16,12 +16,6 @@
 
 package dev.patrickgold.florisboard.ime.window
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,14 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -88,12 +76,16 @@ import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.smartbar.MeasuredLevelWaveform
+import dev.patrickgold.florisboard.ime.smartbar.MicButtonFace
+import dev.patrickgold.florisboard.ime.smartbar.MicFaceState
+import dev.patrickgold.florisboard.ime.smartbar.MicIdleStyle
 import dev.patrickgold.florisboard.ime.smartbar.VoiceRecordingPhase
 import dev.patrickgold.florisboard.ime.smartbar.label
+import dev.patrickgold.florisboard.ime.smartbar.micFaceState
 import dev.patrickgold.florisboard.ime.smartbar.voiceRecordingRowState
+import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionErrorReason
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
-import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import dev.patrickgold.florisboard.voxtralDictationManager
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -247,7 +239,7 @@ private fun VoiceOnlyBar() {
     val status = when {
         recording != null -> recording.label()
         feedback.phase == VoiceActionFeedbackPhase.SUCCESS -> stringRes(R.string.voice_only__inserted)
-        feedback.phase == VoiceActionFeedbackPhase.ERROR -> stringRes(R.string.voice_only__try_again)
+        feedback.phase == VoiceActionFeedbackPhase.ERROR -> stringRes(feedback.errorReason.voiceOnlyLabel())
         else -> stringRes(R.string.voice_only__tap_to_speak)
     }
 
@@ -262,17 +254,12 @@ private fun VoiceOnlyBar() {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         VoiceOnlyMicButton(
-            phase = phase,
             feedbackPhase = feedback.phase,
-            idleBackground = keyBackground,
-            idleForeground = keyForeground,
             onClick = {
                 inputFeedbackController.keyPress()
-                if (phase == VoiceRecordingPhase.PROCESSING) {
-                    dictationManager.cancelDictation()
-                } else {
-                    FlorisImeService.handleVoiceInputAction()
-                }
+                // While transcribing the face offers no cancel, so a tap only says it is still working;
+                // the full keyboard's row keeps an explicit cancel.
+                FlorisImeService.handleVoiceInputAction()
             },
         )
         // A fixed width keeps both buttons in place while the status text changes under the finger.
@@ -287,6 +274,7 @@ private fun VoiceOnlyBar() {
                 modifier = Modifier
                     .width(54.dp)
                     .height(18.dp),
+                color = OwnkeyBrand.Ember,
                 barWidth = 3.dp,
                 barPitch = 6.dp,
             )
@@ -325,108 +313,42 @@ private fun VoiceOnlyBar() {
 
 @Composable
 private fun VoiceOnlyMicButton(
-    phase: VoiceRecordingPhase?,
     feedbackPhase: VoiceActionFeedbackPhase,
-    idleBackground: Color,
-    idleForeground: Color,
     onClick: () -> Unit,
 ) {
-    val reducedMotion = rememberReducedMotion()
-    val success = phase == null && feedbackPhase == VoiceActionFeedbackPhase.SUCCESS
-    val error = phase == null && feedbackPhase == VoiceActionFeedbackPhase.ERROR
-    val background = when {
-        phase == VoiceRecordingPhase.RECORDING -> OwnkeyBrand.SignalOrange
-        phase == VoiceRecordingPhase.PAUSED -> OwnkeyBrand.SignalOrange.copy(alpha = 0.55f)
-        success -> OwnkeyBrand.Glass.Success
-        error -> OwnkeyBrand.Glass.Danger.copy(alpha = 0.22f)
-        else -> idleBackground
-    }
+    val state = micFaceState(feedbackPhase, aiUnavailable = false)
     val label = stringRes(
-        when (phase) {
-            VoiceRecordingPhase.RECORDING, VoiceRecordingPhase.PAUSED -> R.string.voice_recording__stop_dictation
-            VoiceRecordingPhase.PROCESSING -> R.string.voice_recording__cancel_dictation
-            null -> R.string.voice_rewrite__action_start_dictation
+        when (state) {
+            MicFaceState.LISTENING, MicFaceState.PAUSED -> R.string.voice_recording__stop_dictation
+            MicFaceState.TRANSCRIBING -> R.string.voice_recording__processing
+            else -> R.string.voice_rewrite__action_start_dictation
         },
     )
-
-    Box(
+    MicButtonFace(
+        state = state,
+        idleStyle = MicIdleStyle.SOLID,
+        size = MicSize,
         modifier = Modifier
-            .size(MicSize)
-            .drawBehind {
-                if (phase == VoiceRecordingPhase.RECORDING) {
-                    // A small halo around the button only; the bar's own shadow stays neutral.
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            0.6f to OwnkeyBrand.SignalOrange.copy(alpha = 0.3f),
-                            1f to Color.Transparent,
-                            center = center,
-                            radius = size.minDimension * 0.8f,
-                        ),
-                        radius = size.minDimension * 0.8f,
-                    )
-                }
-            }
             .clip(CircleShape)
-            .background(background)
             .clickable(onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) {
-        when {
-            phase == VoiceRecordingPhase.PROCESSING -> {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
-                    contentDescription = null,
-                    tint = idleForeground.copy(alpha = 0.9f),
-                    modifier = Modifier.size(20.dp),
-                )
-                ProcessingArc(reducedMotion)
-            }
-            success -> Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_check),
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(22.dp),
-            )
-            error -> Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_exclamation_circle),
-                contentDescription = null,
-                tint = OwnkeyBrand.Glass.Danger,
-                modifier = Modifier.size(20.dp),
-            )
-            else -> Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
-                contentDescription = null,
-                tint = if (phase == null) idleForeground.copy(alpha = 0.86f) else Color.White,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-    }
+    )
 }
 
-@Composable
-private fun ProcessingArc(reducedMotion: Boolean) {
-    // Under reduced motion the arc still marks processing, but it stays put.
-    val angle = if (reducedMotion) {
-        -90f
-    } else {
-        rememberInfiniteTransition(label = "voiceOnlySpin").animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(animation = tween(durationMillis = 900, easing = LinearEasing)),
-            label = "voiceOnlySpinAngle",
-        ).value
-    }
-    Canvas(modifier = Modifier.size(MicSize)) {
-        val stroke = 2.dp.toPx()
-        drawArc(
-            color = OwnkeyBrand.SignalOrange,
-            startAngle = angle,
-            sweepAngle = 90f,
-            useCenter = false,
-            topLeft = Offset(stroke / 2f, stroke / 2f),
-            size = Size(size.width - stroke, size.height - stroke),
-            style = Stroke(width = stroke, cap = StrokeCap.Round),
-        )
-    }
+/** Why the last attempt failed, short enough for the bar's status line. */
+private fun VoiceActionErrorReason?.voiceOnlyLabel(): Int = when (this) {
+    VoiceActionErrorReason.PROVIDER_CONFIGURATION -> R.string.voice_only__error_no_api_key
+    VoiceActionErrorReason.MICROPHONE_PERMISSION -> R.string.voice_only__error_microphone_permission
+    VoiceActionErrorReason.AUDIO_SESSION_BUSY,
+    VoiceActionErrorReason.RECORDER_UNAVAILABLE,
+    -> R.string.voice_only__error_microphone_unavailable
+    VoiceActionErrorReason.EMPTY_AUDIO -> R.string.voice_only__error_nothing_heard
+    VoiceActionErrorReason.EDITOR_COMMIT -> R.string.voice_only__error_insert
+    VoiceActionErrorReason.AI_UNAVAILABLE -> R.string.voice_only__error_ai_unavailable
+    VoiceActionErrorReason.RECORDING,
+    VoiceActionErrorReason.TRANSCRIPTION,
+    VoiceActionErrorReason.TARGET,
+    VoiceActionErrorReason.REWRITE,
+    null,
+    -> R.string.voice_only__try_again
 }

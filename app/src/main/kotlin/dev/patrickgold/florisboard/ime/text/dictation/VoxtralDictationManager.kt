@@ -177,6 +177,13 @@ class VoxtralDictationManager(
         val generation = ++sessionGeneration
         operationJob = scope.launch {
             if (aiAvailabilityPolicy.current() !is AiAvailability.Available) return@launch
+            // Reading the key touches the Keystore-backed store, so it stays off the main thread.
+            if (mode.lacksApiKey(hasCloudKey = kotlinx.coroutines.withContext(Dispatchers.IO) { apiKey().isNotBlank() })) {
+                _stateFlow.value = DictationState.ERROR
+                feedbackController.standaloneError(VoiceActionErrorReason.PROVIDER_CONFIGURATION)
+                appContext.showShortToastSync("Add a transcription API key in Settings → AI")
+                return@launch
+            }
             if (mode != TranscriptionBackend.MOCK && !hasRecordAudioPermission()) {
                 _stateFlow.value = DictationState.ERROR
                 feedbackController.standaloneError(VoiceActionErrorReason.MICROPHONE_PERMISSION)

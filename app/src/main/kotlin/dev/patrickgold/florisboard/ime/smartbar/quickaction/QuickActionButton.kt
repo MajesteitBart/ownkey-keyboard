@@ -17,19 +17,12 @@
 package dev.patrickgold.florisboard.ime.smartbar.quickaction
 
 import android.os.SystemClock
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -55,15 +48,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
@@ -73,7 +63,6 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -84,28 +73,31 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.florisboard.app.OwnkeyBrand
-import dev.patrickgold.florisboard.app.ownkeyAccentColor
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
+import dev.patrickgold.florisboard.ime.smartbar.MicButtonFace
+import dev.patrickgold.florisboard.ime.smartbar.MicIdleStyle
+import dev.patrickgold.florisboard.ime.smartbar.micFaceState
 import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.text.rewrite.AiAvailability
+import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteManager
+import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEntryOrigin
 import dev.patrickgold.florisboard.ime.text.rewrite.stringResId
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
+import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.florisboard.voxtralDictationManager
 import kotlinx.coroutines.Job
@@ -156,6 +148,7 @@ fun QuickActionButton(
     aspectRatio: Float = QuickActionButtonAspectRatio,
     fillContainer: Boolean = false,
     iconSize: Dp = QuickActionButtonIconSize,
+    micIdleStyle: MicIdleStyle = MicIdleStyle.SOLID,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -203,6 +196,21 @@ fun QuickActionButton(
     }
     val aiUnavailableReason = (aiAvailability as? AiAvailability.Unavailable)?.reason
     val aiUnavailableText = aiUnavailableReason?.let { stringRes(it.stringResId()) }
+
+    // Toolbar icons use the chosen toolbar color, else the quiet Stone of the Signal design. The AI action
+    // turns orange while a rewrite result waits for the user.
+    val prefs by FlorisPreferenceStore
+    val toolbarIconColor by prefs.theme.toolbarIconColor.collectAsState()
+    val aiResultReady = if (action is QuickAction.InsertKey && action.data.code == KeyCode.AI_REWRITE) {
+        val llmRewriteManager by context.llmRewriteManager()
+        val rewriteState by llmRewriteManager.uiStateFlow.collectAsState()
+        val voiceRewriteState by voiceRewriteUiController.value.uiState.collectAsState()
+        rewriteState.step == LlmRewriteManager.RewriteStep.RESULT ||
+            voiceRewriteState.surface == VoiceRewriteSurface.RESULT
+    } else {
+        false
+    }
+    val toolbarIconTint = if (aiResultReady) OwnkeyBrand.Ember else toolbarIconColor.takeOrElse { OwnkeyBrand.Stone }
 
     fun dispatchVoiceOutcome(outcome: VoiceActionGestureOutcome) {
         if (aiUnavailableText != null) {
@@ -397,6 +405,7 @@ fun QuickActionButton(
                         isEnabled = isEnabled && aiUnavailableReason == null,
                         isAiUnavailable = aiUnavailableReason != null,
                         holdProgress = { holdProgress.value },
+                        idleStyle = micIdleStyle,
                     )
                 } else when (action) {
                     is QuickAction.InsertKey -> {
@@ -404,13 +413,11 @@ fun QuickActionButton(
                             evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
                         }
                         if (imageVector != null) {
-                            val prefs by FlorisPreferenceStore
-                            val toolbarIconColor by prefs.theme.toolbarIconColor.collectAsState()
                             Icon(
                                 modifier = Modifier.requiredSize(iconSize),
                                 imageVector = imageVector,
                                 contentDescription = null,
-                                tint = toolbarIconColor.takeOrElse { OwnkeyBrand.Glass.InkSoft },
+                                tint = toolbarIconTint,
                             )
                         } else if (label != null) {
                             SnyggText(
@@ -469,7 +476,7 @@ fun QuickActionButton(
                                     modifier = Modifier.requiredSize(iconSize),
                                     imageVector = imageVector,
                                     contentDescription = null,
-                                    tint = LocalContentColor.current,
+                                    tint = toolbarIconTint,
                                 )
                             } else {
                                 SnyggBox(
@@ -507,6 +514,7 @@ fun QuickActionButton(
                     isEnabled = isEnabled && aiUnavailableReason == null,
                     isAiUnavailable = aiUnavailableReason != null,
                     holdProgress = { holdProgress.value },
+                    idleStyle = micIdleStyle,
                 )
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -528,17 +536,11 @@ fun QuickActionButton(
 }
 
 /**
- * The voice input pill following the Liquid Glass dictation spec. Each dictation state maps to a
- * distinct visual:
- * - idle: glass gray circle with a static mic icon
- * - listening: solid accent blue with four animated waveform bars and an expanding halo ring
- * - paused ("silent"): dim blue with flat bars and a slow breathing glow
- * - transcribing: back to glass with a thin accent arc spinning around the pill
- * - success (transcript inserted): solid green with a check icon, shown briefly, then back to idle
- * - error: red tint with a mic-off icon
+ * The keyboard's dictation key. Its face comes from [MicButtonFace] in the quiet idle style, so it matches the
+ * voice-only bar in every state: listening, paused, transcribing, inserted, failed, and unavailable.
  *
  * While pressed the pill grows slightly and, as the finger stays down, [holdProgress] fills an
- * accent ring around it that completes exactly when the hold becomes voice rewrite.
+ * orange ring around it that completes exactly when the hold becomes voice rewrite.
  */
 @Composable
 private fun DictationMicPill(
@@ -546,36 +548,16 @@ private fun DictationMicPill(
     isEnabled: Boolean,
     isAiUnavailable: Boolean = false,
     holdProgress: () -> Float = { 0f },
+    idleStyle: MicIdleStyle = MicIdleStyle.SOLID,
 ) {
     val context = LocalContext.current
     val voxtralDictationManager by context.voxtralDictationManager()
     val feedbackState by voxtralDictationManager.feedbackStateFlow.collectAsState()
-    val feedbackPhase = feedbackState.phase
     val pillSize = (FlorisImeSizing.smartbarHeight - 8.dp).coerceAtLeast(34.dp)
-    val accentColor = ownkeyAccentColor()
+    val showSuccess = feedbackState.phase == VoiceActionFeedbackPhase.SUCCESS
 
-    val showSuccess = feedbackPhase == VoiceActionFeedbackPhase.SUCCESS
-    val isListening = feedbackPhase == VoiceActionFeedbackPhase.RECORDING
-    val isSilent = feedbackPhase == VoiceActionFeedbackPhase.PAUSED
-    val isProcessing = feedbackPhase == VoiceActionFeedbackPhase.PROCESSING
-    val isError = feedbackPhase == VoiceActionFeedbackPhase.ERROR
-
-    // Reduced motion removes the decorative halo, the interpolated colour transition, the success
-    // scale, and the travelling processing arc. Every state keeps its icon, colour, and semantics.
+    // Reduced motion removes the success scale and the press growth; every state keeps its face.
     val reducedMotion = rememberReducedMotion()
-
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            showSuccess -> OwnkeyBrand.Glass.Success
-            isListening -> OwnkeyBrand.SignalOrange
-            isSilent -> OwnkeyBrand.SignalOrange.copy(alpha = 0.55f)
-            isError -> OwnkeyBrand.Glass.Danger.copy(alpha = 0.22f)
-            isPressed -> OwnkeyBrand.Glass.KeyPressed
-            else -> OwnkeyBrand.Glass.Key
-        },
-        animationSpec = tween(durationMillis = if (reducedMotion) 0 else 300),
-        label = "micPillBackground",
-    )
 
     val successScale = remember { Animatable(1f) }
     LaunchedEffect(showSuccess, reducedMotion) {
@@ -606,7 +588,7 @@ private fun DictationMicPill(
             if (progress > 0f) {
                 val ringStroke = 2.5.dp.toPx()
                 drawArc(
-                    color = accentColor,
+                    color = OwnkeyBrand.Ember,
                     startAngle = -90f,
                     sweepAngle = 360f * progress,
                     useCenter = false,
@@ -616,96 +598,14 @@ private fun DictationMicPill(
                 )
             }
         }
-        if (isListening && !reducedMotion) {
-            val haloTransition = rememberInfiniteTransition(label = "micHalo")
-            val haloProgress by haloTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 1800),
-                    repeatMode = RepeatMode.Restart,
-                ),
-                label = "micHaloProgress",
-            )
-            Box(
-                modifier = Modifier
-                    .size(pillSize + 8.dp)
-                    .scale(0.85f + 0.30f * haloProgress)
-                    .alpha((1f - haloProgress) * 0.35f)
-                    .border(width = 2.dp, color = accentColor, shape = CircleShape),
-            )
-        }
-        Box(
+        MicButtonFace(
+            // Visibly unavailable rather than hidden, so the reason stays discoverable.
+            state = micFaceState(feedbackState.phase, aiUnavailable = isAiUnavailable),
+            idleStyle = idleStyle,
+            size = pillSize,
             modifier = Modifier
-                .size(pillSize)
                 .scale(if (showSuccess) successScale.value else pressScale)
-                .alpha(if (isEnabled) 1f else 0.45f)
-                .clip(CircleShape)
-                .background(backgroundColor),
-            contentAlignment = Alignment.Center,
-        ) {
-            when {
-                // The action shows what tapping it does. Microphone-level feedback belongs to the
-                // measured centre waveform in the recording row, never inside this button.
-                isListening || isSilent -> Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_stop),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(pillSize * 0.46f),
-                )
-                showSuccess -> Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_check),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(pillSize * 0.48f),
-                )
-                isError -> Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_exclamation_circle),
-                    contentDescription = null,
-                    tint = OwnkeyBrand.Glass.Danger,
-                    modifier = Modifier.size(pillSize * 0.46f),
-                )
-                // Visibly disabled rather than hidden, so the reason stays discoverable.
-                isAiUnavailable -> Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_no_symbol),
-                    contentDescription = null,
-                    tint = OwnkeyBrand.Glass.InkSoft,
-                    modifier = Modifier.size(pillSize * 0.46f),
-                )
-                else -> Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
-                    contentDescription = null,
-                    tint = OwnkeyBrand.Glass.InkSoft,
-                    modifier = Modifier.size(pillSize * 0.46f),
-                )
-            }
-        }
-        if (isProcessing) {
-            // Under reduced motion the arc stays put: it still marks the processing state, but it
-            // no longer travels around the button.
-            val spinAngle = if (reducedMotion) {
-                -90f
-            } else {
-                val spinTransition = rememberInfiniteTransition(label = "micSpin")
-                spinTransition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = 900, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart,
-                    ),
-                    label = "micSpinAngle",
-                ).value
-            }
-            Canvas(modifier = Modifier.size(pillSize + 8.dp)) {
-                drawArc(
-                    color = accentColor,
-                    startAngle = spinAngle,
-                    sweepAngle = 90f,
-                    useCenter = false,
-                    style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-                )
-            }
-        }
+                .alpha(if (isEnabled || isAiUnavailable) 1f else 0.45f),
+        )
     }
 }

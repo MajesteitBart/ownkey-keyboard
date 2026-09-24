@@ -18,6 +18,9 @@ Canonical assets:
 - `OwnkeyBrand.Bone` / `#F3F1EC`: primary text and monkey face color on dark surfaces.
 - `OwnkeyBrand.Ash` / `#B6BAC3`: secondary labels, helper text, and muted metadata.
 - `OwnkeyBrand.SignalOrange` / `#F56C1E`: voice, AI, active recording, primary keyboard actions, and brand signal moments.
+- `OwnkeyBrand.Ember` / `#DE5F14`: the logo orange. The dictation button, the recording level, the enter key in the Signal themes, the default accent, and an AI result that is ready.
+- `OwnkeyBrand.Coal` / `#161616`: the well of a quiet dictation button while idle, transcribing, or failed.
+- `OwnkeyBrand.Stone` / `#8E8A7F`: toolbar icons, including the AI action while it is idle.
 - `OwnkeyBrand.SignalAmber` / `#F5A524`: warning and paused voice states.
 - `OwnkeyBrand.TrustBlue` / `#2F6BFF`: primary setup/settings actions.
 - `OwnkeyBrand.SuccessGreen` / `#3EDB83`: success feedback only.
@@ -42,6 +45,21 @@ Canonical assets:
 - Dictation panel entry/exit: 180ms slide/fade.
 - Audio meter updates: 80ms so the meter feels live without making layout shift.
 - Motion must never delay typing or insertion.
+
+## Themes and icons
+
+- The default keyboard theme is Ownkey Signal Graphite (`#111111` background, `#1A1A1A` keys). Signal Black is the OLED variant and Signal Bone the day theme. They ship as the built-in extension `ai.bvdm.ownkey.themes.signal` and appear as the first two theme presets.
+- Keyboard icons are Heroicons Mini (20px solid, MIT). Keyboard and waveform glyphs, which Heroicons lacks, are drawn to match it.
+
+## Dictation button states
+
+One face is shared by the mic key, the recording row, and the voice-only bar (`MicButtonFace`).
+
+- Idle, solid: Ember circle with a white microphone. Used in the Smartbar and the voice-only bar.
+- Idle, quiet: Coal circle with an Ember microphone. Used in the floating split strip, where the mic sits among other actions.
+- Listening: Ember circle, a white ring at 45% opacity, and a white stop square.
+- Transcribing: Coal circle with a faint ring and a quarter Ember arc that spins. No icon.
+- Error: Coal circle with a Bone exclamation circle. The voice-only bar names the reason, such as "No API key".
 
 ## IME Constraints
 

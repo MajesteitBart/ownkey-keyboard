@@ -41,6 +41,7 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickAction
+import dev.patrickgold.florisboard.ime.smartbar.MicIdleStyle
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButton
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import org.florisboard.lib.compose.stringRes
@@ -73,6 +74,8 @@ internal fun FloatingSplitControls(actions: Boolean = false) {
             evaluator = evaluator,
             modifier = Modifier.size(48.dp),
             aspectRatio = 1f,
+            // In the strip the mic is one action among peers, so it idles quietly.
+            micIdleStyle = MicIdleStyle.QUIET,
         )
     }
 

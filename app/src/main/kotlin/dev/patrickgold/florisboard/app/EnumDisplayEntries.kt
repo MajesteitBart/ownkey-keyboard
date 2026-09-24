@@ -540,6 +540,14 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
     ThemeGlassPreset::class to DEFAULT to {
         listPrefEntries {
             entry(
+                key = ThemeGlassPreset.SIGNAL,
+                label = stringRes(R.string.enum__theme_glass_preset__signal),
+            )
+            entry(
+                key = ThemeGlassPreset.SIGNAL_BLACK,
+                label = stringRes(R.string.enum__theme_glass_preset__signal_black),
+            )
+            entry(
                 key = ThemeGlassPreset.GLASS,
                 label = stringRes(R.string.enum__theme_glass_preset__glass),
             )
