@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 status: active
 lead: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T21:52:01Z
+updated: 2026-09-24T22:22:47Z
 linear_project_id:
 risk_level: medium
 spec_status_at_plan_time: planned
@@ -106,11 +106,13 @@ Gate: the spec's final synthetic targets on the tap-noise set.
 
 Tasks: T-014 tap positions from the keyboard, T-015 touch likelihood in the error model, T-016 candidate search for two-edit typos. Two Phase 3 targets moved here: Dutch context typos >= 72% (T-016) and Dutch real-word errors >= 60% (open; they mostly need the word after the error, which no phase provides yet).
 
-### Phase 5: trust polish (tasks created later)
+### Phase 5: trust polish (T-017 to T-020)
 
 - Learn out-of-dictionary words the user types and keeps (for example, 3 uses without undo) into the personal dictionary, together with the `personal-dictionary` project.
 - Brief visual mark on a corrected word, tap to revert.
 - Missed-space and extra-space fixes (`thisis`, `th eother`).
+
+Tasks: T-017 learn words the user keeps, T-018 mark autocorrections in the text, T-019 fix missed spaces, T-020 real-word errors with the next word (deferred: it needs a correction of the previous word after the fact).
 
 ### Conditional: trie or binary dictionary
 
