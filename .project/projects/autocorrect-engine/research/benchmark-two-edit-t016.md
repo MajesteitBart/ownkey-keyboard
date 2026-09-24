@@ -4,34 +4,34 @@
 
 | Set | n | Right | Wrong | Precision | Top-1 | Top-3 | Typed is dict word | p50 us | p95 us |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tap EN usage, EN | 1500 | 70.7 | 0.8 | 98.9 | 89.0 | 93.7 | 0.0 | 92 | 456 |
-| tap EN uniform, EN | 1500 | 44.5 | 1.1 | 97.5 | 82.7 | 90.3 | 0.0 | 80 | 368 |
-| tap NL usage, NL | 1500 | 69.7 | 0.4 | 99.4 | 89.1 | 93.7 | 0.0 | 45 | 184 |
-| tap NL uniform, NL | 1500 | 48.3 | 1.1 | 97.8 | 85.0 | 89.6 | 0.0 | 47 | 145 |
-| tap NL usage, NL+EN | 1500 | 62.5 | 0.9 | 98.6 | 87.8 | 93.1 | 1.1 | 57 | 242 |
-| tap EN usage, NL+EN | 1500 | 59.8 | 0.8 | 98.7 | 86.3 | 93.3 | 0.7 | 59 | 249 |
-| tap NL uniform, NL+EN | 1500 | 38.6 | 0.7 | 98.3 | 84.0 | 89.6 | 0.6 | 68 | 205 |
-| harness EN usage, EN (optimistic) | 1113 | 69.1 | 0.9 | 98.7 | 91.3 | 98.3 | 0.0 | 32 | 117 |
-| real EN curated, EN | 100 | 82.0 | 0.0 | 100.0 | 96.0 | 97.0 | 0.0 | 28 | 87 |
-| real EN Wikipedia, EN | 3941 | 29.3 | 0.7 | 97.6 | 66.0 | 68.4 | 0.1 | 40 | 103 |
-| EN missing apostrophes, EN | 14 | 100.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 27 | 82 |
-| real NL curated, NL | 60 | 90.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 40 | 111 |
-| real NL extra, NL | 141 | 86.5 | 0.0 | 100.0 | 94.3 | 98.6 | 0.0 | 27 | 92 |
-| real NL all, NL+EN | 201 | 86.1 | 0.0 | 100.0 | 95.0 | 99.0 | 0.0 | 42 | 153 |
-| context EN, EN | 1557 | 78.0 | 0.8 | 99.0 | 91.5 | 93.4 | 0.0 | 38 | 113 |
-| context NL, NL | 1564 | 69.2 | 1.0 | 98.6 | 87.1 | 90.8 | 0.0 | 43 | 143 |
-| context NL, NL+EN | 1564 | 67.3 | 0.9 | 98.7 | 86.6 | 90.4 | 1.2 | 112 | 359 |
-| context EN, NL+EN | 1557 | 75.9 | 0.8 | 98.9 | 91.2 | 93.2 | 1.3 | 94 | 261 |
-| tap EN usage, EN, with taps | 1500 | 81.7 | 0.8 | 99.0 | 92.6 | 95.2 | 0.0 | 56 | 368 |
-| tap EN uniform, EN, with taps | 1500 | 68.5 | 0.9 | 98.7 | 87.6 | 92.5 | 0.0 | 63 | 525 |
-| tap NL usage, NL, with taps | 1500 | 79.9 | 0.4 | 99.5 | 92.2 | 94.8 | 0.0 | 56 | 307 |
-| tap NL uniform, NL, with taps | 1500 | 71.4 | 1.1 | 98.5 | 88.5 | 91.8 | 0.0 | 56 | 366 |
-| tap NL usage, NL+EN, with taps | 1500 | 75.9 | 0.9 | 98.9 | 91.1 | 94.3 | 1.1 | 80 | 527 |
-| context EN, EN, with taps | 1557 | 84.3 | 0.8 | 99.1 | 93.4 | 94.6 | 0.0 | 62 | 276 |
-| context NL, NL, with taps | 1564 | 77.4 | 1.1 | 98.6 | 90.0 | 92.3 | 0.0 | 63 | 298 |
-| context NL, NL+EN, with taps | 1564 | 75.6 | 0.9 | 98.8 | 89.7 | 92.0 | 1.2 | 97 | 526 |
-| context EN, EN, words before removed | 1557 | 66.3 | 0.5 | 99.2 | 88.6 | 93.1 | 0.0 | 55 | 192 |
-| context NL, NL, words before removed | 1564 | 62.2 | 1.0 | 98.5 | 83.9 | 90.2 | 0.0 | 59 | 197 |
+| tap EN usage, EN | 1500 | 70.7 | 0.8 | 98.9 | 89.0 | 93.7 | 0.0 | 78 | 404 |
+| tap EN uniform, EN | 1500 | 44.5 | 1.1 | 97.5 | 82.7 | 90.3 | 0.0 | 71 | 301 |
+| tap NL usage, NL | 1500 | 69.7 | 0.4 | 99.4 | 89.1 | 93.7 | 0.0 | 36 | 149 |
+| tap NL uniform, NL | 1500 | 48.3 | 1.1 | 97.8 | 85.0 | 89.6 | 0.0 | 48 | 150 |
+| tap NL usage, NL+EN | 1500 | 62.5 | 0.9 | 98.6 | 87.8 | 93.1 | 1.1 | 57 | 261 |
+| tap EN usage, NL+EN | 1500 | 59.8 | 0.8 | 98.7 | 86.3 | 93.3 | 0.7 | 62 | 252 |
+| tap NL uniform, NL+EN | 1500 | 38.6 | 0.7 | 98.3 | 84.0 | 89.6 | 0.6 | 73 | 229 |
+| harness EN usage, EN (optimistic) | 1113 | 69.1 | 0.9 | 98.7 | 91.3 | 98.3 | 0.0 | 30 | 113 |
+| real EN curated, EN | 100 | 82.0 | 0.0 | 100.0 | 96.0 | 97.0 | 0.0 | 30 | 99 |
+| real EN Wikipedia, EN | 3941 | 29.3 | 0.7 | 97.6 | 66.0 | 68.4 | 0.1 | 35 | 90 |
+| EN missing apostrophes, EN | 14 | 100.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 14 | 45 |
+| real NL curated, NL | 60 | 90.0 | 0.0 | 100.0 | 100.0 | 100.0 | 0.0 | 22 | 90 |
+| real NL extra, NL | 141 | 86.5 | 0.0 | 100.0 | 94.3 | 98.6 | 0.0 | 32 | 86 |
+| real NL all, NL+EN | 201 | 86.1 | 0.0 | 100.0 | 95.0 | 99.0 | 0.0 | 38 | 152 |
+| context EN, EN | 1557 | 78.0 | 0.8 | 99.0 | 91.5 | 93.4 | 0.0 | 45 | 138 |
+| context NL, NL | 1564 | 69.2 | 1.0 | 98.6 | 87.1 | 90.8 | 0.0 | 49 | 149 |
+| context NL, NL+EN | 1564 | 67.3 | 0.8 | 98.8 | 86.6 | 90.4 | 1.2 | 113 | 354 |
+| context EN, NL+EN | 1557 | 75.9 | 0.8 | 98.9 | 91.2 | 93.2 | 1.3 | 90 | 261 |
+| tap EN usage, EN, with taps | 1500 | 81.7 | 0.8 | 99.0 | 92.6 | 95.2 | 0.0 | 50 | 322 |
+| tap EN uniform, EN, with taps | 1500 | 68.5 | 0.9 | 98.7 | 87.6 | 92.5 | 0.0 | 52 | 370 |
+| tap NL usage, NL, with taps | 1500 | 79.9 | 0.4 | 99.5 | 92.2 | 94.8 | 0.0 | 48 | 250 |
+| tap NL uniform, NL, with taps | 1500 | 71.4 | 1.1 | 98.5 | 88.5 | 91.8 | 0.0 | 50 | 298 |
+| tap NL usage, NL+EN, with taps | 1500 | 75.9 | 0.9 | 98.9 | 91.1 | 94.3 | 1.1 | 59 | 370 |
+| context EN, EN, with taps | 1557 | 84.3 | 0.8 | 99.1 | 93.4 | 94.6 | 0.0 | 53 | 262 |
+| context NL, NL, with taps | 1564 | 77.4 | 1.1 | 98.6 | 90.0 | 92.3 | 0.0 | 51 | 239 |
+| context NL, NL+EN, with taps | 1564 | 75.6 | 0.8 | 98.9 | 89.7 | 92.0 | 1.2 | 67 | 427 |
+| context EN, EN, words before removed | 1557 | 66.3 | 0.5 | 99.2 | 88.6 | 93.1 | 0.0 | 40 | 165 |
+| context NL, NL, words before removed | 1564 | 62.2 | 1.0 | 98.5 | 83.9 | 90.2 | 0.0 | 42 | 160 |
 
 | Clean text | Words | False corrections | Per 1,000 | Examples | Known word not first | Examples |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -63,14 +63,18 @@
 
 | Next word | Positions | First prediction | In first 3 |
 | --- | --- | --- | --- |
-| next word EN, EN | 12741 | 16.4 | 29.2 |
-| next word NL, NL | 11504 | 13.0 | 23.9 |
+| next word EN, EN | 12741 | 16.4 | 28.7 |
+| next word NL, NL | 11504 | 13.0 | 23.8 |
 | next word NL, NL+EN | 11504 | 13.0 | 23.8 |
+| next word EN, EN, hand-written | 135 | 17.0 | 34.1 |
+| next word NL, NL, hand-written | 62 | 22.6 | 33.9 |
+| next word EN, EN, hand-written, frequency only | 135 | 2.2 | 5.2 |
+| next word NL, NL, hand-written, frequency only | 62 | 0.0 | 4.8 |
 | next word EN, EN, frequency only | 12741 | 2.2 | 9.9 |
 | next word NL, NL, frequency only | 11504 | 1.5 | 6.0 |
 
 ## Examples
-- real-word EN, EN, intended word not first: your [your, you're, you] (meant you're); your [your, you're, you] (meant you're); you're [you're, your, you've] (meant your); it's [it's, its, it'd] (meant its); there [there, there's, they're] (meant they're); their [their, there, they're] (meant there); to [to, too, tom] (meant too); to [to, tom, too] (meant too); to [to, tom, told] (meant too); to [to, too, today] (meant too); of [of, off, on] (meant off); quite [quite, quiet, quote] (meant quiet)
+- real-word EN, EN, intended word not first: your [your, you're, you] (meant you're); your [your, you're, you] (meant you're); you're [you're, your, you've] (meant your); it's [it's, its, it'd] (meant its); there [there, there's, they're] (meant they're); their [their, there, they're] (meant there); to [to, tom, too] (meant too); to [to, tom, too] (meant too); to [to, tom, told] (meant too); to [to, too, today] (meant too); of [of, off, on] (meant off); quite [quite, quiet, quote] (meant quiet)
 - real-word NL, NL, intended word not first: Wordt [wordt, word, worst] (meant word); vind [vind, vindt, vinden] (meant vindt); Vindt [vindt, vind, bindt] (meant vind); gebeurt [gebeurt, gebeurd, gebeurtenis] (meant gebeurd); gebeurd [gebeurd, gebeurde, gebeurt] (meant gebeurt); jou [jou, jouw, jouwe] (meant jouw); jouw [jouw, jou, jouwe] (meant jou); als [als, dan, alsof] (meant dan); u [u, uw, uit] (meant uw); verhuist [verhuist, verhuisd, verhuis] (meant verhuisd); antwoord [antwoord, antwoorden, antwoordt] (meant antwoordt); bied [bied, biedt, bieden] (meant biedt)
 - real-word NL, NL+EN, intended word not first: Wordt [wordt, word, worst] (meant word); vind [vind, vindt, vinden] (meant vindt); Vindt [vindt, vind, bindt] (meant vind); gebeurt [gebeurt, gebeurd, gebeurtenis] (meant gebeurd); gebeurd [gebeurd, gebeurde, gebeurt] (meant gebeurt); jou [jou, jouw, jouwe] (meant jouw); jouw [jouw, jou, jouwe] (meant jou); als [als, dan, alsof] (meant dan); u [u, uw, up] (meant uw); verhuist [verhuist, verhuisd, verhuis] (meant verhuisd); antwoord [antwoord, antwoorden, antwoordt] (meant antwoordt); bied [bied, biedt, bieden] (meant biedt)
 - tap EN usage, EN, wrong: doesm->does (meant doesn); neeed->need (meant needed); lnog->long (meant along); ini->in (meant mini); nlow->now (meant blow); tko->to (meant too); hde->he (meant she); aou->you (meant about)
@@ -99,7 +103,7 @@
 - context EN, EN, missed: cosnultant [consultant] (meant consultant); sausafee [sausage] (meant sausage); confedece [] (meant conference); searcb [search, serb, sear] (meant search); srrve [serve, save, sure] (meant serve); weere [were, we're, where] (meant were); learniimg [learning] (meant learning); fvor [for, favor, or] (meant favor)
 - context NL, NL, wrong: kleiin->klein (meant kleine); wgen->wagen (meant eten); daat->dat (meant daar); llen->allen (meant alleen); gxaan->gaan (meant gedaan); zuwt->zult (meant ziet); wse->we (meant war); gpen->geen (meant gapen)
 - context NL, NL, missed: ijn [zijn, in, mijn] (meant zijn); ou [hou, zou, oud] (meant zou); blssenn [bossen, blussen, bussen] (meant bossen); vestandig [verstandig] (meant verstandig); tebtamen [tezamen] (meant tentamen); vdrachting [drachtig] (meant verachting); rekeningne [rekeningen, rekening] (meant rekeningen); joog [hoog, nog, oog] (meant hoog)
-- context NL, NL+EN, wrong: kleiin->klein (meant kleine); daat->dat (meant daar); llen->allen (meant alleen); gxaan->gaan (meant gedaan); zuwt->zult (meant ziet); wse->we (meant war); ohut->out (meant hout); gwst->gast (meant geest)
+- context NL, NL+EN, wrong: kleiin->klein (meant kleine); daat->dat (meant daar); llen->allen (meant alleen); zuwt->zult (meant ziet); wse->we (meant war); ohut->out (meant hout); gwst->gast (meant geest); noet->niet (meant moet)
 - context NL, NL+EN, missed: ijn [zijn, in, mijn] (meant zijn); ou [hou, out, zou] (meant zou); blssenn [bossen, blussen, bussen] (meant bossen); vestandig [verstandig] (meant verstandig); tebtamen [tezamen] (meant tentamen); vdrachting [drachtig] (meant verachting); rekeningne [rekeningen, rekening] (meant rekeningen); joog [hoog, nog, oog] (meant hoog)
 - context EN, NL+EN, wrong: hasy->has (meant hasty); bgen->ben (meant began); mny->my (meant many); thos->this (meant those); eenn->een (meant been); awter->water (meant lawyer); coplee->couple (meant complete); pwn->own (meant pen)
 - context EN, NL+EN, missed: cosnultant [consultant] (meant consultant); bega [began, begaan, begs] (meant began); sausafee [sausage] (meant sausage); confedece [] (meant conference); searcb [search, serb, sear] (meant search); srrve [serve, save, sure] (meant serve); weere [were, we're, weer] (meant were); learniimg [learning] (meant learning)
@@ -117,7 +121,7 @@
 - context EN, EN, with taps, missed: cosnultant [consultant] (meant consultant); sausafee [sausage, sausages] (meant sausage); confedece [] (meant conference); weere [were, we're, where] (meant were); fvor [for, favor, or] (meant favor); airllnae [airline] (meant airplane); arrguments [arguments, argument] (meant arguments); diozappeared [disappeared] (meant disappeared)
 - context NL, NL, with taps, wrong: lreces->proces (meant precies); kleiin->klein (meant kleine); wgen->wagen (meant eten); llen->allen (meant alleen); gxaan->gaan (meant gedaan); zuwt->zult (meant ziet); wse->we (meant war); gpen->geen (meant gapen)
 - context NL, NL, with taps, missed: ijn [zijn, in, mijn] (meant zijn); ou [hou, zou, oud] (meant zou); vestandig [verstandig] (meant verstandig); tebtamen [tezamen] (meant tentamen); vdrachting [drachtig] (meant verachting); rekeningne [rekeningen, rekening] (meant rekeningen); mtt [met, matt, me] (meant met); gecontroeerd [gecontroleerd] (meant gecontroleerd)
-- context NL, NL+EN, with taps, wrong: kleiin->klein (meant kleine); llen->allen (meant alleen); gxaan->gaan (meant gedaan); zuwt->zult (meant ziet); wse->we (meant war); kln->kon (meant komen); ohut->out (meant hout); gwst->gast (meant geest)
+- context NL, NL+EN, with taps, wrong: kleiin->klein (meant kleine); llen->allen (meant alleen); zuwt->zult (meant ziet); wse->we (meant war); kln->kon (meant komen); ohut->out (meant hout); gwst->gast (meant geest); noet->niet (meant moet)
 - context NL, NL+EN, with taps, missed: ijn [zijn, in, mijn] (meant zijn); ou [hou, out, zou] (meant zou); vestandig [verstandig] (meant verstandig); tebtamen [tezamen] (meant tentamen); vdrachting [drachtig] (meant verachting); rekeningne [rekeningen, rekening] (meant rekeningen); mtt [my, met, matt] (meant met); gecontroeerd [gecontroleerd] (meant gecontroleerd)
 - context EN, EN, words before removed, wrong: bre->be (meant bee); nuo->no (meant into); likse->like (meant likes); akd->and (meant take); awter->water (meant lawyer); kving->king (meant going); awt->at (meant want); thhs->this (meant the)
 - context EN, EN, words before removed, missed: cosnultant [consultant] (meant consultant); opwning [opening, owning, downing] (meant opening); bega [began, begat, beg] (meant began); wantz [wants, want, went] (meant wants); instrictor [instructor] (meant instructor); sausafee [sausage] (meant sausage); evee [ever, eve, even] (meant ever); completde [complete, completed, compete] (meant completed)

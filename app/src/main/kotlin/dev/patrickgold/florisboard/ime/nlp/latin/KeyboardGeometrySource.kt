@@ -30,14 +30,15 @@ object KeyboardGeometrySource {
     @Volatile
     private var keys: List<TextKey> = emptyList()
 
-    @Volatile
-    private var cached: Pair<Long, KeyGeometry>? = null
+    /** Signature of the keys, the geometry built from them, and its unit: the median key width in pixels. */
+    private class Cached(val signature: Long, val geometry: KeyGeometry, val unit: Float)
 
-    /** Median key width in pixels of the cached geometry: the unit of [KeyGeometry] coordinates. */
     @Volatile
-    private var cachedUnit: Float = 0f
+    private var cached: Cached? = null
 
     fun update(characterKeys: List<TextKey>) {
+        // Taps recorded on the previous layout are in other coordinates.
+        if (characterKeys !== keys) TapTrail.clear()
         keys = characterKeys
     }
 
@@ -45,7 +46,7 @@ object KeyboardGeometrySource {
         val snapshot = keys
         if (snapshot.isEmpty()) return null
         val signature = signatureOf(snapshot)
-        cached?.let { (cachedSignature, geometry) -> if (cachedSignature == signature) return geometry }
+        cached?.let { if (it.signature == signature) return it.geometry }
         val centers = HashMap<Char, Pair<Float, Float>>()
         val widths = ArrayList<Float>()
         val heights = ArrayList<Float>()
@@ -62,15 +63,14 @@ object KeyboardGeometrySource {
             heights.add(height)
         }
         val geometry = KeyGeometry.fromPixels(centers, widths, heights) ?: return null
-        cachedUnit = widths.sorted()[widths.size / 2]
-        cached = signature to geometry
+        cached = Cached(signature, geometry, widths.sorted()[widths.size / 2])
         return geometry
     }
 
     /** A touch point of the keyboard view in pixels, in the key-width units of [current]; null before layout. */
     internal fun toKeyUnits(x: Float, y: Float): LatinTap? {
         current() ?: return null
-        val unit = cachedUnit
+        val unit = cached?.unit ?: return null
         if (unit <= 0f) return null
         return LatinTap(x / unit.toDouble(), y / unit.toDouble())
     }

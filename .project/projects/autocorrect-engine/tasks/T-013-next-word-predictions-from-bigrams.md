@@ -4,7 +4,7 @@ name: Next-word predictions from bigrams
 status: done
 workstream: WS-A
 created: 2026-09-24T20:57:41Z
-updated: 2026-09-24T21:50:13Z
+updated: 2026-09-24T22:34:06Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -43,11 +43,12 @@ After a space, suggest the most likely next words from the bigram model of the a
 
 - [x] Implementation complete
 - [x] Tests pass
-- [ ] Review complete
+- [x] Review complete
 - [x] Docs updated
 
 ## Evidence Log
 
+- 2026-09-24: Review of T-013 to T-015 (read-only, with probe tests): Tatoeba's stock characters were predicted ("and" -> I, the, mary, layla; sentence start -> sami, tom), shown in lowercase, and the held-out benchmark (also Tatoeba) rewarded it. `bigrams.py` now lists words that are capitalized in mid-sentence at least half the time (5,776 EN, 929 NL: names, languages, countries) in a `@notpredicted` section, and predictions skip them; "I" and its contractions stay. They remain in the pair counts: dropping them there handed their share to common words and made lowercase names more likely to be "corrected" (jelle -> jelly, evi -> evil). The old name cap is gone. Predictions on text that is not from Tatoeba (the hand-written real-word sentences, corrected): the next word is in the first three for 34.1% (EN) and 33.9% (NL) of positions against 5.2% and 4.8% for frequency-only; held-out Tatoeba 28.7% and 23.8%.
 - 2026-09-24: `NoisyChannelLatinScorer.predictNextWords` ranks the successors of the previous word (the sentence start after . ! ? or at the start of the text) per language by language weight times the pair's share of all counted pairs, and capitalizes English "I" forms. `LatinLanguageProvider` adds these predictions to the field matches and personal n-grams with a lower score range (1.5 to 5.5 against 6 to 14 for personal n-grams), so the user's own sequences stay first. The legacy-engine devtools switch turns them off. Frequency-only predictions stay as the fallback, now also with a capital I.
 - 2026-09-24: Benchmark on the held-out sentences (`research/benchmark-next-word-t013.md`): the actual next word is in the first three predictions for 29.2% of EN and 23.9% of NL positions (frequency-only: 9.9% and 6.0%), and first for 16.4% and 13.0% (2.2% and 1.5%). NL on the NL+EN subtype: 23.8%. A floor in `AutocorrectBenchmarkReportTest` requires at least 10 points over frequency-only. `NextWordPredictionTest` (5 tests); full `ime` suite 529 tests pass.
 - 2026-09-24: A first version ranked by P(next | previous) per language. On NL+EN, `naar de` then predicted "janeiro" first, because English sees "de" almost only in "Rio de Janeiro". Ranking by the pair's share of all pairs fixed it; single-language rankings are unchanged.

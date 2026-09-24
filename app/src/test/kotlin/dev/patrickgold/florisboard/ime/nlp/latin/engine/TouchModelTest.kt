@@ -54,6 +54,15 @@ class TouchModelTest : FunSpec({
         shortTaps.map { it.word to it.confidence } shouldBe plain.map { it.word to it.confidence }
     }
 
+    test("a word that gets longer when lowercased keeps working with taps") {
+        // Outside Turkish, "İ" lowercases to two characters, so the taps no longer line up and are ignored.
+        val benchmark = AutocorrectBenchmark(scorer, BenchmarkPolicies.default())
+        val typed = "İstanbul"
+        val taps = typed.map { Tap(it, 1.0, 1.0) }
+        benchmark.score(BenchmarkData.enOnly(), typed, "in $typed", taps)
+        benchmark.score(BenchmarkData.nlEn(), typed, "in $typed", taps)
+    }
+
     test("where the typo was tapped decides the correction") {
         val benchmark = AutocorrectBenchmark(scorer, BenchmarkPolicies.default())
         fun taps(dx: Double): List<Tap> = listOf('t', 'h', 'r').mapIndexed { index, ch ->

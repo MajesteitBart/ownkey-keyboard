@@ -35,23 +35,27 @@ internal class LatinBigramModel private constructor(
     /** round(100 * ln(count)), as in the word lists. */
     private val logCounts: ShortArray,
     private val totals: FloatArray,
+    /** Words that are never offered as a next-word prediction (names from the example sentences). */
+    private val notPredicted: BooleanArray,
 ) {
     companion object {
         /** The previous "word" at the start of a sentence. */
         const val SentenceStart = "<s>"
         private const val Header = "# ownkey-latin-bigrams"
 
-        val Empty = LatinBigramModel("", IntArray(1), IntArray(1), IntArray(0), ShortArray(0), FloatArray(0))
+        val Empty = LatinBigramModel("", IntArray(1), IntArray(1), IntArray(0), ShortArray(0), FloatArray(0), BooleanArray(0))
 
         /**
          * Parses the v2 format written by `tools/dictionary-build/bigrams.py`: a sorted `@words` section, then
-         * `@pairs` lines of `previousId<TAB>idDelta logCount idDelta logCount ...` in ascending previous-word order.
-         * Nothing is allocated per pair.
+         * `@pairs` lines of `previousId<TAB>idDelta logCount idDelta logCount ...` in ascending previous-word order,
+         * and an optional `@notpredicted` list of words. Nothing is allocated per pair.
          */
         fun parse(lines: Sequence<String>): LatinBigramModel {
             var sawHeader = false
             var inWords = false
             var inPairs = false
+            var inNotPredicted = false
+            val notPredictedWords = ArrayList<String>()
             var expectedWords = 0
             val packed = StringBuilder()
             var wordStarts = IntArray(1)
@@ -71,6 +75,11 @@ internal class LatinBigramModel private constructor(
                 }
                 if (line.isEmpty()) continue
                 when {
+                    inNotPredicted -> notPredictedWords.add(line)
+                    inPairs && line == "@notpredicted" -> {
+                        inPairs = false
+                        inNotPredicted = true
+                    }
                     inPairs -> {
                         val tab = line.indexOf('\t')
                         require(tab > 0) { "Malformed pairs line" }
@@ -114,7 +123,7 @@ internal class LatinBigramModel private constructor(
                     }
                 }
             }
-            if (!inPairs) return Empty
+            if (!inPairs && !inNotPredicted) return Empty
             for (id in lastPrevious + 1..wordCount) offsets[id] = successorIds.size
 
             val ids = successorIds.toArray()
@@ -124,7 +133,12 @@ internal class LatinBigramModel private constructor(
                 for (j in offsets[word] until offsets[word + 1]) sum += exp(counts[j] / 100.0)
                 sum.toFloat()
             }
-            return LatinBigramModel(packed.toString(), wordStarts, offsets, ids, counts, totals)
+            val model = LatinBigramModel(packed.toString(), wordStarts, offsets, ids, counts, totals, BooleanArray(wordCount))
+            for (word in notPredictedWords) {
+                val id = model.idOf(word)
+                if (id >= 0) model.notPredicted[id] = true
+            }
+            return model
         }
 
         /** Parses the non-negative decimal number in [text] from [start] until [end]. */
@@ -193,13 +207,17 @@ internal class LatinBigramModel private constructor(
         return ln(count / totalAfter(previous))
     }
 
-    /** The [maxCount] most frequent words after [previous], most frequent first, with their counts. */
-    fun successors(previous: String, maxCount: Int): List<Pair<String, Double>> {
+    /**
+     * The [maxCount] most frequent words after [previous], most frequent first, with their counts. With
+     * [predictableOnly], words listed as not to be predicted are skipped.
+     */
+    fun successors(previous: String, maxCount: Int, predictableOnly: Boolean = false): List<Pair<String, Double>> {
         val previousId = idOf(previous)
         if (previousId < 0 || maxCount <= 0) return emptyList()
         // Partial selection: keep the best maxCount positions in a small sorted list.
         val best = ArrayList<Int>(maxCount + 1)
         for (j in offsets[previousId] until offsets[previousId + 1]) {
+            if (predictableOnly && notPredicted[successorIds[j]]) continue
             if (best.size == maxCount && logCounts[j] <= logCounts[best.last()]) continue
             var insertAt = best.size
             while (insertAt > 0 && logCounts[best[insertAt - 1]] < logCounts[j]) insertAt--

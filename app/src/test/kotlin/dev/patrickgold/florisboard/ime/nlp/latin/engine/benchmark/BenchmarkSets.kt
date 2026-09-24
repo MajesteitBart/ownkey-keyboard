@@ -59,6 +59,10 @@ internal object BenchmarkSets {
     val realWordEn by lazy { BenchmarkData.realWords("realword_en.tsv") }
     val realWordNl by lazy { BenchmarkData.realWords("realword_nl.tsv") }
 
+    /** Hand-written sentences, not from Tatoeba: the real-word sets with the error fixed. */
+    val handWrittenEn by lazy { realWordEn.map { it.before + it.intended + "." } }
+    val handWrittenNl by lazy { realWordNl.map { it.before + it.intended + "." } }
+
     val cleanEn by lazy { BenchmarkData.sentences("clean_en.txt") }
     val cleanNl by lazy { BenchmarkData.sentences("clean_nl.txt") }
     val oov by lazy { BenchmarkData.words("oov.txt") }
@@ -118,6 +122,10 @@ internal suspend fun runFullBenchmark(
     report.add(benchmark.evaluateNextWord("next word EN, EN", enOnly, s.contextSentencesEn, predictNextWord))
     report.add(benchmark.evaluateNextWord("next word NL, NL", nlOnly, s.contextSentencesNl, predictNextWord))
     report.add(benchmark.evaluateNextWord("next word NL, NL+EN", nlEn, s.contextSentencesNl, predictNextWord))
+    report.add(benchmark.evaluateNextWord("next word EN, EN, hand-written", enOnly, s.handWrittenEn, predictNextWord))
+    report.add(benchmark.evaluateNextWord("next word NL, NL, hand-written", nlOnly, s.handWrittenNl, predictNextWord))
+    report.add(benchmark.evaluateNextWord("next word EN, EN, hand-written, frequency only", enOnly, s.handWrittenEn) { l, t -> frequencyOnlyNextWords(l, t) })
+    report.add(benchmark.evaluateNextWord("next word NL, NL, hand-written, frequency only", nlOnly, s.handWrittenNl) { l, t -> frequencyOnlyNextWords(l, t) })
     report.add(benchmark.evaluateNextWord("next word EN, EN, frequency only", enOnly, s.contextSentencesEn) { l, t -> frequencyOnlyNextWords(l, t) })
     report.add(benchmark.evaluateNextWord("next word NL, NL, frequency only", nlOnly, s.contextSentencesNl) { l, t -> frequencyOnlyNextWords(l, t) })
     report.add(benchmark.evaluateCleanText("clean EN, EN", enOnly, s.cleanEn))

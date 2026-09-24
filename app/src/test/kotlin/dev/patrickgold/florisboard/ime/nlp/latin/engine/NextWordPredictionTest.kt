@@ -61,6 +61,17 @@ class NextWordPredictionTest : FunSpec({
         predict(BenchmarkData.nlEn(), "Morgen ga ik naar de ", 5).map { it.locale.language }.distinct() shouldBe listOf("nl")
     }
 
+    test("names from the example sentences are not predicted") {
+        val names = setOf("tom", "mary", "layla", "sami", "john", "maria", "alice")
+        for ((languages, text) in listOf(
+            BenchmarkData.enOnly() to "and ", BenchmarkData.enOnly() to "I told ", BenchmarkData.enOnly() to "",
+            BenchmarkData.nlOnly() to "en ", BenchmarkData.nlEn() to "",
+        )) {
+            val words = predict(languages, text, 10).map { it.word }
+            words.filter { it in names } shouldBe emptyList()
+        }
+    }
+
     test("languages without word pairs predict nothing") {
         val bare = LatinScoringLanguage("de", java.util.Locale.GERMAN, LatinWordModel.build(mapOf("ich" to 10, "bin" to 5)), isPrimary = true)
         scorer.predictNextWords(listOf(bare), java.util.Locale.GERMAN, "ich ", 3).shouldBeEmpty()

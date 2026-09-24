@@ -39,6 +39,8 @@ class LatinBigramModelTest : FunSpec({
             "@pairs",
             "0\t3 100 1 200",
             "4\t1 300 1 250 3 100",
+            "@notpredicted",
+            "hij",
         )
     )
 
@@ -57,6 +59,8 @@ class LatinBigramModelTest : FunSpec({
         sample.successors("ik", 2).map { it.first } shouldBe listOf("ben", "heb")
         sample.successors("ik", 10).map { it.first } shouldBe listOf("ben", "heb", "wil")
         sample.successors("jij", 3) shouldBe emptyList()
+        sample.successors(LatinBigramModel.SentenceStart, 2).map { it.first } shouldBe listOf("ik", "hij")
+        sample.successors(LatinBigramModel.SentenceStart, 2, predictableOnly = true).map { it.first } shouldBe listOf("ik")
     }
 
     test("malformed files are rejected") {

@@ -37,6 +37,7 @@ import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.text.composing.Appender
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
+import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.nlpManager
@@ -74,6 +75,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     private fun currentInputConnection() = FlorisImeService.currentInputConnection()
 
     override fun handleStartInput(editorInfo: FlorisEditorInfo) {
+        TapTrail.clear()
         super.handleStartInput(editorInfo)
         _activeInputSessionIdFlow.value = nextInputSessionId.incrementAndGet()
     }
@@ -153,6 +155,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     }
 
     override fun handleFinishInput() {
+        TapTrail.clear()
         _activeInputSessionIdFlow.value = 0L
         super.handleFinishInput()
     }

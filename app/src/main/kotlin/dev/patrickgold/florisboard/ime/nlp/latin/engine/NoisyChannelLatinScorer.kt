@@ -185,8 +185,9 @@ internal class NoisyChannelLatinScorer(
         val languages = request.languages.filter { it.model.words.isNotEmpty() }
         if (languages.isEmpty()) return emptyList()
         val geometry = request.geometry ?: KeyGeometry.QwertyPhone
-        // Taps only count when there is exactly one per typed character.
-        val taps = request.taps?.takeIf { it.size == rawInput.length }
+        // Taps only count when there is exactly one per character, also after lowercasing: outside Turkish, "İ"
+        // lowercases to two characters.
+        val taps = request.taps?.takeIf { it.size == rawInput.length && it.size == input.length }
 
         val tokens = LatinText.extractWordTokens(
             request.textBeforeSelection.takeLast(SuggestionContextTailLength),
@@ -385,7 +386,7 @@ internal class NoisyChannelLatinScorer(
             val bigrams = language.model.bigrams
             if (bigrams.totalAfter(previous) <= 0.0) continue
             val weight = logWeights[language.language] ?: continue
-            for ((word, count) in bigrams.successors(previous, maxCount * PredictionPoolFactor)) {
+            for ((word, count) in bigrams.successors(previous, maxCount * PredictionPoolFactor, predictableOnly = true)) {
                 // The pair's share of all pairs, not of the pairs after [previous]: a language that rarely sees the
                 // previous word ("de" in English, mostly "de Janeiro") must not win with its few successors.
                 val score = weight + ln(count / bigrams.totalPairs)
@@ -544,7 +545,7 @@ internal class NoisyChannelLatinScorer(
                 if (i < n && j < m) {
                     val cost = when {
                         typed[i] == intended[j] -> 0.0
-                        taps != null -> touchSubstitutionCost(typed[i], intended[j], taps[i], geometry)
+                        taps != null && i < taps.size -> touchSubstitutionCost(typed[i], intended[j], taps[i], geometry)
                         else -> substitutionCost(typed[i], intended[j], geometry)
                     }
                     if (current + cost < d[i + 1][j + 1]) d[i + 1][j + 1] = current + cost

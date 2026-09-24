@@ -18,11 +18,15 @@ Output: app/src/main/assets/ime/dict/latin/{en,nl}.bigrams.txt
     @pairs
     0\t12 1040 3 912 ...
     1\t...
+    @notpredicted
+    alice
+    ...
 
 The words section lists every word that occurs in a pair, sorted by code point; a word's id is its position, and
 "<s>" stands for the start of a sentence. Each pairs line holds a previous-word id, then its successors in
 ascending id order as (id difference to the previous successor, round(100 * ln(count))) pairs. Lines come in
-ascending previous-word id order. The app reads this without building strings or maps per pair.
+ascending previous-word id order. The optional notpredicted section lists words the app never offers as a
+next-word prediction. The app reads this without building strings or maps per pair.
 
 Only words in the built dictionary ({en,nl}.txt) are counted, and only pairs seen at least MIN_COUNT times.
 
@@ -51,11 +55,14 @@ HOLDOUT_MODULUS = 10
 # English has twelve times the Dutch text, so it can drop rarer pairs and still cover more.
 MIN_COUNT = {"en": 3, "nl": 2}
 SENTENCE_START = "<s>"
-# Tatoeba's English and Dutch sentences use a few stock names very often ("Tom", "Mary"). As a context they are
-# fine, but as a predicted next word they would be odd, so their counts are capped at this share of the
-# successor total of each previous word.
-STOCK_NAMES = {"tom", "mary", "john", "alice", "ken", "bob", "jack", "jane", "maria", "sami", "layla"}
-STOCK_NAME_MAX_SHARE = 0.02
+# Words written with a capital in the middle of a sentence at least this often are names or other proper nouns
+# ("Tom", "Mary", "English", "Nederland"). Tatoeba uses a few stock names constantly, and predictions are shown in
+# lowercase, so proper nouns are listed as not to be predicted. They stay in the pair counts: removing them there
+# would hand their share to common words and make lowercase names more likely to be "corrected". "I" and its
+# contractions are predicted.
+PROPER_NOUN_CAPITAL_SHARE = 0.5
+PROPER_NOUN_MIN_OCCURRENCES = 3
+ALWAYS_COUNTED = {"i", "i'm", "i've", "i'll", "i'd"}
 TOKEN = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*")
 SENTENCE_BREAK = re.compile(r"[.!?;:]+")
 
@@ -83,17 +90,45 @@ def benchmark_sentences(language: str) -> set[str]:
     return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
 
 
-def tokenize(text: str) -> list[list[str]]:
-    """Splits text into sentence parts of lowercase word tokens. Commas do not break a part; . ! ? ; : do."""
+def tokenize(text: str, lowercase: bool = True) -> list[list[str]]:
+    """Splits text into sentence parts of word tokens. Commas do not break a part; . ! ? ; : do."""
     parts = []
     for chunk in SENTENCE_BREAK.split(text):
-        tokens = [token.replace("’", "'").lower() for token in TOKEN.findall(chunk)]
+        tokens = [token.replace("’", "'") for token in TOKEN.findall(chunk)]
+        if lowercase:
+            tokens = [token.lower() for token in tokens]
         if tokens:
             parts.append(tokens)
     return parts
 
 
-def count_bigrams(path: Path, vocabulary: set[str], excluded: set[str]) -> tuple[Counter, int, int]:
+def proper_nouns(path: Path, excluded: set[str]) -> set[str]:
+    """Lowercase forms of words that are usually capitalized when they are not the first word of a sentence."""
+    capitalized: Counter = Counter()
+    total: Counter = Counter()
+    with bz2.open(path, "rt", encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) != 3:
+                continue
+            sentence_id, text = int(parts[0]), parts[2].strip()
+            if sentence_id % HOLDOUT_MODULUS == 0 or text in excluded:
+                continue
+            for words in tokenize(text, lowercase=False):
+                for word in words[1:]:
+                    lower = word.lower()
+                    total[lower] += 1
+                    if word[0].isupper():
+                        capitalized[lower] += 1
+    return {
+        word for word, count in total.items()
+        if count >= PROPER_NOUN_MIN_OCCURRENCES
+        and capitalized[word] >= PROPER_NOUN_CAPITAL_SHARE * count
+        and word not in ALWAYS_COUNTED
+    }
+
+
+def count_bigrams(path: Path, vocabulary: set[str], excluded: set[str], names: set[str]) -> tuple[Counter, int, int]:
     counts: Counter = Counter()
     sentences = 0
     tokens = 0
@@ -119,19 +154,7 @@ def count_bigrams(path: Path, vocabulary: set[str], excluded: set[str]) -> tuple
     return counts, sentences, tokens
 
 
-def cap_stock_names(counts: Counter) -> Counter:
-    totals: Counter = Counter()
-    for (previous, _), count in counts.items():
-        totals[previous] += count
-    capped = Counter()
-    for (previous, word), count in counts.items():
-        if word in STOCK_NAMES:
-            count = min(count, max(1, int(totals[previous] * STOCK_NAME_MAX_SHARE)))
-        capped[(previous, word)] = count
-    return capped
-
-
-def render(counts: Counter, min_count: int, source_note: str) -> str:
+def render(counts: Counter, min_count: int, source_note: str, not_predicted: set[str] = frozenset()) -> str:
     successors: dict[str, list[tuple[str, int]]] = defaultdict(list)
     for (previous, word), count in counts.items():
         if count >= min_count:
@@ -153,6 +176,10 @@ def render(counts: Counter, min_count: int, source_note: str) -> str:
             fields.append(f"{word_id - last} {log_count}")
             last = word_id
         lines.append(f"{ids[previous]}\t{' '.join(fields)}")
+    listed = sorted(word for word in not_predicted if word in ids)
+    if listed:
+        lines.append("@notpredicted")
+        lines.extend(listed)
     return "\n".join(lines) + "\n"
 
 
@@ -167,11 +194,12 @@ def main() -> None:
     for language, tatoeba in LANGUAGES.items():
         path = fetch(TATOEBA_URL.format(lang=tatoeba), args.cache / f"{tatoeba}_sentences.tsv.bz2")
         vocabulary = load_vocabulary(language)
-        counts, sentences, tokens = count_bigrams(path, vocabulary, benchmark_sentences(language))
-        counts = cap_stock_names(counts)
+        excluded = benchmark_sentences(language)
+        names = proper_nouns(path, excluded)
+        counts, sentences, tokens = count_bigrams(path, vocabulary, excluded, names)
         min_count = args.min_count or MIN_COUNT[language]
         note = (f"language={language} source=Tatoeba (CC BY 2.0 FR) training_sentences={sentences} "
-                f"tokens={tokens} min_count={min_count}")
+                f"tokens={tokens} min_count={min_count} proper_nouns_not_predicted={len(names)}")
         if args.probe:
             print(f"{language}: {sentences} sentences, {tokens} tokens, {len(counts)} distinct bigrams")
             for min_count in (1, 2, 3, 5):
@@ -182,7 +210,7 @@ def main() -> None:
                       f"{len(text.encode()) / 1e6:.2f} MB text, {len(gzip.compress(text.encode())) / 1e6:.2f} MB gzip")
             continue
         target = ASSETS / f"{language}.bigrams.txt"
-        target.write_text(render(counts, min_count, note), encoding="utf-8", newline="\n")
+        target.write_text(render(counts, min_count, note, names), encoding="utf-8", newline="\n")
         print(f"{target.name}: {sum(1 for c in counts.values() if c >= min_count)} bigrams")
 
 

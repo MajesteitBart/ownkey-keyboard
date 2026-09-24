@@ -31,6 +31,7 @@ import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.han.HanShapeBasedLanguageProvider
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
+import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.ime.nlp.latin.LatinLanguageProvider
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
@@ -325,7 +326,13 @@ class NlpManager(context: Context) {
             val subtype = subtypeManager.activeSubtype
             // Main thread: read the constant provider map without the lock.
             val provider = providerMap[subtype.nlpProviders.suggestion]?.provider as? SuggestionProvider
-            val decided = provider?.let { runBlocking { it.decideAutoCommit(subtype, content) } }
+            // A scoring failure must cost one autocorrection, never the keyboard.
+            val decided = try {
+                provider?.let { runBlocking { it.decideAutoCommit(subtype, content) } }
+            } catch (e: Exception) {
+                flogError { "Autocorrect decision failed: ${e.javaClass.simpleName}" }
+                null
+            }
             val latencyMs = SystemClock.uptimeMillis() - start
             TypingSpeedMetrics.recordAutoCommitDecidedNow(latencyMs)
             flogDebug { "Autocorrect decided on the spot in $latencyMs ms" }

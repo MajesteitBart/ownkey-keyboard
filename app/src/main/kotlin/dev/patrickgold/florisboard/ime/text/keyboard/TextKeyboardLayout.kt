@@ -75,6 +75,7 @@ import dev.patrickgold.florisboard.glideTypingManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
 import dev.patrickgold.florisboard.ime.nlp.latin.KeyboardGeometrySource
 import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCue
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCues
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
@@ -793,7 +794,24 @@ private class TextKeyboardLayoutController(
     /** Remembers where a character key was tapped, for the touch model of autocorrect. */
     private fun recordTap(data: KeyData, event: MotionEvent, pointer: TouchPointer) {
         if (data.type != KeyType.CHARACTER || data.code <= 0) return
-        TapTrail.record(data.code, event.getX(pointer.index), event.getY(pointer.index))
+        val info = editorInstance.activeInfo
+        if (!AutocorrectTriggerPolicy.allowsField(
+                variation = info.inputAttributes.variation,
+                flagTextNoSuggestions = info.inputAttributes.flagTextNoSuggestions,
+                isRichInputEditor = info.isRichInputEditor,
+            )
+        ) {
+            // Passwords and similar fields are never corrected, so their letters are not kept either.
+            TapTrail.clear()
+            return
+        }
+        // Look the pointer up by id: with several fingers down, a cached index can belong to another finger.
+        val index = event.findPointerIndex(pointer.id)
+        if (index < 0 || pointer.hasTriggeredLongPress) {
+            TapTrail.recordWithoutPosition(data.code)
+        } else {
+            TapTrail.record(data.code, event.getX(index), event.getY(index))
+        }
     }
 
     private fun onTouchCancelInternal(event: MotionEvent, pointer: TouchPointer) {
