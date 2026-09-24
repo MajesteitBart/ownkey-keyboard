@@ -17,6 +17,10 @@
 package dev.patrickgold.florisboard.ime.window
 
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntRect
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutMode
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.jetpref.datastore.jetprefDataStoreOf
 import io.kotest.assertions.assertSoftly
@@ -32,6 +36,67 @@ class ImeWindowControllerTest : FunSpec({
     val tolerance = 1e-3f.dp
 
     coroutineTestScope = true
+
+    listOf(
+        Triple(800, SplitLayoutMode.AUTO, ImeWindowMode.Floating.SPLIT),
+        Triple(599, SplitLayoutMode.ALWAYS, ImeWindowMode.Floating.NORMAL),
+        Triple(800, SplitLayoutMode.NEVER, ImeWindowMode.Floating.NORMAL),
+    ).forEach { (width, splitMode, expected) ->
+        test("floating toggle at ${width}dp with $splitMode selects $expected and returns to docked") {
+            val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
+            prefs.keyboard.splitLayoutMode.set(splitMode)
+            val controller = ImeWindowController(prefs, backgroundScope)
+            val root = with(Density(1f)) { ImeInsets.Root.of(IntRect(0, 0, width, 1200)) }
+            controller.updateRootInsets(root)
+            controller.activeWindowSpec.first { it !== ImeWindowSpec.Fallback }
+            controller.actions.toggleFloatingWindow()
+            val config = controller.activeWindowConfig.first { it.mode == ImeWindowMode.FLOATING }
+            config.floatingMode shouldBe expected
+            val spec = controller.activeWindowSpec.first { it is ImeWindowSpec.Floating }
+                .shouldBeInstanceOf<ImeWindowSpec.Floating>()
+            if (expected == ImeWindowMode.Floating.SPLIT) {
+                spec.props.keyboardWidth shouldBe (width - 24).dp
+                spec.props.offsetBottom shouldBe 12.dp
+            }
+            controller.actions.toggleFloatingWindow()
+            controller.activeWindowConfig.first { it.mode == ImeWindowMode.FIXED }.fixedMode shouldBe
+                ImeWindowMode.Fixed.NORMAL
+        }
+    }
+
+    listOf(ImeWindowMode.Floating.SPLIT, ImeWindowMode.Floating.NORMAL).forEach { mode ->
+        test("releasing $mode at the bottom preserves split floating and docks compact floating") {
+            val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
+            prefs.keyboard.splitLayoutMode.set(
+                if (mode == ImeWindowMode.Floating.SPLIT) SplitLayoutMode.ALWAYS else SplitLayoutMode.NEVER,
+            )
+            val controller = ImeWindowController(prefs, backgroundScope)
+            val root = with(Density(1f)) { ImeInsets.Root.of(IntRect(0, 0, 800, 1200)) }
+            controller.updateRootInsets(root)
+            controller.activeWindowSpec.first { it !== ImeWindowSpec.Fallback }
+            controller.actions.toggleFloatingWindow()
+            controller.activeWindowSpec.first { it is ImeWindowSpec.Floating }
+            val moved = controller.editor.beginMoveGesture()
+                .movedBy(DpOffset(0.dp, 2000.dp), rowCount = 4, smartbarRowCount = 0)
+                .shouldBeInstanceOf<ImeWindowSpec.Floating>()
+            moved.props.offsetBottom shouldBe 0.dp
+            moved.shouldDockOnRelease shouldBe (mode == ImeWindowMode.Floating.NORMAL)
+            controller.editor.endMoveGesture(moved)
+            if (mode == ImeWindowMode.Floating.SPLIT) {
+                val saved = controller.activeWindowConfig.first { it.floatingProps[mode]?.offsetBottom == 0.dp }
+                saved.mode shouldBe ImeWindowMode.FLOATING
+                prefs.keyboard.windowConfig.get()[root.formFactor.typeGuess]?.floatingProps?.get(mode)
+                    ?.offsetBottom shouldBe 0.dp
+                controller.actions.toggleFloatingWindow()
+                controller.activeWindowConfig.first { it.mode == ImeWindowMode.FIXED }
+                controller.actions.toggleFloatingWindow()
+                controller.activeWindowSpec.first { it is ImeWindowSpec.Floating }
+                    .shouldBeInstanceOf<ImeWindowSpec.Floating>().props.offsetBottom shouldBe 0.dp
+            } else {
+                controller.activeWindowConfig.first { it.mode == ImeWindowMode.FIXED }
+            }
+        }
+    }
 
     context("isWindowShown state") {
         test("simple onShown onHidden") {

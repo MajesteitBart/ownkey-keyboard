@@ -66,7 +66,10 @@ enum class ImeWindowMode {
         /**
          * The layout occupies the full window width, minus paddings.
          */
-        NORMAL;
+        NORMAL,
+
+        /** Tablet-width floating window preserving the existing split key arrangement. */
+        SPLIT;
     }
 
     /**

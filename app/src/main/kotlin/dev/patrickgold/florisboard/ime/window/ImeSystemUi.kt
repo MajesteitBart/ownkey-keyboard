@@ -121,6 +121,12 @@ fun ImeSystemUiFloating() {
     val windowConfig by windowController.activeWindowConfig.collectAsState()
     val windowSpec by windowController.activeWindowSpec.collectAsState()
     val editor by windowController.editor.state.collectAsState()
+    val splitGap by windowController.floatingSplitGap.collectAsState()
+
+    if (windowSpec.isFloatingSplit && splitGap != null) {
+        FloatingSplitControls()
+        return
+    }
 
     val visible by remember {
         derivedStateOf {

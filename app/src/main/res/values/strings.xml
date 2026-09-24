@@ -97,6 +97,8 @@
     <string name="quick_action__ai_rewrite__tooltip">Rewrite selected text</string>
     <string name="quick_action__voice_input" comment="Please mind the limited available space for the quick action strings">Voice input</string>
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Open voice input provider</string>
+    <string name="floating_split__actions">Keyboard actions</string>
+    <string name="floating_split__dock">Dock keyboard</string>
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Floating</string>
     <string name="quick_action__floating_window_mode__tooltip">Toggle floating keyboard window mode</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">One-handed</string>
@@ -1548,4 +1550,5 @@
     <string name="dictation_fix__manual">The text changed. Add “{word}” in your dictionary instead?</string>
     <string name="dictation_fix__save_failed">“{word}” could not be saved to storage. It is kept for now and saved with the next change; check free space.</string>
     <string name="dictation_fix__manual_open">Open dictionary</string>
+    <string name="floating_split__opacity">Floating split background opacity</string>
 </resources>

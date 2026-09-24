@@ -564,6 +564,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "keyboard__split_layout_gap_percent",
             default = SplitLayout.GapPercentDefault,
         )
+        val floatingSplitOpacity = int(
+            key = "keyboard__floating_split_opacity",
+            default = 100,
+        )
         val capitalizationBehavior = enum(
             key = "keyboard__capitalization_behavior",
             default = CapitalizationBehavior.CAPSLOCK_BY_DOUBLE_TAP,
@@ -907,6 +911,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
 
     override fun migrate(entry: PreferenceMigrationEntry): PreferenceMigrationEntry {
         return when (entry.key) {
+            "keyboard__floating_split_transparent" -> entry.transform(
+                key = "keyboard__floating_split_opacity",
+                type = PreferenceType.integer(),
+                rawValue = if (entry.rawValue == "true") "0" else "100",
+            )
 
             // Migrate media prefs to emoji prefs
             // Keep migration rule until: 0.6 dev cycle

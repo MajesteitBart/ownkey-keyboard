@@ -18,11 +18,14 @@ package dev.patrickgold.florisboard.ime.window
 
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.graphics.Region
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.width
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -102,6 +105,14 @@ class ImeWindowController(
         field = MutableStateFlow(false)
 
     private val updateConfigMutex = Mutex()
+
+    /** Empty space between the floating halves, in root pixels; shared by drawing and hit testing. */
+    val floatingSplitGap: StateFlow<IntRect?>
+        field = MutableStateFlow(null)
+
+    fun updateFloatingSplitGap(bounds: IntRect?) {
+        floatingSplitGap.value = bounds
+    }
 
     init {
         combine(
@@ -238,6 +249,15 @@ class ImeWindowController(
                     windowBounds.right,
                     windowBounds.bottom,
                 )
+                if (windowSpec is ImeWindowSpec.Floating &&
+                    windowSpec.floatingMode == ImeWindowMode.Floating.SPLIT
+                ) {
+                    floatingSplitGap.value?.let { gap ->
+                        outInsets.touchableRegion.op(
+                            gap.left, windowBounds.top, gap.right, windowBounds.bottom, Region.Op.DIFFERENCE,
+                        )
+                    }
+                }
             }
         }
         outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
@@ -298,7 +318,11 @@ class ImeWindowController(
                     ImeWindowMode.FIXED -> ImeWindowMode.FLOATING
                     ImeWindowMode.FLOATING -> ImeWindowMode.FIXED
                 }
-                config.copy(mode = newMode)
+                val widthDp = activeRootInsets.value.boundsDp.width.value.toInt()
+                val floatingMode = if (widthDp >= SplitLayout.AutoMinScreenWidthDp &&
+                    SplitLayout.isActive(prefs.keyboard.splitLayoutMode.get(), widthDp)
+                ) ImeWindowMode.Floating.SPLIT else ImeWindowMode.Floating.NORMAL
+                config.copy(mode = newMode, floatingMode = floatingMode)
             }
         }
 
@@ -461,7 +485,7 @@ class ImeWindowController(
                          config.copy(fixedProps = config.fixedProps.plus(spec.fixedMode to spec.props))
                      }
                     is ImeWindowSpec.Floating -> {
-                        if (spec.props.offsetBottom <= spec.constraints.dockToFixedHeight) {
+                        if (spec.shouldDockOnRelease) {
                             keepEnabled = false
                             config.copy(mode = ImeWindowMode.FIXED)
                         } else {

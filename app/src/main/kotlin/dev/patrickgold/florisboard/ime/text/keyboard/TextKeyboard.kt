@@ -37,6 +37,10 @@ class TextKeyboard(
     val keyCount: Int
         get() = arrangement.sumOf { it.size }
 
+    /** Common empty horizontal interval across all rows, excluding every key's touch bounds. */
+    var splitGap: Pair<Float, Float>? = null
+        private set
+
     override fun getKeyForPos(pointerX: Float, pointerY: Float): TextKey? {
         for (key in keys()) {
             if (key.touchBounds.contains(pointerX, pointerY)) {
@@ -53,6 +57,7 @@ class TextKeyboard(
         extendTouchBoundariesDownwards: Boolean,
         splitSpec: SplitLayoutSpec?,
     ) {
+        splitGap = null
         if (arrangement.isEmpty()) return
 
         val desiredTouchBounds = desiredKey.touchBounds
@@ -62,19 +67,21 @@ class TextKeyboard(
         val rowMarginV = (keyboardHeight - desiredTouchBounds.height * rowCount.toFloat()) / (rowCount - 1).coerceAtLeast(1).toFloat()
 
         val isSplitLayout = splitSpec != null && splitSpec.gapWidth > 0.0f
-        if (!isSplitLayout) {
+        val collapsedSpaces = if (!isSplitLayout) {
             // The arrangement may contain a duplicated space key (inserted for the split layout) while this
             // layout pass is not split, e.g. in floating/compact window modes. Collapse the duplicate so the
             // row renders with a single space bar.
             collapseDuplicateSpaceKeys()
-        }
+        } else emptyList()
 
+        var everyRowSplit = true
         for ((r, row) in rows().withIndex()) {
             val posY = (desiredTouchBounds.height + rowMarginV) * r
             val isLastRow = r + 1 == arrangement.size
             val extendBottom = extendTouchBoundariesDownwards && isLastRow
             val splitIndex = if (isSplitLayout) determineSplitIndex(row) else -1
             if (splitIndex <= 0 || splitIndex >= row.size) {
+                everyRowSplit = false
                 layoutRowSegment(
                     row, 0, row.size, posY, 0.0f, keyboardWidth, desiredKey, extendBottom,
                 )
@@ -91,7 +98,20 @@ class TextKeyboard(
                     row[i].touchBounds.translateBy(splitSpec.gapWidth, 0.0f)
                     row[i].visibleBounds.translateBy(splitSpec.gapWidth, 0.0f)
                 }
+                val left = row[splitIndex - 1].touchBounds.right
+                val right = row[splitIndex].touchBounds.left
+                val previous = splitGap
+                splitGap = if (previous == null) left to right else
+                    maxOf(previous.first, left) to minOf(previous.second, right)
             }
+        }
+        if (!everyRowSplit) splitGap = null
+        // A window-mode change can reuse this keyboard without recomputing key flex factors.
+        // Keep the collapsed bounds, but restore factors for the next split layout pass.
+        for ((key, factors) in collapsedSpaces) {
+            key.flayWidthFactor = factors.first
+            key.flayGrow = factors.second
+            key.flayShrink = factors.third
         }
     }
 
@@ -131,12 +151,14 @@ class TextKeyboard(
         return bestIndex
     }
 
-    private fun collapseDuplicateSpaceKeys() {
+    private fun collapseDuplicateSpaceKeys(): List<Pair<TextKey, Triple<Float, Float, Float>>> {
+        val collapsed = mutableListOf<Pair<TextKey, Triple<Float, Float, Float>>>()
         for (row in arrangement) {
             for (k in 0 until row.size - 1) {
                 val code = keyCodeForSplit(row[k])
                 if ((code == KeyCode.SPACE || code == KeyCode.CJK_SPACE) && code == keyCodeForSplit(row[k + 1])) {
                     row[k + 1].apply {
+                        collapsed += this to Triple(flayWidthFactor, flayGrow, flayShrink)
                         flayWidthFactor = 0.0f
                         flayGrow = 0.0f
                         flayShrink = 0.0f
@@ -144,6 +166,7 @@ class TextKeyboard(
                 }
             }
         }
+        return collapsed
     }
 
     private fun keyCodeForSplit(key: TextKey): Int {
