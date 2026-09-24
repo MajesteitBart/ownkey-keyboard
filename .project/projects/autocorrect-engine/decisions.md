@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T21:38:03Z
+updated: 2026-09-24T23:08:33Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -34,6 +34,9 @@ updated: 2026-09-24T21:38:03Z
 - 2026-09-24: Word context scores the typed word against the previous word of the same sentence only. The first word of a sentence gets no context, because Tatoeba's sentence starts are a few stock openings; next-word predictions may still use the sentence start.
 - 2026-09-24: Real-word errors (then/than, word/wordt) are handled by confusion alternatives that only reorder suggestions. They never auto-commit (AC-011), since a wrong replacement of a correctly spelled word costs more trust than a missed fix.
 - 2026-09-24: The Phase 3 targets for Dutch context typos (72%) and Dutch real-word errors (60%) move to Phase 4. Left context and pair counts from 1.2M Dutch tokens do not carry the missing signal; touch positions and a better candidate search do.
+- 2026-09-24: The bigram models (Phase 3) get their own heap budget: about 4 MB for EN and NL together on the JVM, next to 16 and 18 MB for the word models. The spec's rule that dictionary and index heap stay within 10% of the current release still holds for the dictionary and index, which did not grow; the conditional trie phase has no trigger (heap within budget, load off the main thread, two-edit candidates found without a new index).
+- 2026-09-24: A split of a run-together word auto-commits only when one of the two words is among the 200 most frequent of its language. Compounds that are missing from the word list ("treehouse", "roadmap") are then suggested, not split; "standup" still becomes "stand up", accepted as a reasonable reading.
+- 2026-09-24: Words the user kept three or more times get a bonus for keeping them instead of becoming dictionary words, and they only count while autocorrect is on. A misspelling the user left three times is then kept too; that is the user's call, and the never-correct list stays the explicit way to stop a correction.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.
