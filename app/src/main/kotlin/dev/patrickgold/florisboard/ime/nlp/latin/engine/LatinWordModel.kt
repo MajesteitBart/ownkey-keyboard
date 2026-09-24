@@ -152,4 +152,47 @@ internal class LatinWordModel private constructor(
                 )
             }
     }
+
+    /**
+     * Words two edits away from [input] that the distance-1 lookup misses: two deletions from the input matched
+     * against the delete index (an extra letter plus a wrong one, or two extra letters), and two substituted
+     * letters, where [alternatives] names the letters worth trying at each position (neighboring keys, or the keys
+     * the tap was closest to). At most [maxVariants] substitution pairs are tried, so long words stay cheap.
+     */
+    fun lookupTwoEditCandidates(
+        input: String,
+        alternatives: (Int) -> List<Char>,
+        maxCount: Int,
+        maxVariants: Int = 2_000,
+    ): List<String> {
+        if (input.length < 3) return emptyList()
+        val found = LinkedHashSet<String>()
+        for (deleted in LatinText.generateDeletes(input, 2)) {
+            if (deleted.length < input.length - 1 && words.containsKey(deleted)) found.add(deleted)
+            deleteIndex[deleted]?.forEach { found.add(it) }
+        }
+        val options = List(input.length) { alternatives(it) }
+        var tried = 0
+        val chars = input.toCharArray()
+        outer@ for (i in input.indices) {
+            for (j in i + 1 until input.length) {
+                for (a in options[i]) {
+                    for (b in options[j]) {
+                        if (++tried > maxVariants) break@outer
+                        chars[i] = a
+                        chars[j] = b
+                        val variant = String(chars)
+                        if (words.containsKey(variant)) found.add(variant)
+                    }
+                }
+                chars[j] = input[j]
+            }
+            chars[i] = input[i]
+        }
+        return found.asSequence()
+            .filter { it != input && LatinText.boundedDamerauLevenshtein(input, it, 2) <= 2 }
+            .sortedByDescending { words[it] ?: 0 }
+            .take(maxCount)
+            .toList()
+    }
 }

@@ -92,6 +92,9 @@ class AutocorrectBenchmarkReportTest : FunSpec({
         typos.getValue("tap NL usage, NL, with taps").rightPct shouldBeGreaterThanOrEqual 77.0
         typos.getValue("tap NL usage, NL+EN, with taps").rightPct shouldBeGreaterThanOrEqual 73.0
         typos.getValue("context NL, NL, with taps").rightPct shouldBeGreaterThanOrEqual 73.0
+        // T-016: two-edit candidates bring the intended word first often enough with taps.
+        typos.getValue("tap EN usage, EN, with taps").top1Pct shouldBeGreaterThanOrEqual 92.0
+        typos.getValue("tap NL usage, NL, with taps").top1Pct shouldBeGreaterThanOrEqual 92.0
         typos.values.filter { "with taps" in it.set && it.right + it.wrong >= 10 }.forEach { result ->
             withClue(result.set) { result.precisionPct shouldBeGreaterThanOrEqual 98.0 }
         }

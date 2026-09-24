@@ -79,6 +79,19 @@ data class NoisyChannelParams(
     val touchSigmaX: Double = 0.30,
     val touchSigmaY: Double = 0.35,
     val touchBaseCost: Double = 1.0,
+    /** Also look for words two edits away when the typed word is not a word itself. */
+    val twoEditCandidates: Boolean = true,
+    /**
+     * Try two substituted letters on neighboring keys also without tap positions. Off: without taps there are too
+     * many neighbors, and the extra readings cost more in speed than they add.
+     */
+    val twoEditSubstitutionsWithoutTaps: Boolean = false,
+    /**
+     * A two-edit reading auto-commits only when it leaves this share of the usual doubt: 0.1 turns the Normal
+     * threshold of 0.95 into 0.995. Two edits are a bigger guess, and a name typed in lowercase ("gijs", "trello")
+     * is often two edits away from a common word.
+     */
+    val twoEditDoubtFactor: Double = 0.1,
     /** Put the most likely finished word first; later slots favor completions of the typed prefix. */
     val bestFinishedWordFirst: Boolean = true,
 )
@@ -149,6 +162,10 @@ internal class NoisyChannelLatinScorer(
         private const val LanguageContextWindow = 4
         private const val MaxTokenLanguageMargin = 3.0
         private val SentenceEnds = setOf('.', '!', '?', ';', ':', '\n')
+        private const val TwoEditLookupCount = 12
+        /** Keys worth trying instead of a typed letter: neighbors within this distance, or the keys nearest the tap. */
+        private const val NeighborDistance = 1.3
+        private const val NearestKeysPerTap = 3
         /** Successors looked at per language, as a multiple of the predictions asked for. */
         private const val PredictionPoolFactor = 4
     }
@@ -214,10 +231,7 @@ internal class NoisyChannelLatinScorer(
                 language.model.lookupCorrections(input, CorrectionLookupCount).forEach { candidateWords.add(it.word) }
             }
         }
-        if (candidateWords.isEmpty()) return emptyList()
-
-        val scored = ArrayList<Scored>(candidateWords.size)
-        for (word in candidateWords) {
+        suspend fun scoreWord(word: String): Scored {
             var bestLanguageScore = Double.NEGATIVE_INFINITY
             var bestLocale = request.primaryLocale
             var bestFrequency = 0
@@ -251,8 +265,11 @@ internal class NoisyChannelLatinScorer(
             } else {
                 finishedScore
             }
-            scored.add(Scored(word, bestLocale, finishedScore, displayScore, bestFrequency))
+            return Scored(word, bestLocale, finishedScore, displayScore, bestFrequency)
         }
+
+        val scored = ArrayList<Scored>(candidateWords.size)
+        for (word in candidateWords) scored.add(scoreWord(word))
 
         // "Keep what I typed" competes with every candidate. A known word is already a candidate itself.
         val literalScore = if (input in candidateWords) {
@@ -260,11 +277,39 @@ internal class NoisyChannelLatinScorer(
         } else {
             literalScore(rawInput, input, request.textBeforeSelection) + request.autocorrect.literalBias
         }
-        var logNormalizer = literalScore ?: Double.NEGATIVE_INFINITY
-        scored.forEach { logNormalizer = logSumExp(logNormalizer, it.finishedScore) }
+        fun normalizer(candidates: List<Scored>): Double =
+            candidates.fold(literalScore ?: Double.NEGATIVE_INFINITY) { sum, candidate -> logSumExp(sum, candidate.finishedScore) }
+
+        // Words two edits away are only looked up when no single-edit reading is already confident enough to
+        // auto-commit; they cost more time than every other candidate source together.
+        val twoEditOnly = HashSet<String>()
+        if (params.twoEditCandidates && !inputKnown && input.length >= 3) {
+            val firstBest = scored.filter { it.word != input }.maxByOrNull { it.finishedScore }
+            if (firstBest == null || exp(firstBest.finishedScore - normalizer(scored)) < request.autocorrect.threshold) {
+                val alternatives = substitutionAlternatives(input, geometry, taps)
+                for (language in languages) {
+                    language.model.lookupTwoEditCandidates(input, alternatives, TwoEditLookupCount).forEach {
+                        if (candidateWords.add(it)) {
+                            twoEditOnly.add(it)
+                            scored.add(scoreWord(it))
+                        }
+                    }
+                }
+            }
+        }
+        if (scored.isEmpty()) return emptyList()
+
+        val logNormalizer = normalizer(scored)
         fun posterior(score: Double) = exp(score - logNormalizer)
 
         val bestCorrection = scored.filter { it.word != input }.maxByOrNull { it.finishedScore }
+        // Two-edit readings only weigh in on auto-commit when one of them is the best reading. Otherwise they are
+        // suggestions, and they must not dilute a confident single-edit correction below the threshold.
+        val decisionNormalizer = if (bestCorrection == null || bestCorrection.word in twoEditOnly || twoEditOnly.isEmpty()) {
+            logNormalizer
+        } else {
+            normalizer(scored.filter { it.word !in twoEditOnly })
+        }
         val settings = request.autocorrect
         // A listed apostrophe form ("im", "zn") is not a guess, so it may fire below the minimum length.
         val isAutoCommit = bestCorrection != null &&
@@ -273,7 +318,11 @@ internal class NoisyChannelLatinScorer(
             (input.length >= settings.minInputLength || bestCorrection.word in listedForms) &&
             rawInput.none { it == '\'' || it == '’' || it == '-' } &&
             !hooks.isBlockedByUserPreference(input) &&
-            posterior(bestCorrection.finishedScore) >= settings.threshold
+            exp(bestCorrection.finishedScore - decisionNormalizer) >= if (bestCorrection.word in twoEditOnly) {
+                1.0 - (1.0 - settings.threshold) * params.twoEditDoubtFactor
+            } else {
+                settings.threshold
+            }
 
         val bestFinished = scored.maxByOrNull { it.finishedScore }
         val lead = when {
@@ -537,6 +586,28 @@ internal class NoisyChannelLatinScorer(
                 .coerceAtMost(params.maxSubstitutionCost)
         }
         return if (a in Vowels && b in Vowels) minOf(tapCost, params.vowelSubstitutionCost) else tapCost
+    }
+
+    /**
+     * Letters worth trying at each position of [input] for two-substitution candidates: the keys nearest the tap when
+     * it is known, otherwise the neighboring keys, plus the other vowels for a vowel (spelling errors).
+     */
+    private fun substitutionAlternatives(input: String, geometry: KeyGeometry, taps: List<LatinTap>?): (Int) -> List<Char> {
+        if (taps == null && !params.twoEditSubstitutionsWithoutTaps) return { emptyList() }
+        val cache = arrayOfNulls<List<Char>>(input.length)
+        return { index ->
+            cache[index] ?: run {
+                val ch = input[index]
+                val tap = taps?.getOrNull(index)?.takeIf { !it.x.isNaN() && !it.y.isNaN() }
+                val keys = if (tap != null) {
+                    geometry.nearestKeys(tap.x, tap.y, NearestKeysPerTap + 1).filter { it != ch }
+                } else {
+                    geometry.neighbors(ch, NeighborDistance)
+                }
+                val vowels = if (ch in Vowels) Vowels.filter { it != ch && it !in keys } else emptyList()
+                (keys + vowels).also { cache[index] = it }
+            }
+        }
     }
 
     /**

@@ -39,6 +39,28 @@ class KeyGeometry(
 
     fun center(ch: Char): Pair<Double, Double>? = centers[ch.lowercaseChar()]
 
+    /** Letter keys within [maxDistance] key units of [ch], nearest first; empty when [ch] is not on the layout. */
+    fun neighbors(ch: Char, maxDistance: Double): List<Char> {
+        val key = ch.lowercaseChar()
+        if (key !in centers) return emptyList()
+        return centers.keys.asSequence()
+            .filter { it != key }
+            .mapNotNull { other -> distance(key, other)?.takeIf { it <= maxDistance }?.let { other to it } }
+            .sortedBy { it.second }
+            .map { it.first }
+            .toList()
+    }
+
+    /** Letter keys sorted by distance from the point ([x], [y]) in key widths. */
+    fun nearestKeys(x: Double, y: Double, count: Int): List<Char> {
+        return centers.entries.asSequence()
+            .map { (ch, c) -> ch to hypot(c.first - x, (c.second - y) / rowHeight) }
+            .sortedBy { it.second }
+            .take(count)
+            .map { it.first }
+            .toList()
+    }
+
     val size: Int get() = centers.size
 
     companion object {
