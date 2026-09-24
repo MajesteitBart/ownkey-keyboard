@@ -73,6 +73,7 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.glideTypingManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
+import dev.patrickgold.florisboard.ime.nlp.latin.KeyboardGeometrySource
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCue
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCues
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
@@ -154,9 +155,10 @@ fun TextKeyboardLayout(
 
     val controller = remember { TextKeyboardLayoutController(context) }.also {
         it.keyboard = keyboard
-        if (glideEnabled && keyboard.mode == KeyboardMode.CHARACTERS) {
+        if (keyboard.mode == KeyboardMode.CHARACTERS) {
             val keys = keyboard.keys().asSequence().toList()
-            glideTypingManager.setLayout(keys)
+            KeyboardGeometrySource.update(keys)
+            if (glideEnabled) glideTypingManager.setLayout(keys)
         }
     }
     val touchEventChannel = remember { Channel<MotionEvent>(64) }

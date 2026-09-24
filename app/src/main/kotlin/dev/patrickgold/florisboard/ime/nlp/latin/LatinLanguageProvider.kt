@@ -32,6 +32,8 @@ import dev.patrickgold.florisboard.ime.nlp.SpellingResult
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.ChatShorthand
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinCurrentWordScorer
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringHooks
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
@@ -39,6 +41,8 @@ import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringRequest
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LegacyLatinScorer
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.NoisyChannelLatinScorer
+import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.RankedCandidate
 import dev.patrickgold.florisboard.ime.nlp.personal.PersonalDataStore
 import dev.patrickgold.florisboard.ime.nlp.personal.PersonalNgramStore
@@ -92,6 +96,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private data class AutocorrectPolicySnapshot(
         val profile: AutocorrectAppProfile,
         val config: HighCertaintyAutocorrectConfig,
+        val settings: AutocorrectSettings,
+        val isLegacyEngine: Boolean,
     ) {
         val policy: HighCertaintyAutocorrectPolicy = HighCertaintyAutocorrectPolicy(config)
         val signature: String = listOf(
@@ -101,6 +107,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             config.minConfidenceGap,
             config.minInputLength,
             config.maxAutoCorrectEditDistance,
+            settings,
+            isLegacyEngine,
         ).joinToString(separator = "|")
     }
 
@@ -125,9 +133,16 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     // Serializes model loading, so a suggestion request during preload waits for the load in progress instead of
     // loading a second copy of the same dictionary.
     private val modelLoadMutex = Mutex()
+    // Read-only copy of [languageModels] for the main thread, replaced whenever a model is registered.
+    @Volatile
+    private var loadedModelsSnapshot: Map<String, LatinWordModel> = emptyMap()
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
     private val emptyModel = LatinWordModel.Empty
     private val legacyScorer: LatinCurrentWordScorer = LegacyLatinScorer()
+    private val noisyChannelScorer: LatinCurrentWordScorer = NoisyChannelLatinScorer()
+
+    @Volatile
+    private var speechWordsCache: Pair<Any, Set<String>>? = null
 
     // In-memory copy of the user dictionaries, so autocorrect decisions on the main thread never query a database.
     @Volatile
@@ -181,9 +196,34 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         val languageContexts = getLanguageContextsForSubtype(subtype)
         if (languageContexts.any { context -> context.model.isKnown(normalizedWord) } ||
-            isUserDictionaryWord(subtype, normalizedWord)
+            isUserDictionaryWord(subtype, normalizedWord) ||
+            ChatShorthand.contains(normalizedWord) ||
+            normalizedWord in speechDictionaryWords()
         ) {
             return SpellingResult.validWord()
+        }
+        if (!prefs.devtools.autocorrectLegacyEngine.get()) {
+            val policySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
+            val scored = noisyChannelScorer.score(
+                request = LatinScoringRequest(
+                    rawInput = rawWord,
+                    primaryLocale = locale,
+                    languages = languageContexts.map { it.toScoringLanguage() },
+                    textBeforeSelection = (precedingWords + rawWord).joinToString(" "),
+                    maxCandidateCount = maxSuggestionCount + 1,
+                    policy = policySnapshot.policy,
+                    autocorrect = policySnapshot.settings.copy(enabled = true),
+                    geometry = KeyboardGeometrySource.current(),
+                ),
+                hooks = scoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language)),
+            )
+            val suggestions = scored
+                .filter { it.word != normalizedWord }
+                .map { it.text }
+                .distinct()
+                .take(maxSuggestionCount)
+            if (suggestions.isEmpty()) return SpellingResult.validWord()
+            return SpellingResult.typo(suggestions.toTypedArray(), isHighConfidenceResult = scored.any { it.isAutoCommit })
         }
 
         val suggestedWords = LinkedHashSet<String>()
@@ -256,7 +296,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             )
         } else {
             val language = normalizeLanguageCode(subtype.primaryLocale.language)
-            val scored = legacyScorer.score(
+            val scored = scorerFor(autocorrectPolicySnapshot).score(
                 request = LatinScoringRequest(
                     rawInput = rawInput,
                     primaryLocale = primaryLocale,
@@ -264,6 +304,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     textBeforeSelection = content.textBeforeSelection,
                     maxCandidateCount = maxCandidateCount,
                     policy = autocorrectPolicySnapshot.policy,
+                    autocorrect = autocorrectPolicySnapshot.settings,
+                    geometry = KeyboardGeometrySource.current(),
                 ),
                 hooks = scoringHooks(subtype, language),
             )
@@ -295,7 +337,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val languages = loadedScoringLanguages(subtype)
         if (languages.isEmpty()) return null
         val policySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
-        val scored = legacyScorer.score(
+        val scored = scorerFor(policySnapshot).score(
             request = LatinScoringRequest(
                 rawInput = rawInput,
                 primaryLocale = subtype.primaryLocale.base,
@@ -303,6 +345,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 textBeforeSelection = content.textBeforeSelection,
                 maxCandidateCount = AutoCommitCandidateCount,
                 policy = policySnapshot.policy,
+                autocorrect = policySnapshot.settings,
+                geometry = KeyboardGeometrySource.current(),
             ),
             hooks = inMemoryScoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language)),
         )
@@ -316,13 +360,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     /**
-     * Languages of [subtype] whose models are already loaded. Never loads a model and never waits for the model
-     * lock, so it is safe on the main thread. Returns an empty list while models are being registered.
+     * Languages of [subtype] whose models are already loaded. Never loads a model and never takes the model lock,
+     * so it is safe on the main thread.
      */
     private fun loadedScoringLanguages(subtype: Subtype): List<LatinScoringLanguage> {
         val seenLanguages = LinkedHashSet<String>()
         val languages = mutableListOf<LatinScoringLanguage>()
-        languageModels.tryWithLock { models ->
+        loadedModelsSnapshot.let { models ->
             subtype.locales().forEachIndexed { index, locale ->
                 val language = normalizeLanguageCode(locale.language)
                 if (!seenLanguages.add(language)) return@forEachIndexed
@@ -431,6 +475,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     override suspend fun destroy() {
         languageModels.withLock {
             it.clear()
+            loadedModelsSnapshot = emptyMap()
         }
         suggestionCache.withLock {
             it.clear()
@@ -494,6 +539,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             val model = loadLanguageModel(language)
             languageModels.withLock { models ->
                 models.putIfAbsent(language, model)
+                loadedModelsSnapshot = models.toMap()
             }
         }
     }
@@ -771,10 +817,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         )
         val profile = appSpecificPolicy.resolveProfile(appContext)
         val effectiveConfig = appSpecificPolicy.applyProfile(baseConfig, profile)
+        val baseSettings = AutocorrectSettings(enabled = baseConfig.enabled)
+        val settings = if (prefs.correction.appSpecificAutocorrectProfilesEnabled.get()) {
+            baseSettings.withAggressiveness(appSpecificPolicy.profileAggressivenessPercent(profile))
+        } else {
+            baseSettings
+        }
 
         return AutocorrectPolicySnapshot(
             profile = profile,
             config = effectiveConfig,
+            settings = settings,
+            isLegacyEngine = prefs.devtools.autocorrectLegacyEngine.get(),
         )
     }
 
@@ -793,7 +847,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private fun scoringHooks(subtype: Subtype, language: String): LatinScoringHooks {
         return object : LatinScoringHooks {
             override fun isUserDictionaryWord(normalizedWord: String): Boolean {
-                return isUserDictionaryWord(subtype, normalizedWord)
+                return isUserDictionaryWord(subtype, normalizedWord) || normalizedWord in speechDictionaryWords()
             }
 
             override fun isBlockedByUserPreference(normalizedWord: String): Boolean {
@@ -808,9 +862,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private fun inMemoryScoringHooks(subtype: Subtype, language: String): LatinScoringHooks {
         val userWords = userDictionarySnapshot
+        val speechWords = speechDictionaryWords()
         return object : LatinScoringHooks {
             override fun isUserDictionaryWord(normalizedWord: String): Boolean {
-                return normalizedWord in userWords
+                return normalizedWord in userWords || normalizedWord in speechWords
             }
 
             override fun isBlockedByUserPreference(normalizedWord: String): Boolean {
@@ -849,6 +904,26 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             flogError { "Failed refreshing user dictionary snapshot: $e" }
             userDictionarySnapshot
         }
+    }
+
+    private fun scorerFor(snapshot: AutocorrectPolicySnapshot): LatinCurrentWordScorer {
+        return if (snapshot.isLegacyEngine) legacyScorer else noisyChannelScorer
+    }
+
+    /**
+     * Words from the personal speech dictionary (dictation vocabulary). The user added them on purpose, so
+     * autocorrect never replaces them. Reads in-memory state only.
+     */
+    private fun speechDictionaryWords(): Set<String> {
+        val document = try {
+            appContext.speechDictionary().value.state.value.document
+        } catch (_: Throwable) {
+            return emptySet()
+        }
+        speechWordsCache?.let { (cachedDocument, words) -> if (cachedDocument === document) return words }
+        val words = document.words.mapTo(HashSet()) { normalizeDictionaryWord(it.word) }
+        speechWordsCache = document to words
+        return words
     }
 
     private fun isEmailInputField(): Boolean {

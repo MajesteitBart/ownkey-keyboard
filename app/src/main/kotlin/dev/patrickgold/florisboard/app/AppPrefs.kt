@@ -231,6 +231,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "devtools__show_spelling_overlay",
             default = false,
         )
+        val autocorrectLegacyEngine = boolean(
+            key = "devtools__autocorrect_legacy_engine",
+            default = false,
+        )
         val showInlineAutofillOverlay = boolean(
             key = "devtools__show_inline_autofill_overlay",
             default = false,

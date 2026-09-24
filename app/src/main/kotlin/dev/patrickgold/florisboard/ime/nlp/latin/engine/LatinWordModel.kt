@@ -37,6 +37,8 @@ internal class LatinWordModel private constructor(
     val deleteIndex: Map<String, List<String>>,
     val maxFrequency: Int,
     val predictionShortcuts: LatinPredictionShortcuts,
+    /** Sum of all word frequencies, to turn a frequency into a probability. */
+    val totalFrequency: Double,
 ) {
     companion object {
         const val MaxEditDistance = 1
@@ -52,6 +54,7 @@ internal class LatinWordModel private constructor(
             deleteIndex = emptyMap(),
             maxFrequency = 1,
             predictionShortcuts = LatinPredictionShortcuts(emptyMap()),
+            totalFrequency = 1.0,
         )
 
         fun build(words: Map<String, Int>): LatinWordModel {
@@ -87,6 +90,7 @@ internal class LatinWordModel private constructor(
                 deleteIndex = deleteIndex.mapValues { (_, list) -> list.toList() },
                 maxFrequency = words.values.maxOrNull()?.coerceAtLeast(1) ?: 1,
                 predictionShortcuts = predictionShortcuts,
+                totalFrequency = words.values.fold(0.0) { sum, frequency -> sum + frequency }.coerceAtLeast(1.0),
             )
         }
     }

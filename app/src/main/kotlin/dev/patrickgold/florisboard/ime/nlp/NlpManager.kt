@@ -65,12 +65,12 @@ class NlpManager(context: Context) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val clipboardSuggestionProvider = ClipboardSuggestionProvider(context)
     private val emojiSuggestionProvider = EmojiSuggestionProvider(context)
-    private val providers = guardedByLock {
-        mapOf(
-            LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
-            HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
-        )
-    }
+    // The map itself never changes after construction, so main-thread callers may read it without the lock.
+    private val providerMap = mapOf(
+        LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
+        HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
+    )
+    private val providers = guardedByLock { providerMap }
     // lock unnecessary because values constant
     private val providersForceSuggestionOn = mutableMapOf<String, Boolean>()
 
@@ -193,11 +193,8 @@ class NlpManager(context: Context) {
     fun providerForcesSuggestionOn(subtype: Subtype): Boolean {
         val providerId = subtype.nlpProviders.suggestion
         providersForceSuggestionOn[providerId]?.let { return it }
-        // Called on the main thread. While a provider preloads its dictionaries the lock is held for seconds, so
-        // never wait for it: answer "not forced" for now and cache the real value once the lock is free.
-        val forcesSuggestionOn = providers.tryWithLock { it[providerId] }
-            ?.let { wrapper -> (wrapper.provider as? SuggestionProvider)?.forcesSuggestionOn ?: false }
-            ?: return false
+        // Called on the main thread, so read the constant provider map without the lock.
+        val forcesSuggestionOn = (providerMap[providerId]?.provider as? SuggestionProvider)?.forcesSuggestionOn ?: false
         providersForceSuggestionOn[providerId] = forcesSuggestionOn
         return forcesSuggestionOn
     }
@@ -325,8 +322,8 @@ class NlpManager(context: Context) {
         ) {
             val start = SystemClock.uptimeMillis()
             val subtype = subtypeManager.activeSubtype
-            // Never wait for the provider lock on the main thread; keep the word as typed if it is busy.
-            val provider = providers.tryWithLock { it[subtype.nlpProviders.suggestion] }?.provider as? SuggestionProvider
+            // Main thread: read the constant provider map without the lock.
+            val provider = providerMap[subtype.nlpProviders.suggestion]?.provider as? SuggestionProvider
             val decided = provider?.let { runBlocking { it.decideAutoCommit(subtype, content) } }
             val latencyMs = SystemClock.uptimeMillis() - start
             TypingSpeedMetrics.recordAutoCommitDecidedNow(latencyMs)

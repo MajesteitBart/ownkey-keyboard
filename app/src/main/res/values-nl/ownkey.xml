@@ -183,4 +183,6 @@
     <string name="autocorrect__toast_after_disabled">Autocorrectie staat uit. Suggesties blijven zichtbaar.</string>
     <string name="pref__correction__autocorrect__label">Autocorrectie</string>
     <string name="pref__correction__autocorrect__summary">Vervangt een verkeerd getypt woord door het bedoelde woord als je op spatie drukt</string>
+    <string name="devtools__autocorrect_legacy_engine__label">Oude autocorrectie-engine gebruiken</string>
+    <string name="devtools__autocorrect_legacy_engine__summary">Suggesties scoren met de engine van vóór de herbouw van autocorrectie, om te vergelijken</string>
 </resources>

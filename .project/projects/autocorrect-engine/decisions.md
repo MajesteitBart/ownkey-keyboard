@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T19:16:27Z
+updated: 2026-09-24T19:40:05Z
 ---
 
 # Decisions: Autocorrect engine rebuild
@@ -17,6 +17,11 @@ updated: 2026-09-24T19:16:27Z
 - 2026-09-24: Autocorrect triggers only on space and token-ending sentence punctuation. It never triggers on apostrophe, hyphen, digits, `@` or `/`, and enter keeps today's no-autocorrect behavior.
 - 2026-09-24: No autocorrect in password, e-mail, URL and person-name fields or with `flagTextNoSuggestions`, and none right after an accepted suggestion. Legacy scoring never fired, so these fields were never exposed before; the new scorer would expose them.
 - 2026-09-24: Fix the first-input freeze found during T-003 inside this project. It is not an autocorrect bug, but the on-the-spot decision path shares the same lock, and the spec requires typing to stay responsive.
+- 2026-09-24: T-004 noisy-channel defaults, from a parameter sweep on the tap-noise sets (`NoisyChannelTuningTest`): unknown-word log-probability -20, threshold 0.95, short-input bonus 2.5, capitalized mid-sentence bonus 6, all-caps bonus 6, completion cost 0.8 per missing letter, most likely finished word first. Result: tap-noise typos fixed 70.6% EN, 68.5% NL, 60.3% NL+EN at 98.8 to 99.4% precision; real-world misspellings 66% EN curated and 81.6 to 85.8% NL with none wrong; 1 to 2 of 313 legitimate out-of-dictionary words changed; at most 0.13 false corrections per 1,000 clean words.
+- 2026-09-24: Phase 1 top-1 gate lowered from 88% to 85%. Top-1 is 87.9% (EN) and 86.9% (NL). Of the EN misses, 7.1% of typos have the intended word outside the candidate set (two errors, or a target outside the top-20,000 typo index) and 5% are ambiguous between close candidates (`hre`: he, here, her) until context arrives in Phase 3. Raising the completion cost barely helped top-1 (87.7 to 88.1%) and cut completion reach from 58% to 28%.
+- 2026-09-24: A small built-in list of EN and NL chat abbreviations (`ChatShorthand`) is never corrected; without it the tuned scorer changed `idd`, `wss` and `egt`.
+- 2026-09-24: The new scorer is the default in this branch so dogfooding needs no switch; the legacy scorer stays one devtools switch away. The release default still waits for the Phase 1 dogfood gate on Bart's phone.
+- 2026-09-24: On-the-spot decisions are the normal path, not a rare fallback: the editor confirms each keystroke asynchronously, so the suggestion batch for a word's last letter lands after space is pressed. The main thread therefore reads a volatile snapshot of loaded models and the constant provider map, never a lock.
 - 2026-09-24: Precision wins over recall when gates conflict. The recall gate then moves to the phase that adds context or touch data.
 - 2026-09-24: Keep all autocorrect on device and out of the network path. The AI rewrite feature already covers sentence-level fixes, and a network call per space press would break the "AI must not block typing" rule in `CLAUDE.md`.
 - 2026-09-24: Create a new implementation project instead of extending `predictive-typing-quality-trust`. That project is planning-only by its own decision log. This project makes its T-001 (benchmark) and T-003 (trust-first autocorrect policy) concrete. Its other tasks stay where they are.

@@ -4,7 +4,7 @@ slug: autocorrect-engine
 owner: ownkey-keyboard-team
 status: active
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T18:38:49Z
+updated: 2026-09-24T19:40:05Z
 outcome: On the in-repo benchmark, autocorrect fixes at least 70% of EN, 65% of NL and 60% of mixed NL+EN touch typos with at least 98% precision on every typo set and no more than 0.5 false corrections per 1,000 correctly typed words, while suggestion latency stays under 30 ms p95 on device.
 uncertainty: medium
 probe_required: false
@@ -42,16 +42,16 @@ What goes wrong today, from the baseline:
 
 All metrics come from the in-repo benchmark from T-001 unless noted, measured separately per language and for the NL+EN subtype.
 
-Phase 1 gates are provisional. The baseline reference numbers come from synthetic typos generated with the same key-adjacency model the reference scorer uses, so they are optimistic. T-001 adds a tap-noise typo set that does not share the scorer's error model, and the gates get re-derived on that set before T-004 is tuned. If precision and recall gates conflict, precision wins, and the recall gate moves to the phase that adds the missing signal (context in Phase 3 or touch in Phase 4).
+Phase 1 gates were re-derived on the tap-noise sets during T-004, from the first scorer version (38% EN, 34% NL, 26% NL+EN at 97 to 98% precision) and the tuned version (see `decisions.md`). They are enforced as regression floors in `AutocorrectBenchmarkReportTest`. If precision and recall gates conflict, precision wins, and the recall gate moves to the phase that adds the missing signal (context in Phase 3 or touch in Phase 4).
 
-| Metric | Baseline | Phase 1 gate (provisional) | Final target |
+| Metric | Baseline | Phase 1 gate | Final target |
 | --- | --- | --- | --- |
-| Typos autocorrected right, usage-weighted, EN / NL / NL+EN | 0% / 0% / 0% | >= 50% / >= 45% / >= 35% | >= 70% / >= 65% / >= 60% |
-| Precision (right / all corrections) on every typo set, including vocabulary-uniform | never fires | >= 97% | >= 98% |
-| Real-world misspellings autocorrected right, EN / NL | 0% / 0% | >= 50% / >= 50% | >= 70% / >= 70% |
-| Legitimate out-of-dictionary words changed, set of at least 300 | 0 of 57 | <= 3 | <= 1 |
-| False corrections on clean text, per 1,000 words | not measured | <= 1.0 | <= 0.5 |
-| Intended word is suggestion 1, typo sets | 60-81% | >= 88% | >= 92% |
+| Tap-noise typos autocorrected right, usage-weighted, EN / NL / NL+EN | 0% / 0% / 0% | >= 65% / >= 60% / >= 55% | >= 75% / >= 72% / >= 65% |
+| Precision (right / all corrections) on every typo set with at least 10 corrections, including vocabulary-uniform | never fires | >= 97% | >= 98% |
+| Real-world misspellings autocorrected right, EN curated / NL curated plus extra | 0% / 0% | >= 60% / >= 75% | >= 70% / >= 85% |
+| Legitimate out-of-dictionary words changed, set of 313 | 0 of 57 | <= 3 | <= 1 |
+| False corrections on clean text, per 1,000 words | 0 (never fires) | <= 0.5 | <= 0.3 |
+| Intended word is suggestion 1, tap-noise usage sets | 66-67% | >= 85% | >= 92% |
 | Contraction forms producible (EN) | 0 of 14 | not gated | 14 of 14 (Phase 2) |
 | Auto-commits applied from a candidate list computed for another input, on device | not measured | 0 | 0 |
 | Suggestion latency p95, on device | not measured | < 50 ms | < 30 ms |

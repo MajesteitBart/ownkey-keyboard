@@ -48,6 +48,8 @@ internal data class LatinScoringRequest(
     val maxCandidateCount: Int,
     val policy: HighCertaintyAutocorrectPolicy,
     val taps: List<LatinTap>? = null,
+    val autocorrect: AutocorrectSettings = AutocorrectSettings(),
+    val geometry: KeyGeometry? = null,
 )
 
 /**

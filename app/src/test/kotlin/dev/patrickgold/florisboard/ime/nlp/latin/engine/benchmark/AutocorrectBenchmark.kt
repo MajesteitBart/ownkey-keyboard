@@ -95,6 +95,8 @@ internal class AutocorrectBenchmark(
     private val scorer: LatinCurrentWordScorer,
     private val policy: HighCertaintyAutocorrectPolicy,
     private val hooks: LatinScoringHooks = LatinScoringHooks.None,
+    private val settings: dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings =
+        dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings(),
 ) {
     suspend fun score(
         languages: List<LatinScoringLanguage>,
@@ -111,6 +113,7 @@ internal class AutocorrectBenchmark(
                 maxCandidateCount = 8,
                 policy = policy,
                 taps = taps?.map { dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinTap(it.x, it.y) },
+                autocorrect = settings,
             ),
             hooks,
         )
@@ -235,9 +238,9 @@ internal class AutocorrectBenchmark(
  * Collects results and writes a markdown report to `build/reports/autocorrect-benchmark/`.
  */
 internal class BenchmarkReport(private val title: String) {
-    private val typoResults = mutableListOf<TypoSetResult>()
-    private val cleanResults = mutableListOf<CleanTextResult>()
-    private val oovResults = mutableListOf<OovResult>()
+    val typoResults = mutableListOf<TypoSetResult>()
+    val cleanResults = mutableListOf<CleanTextResult>()
+    val oovResults = mutableListOf<OovResult>()
     private val notes = mutableListOf<String>()
 
     fun add(result: TypoSetResult) = result.also { typoResults.add(it) }

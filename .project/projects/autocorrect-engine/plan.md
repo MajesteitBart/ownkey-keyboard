@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 status: active
 lead: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T18:38:49Z
+updated: 2026-09-24T19:40:05Z
 linear_project_id:
 risk_level: medium
 spec_status_at_plan_time: planned
@@ -120,7 +120,7 @@ Only started when a measurement calls for it:
 ## Rollout strategy
 
 - T-002 ships as soon as it is done.
-- Phase 1 ships behind a devtools switch (legacy or new scoring) for Bart's dogfooding. The new scoring becomes the default only after both the benchmark gate and the dogfood gate pass. The switch cannot turn on the new scoring before T-003 is merged.
+- Phase 1 ships with the new scoring on by default in the development branch, so dogfooding needs no setup; a devtools switch returns to the legacy scoring. The release default is decided after both the benchmark gate (passed) and the dogfood gate (open) pass.
 - Each later phase follows the same pattern: benchmark gate, dogfood week, then default.
 - Release notes describe the behavior change in plain words: "Autocorrect now fixes common typos when you press space. Press backspace to undo."
 

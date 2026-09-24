@@ -84,6 +84,12 @@ fun DevtoolsScreen() = FlorisScreen {
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
             SwitchPreference(
+                prefs.devtools.autocorrectLegacyEngine,
+                title = stringRes(R.string.devtools__autocorrect_legacy_engine__label),
+                summary = stringRes(R.string.devtools__autocorrect_legacy_engine__summary),
+                enabledIf = { prefs.devtools.enabled isEqualTo true },
+            )
+            SwitchPreference(
                 prefs.devtools.showInlineAutofillOverlay,
                 title = stringRes(R.string.devtools__show_inline_autofill_overlay__label),
                 summary = stringRes(R.string.devtools__show_inline_autofill_overlay__summary),

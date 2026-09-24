@@ -953,6 +953,8 @@
     <string name="devtools__show_primary_clip__summary" comment="Summary of Show primary clip in Devtools">Overlays the current primary clip of the clipboard</string>
     <string name="devtools__show_input_state_overlay__label" comment="Label of Show input cache overlay in Devtools">Show input state overlay</string>
     <string name="devtools__show_input_state_overlay__summary" comment="Summary of Show input cache overlay in Devtools">Overlays the current input state for debugging</string>
+    <string name="devtools__autocorrect_legacy_engine__label">Use legacy autocorrect engine</string>
+    <string name="devtools__autocorrect_legacy_engine__summary">Score suggestions with the engine from before the autocorrect rebuild, for comparison</string>
     <string name="devtools__show_spelling_overlay__label" comment="Label of Show spelling overlay in Devtools">Show spelling overlay</string>
     <string name="devtools__show_spelling_overlay__summary" comment="Summary of Show spelling overlay in Devtools">Overlays the current spelling results for debugging</string>
     <string name="devtools__show_inline_autofill_overlay__label">Show inline autofill overlay</string>
