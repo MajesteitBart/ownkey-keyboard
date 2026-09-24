@@ -871,7 +871,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val iconStyle = enum(
             key = "theme__icon_style",
-            default = ThemeIconStyle.THIN_OUTLINE,
+            default = ThemeIconStyle.HEROICONS_MINI,
         )
         val toolbarIconSizePercent = int(
             key = "theme__toolbar_icon_size_percent",

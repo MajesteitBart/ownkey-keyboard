@@ -45,10 +45,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -652,32 +648,32 @@ private fun DictationMicPill(
                 // The action shows what tapping it does. Microphone-level feedback belongs to the
                 // measured centre waveform in the recording row, never inside this button.
                 isListening || isSilent -> Icon(
-                    imageVector = Icons.Default.Stop,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_stop),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(pillSize * 0.46f),
                 )
                 showSuccess -> Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_check),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(pillSize * 0.48f),
                 )
                 isError -> Icon(
-                    imageVector = Icons.Default.MicOff,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_exclamation_circle),
                     contentDescription = null,
                     tint = OwnkeyBrand.Glass.Danger,
                     modifier = Modifier.size(pillSize * 0.46f),
                 )
                 // Visibly disabled rather than hidden, so the reason stays discoverable.
                 isAiUnavailable -> Icon(
-                    imageVector = Icons.Default.MicOff,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_no_symbol),
                     contentDescription = null,
                     tint = OwnkeyBrand.Glass.InkSoft,
                     modifier = Modifier.size(pillSize * 0.46f),
                 )
                 else -> Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_tabler_microphone),
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                     contentDescription = null,
                     tint = OwnkeyBrand.Glass.InkSoft,
                     modifier = Modifier.size(pillSize * 0.46f),

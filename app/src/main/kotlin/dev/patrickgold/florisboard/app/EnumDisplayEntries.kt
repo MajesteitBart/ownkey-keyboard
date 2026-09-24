@@ -560,6 +560,10 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
     ThemeIconStyle::class to DEFAULT to {
         listPrefEntries {
             entry(
+                key = ThemeIconStyle.HEROICONS_MINI,
+                label = stringRes(R.string.enum__theme_icon_style__heroicons_mini),
+            )
+            entry(
                 key = ThemeIconStyle.THIN_OUTLINE,
                 label = stringRes(R.string.enum__theme_icon_style__thin_outline),
             )

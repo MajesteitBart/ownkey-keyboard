@@ -188,6 +188,7 @@
     <string name="enum__theme_glass_preset__amoled" comment="Enum value label">AMOLED black</string>
     <string name="enum__theme_glass_preset__slate" comment="Enum value label">Slate</string>
     <string name="enum__theme_glass_preset__ocean" comment="Enum value label">Ocean</string>
+    <string name="enum__theme_icon_style__heroicons_mini" comment="Enum value label. Heroicons is the name of the icon set.">Solid (Heroicons Mini)</string>
     <string name="enum__theme_icon_style__thin_outline" comment="Enum value label">Thin outline</string>
     <string name="enum__theme_icon_style__filled" comment="Enum value label">Filled</string>
     <string name="enum__theme_icon_style__rounded" comment="Enum value label">Rounded</string>

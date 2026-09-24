@@ -33,11 +33,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -50,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -170,9 +167,9 @@ fun VoiceRecordingRowContent(
             ) {
                 Icon(
                     imageVector = if (state.phase == VoiceRecordingPhase.PAUSED) {
-                        Icons.Default.PlayArrow
+                        ImageVector.vectorResource(id = R.drawable.ic_hero_play)
                     } else {
-                        Icons.Default.Pause
+                        ImageVector.vectorResource(id = R.drawable.ic_hero_pause)
                     },
                     contentDescription = null,
                     tint = OwnkeyBrand.Bone,
@@ -185,7 +182,7 @@ fun VoiceRecordingRowContent(
                 contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
                     contentDescription = null,
                     tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
                 )
@@ -226,7 +223,7 @@ fun VoiceRecordingStickyAction(
                 contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
                     contentDescription = null,
                     tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
                 )
@@ -245,7 +242,7 @@ fun VoiceRecordingStickyAction(
                 contentDescription = stringRes(R.string.voice_recording__stop_dictation),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Stop,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_stop),
                     contentDescription = null,
                     tint = Color.White,
                 )

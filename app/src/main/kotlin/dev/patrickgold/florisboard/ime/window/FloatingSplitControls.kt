@@ -27,15 +27,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
@@ -119,7 +119,7 @@ internal fun FloatingSplitControls(actions: Boolean = false) {
                         SnyggIcon(
                             elementName = FlorisImeUi.Window.elementName,
                             modifier = Modifier.size(24.dp),
-                            imageVector = Icons.Default.VerticalAlignBottom,
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_arrow_down_tray),
                             contentDescription = stringRes(R.string.floating_split__dock),
                         )
                     }

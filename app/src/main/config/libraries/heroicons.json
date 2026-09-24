@@ -1,0 +1,14 @@
+{
+  "uniqueId": "heroicons",
+  "name": "Heroicons",
+  "developers": [
+    {
+      "name": "Tailwind Labs",
+      "organisationUrl": "https://tailwindcss.com"
+    }
+  ],
+  "website": "https://github.com/tailwindlabs/heroicons",
+  "licenses": [
+    "MIT"
+  ]
+}
