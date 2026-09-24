@@ -132,6 +132,24 @@ internal class TapNoiseTypoGenerator(
         return Generated(pairs, realWord, total)
     }
 
+    /**
+     * Taps for typing [word] correctly: each tap is drawn with the same noise as a typo tap, but redrawn until it
+     * lands on the intended key, so taps near key borders occur as often as in real typing. Characters without a
+     * key get a NaN tap.
+     */
+    fun correctTaps(word: String): List<Tap> = word.map { ch ->
+        val center = KeyCenters[ch.lowercaseChar()] ?: return@map Tap(ch, Double.NaN, Double.NaN)
+        var tap: Tap? = null
+        var tries = 0
+        while (tap == null && tries < 50) {
+            val x = center.first + random.nextGaussian() * sigmaX
+            val y = center.second + biasY + random.nextGaussian() * sigmaY
+            if (keyAt(x, y) == ch.lowercaseChar()) tap = Tap(ch, x, y)
+            tries++
+        }
+        tap ?: Tap(ch, center.first, center.second)
+    }
+
     /** Usage-weighted (by frequency) or vocabulary-uniform (ranks 100 to 10,000) word sample. */
     fun sampleWords(words: Map<String, Int>, n: Int, tokenWeighted: Boolean, minLen: Int = 3): List<String> {
         val ranked = HarnessTypoGenerator.rankedWords(words, 10000, minLen)

@@ -207,7 +207,13 @@ internal class AutocorrectBenchmark(
     /**
      * Types every word of every sentence and counts autocorrections that change a correctly written word.
      */
-    suspend fun evaluateCleanText(set: String, languages: List<LatinScoringLanguage>, sentences: List<String>): CleanTextResult {
+    /** With [tapSource], each word is typed with noisy but correct taps, as a real keyboard would report them. */
+    suspend fun evaluateCleanText(
+        set: String,
+        languages: List<LatinScoringLanguage>,
+        sentences: List<String>,
+        tapSource: TapNoiseTypoGenerator? = null,
+    ): CleanTextResult {
         var words = 0
         var falseCorrections = 0
         var knownWords = 0
@@ -225,7 +231,7 @@ internal class AutocorrectBenchmark(
                 if (word.isEmpty() || word.any { !it.isLetter() && it != '\'' && it != '’' && it != '-' }) continue
                 words++
                 val wordEnd = sentence.indexOf(word, start) + word.length
-                val result = score(languages, word, sentence.substring(0, wordEnd))
+                val result = score(languages, word, sentence.substring(0, wordEnd), tapSource?.correctTaps(word))
                 val normalized = LatinText.normalizeInputWord(word, locale)
                 if (languages.any { it.model.isKnown(normalized) }) {
                     knownWords++
@@ -297,7 +303,13 @@ internal class AutocorrectBenchmark(
     }
 
     /** Types each word after [prefix], by default a short neutral one, the way a name or term appears mid-sentence. */
-    suspend fun evaluateOov(set: String, languages: List<LatinScoringLanguage>, words: List<String>, prefix: String = "ok "): OovResult {
+    suspend fun evaluateOov(
+        set: String,
+        languages: List<LatinScoringLanguage>,
+        words: List<String>,
+        prefix: String = "ok ",
+        tapSource: TapNoiseTypoGenerator? = null,
+    ): OovResult {
         var inDictionary = 0
         var changed = 0
         val examples = mutableListOf<String>()
@@ -305,7 +317,7 @@ internal class AutocorrectBenchmark(
         for (word in words) {
             val normalized = LatinText.normalizeInputWord(word, locale)
             if (languages.any { it.model.isKnown(normalized) }) inDictionary++
-            val result = score(languages, word, prefix + word)
+            val result = score(languages, word, prefix + word, tapSource?.correctTaps(word))
             val auto = result.firstOrNull { it.isAutoCommit } ?: continue
             if (auto.word != normalized) {
                 changed++

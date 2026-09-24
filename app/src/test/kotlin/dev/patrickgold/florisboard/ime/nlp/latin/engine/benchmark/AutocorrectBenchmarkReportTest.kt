@@ -87,6 +87,17 @@ class AutocorrectBenchmarkReportTest : FunSpec({
                 result.firstChangedPct shouldBeLessThanOrEqual 2.0
             }
         }
+        // Phase 4 floors (T-015), with tap positions: just below the values measured when the touch model landed.
+        typos.getValue("tap EN usage, EN, with taps").rightPct shouldBeGreaterThanOrEqual 78.0
+        typos.getValue("tap NL usage, NL, with taps").rightPct shouldBeGreaterThanOrEqual 77.0
+        typos.getValue("tap NL usage, NL+EN, with taps").rightPct shouldBeGreaterThanOrEqual 73.0
+        typos.getValue("context NL, NL, with taps").rightPct shouldBeGreaterThanOrEqual 73.0
+        typos.values.filter { "with taps" in it.set && it.right + it.wrong >= 10 }.forEach { result ->
+            withClue(result.set) { result.precisionPct shouldBeGreaterThanOrEqual 98.0 }
+        }
+        report.cleanResults.filter { "with taps" in it.set }.forEach { result ->
+            withClue(result.set) { result.perThousand shouldBeLessThanOrEqual 0.3 }
+        }
         // T-013: word-pair predictions beat the frequency-only list they replace.
         val nextWord = report.nextWordResults.associateBy { it.set }
         for (language in listOf("EN", "NL")) {

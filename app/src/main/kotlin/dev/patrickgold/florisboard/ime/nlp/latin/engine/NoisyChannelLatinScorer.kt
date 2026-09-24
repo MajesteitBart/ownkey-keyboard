@@ -72,6 +72,13 @@ data class NoisyChannelParams(
     val languageSwitchFloor: Double = 0.05,
     /** Off: language weights from which dictionaries know the recent words, as before T-012. */
     val languageWeightsFromContext: Boolean = true,
+    /**
+     * Touch model, used when tap positions are known: a substitution costs [touchBaseCost] plus how much less likely
+     * the tap is under a Gaussian around the intended key than around the typed key (spreads in key widths).
+     */
+    val touchSigmaX: Double = 0.30,
+    val touchSigmaY: Double = 0.35,
+    val touchBaseCost: Double = 1.0,
     /** Put the most likely finished word first; later slots favor completions of the typed prefix. */
     val bestFinishedWordFirst: Boolean = true,
 )
@@ -161,6 +168,8 @@ internal class NoisyChannelLatinScorer(
         val languages = request.languages.filter { it.model.words.isNotEmpty() }
         if (languages.isEmpty()) return emptyList()
         val geometry = request.geometry ?: KeyGeometry.QwertyPhone
+        // Taps only count when there is exactly one per typed character.
+        val taps = request.taps?.takeIf { it.size == rawInput.length }
 
         val tokens = LatinText.extractWordTokens(
             request.textBeforeSelection.takeLast(SuggestionContextTailLength),
@@ -232,8 +241,8 @@ internal class NoisyChannelLatinScorer(
             val channel = when (word) {
                 input -> 0.0
                 in listedForms -> params.listedApostropheFormCost
-                in confusions -> minOf(params.confusionCost, channelCost(input, word, geometry))
-                else -> channelCost(input, word, geometry)
+                in confusions -> minOf(params.confusionCost, channelCost(input, word, geometry, taps))
+                else -> channelCost(input, word, geometry, taps)
             }
             val finishedScore = logPrior - channel
             val isCompletion = word.length > input.length && word.startsWith(input)
@@ -472,8 +481,9 @@ internal class NoisyChannelLatinScorer(
 
     /**
      * Cost of typing [typed] when [intended] was meant: weighted Damerau-Levenshtein with key-distance substitution.
+     * With [taps] (one per typed character), substitutions are priced by where the key was actually tapped.
      */
-    internal fun channelCost(typed: String, intended: String, geometry: KeyGeometry): Double {
+    internal fun channelCost(typed: String, intended: String, geometry: KeyGeometry, taps: List<LatinTap>? = null): Double {
         val n = typed.length
         val m = intended.length
         val d = Array(n + 1) { DoubleArray(m + 1) { Unreachable } }
@@ -483,7 +493,11 @@ internal class NoisyChannelLatinScorer(
                 val current = d[i][j]
                 if (current >= Unreachable) continue
                 if (i < n && j < m) {
-                    val cost = if (typed[i] == intended[j]) 0.0 else substitutionCost(typed[i], intended[j], geometry)
+                    val cost = when {
+                        typed[i] == intended[j] -> 0.0
+                        taps != null -> touchSubstitutionCost(typed[i], intended[j], taps[i], geometry)
+                        else -> substitutionCost(typed[i], intended[j], geometry)
+                    }
                     if (current + cost < d[i + 1][j + 1]) d[i + 1][j + 1] = current + cost
                 }
                 if (j < m) {
@@ -523,6 +537,24 @@ internal class NoisyChannelLatinScorer(
                 .coerceAtMost(params.maxSubstitutionCost)
         }
         return if (a in Vowels && b in Vowels) minOf(tapCost, params.vowelSubstitutionCost) else tapCost
+    }
+
+    /**
+     * A substitution seen through the tap: cheap when the tap landed between the typed and the intended key, never
+     * more expensive than without the tap, because a confident tap on the wrong key can still be a spelling error.
+     */
+    private fun touchSubstitutionCost(typed: Char, intended: Char, tap: LatinTap, geometry: KeyGeometry): Double {
+        val withoutTap = substitutionCost(typed, intended, geometry)
+        if (tap.x.isNaN() || tap.y.isNaN()) return withoutTap
+        val typedCenter = geometry.center(typed) ?: return withoutTap
+        val intendedCenter = geometry.center(intended) ?: return withoutTap
+        fun squared(center: Pair<Double, Double>): Double {
+            val dx = (tap.x - center.first) / params.touchSigmaX
+            val dy = (tap.y - center.second) / params.touchSigmaY
+            return dx * dx + dy * dy
+        }
+        val logRatio = (squared(intendedCenter) - squared(typedCenter)) / 2.0
+        return minOf(withoutTap, params.touchBaseCost + logRatio.coerceAtLeast(0.0))
     }
 
     private fun insertionCost(typed: String, index: Int, geometry: KeyGeometry): Double {
