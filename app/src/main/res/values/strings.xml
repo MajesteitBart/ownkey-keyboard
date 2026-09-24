@@ -101,6 +101,12 @@
     <string name="floating_split__dock">Dock keyboard</string>
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Floating</string>
     <string name="quick_action__floating_window_mode__tooltip">Toggle floating keyboard window mode</string>
+    <string name="quick_action__voice_only" comment="Please mind the limited available space for the quick action strings">Voice only</string>
+    <string name="quick_action__voice_only__tooltip">Replace the keyboard with a small voice input bar</string>
+    <string name="voice_only__tap_to_speak">Tap to speak</string>
+    <string name="voice_only__try_again">Tap to try again</string>
+    <string name="voice_only__inserted">Inserted</string>
+    <string name="voice_only__show_keyboard">Show keyboard</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">One-handed</string>
     <string name="quick_action__one_handed_mode__tooltip">Toggle one-handed mode</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">Resize</string>

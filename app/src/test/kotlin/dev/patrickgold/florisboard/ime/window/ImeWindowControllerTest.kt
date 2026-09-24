@@ -98,6 +98,42 @@ class ImeWindowControllerTest : FunSpec({
         }
     }
 
+    test("voice only replaces the keyboard where allowed and leaving it restores the floating keyboard") {
+        val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
+        val controller = ImeWindowController(prefs, backgroundScope)
+        val root = with(Density(1f)) { ImeInsets.Root.of(IntRect(0, 0, 800, 1200)) }
+        controller.updateRootInsets(root)
+        controller.activeWindowSpec.first { it !== ImeWindowSpec.Fallback }
+        controller.actions.toggleFloatingWindow()
+        controller.activeWindowConfig.first { it.mode == ImeWindowMode.FLOATING }
+
+        controller.actions.toggleVoiceOnly()
+        controller.isVoiceOnlyActive.first { it }
+        // A password or incognito field shows the keyboard without forgetting the choice.
+        controller.updateVoiceOnlyAllowed(false)
+        controller.isVoiceOnlyActive.first { !it }
+        controller.activeWindowConfig.value.voiceOnly shouldBe true
+        controller.updateVoiceOnlyAllowed(true)
+        controller.isVoiceOnlyActive.first { it }
+
+        val moved = ImeWindowConfig.VoiceBarOffset(x = -40f, y = -300f)
+        controller.actions.moveVoiceBar(moved)
+        controller.actions.toggleVoiceOnly()
+        val config = controller.activeWindowConfig.first { !it.voiceOnly }
+        config.mode shouldBe ImeWindowMode.FLOATING
+        config.voiceBarOffset shouldBe moved
+        controller.isVoiceOnlyActive.first { !it }
+        prefs.keyboard.windowConfig.get()[root.formFactor.typeGuess]?.voiceBarOffset shouldBe moved
+    }
+
+    test("window configs saved before voice only still load") {
+        val saved = """{"TABLET_PORTRAIT":{"mode":"FLOATING","floatingMode":"SPLIT"}}"""
+        val config = ImeWindowConfig.ByTypeSerializer.deserialize(saved)[ImeFormFactor.Type.TABLET_PORTRAIT]
+        config?.mode shouldBe ImeWindowMode.FLOATING
+        config?.voiceOnly shouldBe false
+        config?.voiceBarOffset shouldBe ImeWindowConfig.VoiceBarOffset.Zero
+    }
+
     context("isWindowShown state") {
         test("simple onShown onHidden") {
             val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)

@@ -114,6 +114,24 @@ class ImeWindowController(
         floatingSplitGap.value = bounds
     }
 
+    /**
+     * If the current editor may show the voice-only bar. Reported by the IME service, which knows the editor:
+     * secure, incognito, and numeric fields get the full keyboard even while voice-only is selected.
+     */
+    val voiceOnlyAllowed: StateFlow<Boolean>
+        field = MutableStateFlow(true)
+
+    fun updateVoiceOnlyAllowed(allowed: Boolean) {
+        voiceOnlyAllowed.value = allowed
+    }
+
+    /**
+     * If the voice-only bar currently replaces the keyboard window. While true, the window insets describe
+     * the bar, and the app behind it is not resized.
+     */
+    val isVoiceOnlyActive: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
     init {
         combine(
             activeRootInsets,
@@ -123,6 +141,12 @@ class ImeWindowController(
             windowConfigByType[typeGuess] ?: ImeWindowConfig.Default
         }.collectIn(scope) { windowConfig ->
             activeWindowConfig.value = windowConfig
+        }
+
+        combine(activeWindowConfig, voiceOnlyAllowed) { windowConfig, allowed ->
+            windowConfig.voiceOnly && allowed
+        }.collectIn(scope) { active ->
+            isVoiceOnlyActive.value = active
         }
 
         val userPreferredOptions = combine(
@@ -204,8 +228,9 @@ class ImeWindowController(
      * even if the touchable area needs to be fullscreen, or matches the visible/content top. This is due to a
      * bug that affects other modes, where no touch input is propagated to the root window in some cases.
      *
-     * If the current window spec is of floating mode, the reported visible/content bounds will be empty. This
-     * causes the underlying application to not resize at all when the floating window is shown.
+     * If the current window spec is of floating mode, or the voice-only bar is active, the reported
+     * visible/content bounds will be empty. This causes the underlying application to not resize at all when
+     * the floating window or the voice-only bar is shown.
      *
      * @param outInsets The out insets to write the response into.
      * @param isFullscreenInputRequired Flag indicating if, despite the current window config not requiring
@@ -222,16 +247,15 @@ class ImeWindowController(
         val windowBounds = windowInsets.boundsPx
         val windowSpec = activeWindowSpec.value
         val editorState = editor.state.value
+        val isVoiceOnly = isVoiceOnlyActive.value
 
-        when (windowSpec) {
-            is ImeWindowSpec.Fixed -> {
-                outInsets.contentTopInsets = windowBounds.top
-                outInsets.visibleTopInsets = windowBounds.top
-            }
-            is ImeWindowSpec.Floating -> {
-                outInsets.contentTopInsets = rootBounds.bottom
-                outInsets.visibleTopInsets = rootBounds.bottom
-            }
+        if (windowSpec is ImeWindowSpec.Fixed && !isVoiceOnly) {
+            outInsets.contentTopInsets = windowBounds.top
+            outInsets.visibleTopInsets = windowBounds.top
+        } else {
+            // Floating windows and the voice-only bar sit above the app without resizing it.
+            outInsets.contentTopInsets = rootBounds.bottom
+            outInsets.visibleTopInsets = rootBounds.bottom
         }
         when {
             isFullscreenInputRequired || editorState.isEnabled -> {
@@ -249,7 +273,7 @@ class ImeWindowController(
                     windowBounds.right,
                     windowBounds.bottom,
                 )
-                if (windowSpec is ImeWindowSpec.Floating &&
+                if (!isVoiceOnly && windowSpec is ImeWindowSpec.Floating &&
                     windowSpec.floatingMode == ImeWindowMode.Floating.SPLIT
                 ) {
                     floatingSplitGap.value?.let { gap ->
@@ -323,6 +347,19 @@ class ImeWindowController(
                     SplitLayout.isActive(prefs.keyboard.splitLayoutMode.get(), widthDp)
                 ) ImeWindowMode.Floating.SPLIT else ImeWindowMode.Floating.NORMAL
                 config.copy(mode = newMode, floatingMode = floatingMode)
+            }
+        }
+
+        fun toggleVoiceOnly() {
+            editor.disable()
+            updateWindowConfig { config ->
+                config.copy(voiceOnly = !config.voiceOnly)
+            }
+        }
+
+        fun moveVoiceBar(offset: ImeWindowConfig.VoiceBarOffset) {
+            updateWindowConfig { config ->
+                config.copy(voiceBarOffset = offset)
             }
         }
 

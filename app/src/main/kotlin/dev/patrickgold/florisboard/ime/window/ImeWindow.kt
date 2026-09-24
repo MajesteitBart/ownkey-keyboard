@@ -112,6 +112,7 @@ fun ImeRootWindow() {
     // The dictation key reports its bounds here and the hint is drawn above it from this root, so
     // it can sit above the keyboard without a popup window and without stealing host-app touches.
     val voiceActionHint = remember { VoiceActionHintState() }
+    val isVoiceOnly by windowController.isVoiceOnlyActive.collectAsState()
 
     Box(
         modifier = Modifier
@@ -131,7 +132,11 @@ fun ImeRootWindow() {
     ) {
         CompositionLocalProvider(LocalVoiceActionHintState provides voiceActionHint) {
             DevtoolsOverlay()
-            ImeWindow()
+            if (isVoiceOnly) {
+                VoiceOnlyWindow()
+            } else {
+                ImeWindow()
+            }
             VoiceActionHintOverlay(voiceActionHint)
             BottomSheetWindow()
             ImeSystemUi()

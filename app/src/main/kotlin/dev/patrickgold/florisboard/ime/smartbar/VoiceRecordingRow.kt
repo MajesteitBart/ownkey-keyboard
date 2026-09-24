@@ -333,8 +333,9 @@ private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
     )
 }
 
+/** Status text shared by the dictation row and the voice-only bar. */
 @Composable
-private fun VoiceRecordingRowState.label(): String = if (local && phase != VoiceRecordingPhase.PAUSED) {
+internal fun VoiceRecordingRowState.label(): String = if (local && phase != VoiceRecordingPhase.PAUSED) {
     stringRes(if (phase == VoiceRecordingPhase.PROCESSING) R.string.orukeet__transcribing else R.string.orukeet__recording)
 } else status.label()
 

@@ -54,9 +54,11 @@ import dev.patrickgold.florisboard.ime.lifecycle.LifecycleInputMethodService
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralDictationManager
+import dev.patrickgold.florisboard.ime.text.rewrite.isAiSecureField
 import dev.patrickgold.florisboard.ime.theme.WallpaperChangeReceiver
 import dev.patrickgold.florisboard.ime.window.ImeRootView
 import dev.patrickgold.florisboard.ime.window.ImeWindowController
+import dev.patrickgold.florisboard.ime.window.voiceOnlyAllowed
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.devtools.flogInfo
@@ -66,6 +68,7 @@ import dev.patrickgold.florisboard.lib.util.debugSummarize
 import dev.patrickgold.florisboard.lib.util.launchActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import org.florisboard.lib.android.AndroidInternalR
 import org.florisboard.lib.android.AndroidVersion
@@ -340,6 +343,12 @@ class FlorisImeService : LifecycleInputMethodService() {
             updateInputViewShown()
         }
 
+        combine(editorInstance.activeInfoFlow, keyboardManager.activeState) { info, state ->
+            voiceOnlyAllowed(info.inputAttributes.type, info.isAiSecureField(), state.isIncognitoMode)
+        }.distinctUntilChanged().collectIn(lifecycleScope) { allowed ->
+            windowController.updateVoiceOnlyAllowed(allowed)
+        }
+
         @Suppress("DEPRECATION") // We do not retrieve the wallpaper but only listen to changes
         registerReceiver(wallpaperChangeReceiver, IntentFilter(Intent.ACTION_WALLPAPER_CHANGED))
     }
@@ -482,7 +491,8 @@ class FlorisImeService : LifecycleInputMethodService() {
 
     override fun onEvaluateFullscreenMode(): Boolean {
         val config = resources.configuration
-        if (config.orientation != Configuration.ORIENTATION_LANDSCAPE) {
+        // The voice-only bar is meant to leave the app visible, so it never takes the extract view.
+        if (config.orientation != Configuration.ORIENTATION_LANDSCAPE || windowController.isVoiceOnlyActive.value) {
             return false
         }
         return when (prefs.keyboard.landscapeInputUiMode.get()) {

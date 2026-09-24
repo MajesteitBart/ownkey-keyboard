@@ -1,0 +1,14 @@
+<!-- Ownkey: waveform, drawn to match Heroicons 20 solid, which has no waveform icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group
+        android:translateX="2"
+        android:translateY="2">
+        <path
+            android:fillColor="#000000"
+            android:pathData="M2.75 8.25a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0ZM6 5.75a.75.75 0 0 1 1.5 0v8.5a.75.75 0 0 1-1.5 0ZM9.25 3.75a.75.75 0 0 1 1.5 0v12.5a.75.75 0 0 1-1.5 0ZM12.5 6.25a.75.75 0 0 1 1.5 0v7.5a.75.75 0 0 1-1.5 0ZM15.75 8.25a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0Z" />
+    </group>
+</vector>

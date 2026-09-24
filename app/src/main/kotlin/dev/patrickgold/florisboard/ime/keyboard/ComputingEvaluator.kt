@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardCapslock
@@ -334,6 +335,9 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.TOGGLE_RESIZE_MODE -> {
             context()?.vectorResource(id = R.drawable.ic_resize)
+        }
+        KeyCode.TOGGLE_VOICE_ONLY -> {
+            heroicon(R.drawable.ic_hero_waveform) ?: Icons.Default.GraphicEq
         }
         KeyCode.VOICE_INPUT -> {
             styledIcon(R.drawable.ic_tabler_microphone, Icons.Filled.Mic, Icons.Rounded.Mic, Icons.Sharp.Mic)
