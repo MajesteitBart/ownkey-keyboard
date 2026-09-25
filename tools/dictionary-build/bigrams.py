@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import bz2
 import gzip
+import importlib.util
 import math
 import re
 import urllib.request
@@ -83,11 +84,22 @@ def load_vocabulary(language: str) -> set[str]:
     return words
 
 
+def dataset_corrections() -> dict[str, str]:
+    """CORRECTIONS from tools/autocorrect-datasets/prepare.py: raw Tatoeba text to the text in the benchmark files."""
+    spec = importlib.util.spec_from_file_location("prepare", ROOT / "tools" / "autocorrect-datasets" / "prepare.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.CORRECTIONS
+
+
 def benchmark_sentences(language: str) -> set[str]:
     path = BENCHMARK / f"clean_{language}.txt"
     if not path.exists():
         return set()
-    return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+    sentences = {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+    # The benchmark files hold a few sentences corrected by hand; the corpus still has them as Tatoeba wrote them.
+    sentences |= {raw for raw, fixed in dataset_corrections().items() if fixed in sentences}
+    return sentences
 
 
 def tokenize(text: str, lowercase: bool = True) -> list[list[str]]:

@@ -3,14 +3,14 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-25T14:23:24Z
+updated: 2026-09-25T14:55:18Z
 ---
 
 # Decisions: Autocorrect engine rebuild
 
 ## Active decisions
 
-- 2026-09-25 (PR #17 review): "Block possibly offensive words" (on by default) now applies to the Latin engine. The subtitle-based dictionaries rank profanity and slurs high, so a working autocorrect could turn a typo into one. Reviewed per-language lists in `ime/dict/offensive/` keep those words out of suggestions, next-word predictions, spell-check results and auto-commit; a word the user typed is never changed for being on a list. Clinical words and words with a common harmless meaning (penis, rape, queer, kanker, nicht, eikel) stay off the lists.
+- 2026-09-25 (PR #17 review): "Block possibly offensive words" (on by default) now applies to the Latin engine. The subtitle-based dictionaries rank profanity and slurs high, so a working autocorrect could turn a typo into one. Reviewed lists in `ime/dict/offensive/` keep those words out of suggestions, next-word predictions, spell-check results and auto-commit; a word the user typed is never changed for being on a list. Every list applies to every Latin keyboard, because the dictionaries borrow each other's words (the Dutch one has English slurs), and a candidate of several words is checked word by word. Clinical words and words with a common harmless meaning (penis, rape, queer, kanker, nicht, eikel) stay off the lists.
 - 2026-09-25 (PR #17 review): `overnieuw` is an accepted informal variant (Taaladvies), like `kado`, and is a word again. `verassingen` is removed like `verassing`: the cremation meaning is rare and the spelling is typed far more often for verrassing(en). `loosing` and `payed` stay removed for the same reason.
 - 2026-09-25 (PR #17 review): Dutch verb-ending alternatives pair the d-form with the dt-form and the t-form, but no longer the dt-form with the t-form (`brandt`, `brant`): those are different words nobody confuses. No benchmark number changed.
 - 2026-09-25 (PR #17 review): Key geometry measured on screen counts in key pitches (center to center), like the synthetic phone layout the costs were tuned on. Visible key sizes left out the margins between keys and rows and made every step longer, most of all a step to the next row, so a diagonal neighbor could fall outside the 1.3-key adjacency limit on a real layout.

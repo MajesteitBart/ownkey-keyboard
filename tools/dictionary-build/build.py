@@ -92,8 +92,16 @@ NL_SINGLE_LETTERS = {"u"}
 
 def fetch(url: str, target: Path, sha256: str) -> Path:
     if not target.exists():
+        # Download next to the target and only move a verified file into place, so an interrupted or corrupt
+        # download never stays in the cache.
         print(f"downloading {url}")
-        urllib.request.urlretrieve(url, target)
+        partial = target.with_name(target.name + ".part")
+        urllib.request.urlretrieve(url, partial)
+        actual = hashlib.sha256(partial.read_bytes()).hexdigest()
+        if actual != sha256:
+            partial.unlink()
+            raise SystemExit(f"{url} downloaded with sha256 {actual}, expected {sha256}")
+        partial.replace(target)
     # Also checks a cached copy: a file from an older, unpinned run must not slip into the build.
     actual = hashlib.sha256(target.read_bytes()).hexdigest()
     if actual != sha256:
