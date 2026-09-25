@@ -1,12 +1,16 @@
 ## Description
 
-<!-- Meaningful description here -->
+<!-- What changed and why. Link the issue if there is one. -->
+
+## Testing
+
+<!-- Commands you ran, devices you tested on, and anything you could not test. For autocorrect changes, include benchmark numbers before and after. -->
 
 ## APK testing
 
-For each change in the pull request, a workflow is run, which produces a debug artifact APK. Go to Checks -> FlorisBoard CI -> `app-debug.apk` and download the APK. It installs under the `dev.patrickgold.florisboard.debug` namespace and will not mess with your main installation.
+CI builds phone and Wear debug APKs for this pull request. Open the Checks tab, go to the Ownkey Android CI run and download the artifact for your processor type. It installs as `nl.bartvandermeeren.ownkey.debug` and leaves your main installation alone.
 
 ## Checklist
 
-- [ ] I have read and understood the [contribution guidelines](https://github.com/florisboard/florisboard/blob/main/CONTRIBUTING.md).
-- [ ] I have read and understood the [AI policy](https://github.com/florisboard/florisboard/blob/main/AI_POLICY.md).
+- [ ] I have read the [contribution guidelines](https://github.com/MajesteitBart/ownkey-keyboard/blob/main/CONTRIBUTING.md).
+- [ ] Logs, screenshots and test data contain no API keys or personal text.

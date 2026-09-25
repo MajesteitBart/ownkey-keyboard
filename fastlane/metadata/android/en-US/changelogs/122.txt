@@ -1,0 +1,7 @@
+Autocorrect for English and Dutch is rebuilt. Typos are fixed on space at the strength you choose, the next word is predicted, and one tap brings back what you typed.
+
+• Floating split keyboard for tablets
+• Voice-only mode: a dictation bar instead of the keyboard
+• Personal dictionary for dictation, with "Fix a word" on the keyboard
+• New Signal themes
+• Saved rewrite voices survive a settings reload or backup restore
