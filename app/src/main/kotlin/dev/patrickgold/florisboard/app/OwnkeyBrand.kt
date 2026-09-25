@@ -52,8 +52,11 @@ object OwnkeyBrand {
     /** Well of a quiet dictation button: idle, transcribing, or failed. */
     val Coal = Color(0xFF161616)
 
-    /** Warm muted gray for an idle AI action. */
+    /** Warm muted gray for toolbar icons on dark surfaces, including an idle AI action. */
     val Stone = Color(0xFF8E8A7F)
+
+    /** Stone for light surfaces such as Signal Bone, where the lighter gray falls below 3:1 contrast. */
+    val StoneDark = Color(0xFF5E5A52)
     val SignalAmber = Color(0xFFF5A524)
     val TrustBlue = Color(0xFF2F6BFF)
     val SuccessGreen = Color(0xFF3EDB83)

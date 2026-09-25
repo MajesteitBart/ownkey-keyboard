@@ -427,6 +427,11 @@ class FlorisImeService : LifecycleInputMethodService() {
             activeState.isSelectionMode = editorInfo.initialSelection.isSelectionMode
             editorInstance.handleStartInputView(editorInfo, isRestart = restarting)
         }
+        // Decide before the window draws, so a password or number field never flashes the voice-only bar
+        // while the flow below catches up. The flow still covers later changes such as incognito.
+        windowController.updateVoiceOnlyAllowed(
+            voiceOnlyAllowed(editorInfo.inputAttributes.type, editorInfo.isAiSecureField(), activeState.isIncognitoMode),
+        )
     }
 
     override fun onEvaluateInputViewShown(): Boolean {

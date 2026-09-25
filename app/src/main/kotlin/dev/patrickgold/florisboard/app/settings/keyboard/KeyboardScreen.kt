@@ -113,6 +113,8 @@ fun KeyboardScreen() = FlorisScreen {
                 min = 0,
                 max = 100,
                 stepIncrement = 1,
+                // Only the floating split keyboard uses it, and that needs split layout.
+                visibleIf = { prefs.keyboard.splitLayoutMode isNotEqualTo SplitLayoutMode.NEVER },
             )
             ListPreference(
                 prefs.keyboard.splitLayoutMode,

@@ -67,7 +67,8 @@ internal fun ImeWindowSurface(
     val opacity = opacityPercent.coerceIn(0, 100) / 100f
     val gap by controller.floatingSplitGap.collectAsState()
     val insets by controller.activeWindowInsets.collectAsState()
-    val color = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName).background()
+    // Keep the window-mode attributes, so floating-specific Window rules still style the panels.
+    val color = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName, attributes).background()
     val density = LocalDensity.current
     val shape = RoundedCornerShape(14.dp)
     Box(modifier) {

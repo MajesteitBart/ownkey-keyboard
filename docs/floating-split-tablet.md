@@ -1,6 +1,6 @@
 # Floating split keyboard on tablets
 
-On a screen at least 600dp wide, enable **Keyboard > Split layout > Auto** (or
+On a screen at least 600dp wide, set **Keyboard > Split keyboard** to **Automatic** (or
 Always), then open the keyboard's **More > Floating** action. Floating mode keeps
 the existing split arrangement, stagger, duplicate space bars, selected language,
 theme, and configurable split gap. It does not add punctuation to the letter rows.

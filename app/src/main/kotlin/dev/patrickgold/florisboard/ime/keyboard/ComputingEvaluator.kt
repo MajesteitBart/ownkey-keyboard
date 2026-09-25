@@ -383,7 +383,8 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
-                true -> heroicon(R.drawable.ic_hero_arrow_up) ?: Icons.Default.KeyboardCapslock
+                // A filled circle marks shift and caps lock; the Signal themes also color caps lock.
+                true -> heroicon(R.drawable.ic_hero_arrow_up_circle) ?: Icons.Default.KeyboardCapslock
                 else -> styledIcon(R.drawable.ic_tabler_arrow_big_up, Icons.Filled.ArrowUpward, Icons.Rounded.ArrowUpward, Icons.Sharp.ArrowUpward)
             }
         }

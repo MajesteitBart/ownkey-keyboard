@@ -26,7 +26,7 @@
     "--on-background-disabled": "#1717175c",
     "--on-surface": "#171717",
     "--on-surface-variant": "#171717b8",
-    "--on-hint": "#8E8A7F",
+    "--on-hint": "#6B675E",
     "--shape": "rounded-corner(7dp, 7dp, 7dp, 7dp)",
     "--shape-variant": "rounded-corner(16dp, 16dp, 16dp, 16dp)",
     "--shape-chip": "rounded-corner(50%, 50%, 50%, 50%)"

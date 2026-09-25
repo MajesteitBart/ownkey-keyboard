@@ -71,8 +71,9 @@ private fun styleThemeId(
 }
 
 private fun isStyleManagedTheme(id: ExtensionComponentName): Boolean {
+    // Signal themes count only from the built-in extension, so a custom theme with a similar id stays the user's.
     return id.componentId.startsWith("ownkey_glass_") ||
-        id.componentId.startsWith("ownkey_signal_") ||
+        id.extensionId == extSignalTheme("").extensionId ||
         id.componentId.startsWith("voxtral_") ||
         id.componentId == "ownkey_liquid_glass"
 }

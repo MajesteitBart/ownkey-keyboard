@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
@@ -108,6 +109,7 @@ import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggIcon
 import org.florisboard.lib.snygg.ui.SnyggText
+import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 
 enum class QuickActionBarType {
     INTERACTIVE_BUTTON,
@@ -210,7 +212,9 @@ fun QuickActionButton(
     } else {
         false
     }
-    val toolbarIconTint = if (aiResultReady) OwnkeyBrand.Ember else toolbarIconColor.takeOrElse { OwnkeyBrand.Stone }
+    val windowBackground = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName).background()
+    val quietIcon = if (windowBackground.luminance() > 0.5f) OwnkeyBrand.StoneDark else OwnkeyBrand.Stone
+    val toolbarIconTint = if (aiResultReady) OwnkeyBrand.Ember else toolbarIconColor.takeOrElse { quietIcon }
 
     fun dispatchVoiceOutcome(outcome: VoiceActionGestureOutcome) {
         if (aiUnavailableText != null) {

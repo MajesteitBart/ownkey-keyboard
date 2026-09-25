@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.android.showShortToastSync
 
 /** Dictation entrypoint with an immutable backend/client/model snapshot for each recording. */
@@ -181,7 +182,7 @@ class VoxtralDictationManager(
             if (mode.lacksApiKey(hasCloudKey = kotlinx.coroutines.withContext(Dispatchers.IO) { apiKey().isNotBlank() })) {
                 _stateFlow.value = DictationState.ERROR
                 feedbackController.standaloneError(VoiceActionErrorReason.PROVIDER_CONFIGURATION)
-                appContext.showShortToastSync("Add a transcription API key in Settings → AI")
+                appContext.showShortToast("Add a transcription API key in Settings → AI")
                 return@launch
             }
             if (mode != TranscriptionBackend.MOCK && !hasRecordAudioPermission()) {
