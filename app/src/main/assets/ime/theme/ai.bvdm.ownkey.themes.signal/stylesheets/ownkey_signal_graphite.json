@@ -27,6 +27,8 @@
     "--on-surface": "#F3F1EC",
     "--on-surface-variant": "#F3F1ECb8",
     "--on-hint": "#8E8A7F",
+    "--toolbar-icon": "#8E8A7F",
+    "--toolbar-icon-disabled": "#8E8A7F5c",
     "--shape": "rounded-corner(7dp, 7dp, 7dp, 7dp)",
     "--shape-variant": "rounded-corner(16dp, 16dp, 16dp, 16dp)",
     "--shape-chip": "rounded-corner(50%, 50%, 50%, 50%)"
@@ -163,7 +165,7 @@
   },
   "smartbar-action-key": {
     "background": "transparent",
-    "foreground": "var(--on-surface)",
+    "foreground": "var(--toolbar-icon)",
     "font-size": "22sp",
     "margin": "0dp",
     "shape": "rounded-corner(0dp, 0dp, 0dp, 0dp)",
@@ -182,10 +184,10 @@
   },
   "smartbar-action-key:pressed": {
     "background": "transparent",
-    "foreground": "var(--on-surface)"
+    "foreground": "var(--toolbar-icon)"
   },
   "smartbar-action-key:disabled": {
-    "foreground": "var(--on-surface)"
+    "foreground": "var(--toolbar-icon-disabled)"
   },
   "smartbar-actions-overflow": {
     "margin": "0dp"

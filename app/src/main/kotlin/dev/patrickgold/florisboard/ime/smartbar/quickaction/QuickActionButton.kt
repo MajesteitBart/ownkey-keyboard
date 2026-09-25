@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -199,8 +200,9 @@ fun QuickActionButton(
     val aiUnavailableReason = (aiAvailability as? AiAvailability.Unavailable)?.reason
     val aiUnavailableText = aiUnavailableReason?.let { stringRes(it.stringResId()) }
 
-    // Toolbar icons use the chosen toolbar color, else the quiet Stone of the Signal design. The AI action
-    // turns orange while a rewrite result waits for the user.
+    // Toolbar icons use the chosen toolbar color. Otherwise the Smartbar row uses the quiet Stone of the Signal
+    // design, and themed keys use their theme foreground. The AI action turns orange while a rewrite result waits
+    // for the user.
     val prefs by FlorisPreferenceStore
     val toolbarIconColor by prefs.theme.toolbarIconColor.collectAsState()
     val aiResultReady = if (action is QuickAction.InsertKey && action.data.code == KeyCode.AI_REWRITE) {
@@ -480,7 +482,12 @@ fun QuickActionButton(
                                     modifier = Modifier.requiredSize(iconSize),
                                     imageVector = imageVector,
                                     contentDescription = null,
-                                    tint = toolbarIconTint,
+                                    // Inside the themed key, the theme's foreground (including its disabled
+                                    // selector) is the fallback; the Signal themes set it to Stone.
+                                    tint = when {
+                                        aiResultReady -> OwnkeyBrand.Ember
+                                        else -> toolbarIconColor.takeOrElse { LocalContentColor.current }
+                                    },
                                 )
                             } else {
                                 SnyggBox(

@@ -22,6 +22,7 @@ Canonical assets:
 - `OwnkeyBrand.Coal` / `#161616`: the well of a quiet dictation button while idle, transcribing, or failed.
 - `OwnkeyBrand.Stone` / `#8E8A7F`: toolbar icons on dark surfaces, including the AI action while it is idle.
 - `OwnkeyBrand.StoneDark` / `#5E5A52`: toolbar icons on light surfaces such as Signal Bone, where Stone falls below 3:1 contrast.
+  The Smartbar row picks between the two from the window background. Themed action keys, such as the ones on the floating split panels, take the theme's `smartbar-action-key` foreground instead; the Signal themes set it to these values through `--toolbar-icon`, so other themes keep their own icon colors and disabled states.
 - `OwnkeyBrand.SignalAmber` / `#F5A524`: warning and paused voice states.
 - `OwnkeyBrand.TrustBlue` / `#2F6BFF`: primary setup/settings actions.
 - `OwnkeyBrand.SuccessGreen` / `#3EDB83`: success feedback only.
