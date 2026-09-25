@@ -69,6 +69,7 @@ import dev.patrickgold.florisboard.lib.util.launchActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import org.florisboard.lib.android.AndroidInternalR
 import org.florisboard.lib.android.AndroidVersion
@@ -347,6 +348,12 @@ class FlorisImeService : LifecycleInputMethodService() {
             voiceOnlyAllowed(info.inputAttributes.type, info.isAiSecureField(), state.isIncognitoMode)
         }.distinctUntilChanged().collectIn(lifecycleScope) { allowed ->
             windowController.updateVoiceOnlyAllowed(allowed)
+        }
+
+        // Android evaluates fullscreen mode only on its own triggers. Entering or leaving the voice-only bar
+        // must re-evaluate it at once, or a landscape extract view keeps covering the app, or stays away.
+        windowController.isVoiceOnlyActive.drop(1).collectIn(lifecycleScope) {
+            updateFullscreenMode()
         }
 
         @Suppress("DEPRECATION") // We do not retrieve the wallpaper but only listen to changes
