@@ -4,7 +4,7 @@ name: Bigram corpus probe
 status: done
 workstream: WS-A
 created: 2026-09-24T20:57:41Z
-updated: 2026-09-24T20:57:41Z
+updated: 2026-09-25T14:23:05Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -53,3 +53,4 @@ Pick a license-compatible corpus for per-language bigram counts and measure whet
 - 2026-09-24: OpenSubtitles through OPUS asks for a link to opensubtitles.org and a citation, but states no license for redistributing the text or data derived from it. Not used. The Leipzig Corpora Collection is described as CC BY by third parties, but its own terms page blocks automated reading and the mirrors state no license. Not used until someone confirms the terms by hand. Wikipedia (CC BY-SA 4.0) stays an option for Dutch coverage if Tatoeba turns out too thin; it is formal text and a large download.
 - 2026-09-24: Probe with the shipped EN and NL word lists as vocabulary, sentence parts split at . ! ? ; : and sentences with an id divisible by 10 held out. English: 1,832,178 training sentences, 14.1M tokens, 1.14M distinct bigrams; 313,398 bigrams seen at least 3 times cover 92.5% of pair occurrences in 1.19 MB gzip. Dutch: 180,017 sentences, 1.17M tokens, 238,139 distinct bigrams; 84,040 seen at least twice cover 86.2% in 0.30 MB gzip. Both fit the 3 MB budget with room to spare.
 - 2026-09-24: Tatoeba favors a few stock names ("Tom", "Mary"). The build caps their count at 2% of each previous word's successor total, so they do not dominate next-word predictions.
+- 2026-09-25: Correction to the entry above: the build has no 2% cap. Stock names are handled by the proper-noun rule in `bigrams.py`: a word capitalized in at least half of its mid-sentence occurrences (and seen there at least 3 times) is listed under `@notpredicted`, and the app never offers those as next-word predictions.

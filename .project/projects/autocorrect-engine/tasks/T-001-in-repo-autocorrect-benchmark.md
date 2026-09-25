@@ -4,7 +4,7 @@ name: In-repo autocorrect benchmark
 status: done
 workstream: WS-A
 created: 2026-09-24T11:31:43Z
-updated: 2026-09-24T18:38:49Z
+updated: 2026-09-25T14:23:05Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -54,6 +54,7 @@ This task enables every acceptance scenario but delivers none on its own.
 
 ## Evidence Log
 
+- 2026-09-25: Correction to the extraction entry: the copied `research/benchmark-legacy.md` ran on the first `oov.txt` of 294 words (0 changed). The set grew to 313 words later; the legacy scorer changes 0 of those 313 too (current `AutocorrectBenchmarkReportTest` output).
 - 2026-09-24: Scoring extracted to `ime/nlp/latin/engine/` (`LatinText`, `LatinWordModel`, `LegacyLatinScorer`); `LatinLanguageProvider` delegates. `LegacyBaselineReproductionTest` (8 tests) reproduces every harness number within 0.06 points, including the seed-42 and seed-7 generators and completion reach. `AutocorrectBenchmarkReportTest` writes `app/build/reports/autocorrect-benchmark/legacy.md`, copied to `research/benchmark-legacy.md`: 0% autocorrection on every typo set, 0 clean-text false corrections on 7,999 EN and 7,993 NL words, 0 of 313 out-of-dictionary words changed. `:app:testDebugUnitTest --tests 'dev.patrickgold.florisboard.ime.nlp.*'`: all green.
 
 - 2026-09-24: Task created from the baseline measurement and the independent review.

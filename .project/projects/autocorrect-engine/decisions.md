@@ -3,13 +3,17 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T23:08:33Z
+updated: 2026-09-25T14:23:24Z
 ---
 
 # Decisions: Autocorrect engine rebuild
 
 ## Active decisions
 
+- 2026-09-25 (PR #17 review): "Block possibly offensive words" (on by default) now applies to the Latin engine. The subtitle-based dictionaries rank profanity and slurs high, so a working autocorrect could turn a typo into one. Reviewed per-language lists in `ime/dict/offensive/` keep those words out of suggestions, next-word predictions, spell-check results and auto-commit; a word the user typed is never changed for being on a list. Clinical words and words with a common harmless meaning (penis, rape, queer, kanker, nicht, eikel) stay off the lists.
+- 2026-09-25 (PR #17 review): `overnieuw` is an accepted informal variant (Taaladvies), like `kado`, and is a word again. `verassingen` is removed like `verassing`: the cremation meaning is rare and the spelling is typed far more often for verrassing(en). `loosing` and `payed` stay removed for the same reason.
+- 2026-09-25 (PR #17 review): Dutch verb-ending alternatives pair the d-form with the dt-form and the t-form, but no longer the dt-form with the t-form (`brandt`, `brant`): those are different words nobody confuses. No benchmark number changed.
+- 2026-09-25 (PR #17 review): Key geometry measured on screen counts in key pitches (center to center), like the synthetic phone layout the costs were tuned on. Visible key sizes left out the margins between keys and rows and made every step longer, most of all a step to the next row, so a diagonal neighbor could fall outside the 1.3-key adjacency limit on a real layout.
 - 2026-09-24: Replace the scoring instead of retuning thresholds. At the most aggressive user settings the current engine corrects under 3% of typos and about a quarter of those corrections are wrong. A log-frequency version of the same formula still fires 0% at defaults. Evidence: `research/baseline-2026-09-24.md`.
 - 2026-09-24: Use a noisy-channel posterior (frequency prior times error likelihood) with the literal input as a competing candidate. The untuned reference reached 59% (EN) and 45% (NL) right corrections on synthetic typos with 1.2% or fewer wrong. It does not meet every Phase 1 gate yet: the real-world lists, the out-of-dictionary set and rare-word precision need calibration on non-circular data.
 - 2026-09-24: Keep the current candidate indexes for Phase 1 and make a trie or binary dictionary conditional. The independent review measured the same results from noisy-channel scoring on the current indexes as from a full-vocabulary, distance-2 search. Triggers for the conditional phase are listed in `plan.md`.

@@ -248,7 +248,8 @@ function channelCost(typed, intended) {
 }
 
 function buildNcIndex(words, maxDist) {
-  // Full-vocabulary symmetric-delete index up to maxDist.
+  // Symmetric-delete index up to maxDist over every word of at most 20 letters. Longer words are left out to bound
+  // the index size; the baseline numbers recorded on 2026-09-24 were measured with this limit.
   const del = new Map();
   const add = (k, w) => {
     let l = del.get(k);

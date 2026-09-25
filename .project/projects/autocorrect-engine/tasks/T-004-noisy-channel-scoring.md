@@ -4,7 +4,7 @@ name: Noisy-channel scoring on the existing candidate indexes
 status: done
 workstream: WS-A
 created: 2026-09-24T11:31:43Z
-updated: 2026-09-24T19:40:05Z
+updated: 2026-09-25T14:23:05Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -14,7 +14,7 @@ parallel: false
 priority: high
 estimate: M
 story_id: US-001
-acceptance_criteria_ids: [AC-001, AC-003, AC-009]
+acceptance_criteria_ids: [AC-001, AC-003, AC-004, AC-009]
 ---
 
 # Task: Noisy-channel scoring on the existing candidate indexes
@@ -40,7 +40,7 @@ Replace `calculateConfidence`, `rankSuggestionCandidate` and the high-certainty 
 ## Traceability
 
 - Story: US-001, US-002, US-003
-- Acceptance criteria: AC-001, AC-003, AC-009
+- Acceptance criteria: AC-001, AC-003, AC-004, AC-009
 
 ## Technical Notes
 

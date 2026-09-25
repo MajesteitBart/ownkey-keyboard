@@ -4,7 +4,7 @@ name: Learn words the user keeps
 status: done
 workstream: WS-A
 created: 2026-09-24T22:22:47Z
-updated: 2026-09-24T23:22:07Z
+updated: 2026-09-25T14:23:05Z
 linear_issue_id:
 github_issue:
 github_pr:
@@ -37,7 +37,7 @@ Words the user types and keeps (names, jargon, slang) should stop being correcte
 
 ## Technical Notes
 
-- Source: the personal n-gram store already learns the text as committed, so a kept word is stored as typed and an autocorrected word in its corrected form. Word counts are kept next to the pairs and rebuilt from them on load.
+- Source: the personal n-gram store already learns the text as committed, so a kept word is stored as typed and an autocorrected word in its corrected form. Word counts are stored on their own, next to the pairs, and restored as stored: rebuilding them from the pairs would count words typed with autocorrect off (see the evidence log).
 - Keeping the typed word gets a bonus of 4 * ln(1 + times typed) nats, instead of turning the word into a dictionary word: a user who leaves `teh` uncorrected three times with autocorrect off must still get "the" once autocorrect is on.
 
 ## Definition of Done

@@ -4,14 +4,14 @@ name: WS-A Autocorrect engine rebuild
 owner: ownkey-keyboard-team
 status: active
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T18:38:49Z
+updated: 2026-09-25T14:23:05Z
 ---
 
 # Workstream: WS-A Autocorrect engine rebuild
 
 ## Objective
 
-Replace the autocorrect scoring core, commit path, settings surface and dictionaries so that autocorrect fixes common EN and NL touch typos with at least 97% precision, as measured by the in-repo benchmark.
+Replace the autocorrect scoring core, commit path, settings surface and dictionaries so that autocorrect meets the outcome in `.project/projects/autocorrect-engine/spec.md`: at least 75% of EN, 72% of NL and 65% of mixed NL+EN touch typos fixed, at least 98% precision on every typo set and at most 0.3 false corrections per 1,000 words, as measured by the in-repo benchmark.
 
 ## Owned Files/Areas
 
@@ -24,7 +24,7 @@ Replace the autocorrect scoring core, commit path, settings surface and dictiona
 
 ## Dependencies
 
-- Baseline and harness in `research/`.
+- Baseline and harness in `.project/projects/autocorrect-engine/research/`.
 - The `personal-dictionary` project owns the dictation dictionary store. This workstream only reads it to block auto-commit of personal words.
 - Glide typing reads the word list through `NlpManager.getListOfWords()` and ranks with `getFrequencyForWord()`. Keep both working, and check glide ranking whenever the frequency scale changes.
 - `FlorisSpellCheckerService` calls `spell()`, which must move to the new scorer together with suggestions.
@@ -39,6 +39,6 @@ Replace the autocorrect scoring core, commit path, settings surface and dictiona
 
 ## Handoff Criteria
 
-- Phase gates in `plan.md` met and recorded in `updates/`.
+- Phase gates in `.project/projects/autocorrect-engine/plan.md` met and recorded in `.project/projects/autocorrect-engine/updates/`.
 - Benchmark runs in the unit test suite and fails on regression below the last passed gate.
 - Legacy engine switch removed after one stable release on the new engine.

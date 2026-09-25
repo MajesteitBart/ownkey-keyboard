@@ -4,8 +4,8 @@ slug: autocorrect-engine
 owner: ownkey-keyboard-team
 status: active
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T20:57:41Z
-outcome: On the in-repo benchmark, autocorrect fixes at least 70% of EN, 65% of NL and 60% of mixed NL+EN touch typos with at least 98% precision on every typo set and no more than 0.5 false corrections per 1,000 correctly typed words, while suggestion latency stays under 30 ms p95 on device.
+updated: 2026-09-25T14:23:05Z
+outcome: On the in-repo benchmark, autocorrect fixes at least 75% of EN, 72% of NL and 65% of mixed NL+EN touch typos with at least 98% precision on every typo set and no more than 0.3 false corrections per 1,000 correctly typed words, while suggestion latency stays under 30 ms p95 on device (the final targets in the metric table; Phase 1 had lower gates).
 uncertainty: medium
 probe_required: false
 probe_status: skipped

@@ -3,7 +3,7 @@ name: Autocorrect engine rebuild
 status: active
 lead: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-24T22:22:47Z
+updated: 2026-09-25T14:23:05Z
 linear_project_id:
 risk_level: medium
 spec_status_at_plan_time: planned
@@ -52,7 +52,8 @@ No separate probe. The baseline measurement in `research/baseline-2026-09-24.md`
 - `spec.md`: written from the baseline measurement and code review on 2026-09-24, revised after the independent review.
 - `plan.md`: this file.
 - `research/baseline-2026-09-24.md` and `research/baseline-harness/`: baseline numbers, review results and the harness that produced them.
-- `tasks/`: T-001 to T-008 cover Phases 0 to 2. Phases 3 to 5 and the conditional trie phase get tasks once Phase 1 evidence is in.
+- `tasks/`: T-001 to T-008 cover Phases 0 to 2, T-009 to T-016 Phases 3 and 4, T-017 to T-020 Phase 5 (T-020 deferred), and T-021 the dogfood week. The conditional trie phase got no task: its trigger never fired (see `decisions.md`).
+- `research/`: benchmark reports per task, from `benchmark-legacy.md` to `benchmark-phase5-t019.md`.
 
 ## Complexity exceptions
 
