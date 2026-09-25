@@ -91,6 +91,18 @@ class AutoCommitSelectorTest : FunSpec({
         }
     }
 
+    test("a word whose autocorrection was just undone stays as typed") {
+        val batch = WordSuggestionBatch(request("teh"), listOf(candidate("the", true)))
+        // Space pressed right after the undo, before the provider stored the word as one to leave alone.
+        AutoCommitSelector.select(request("teh"), batch, revertedInput = "teh") { error("must not decide") }
+            .candidate.shouldBeNull()
+        AutoCommitSelector.select(request("Teh"), batch, revertedInput = "teh") { error("must not decide") }
+            .candidate.shouldBeNull()
+        // Other words are still corrected.
+        AutoCommitSelector.select(request("thw"), batch, revertedInput = "teh") { candidate("the", true) }
+            .candidate?.text shouldBe "the"
+    }
+
     test("a batch with no eligible candidate keeps the word") {
         val batch = WordSuggestionBatch(request("hello"), listOf(candidate("hello", false), candidate("hell", false)))
         AutoCommitSelector.select(request("hello"), batch) { error("must not decide again") }.candidate.shouldBeNull()

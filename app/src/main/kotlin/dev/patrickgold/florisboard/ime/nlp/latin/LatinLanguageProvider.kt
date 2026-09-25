@@ -177,6 +177,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private var userDictionarySnapshotSessionId = -1L
     // Changes whenever the snapshot content changes, so cached suggestions and suggestion runs can tell.
     private val userDictionaryRevision = AtomicLong(0L)
+    private val neverCorrectRevision = AtomicLong(0L)
+    private var lastNeverCorrectWords: NeverCorrectWords? = null
     private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
     private val mixedLanguageScoringPolicy = MixedLanguageScoringPolicy()
     private val personalNgramStore by lazy { PersonalNgramStore(appContext) }
@@ -1089,8 +1091,17 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         } catch (_: Throwable) {
             null
         }
-        val neverCorrect = prefs.dictionary.neverCorrectWordsData.get()
-        return "${userDictionaryRevision.get()}:${System.identityHashCode(speechDocument)}:${neverCorrect.hashCode()}"
+        return "${userDictionaryRevision.get()}:${System.identityHashCode(speechDocument)}:${neverCorrectRevision()}"
+    }
+
+    /** Counts changes to the never-correct words, compared by content, so two states never share a key. */
+    private fun neverCorrectRevision(): Long = synchronized(neverCorrectRevision) {
+        val current = prefs.dictionary.neverCorrectWordsData.get()
+        if (current != lastNeverCorrectWords) {
+            lastNeverCorrectWords = current
+            neverCorrectRevision.incrementAndGet()
+        }
+        neverCorrectRevision.get()
     }
 
     override fun autoCommitStateKey(subtype: Subtype): String {

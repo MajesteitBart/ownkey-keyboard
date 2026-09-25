@@ -40,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
 
 class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, SuggestionProvider {
     companion object {
@@ -62,6 +63,8 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
     private var __connectedActiveLanguagePacks: Set<LanguagePackExtension> = setOf() // FIXME: hack for not able to observe extensionManager.languagePacks and subtypeManager.subtypes
     private var languagePackItems: Map<String, LanguagePackComponent> = mapOf() // init in refreshLanguagePacks()
     private var keyCode: Map<String, Set<Char>> = mapOf() // init in refreshLanguagePacks()
+    // Counts completed language pack reloads; see autoCommitStateKey.
+    private val loadedRevision = AtomicLong(0L)
     private val activeLanguagePacks  // language packs referenced in subtypes
         get() = buildSet {
             val locales = subtypeManager.subtypes.map { it.primaryLocale.localeTag() }.toSet()
@@ -90,7 +93,7 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
         // Refresh language pack parsing
 
         // build index of available language packs
-        languagePackItems = buildMap {
+        val items = buildMap {
             for (languagePack in allLanguagePacks) {
                 // FIXME: skip checking language pack type because it always is for now
 //                if (languagePack is HanShapeBasedLanguagePackExtensionImpl)
@@ -101,8 +104,8 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
                 }
             }
         }.toMap()
-        keyCode = buildMap {
-            languagePackItems.forEach { (tag, languagePackItem) ->
+        val codes = buildMap {
+            items.forEach { (tag, languagePackItem) ->
                 put(tag, languagePackItem.hanShapeBasedKeyCode.toSet())
             }
             put("default", "abcdefghijklmnopqrstuvwxyz".toSet())
@@ -117,7 +120,12 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
                 activeLanguagePack.load(context)
             }
         }
+        // Publish the new index only now that its databases are loaded, together with the revision that
+        // autoCommitStateKey reports, so suggestions never come from a pack whose state the key does not match.
+        languagePackItems = items
+        keyCode = codes
         __connectedActiveLanguagePacks = activeLanguagePacks
+        loadedRevision.incrementAndGet()
     }
 
     override suspend fun preload(subtype: Subtype) = withContext(Dispatchers.IO) {
@@ -158,8 +166,8 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
         }
     }
 
-    // The candidates come from the language pack databases, so another set of packs makes earlier runs stale.
-    override fun autoCommitStateKey(subtype: Subtype): String = System.identityHashCode(allLanguagePacks).toString()
+    // The candidates come from the loaded language packs, so a reload makes earlier runs stale.
+    override fun autoCommitStateKey(subtype: Subtype): String = loadedRevision.get().toString()
 
     override suspend fun suggest(
         subtype: Subtype,

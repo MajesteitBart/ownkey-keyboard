@@ -81,6 +81,9 @@ class NlpManager(context: Context) {
     private var wordSuggestionBatch = WordSuggestionBatch.Empty
     // Numbers the suggestion runs as they are requested; see WordSuggestionRequest.sequence.
     private val suggestionSequence = AtomicLong(0L)
+    // The word whose autocorrection the user undid last, and the subtype it was typed on.
+    @Volatile
+    private var revertedAutocorrect: Pair<String, Long>? = null
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -307,6 +310,14 @@ class NlpManager(context: Context) {
         }
     }
 
+    /**
+     * Notes synchronously that the user undid the autocorrection of [originalToken], so a space pressed right away
+     * cannot redo it before the provider has stored the word as one to leave alone.
+     */
+    fun noteAutocorrectReverted(originalToken: String) {
+        revertedAutocorrect = originalToken.trim() to subtypeManager.activeSubtype.id
+    }
+
     private fun wordSuggestionRequest(
         content: EditorContent,
         subtype: Subtype,
@@ -362,6 +373,7 @@ class NlpManager(context: Context) {
                 sequence = suggestionSequence.get(),
             ),
             batch = wordSuggestionBatch,
+            revertedInput = revertedAutocorrect?.takeIf { it.second == subtype.id }?.first,
         ) {
             val start = SystemClock.uptimeMillis()
             // Main thread: read the constant provider map without the lock.

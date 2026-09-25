@@ -101,12 +101,20 @@ object AutoCommitSelector {
 
     data class Selection(val candidate: SuggestionCandidate?, val source: Source)
 
+    /**
+     * [revertedInput] is a word the user just restored by undoing its autocorrection. It stays as typed: the
+     * provider learns to leave it alone in the background, and until then no batch or fresh decision may redo it.
+     */
     inline fun select(
         request: WordSuggestionRequest,
         batch: WordSuggestionBatch,
+        revertedInput: String? = null,
         decideNow: () -> SuggestionCandidate?,
     ): Selection {
         if (request.input.isBlank()) return Selection(null, Source.NONE)
+        if (revertedInput != null && request.input.equals(revertedInput, ignoreCase = true)) {
+            return Selection(null, Source.NONE)
+        }
         if (batch.request == request) {
             return Selection(batch.candidates.firstOrNull { it.isEligibleForAutoCommit }, Source.BATCH)
         }

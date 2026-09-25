@@ -469,10 +469,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private fun revertPreviouslyAcceptedCandidate() {
         editorInstance.phantomSpace.candidateForRevert?.let { candidateForRevert ->
+            val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
             if (candidateForRevert.isEligibleForAutoCommit) {
                 TypingSpeedMetrics.recordAutoCorrectUndone()
+                originalToken?.let { nlpManager.noteAutocorrectReverted(it) }
             }
-            val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
             candidateForRevert.sourceProvider?.let { sourceProvider ->
                 scope.launch {
                     sourceProvider.notifySuggestionReverted(
@@ -527,6 +528,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         autocorrectUndoTracker.clearPending()
         if (replacement.candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectUndone()
+            nlpManager.noteAutocorrectReverted(replacement.originalToken)
         }
         replacement.candidate.sourceProvider?.let { sourceProvider ->
             scope.launch {
