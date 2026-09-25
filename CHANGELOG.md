@@ -7,43 +7,43 @@ This file lists notable changes to Ownkey Keyboard. Version numbers match the [G
 Version code 122.
 
 ### Added
-- Rebuilt autocorrect for English, Dutch and mixed Dutch and English typing (#17). Typos are fixed on space using key distances, where each tap landed and the previous word. Typos with two wrong letters, missing apostrophes (`dont` becomes "don't") and words typed without a space (`ofthe`) are fixed as well.
-- Next-word predictions and context-aware suggestions from English and Dutch word-pair data (#17).
-- One Autocorrect strength setting with Gentle, Normal and Strong. It replaces the tuning sliders (#17).
-- After a correction, the typed word is the first suggestion and one tap restores it. Words you keep typing stop being corrected (#17).
-- Personal dictionary for dictation (#14). Saved words steer recognition, saved corrections rewrite transcripts, and filler words can be removed. "Fix a word" on the keyboard turns a misheard word into a saved correction.
-- Floating split keyboard for tablets (#16). It has two floating panels, actions above the keys and a background opacity setting.
-- Voice-only mode (#16). A draggable dictation bar replaces the keyboard. Password, incognito and number fields keep the full keyboard.
-- Ownkey Signal themes: Graphite, Black and Bone (#16).
+- Rebuilt autocorrect for English, Dutch and mixed Dutch and English typing ([#17](https://github.com/MajesteitBart/ownkey-keyboard/pull/17)). Typos are fixed on space using key distances, where each tap landed and the previous word. Typos with two wrong letters, missing apostrophes (`dont` becomes "don't") and words typed without a space (`ofthe`) are fixed as well.
+- Next-word predictions and context-aware suggestions from English and Dutch word-pair data ([#17](https://github.com/MajesteitBart/ownkey-keyboard/pull/17)).
+- One Autocorrect strength setting with Gentle, Normal and Strong. It replaces the tuning sliders ([#17](https://github.com/MajesteitBart/ownkey-keyboard/pull/17)).
+- After a correction, the typed word is the first suggestion and one tap restores it. Words you keep typing stop being corrected ([#17](https://github.com/MajesteitBart/ownkey-keyboard/pull/17)).
+- Personal dictionary for dictation ([#14](https://github.com/MajesteitBart/ownkey-keyboard/pull/14)). Saved words steer recognition, saved corrections rewrite transcripts, and filler words can be removed. "Fix a word" on the keyboard turns a misheard word into a saved correction.
+- Floating split keyboard for tablets ([#16](https://github.com/MajesteitBart/ownkey-keyboard/pull/16)). It has two floating panels, actions above the keys and a background opacity setting.
+- Voice-only mode ([#16](https://github.com/MajesteitBart/ownkey-keyboard/pull/16)). A draggable dictation bar replaces the keyboard. Password, incognito and number fields keep the full keyboard.
+- Ownkey Signal themes: Graphite, Black and Bone ([#16](https://github.com/MajesteitBart/ownkey-keyboard/pull/16)).
 
 ### Changed
-- Signal Graphite and Heroicons Mini are the default theme and icon style, unless you picked your own (#16).
-- "Block possibly offensive words" now also covers autocorrect and next-word predictions, so a typo never becomes profanity or a slur (#17).
+- Signal Graphite and Heroicons Mini are the default theme and icon style, unless you picked your own ([#16](https://github.com/MajesteitBart/ownkey-keyboard/pull/16)).
+- "Block possibly offensive words" now also keeps words on the reviewed block lists out of autocorrect and next-word predictions ([#17](https://github.com/MajesteitBart/ownkey-keyboard/pull/17)).
 - Releases contain one APK per processor type instead of a universal APK.
 
 ### Fixed
-- The autocorrect quick action and settings switch now turn autocorrect on and off (#17).
-- Edited and added rewrite voices no longer reset when settings reload or a backup is restored (#13).
+- The autocorrect quick action and settings switch now turn autocorrect on and off ([#17](https://github.com/MajesteitBart/ownkey-keyboard/pull/17)).
+- Edited and added rewrite voices no longer reset when settings reload or a backup is restored ([#13](https://github.com/MajesteitBart/ownkey-keyboard/pull/13)).
 
 ### Internal builds only
-- Orukeet on-device dictation is included in debug and beta builds (#13). Public releases don't include it yet.
+- Orukeet on-device dictation is included in debug and beta builds ([#13](https://github.com/MajesteitBart/ownkey-keyboard/pull/13)). Public releases don't include it yet.
 
 ## 0.7.0 (2026-09-09)
 
 Version code 121. The 0.6.1-alpha01 build from the same day was never published.
 
 ### Added
-- Voice rewrite (#9). Hold the microphone key, say what to change, and review the result before it replaces your text.
-- The mic key gives press and hold haptics and shows a hold ring with a "Hold to rewrite" hint (#11).
+- Voice rewrite ([#9](https://github.com/MajesteitBart/ownkey-keyboard/pull/9)). Hold the microphone key, say what to change, and review the result before it replaces your text.
+- The mic key gives press and hold haptics and shows a hold ring with a "Hold to rewrite" hint ([#11](https://github.com/MajesteitBart/ownkey-keyboard/pull/11)).
 
 ### Changed
-- The AI rewrite panel shows one step at a time: choose, record, process, then review and replace (#10).
-- The dictation waveform is a fixed nine-bar mark that shows speech at any microphone volume (#11).
-- Dictation and rewrite requests stop when the keyboard closes. The keyboard no longer samples audio, polls or cleans the clipboard while idle, which saves battery (#9).
+- The AI rewrite panel shows one step at a time: choose, record, process, then review and replace ([#10](https://github.com/MajesteitBart/ownkey-keyboard/pull/10)).
+- The dictation waveform is a fixed nine-bar mark that shows speech at any microphone volume ([#11](https://github.com/MajesteitBart/ownkey-keyboard/pull/11)).
+- Dictation and rewrite requests stop when the keyboard closes. The keyboard no longer samples audio, polls or cleans the clipboard while idle, which saves battery ([#9](https://github.com/MajesteitBart/ownkey-keyboard/pull/9)).
 
 ### Fixed
-- Dictated text after punctuation gets a space, so it reads "keyboard. When I" instead of "keyboard.When I" (#10).
-- Dictation shows one processing indicator instead of two (#10).
+- Dictated text after punctuation gets a space, so it reads "keyboard. When I" instead of "keyboard.When I" ([#10](https://github.com/MajesteitBart/ownkey-keyboard/pull/10)).
+- Dictation shows one processing indicator instead of two ([#10](https://github.com/MajesteitBart/ownkey-keyboard/pull/10)).
 
 ## 0.6.0 (2026-07-24)
 

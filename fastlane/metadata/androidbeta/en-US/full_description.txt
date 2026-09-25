@@ -12,6 +12,6 @@ Your keys, your provider
 • Normal typing sends no AI requests, and learning stays on your phone
 • Ownkey adds no monitoring of what you type or say
 
-Dictation and rewrite send your audio or text to the provider you set up, and that provider's privacy policy, retention terms and billing apply.
+Cloud dictation and rewrite send your audio or text to the provider you set up, and that provider's privacy policy, retention terms and billing apply.
 
 Ownkey is based on FlorisBoard and released under the Apache 2.0 license. Read the code at https://github.com/MajesteitBart/ownkey-keyboard

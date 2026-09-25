@@ -33,7 +33,7 @@ Ownkey is a fork of [FlorisBoard](https://github.com/florisboard/florisboard), s
 
 Download the APK for your phone from the [latest release](https://github.com/MajesteitBart/ownkey-keyboard/releases/latest). Almost every current phone needs `arm64-v8a`. Older 32-bit phones need `armeabi-v7a`, and the `x86_64` and `x86` builds are for emulators. Each release lists the checksums in `SHA256SUMS`.
 
-Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. Dictation and rewrite need an API key, which [Set up AI](#set-up-ai) walks through.
+Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. In release builds, dictation and rewrite use a cloud provider, so they need an API key. [Set up AI](#set-up-ai) walks through it.
 
 ## What it does
 
@@ -41,7 +41,7 @@ Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and fo
 
 Autocorrect was rebuilt in 0.8.0 for English, Dutch and mixed Dutch and English typing. When you press space, it fixes typos based on which keys are next to each other, where your finger actually landed and the word before. It also predicts the next word, adds apostrophes (`dont` becomes "don't") and splits words that ran together.
 
-Choose Gentle, Normal or Strong under **Autocorrect strength** in the typing settings. After a correction, the word you typed is the first suggestion, and backspace brings it back too. Words you keep typing stop getting corrected. With "Block possibly offensive words" on, which is the default, autocorrect never turns a typo into profanity or a slur.
+Choose Gentle, Normal or Strong under **Autocorrect strength** in the typing settings. After a correction, the word you typed is the first suggestion, and backspace brings it back too. Words you keep typing stop getting corrected. With "Block possibly offensive words" on, which is the default, words on Ownkey's reviewed block lists stay out of suggestions, predictions and autocorrect.
 
 Keyboards in other languages fall back to FlorisBoard's older English word list. They get the new scoring, but not the new dictionaries, word-pair data or apostrophe rules.
 
@@ -51,7 +51,7 @@ Ownkey learns your own word sequences to improve predictions. That data stays on
 
 Tap the microphone, speak and tap stop. Ownkey inserts the transcript at the cursor. Dictation uses Mistral Voxtral by default, and you can point it at another compatible transcription endpoint and model.
 
-The personal dictionary under **Settings → AI** helps with names and jargon. Saved words go along as recognition hints, saved corrections are applied to every transcript, and filler words can be removed. When dictation mishears a word, "Fix a word" on the keyboard turns it into a saved correction.
+The personal dictionary under **Settings → AI** helps with names and jargon. With Mistral and OpenAI, saved words go along as recognition hints. Saved corrections are applied to every transcript, and filler words can be removed. When dictation mishears a word, "Fix a word" on the keyboard turns it into a saved correction.
 
 **More → Voice only** replaces the keyboard with a small bar that holds the microphone. You can drag it anywhere on screen. Password, incognito and number fields still get the full keyboard. See [docs/voice-only-keyboard.md](docs/voice-only-keyboard.md).
 
@@ -67,7 +67,7 @@ On a wide screen the keyboard can split in two, with a space bar on each half. *
 
 ### Wear OS
 
-[`wear/`](wear/) contains a dictation-first keyboard for Wear OS 3 and newer. It isn't part of the releases yet, so you need to build it from source.
+[`wear/`](wear/) contains a dictation-first keyboard for Wear OS 3 and newer. The stable releases don't include it yet. The rolling [Ownkey CI debug](https://github.com/MajesteitBart/ownkey-keyboard/releases/tag/ci-debug) prerelease has a debug build, `ownkey-wear-ci-debug.apk`, or you can build it from source.
 
 ## Set up AI
 
@@ -88,7 +88,7 @@ Ownkey stores API keys encrypted on the phone, using Android Keystore. [VOXTRAL_
 | What you do | What leaves the phone |
 | --- | --- |
 | Type | No AI requests. Suggestions, autocorrect and learning run on the phone. |
-| Dictate | The recording, plus your personal dictionary words as hints, goes to your dictation endpoint. |
+| Dictate | The recording goes to your dictation endpoint. By default, Mistral and OpenAI endpoints also get your personal dictionary words as hints. The personal dictionary settings can turn this off or send hints to any endpoint. |
 | Rewrite | The selected text and the instruction go to your rewrite endpoint. |
 | Rewrite by voice | The spoken instruction goes to your dictation endpoint. The selected text and the recognized instruction then go to your rewrite endpoint. |
 
@@ -96,7 +96,7 @@ Ownkey doesn't operate a relay of its own and doesn't add monitoring of what you
 
 ### On-device dictation
 
-Debug and beta builds include Orukeet, an on-device speech model that transcribes Dutch and English without an API key or internet connection. It's a 672 MB download. Public releases don't include it yet, because testing on physical phones isn't finished.
+Debug and beta builds include Orukeet, an on-device speech model that transcribes Dutch and English without an API key or internet connection. The audio stays on the phone. It's a 672 MB download. Public releases don't include it yet, because testing on physical phones isn't finished.
 
 ## Build from source
 
