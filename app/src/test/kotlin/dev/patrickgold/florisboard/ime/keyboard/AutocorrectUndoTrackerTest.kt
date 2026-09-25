@@ -187,12 +187,14 @@ class AutocorrectUndoTrackerTest : FunSpec({
     test("undo reports the subtype the correction was made on") {
         val tracker = AutocorrectUndoTracker()
         val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
-        val subtype = Subtype.DEFAULT
+        // Not the default subtype, so a fallback to a default or the active subtype would fail.
+        val subtype = Subtype.DEFAULT.copy(id = 42L)
         tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate, subtype = subtype)
 
         tracker.findUndoReplacement(contentAtCursor("I like the "))?.subtype shouldBe subtype
         tracker.findBackspaceRestoreReplacement(contentAtCursor("I like the "))?.subtype shouldBe subtype
         tracker.subtypeForCandidate(correctedCandidate) shouldBe subtype
+        (subtype == Subtype.DEFAULT) shouldBe false
         tracker.subtypeForCandidate(WordSuggestionCandidate(text = "tea", isEligibleForAutoCommit = true)).shouldBeNull()
     }
 
