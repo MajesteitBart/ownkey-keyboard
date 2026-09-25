@@ -61,7 +61,7 @@ import dev.patrickgold.florisboard.ime.theme.ThemeGlassPreset
 import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
-import dev.patrickgold.florisboard.ime.theme.extMyTheme
+import dev.patrickgold.florisboard.ime.theme.extSignalTheme
 import dev.patrickgold.florisboard.ime.window.ImeWindowConfig
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.lib.util.VersionName
@@ -564,6 +564,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "keyboard__split_layout_gap_percent",
             default = SplitLayout.GapPercentDefault,
         )
+        val floatingSplitOpacity = int(
+            key = "keyboard__floating_split_opacity",
+            default = 100,
+        )
+        // One choice for every form factor, so rotating the device keeps the voice-only bar.
+        val voiceOnly = boolean(
+            key = "keyboard__voice_only",
+            default = false,
+        )
         val capitalizationBehavior = enum(
             key = "keyboard__capitalization_behavior",
             default = CapitalizationBehavior.CAPSLOCK_BY_DOUBLE_TAP,
@@ -845,12 +854,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         // afterwards persist normally.
         val dayThemeId = custom(
             key = "theme__glass_day_theme_id",
-            default = extMyTheme("ownkey_glass_day_borderless_medium"),
+            default = extSignalTheme("ownkey_signal_bone"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
             key = "theme__glass_night_theme_id",
-            default = extMyTheme("ownkey_glass_night_borderless_medium"),
+            default = extSignalTheme("ownkey_signal_graphite"),
             serializer = ExtensionComponentName.Serializer,
         )
         val showKeyBorders = boolean(
@@ -863,11 +872,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val glassPreset = enum(
             key = "theme__glass_preset",
-            default = ThemeGlassPreset.GLASS,
+            default = ThemeGlassPreset.SIGNAL,
         )
         val iconStyle = enum(
             key = "theme__icon_style",
-            default = ThemeIconStyle.THIN_OUTLINE,
+            default = ThemeIconStyle.HEROICONS_MINI,
         )
         val toolbarIconSizePercent = int(
             key = "theme__toolbar_icon_size_percent",
@@ -880,7 +889,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val accentColor = custom(
             key = "theme__accent_color",
-            default = Color(0xFF0A84FF),
+            default = Color(0xFFDE5F14),
             serializer = ColorPreferenceSerializer,
         )
         val sunriseTime = localTime(
@@ -907,6 +916,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
 
     override fun migrate(entry: PreferenceMigrationEntry): PreferenceMigrationEntry {
         return when (entry.key) {
+            "keyboard__floating_split_transparent" -> entry.transform(
+                key = "keyboard__floating_split_opacity",
+                type = PreferenceType.integer(),
+                rawValue = if (entry.rawValue == "true") "0" else "100",
+            )
 
             // Migrate media prefs to emoji prefs
             // Keep migration rule until: 0.6 dev cycle
@@ -992,6 +1006,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 if (QuickAction.InsertKey(TextKeyData.TOGGLE_FLOATING_WINDOW) !in newArrangement) {
                     newArrangement = newArrangement.copy(
                         dynamicActions = newArrangement.dynamicActions.plus(QuickAction.InsertKey(TextKeyData.TOGGLE_FLOATING_WINDOW))
+                    )
+                }
+                if (QuickAction.InsertKey(TextKeyData.TOGGLE_VOICE_ONLY) !in newArrangement) {
+                    newArrangement = newArrangement.copy(
+                        dynamicActions = newArrangement.dynamicActions.plus(QuickAction.InsertKey(TextKeyData.TOGGLE_VOICE_ONLY))
                     )
                 }
                 if (QuickAction.InsertKey(TextKeyData.TOGGLE_RESIZE_MODE) !in newArrangement) {

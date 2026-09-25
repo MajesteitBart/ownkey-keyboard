@@ -106,6 +106,16 @@ fun KeyboardScreen() = FlorisScreen {
         )
 
         PreferenceGroup(title = stringRes(R.string.pref__keyboard__group_layout__label)) {
+            DialogSliderPreference(
+                prefs.keyboard.floatingSplitOpacity,
+                title = stringRes(R.string.floating_split__opacity),
+                valueLabel = { stringRes(R.string.unit__percent__symbol, "v" to it) },
+                min = 0,
+                max = 100,
+                stepIncrement = 1,
+                // Only the floating split keyboard uses it, and that needs split layout.
+                visibleIf = { prefs.keyboard.splitLayoutMode isNotEqualTo SplitLayoutMode.NEVER },
+            )
             ListPreference(
                 prefs.keyboard.splitLayoutMode,
                 title = stringRes(R.string.pref__keyboard__split_layout_mode__label),

@@ -23,15 +23,15 @@ import androidx.compose.ui.graphics.takeOrElse
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 
 /**
- * The user-selected accent color (Theme settings), falling back to the Liquid Glass default
- * accent. Use this instead of [OwnkeyBrand.Glass.Accent] in composables so accent changes apply
- * live to hardcoded surfaces like the mic pill and the AI rewrite panel.
+ * The user-selected accent color (Theme settings), falling back to the Signal brand orange. Use this
+ * instead of [OwnkeyBrand.Glass.Accent] in composables so accent changes apply live to hardcoded
+ * surfaces like the AI rewrite panel.
  */
 @Composable
 fun ownkeyAccentColor(): Color {
     val prefs by FlorisPreferenceStore
     val accent by prefs.theme.accentColor.collectAsState()
-    return accent.takeOrElse { OwnkeyBrand.Glass.Accent }
+    return accent.takeOrElse { OwnkeyBrand.Ember }
 }
 
 object OwnkeyBrand {
@@ -45,6 +45,18 @@ object OwnkeyBrand {
     val Bone = Color(0xFFF3F1EC)
     val Ash = Color(0xFFB6BAC3)
     val SignalOrange = Color(0xFFF56C1E)
+
+    /** The logo orange: the dictation button, the recording level, and a ready AI result. */
+    val Ember = Color(0xFFDE5F14)
+
+    /** Well of a quiet dictation button: idle, transcribing, or failed. */
+    val Coal = Color(0xFF161616)
+
+    /** Warm muted gray for toolbar icons on dark surfaces, including an idle AI action. */
+    val Stone = Color(0xFF8E8A7F)
+
+    /** Stone for light surfaces such as Signal Bone, where the lighter gray falls below 3:1 contrast. */
+    val StoneDark = Color(0xFF5E5A52)
     val SignalAmber = Color(0xFFF5A524)
     val TrustBlue = Color(0xFF2F6BFF)
     val SuccessGreen = Color(0xFF3EDB83)

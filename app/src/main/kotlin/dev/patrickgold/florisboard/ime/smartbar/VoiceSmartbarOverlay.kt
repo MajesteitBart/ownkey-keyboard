@@ -130,7 +130,7 @@ private fun VoiceRewriteCoachMark(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_tabler_microphone),
+                imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                 contentDescription = null,
                 tint = ownkeyAccentColor(),
                 modifier = Modifier.size(18.dp),

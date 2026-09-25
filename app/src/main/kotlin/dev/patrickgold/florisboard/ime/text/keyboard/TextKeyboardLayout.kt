@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -56,17 +57,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.toSize
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -128,6 +132,8 @@ import org.florisboard.lib.snygg.ui.SnyggText
 import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 import kotlin.math.abs
 import kotlin.math.sqrt
+import kotlin.math.ceil
+import kotlin.math.floor
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @OptIn(ExperimentalComposeUiApi::class)
@@ -135,6 +141,7 @@ import kotlin.math.sqrt
 fun TextKeyboardLayout(
     modifier: Modifier = Modifier,
     evaluator: ComputingEvaluator,
+    allowFloatingSplitPanels: Boolean = true,
 ): Unit = with(LocalDensity.current) {
     val prefs by FlorisPreferenceStore
     val context = LocalContext.current
@@ -145,6 +152,11 @@ fun TextKeyboardLayout(
     val showVoiceRecordingIndicator = dictationState == VoxtralDictationManager.DictationState.LISTENING
 
     val keyboard = evaluator.keyboard as TextKeyboard
+    val windowController = LocalWindowController.current
+    var keyboardBounds by remember { mutableStateOf(Rect.Zero) }
+    DisposableEffect(windowController) {
+        onDispose { windowController.updateFloatingSplitGap(null) }
+    }
     val glideEnabledInternal by prefs.glide.enabled.collectAsState()
     val glideEnabled = glideEnabledInternal && evaluator.editorInfo.isRichInputEditor &&
         evaluator.state.keyVariation != KeyVariation.PASSWORD
@@ -193,6 +205,7 @@ fun TextKeyboardLayout(
             .height(FlorisImeSizing.keyboardUiHeight())
             .onGloballyPositioned { coords ->
                 controller.size = coords.size.toSize()
+                keyboardBounds = coords.boundsInRoot()
             }
             .pointerInteropFilter { event ->
                 when (event.actionMasked) {
@@ -247,7 +260,6 @@ fun TextKeyboardLayout(
         val keyboardHeight = constraints.maxHeight.toFloat()
         val keyboardRowBaseHeight = FlorisImeSizing.keyboardRowBaseHeight
 
-        val windowController = LocalWindowController.current
         val windowSpec by windowController.activeWindowSpec.collectAsState()
         val keyMarginH by remember { derivedStateOf { windowSpec.keyMarginH.toPx() } }
         val keyMarginV by remember { derivedStateOf { windowSpec.keyMarginV.toPx() } }
@@ -258,7 +270,10 @@ fun TextKeyboardLayout(
             val isNormalDockedWindow = windowSpec.let { spec ->
                 spec is ImeWindowSpec.Fixed && spec.fixedMode == ImeWindowMode.Fixed.NORMAL
             }
-            if (isNormalDockedWindow && SplitLayout.isActive(splitLayoutMode, configuration, keyboard.mode)) {
+            val isFloatingSplit = windowSpec.let { spec ->
+                spec is ImeWindowSpec.Floating && spec.floatingMode == ImeWindowMode.Floating.SPLIT
+            }
+            if ((isNormalDockedWindow || isFloatingSplit) && SplitLayout.isActive(splitLayoutMode, configuration, keyboard.mode)) {
                 val gapPercent = splitLayoutGapPercent.coerceIn(SplitLayout.GapPercentMin, SplitLayout.GapPercentMax)
                 SplitLayoutSpec(gapWidth = keyboardWidth * gapPercent / 100.0f)
             } else {
@@ -291,6 +306,25 @@ fun TextKeyboardLayout(
                 desiredKey.visibleBounds.applyFrom(desiredKey.touchBounds).deflateBy(keyMarginH, keyMarginV)
                 keyboard.layout(keyboardWidth, keyboardHeight, desiredKey, true, splitSpec)
             }
+        }
+
+        // Read during composition, not inside the effect: the first layout sets the bounds after the first
+        // composition, and only a composition read makes that write report the gap.
+        val bounds = keyboardBounds
+        SideEffect {
+            val spec = windowSpec
+            val gap = keyboard.splitGap
+            windowController.updateFloatingSplitGap(
+                if (allowFloatingSplitPanels && spec is ImeWindowSpec.Floating && spec.floatingMode == ImeWindowMode.Floating.SPLIT &&
+                    splitSpec != null && gap != null && gap.second > gap.first && bounds != Rect.Zero
+                ) {
+                    // Round inward so no edge pixel belonging to a key becomes a host-app touch.
+                    IntRect(
+                        ceil(bounds.left + gap.first).toInt(), ceil(bounds.top).toInt(),
+                        floor(bounds.left + gap.second).toInt(), floor(bounds.bottom).toInt(),
+                    )
+                } else null,
+            )
         }
 
         val desiredKeyHack = rememberUpdatedState(desiredKey) // TODO quick'n'dirty hack

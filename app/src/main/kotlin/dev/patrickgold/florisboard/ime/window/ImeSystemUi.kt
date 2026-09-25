@@ -77,8 +77,9 @@ fun ImeSystemUi() {
     val windowController = LocalWindowController.current
 
     val windowSpec by windowController.activeWindowSpec.collectAsState()
+    val isVoiceOnly by windowController.isVoiceOnlyActive.collectAsState()
     val isSystemNavbarVisible by remember {
-        derivedStateOf { windowSpec is ImeWindowSpec.Fixed }
+        derivedStateOf { windowSpec is ImeWindowSpec.Fixed && !isVoiceOnly }
     }
 
     val backgroundQuery = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName)
@@ -121,6 +122,12 @@ fun ImeSystemUiFloating() {
     val windowConfig by windowController.activeWindowConfig.collectAsState()
     val windowSpec by windowController.activeWindowSpec.collectAsState()
     val editor by windowController.editor.state.collectAsState()
+    val splitGap by windowController.floatingSplitGap.collectAsState()
+
+    if (windowSpec.isFloatingSplit && splitGap != null) {
+        FloatingSplitControls()
+        return
+    }
 
     val visible by remember {
         derivedStateOf {

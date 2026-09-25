@@ -150,6 +150,8 @@ configure<ApplicationExtension> {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             isMinifyEnabled = true
             isShrinkResources = true
+            // Library modules such as :lib:offline-asr only define debug and release.
+            matchingFallbacks += listOf("release")
         }
 
         named("release") {

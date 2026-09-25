@@ -25,6 +25,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -44,6 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -52,11 +56,39 @@ import kotlinx.coroutines.delay
 import org.florisboard.lib.android.OwnkeyToastBus
 import org.florisboard.lib.android.OwnkeyToastMessage
 
+/** Room above the voice-only bar that a toast needs; with less, it goes below the bar. */
+private val ToastRoomAboveBar = 96.dp
+
+/** Where a toast sits around the voice-only bar; [offset] is from the root's bottom, or from its top when [belowBar]. */
+internal data class ToastPlacement(val belowBar: Boolean, val offset: Dp)
+
+/**
+ * Keeps a toast next to the voice-only bar without covering the bar's own status: just above the bar, or
+ * just below it when the bar was dragged so high that a toast above would leave the screen.
+ */
+internal fun toastPlacementAroundBar(bar: DpRect, root: DpRect): ToastPlacement =
+    if (bar.top - root.top < ToastRoomAboveBar) {
+        ToastPlacement(belowBar = true, offset = bar.bottom - root.top + 8.dp)
+    } else {
+        ToastPlacement(belowBar = false, offset = (root.bottom - bar.top + 8.dp).coerceAtLeast(14.dp))
+    }
+
 @Composable
 fun BoxScope.OwnkeyToastOverlay() {
     val windowController = LocalWindowController.current
     val isWindowShown by windowController.isWindowShown.collectAsState()
+    val isVoiceOnly by windowController.isVoiceOnlyActive.collectAsState()
+    val rootInsets by windowController.activeRootInsets.collectAsState()
+    val windowInsets by windowController.activeWindowInsets.collectAsState()
     var message by remember { mutableStateOf<OwnkeyToastMessage?>(null) }
+    val voiceBar = windowInsets?.boundsDp?.takeIf { isVoiceOnly }
+    val placement = voiceBar?.let { toastPlacementAroundBar(it, rootInsets.boundsDp) }
+    val toastAlignment = if (placement?.belowBar == true) Alignment.TopCenter else Alignment.BottomCenter
+    val toastPadding = when {
+        placement == null -> PaddingValues(horizontal = 18.dp, vertical = 14.dp)
+        placement.belowBar -> PaddingValues(start = 18.dp, end = 18.dp, top = placement.offset)
+        else -> PaddingValues(start = 18.dp, end = 18.dp, bottom = placement.offset)
+    }
 
     DisposableEffect(isWindowShown) {
         if (isWindowShown) {
@@ -89,14 +121,15 @@ fun BoxScope.OwnkeyToastOverlay() {
         exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(OwnkeyBrand.MotionFastMillis)) +
             slideOutVertically(animationSpec = androidx.compose.animation.core.tween(OwnkeyBrand.MotionFastMillis)) { it / 2 },
         modifier = Modifier
-            .align(Alignment.BottomCenter)
+            .align(toastAlignment)
             .zIndex(100f)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(toastPadding),
     ) {
         val current = message ?: return@AnimatedVisibility
         OwnkeyToastBanner(
             message = current.text,
-            onDismiss = { message = null },
+            // Around the voice-only bar the app owns every touch, so the toast only times out.
+            onDismiss = if (voiceBar == null) ({ message = null }) else null,
         )
     }
 }
@@ -104,7 +137,7 @@ fun BoxScope.OwnkeyToastOverlay() {
 @Composable
 private fun OwnkeyToastBanner(
     message: String,
-    onDismiss: () -> Unit,
+    onDismiss: (() -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -132,18 +165,20 @@ private fun OwnkeyToastBanner(
                 .weight(1f)
                 .padding(end = 8.dp),
         )
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(34.dp)
-                .clickable(onClick = onDismiss),
-        ) {
-            Text(
-                text = "x",
-                color = Color.Black,
-                fontSize = 20.sp,
-                lineHeight = 20.sp,
-            )
+        if (onDismiss != null) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clickable(onClick = onDismiss),
+            ) {
+                Text(
+                    text = "x",
+                    color = Color.Black,
+                    fontSize = 20.sp,
+                    lineHeight = 20.sp,
+                )
+            }
         }
     }
 }

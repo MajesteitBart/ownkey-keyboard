@@ -97,8 +97,21 @@
     <string name="quick_action__ai_rewrite__tooltip">Rewrite selected text</string>
     <string name="quick_action__voice_input" comment="Please mind the limited available space for the quick action strings">Voice input</string>
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Open voice input provider</string>
+    <string name="floating_split__dock">Dock keyboard</string>
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Floating</string>
     <string name="quick_action__floating_window_mode__tooltip">Toggle floating keyboard window mode</string>
+    <string name="quick_action__voice_only" comment="Please mind the limited available space for the quick action strings">Voice only</string>
+    <string name="quick_action__voice_only__tooltip">Replace the keyboard with a small voice input bar</string>
+    <string name="voice_only__tap_to_speak">Tap to speak</string>
+    <string name="voice_only__try_again">Tap to try again</string>
+    <string name="voice_only__error_no_api_key" comment="Voice bar status after dictation could not start because the configured provider has no API key">No API key</string>
+    <string name="voice_only__error_microphone_permission">No microphone access</string>
+    <string name="voice_only__error_microphone_unavailable">Microphone unavailable</string>
+    <string name="voice_only__error_nothing_heard">Nothing heard</string>
+    <string name="voice_only__error_insert">Couldn\'t insert text</string>
+    <string name="voice_only__error_ai_unavailable">AI is off in this field</string>
+    <string name="voice_only__inserted">Inserted</string>
+    <string name="voice_only__show_keyboard">Show keyboard</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">One-handed</string>
     <string name="quick_action__one_handed_mode__tooltip">Toggle one-handed mode</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">Resize</string>
@@ -182,10 +195,13 @@
     <string name="pref__theme__toolbar_icon_color__label" comment="Label for toolbar icon color preference">Toolbar icon color</string>
     <string name="pref__theme__custom_themes__label" comment="Preference title">Custom themes</string>
     <string name="pref__theme__custom_themes__summary" comment="Preference summary">Create your own theme and edit every property in the theme editor</string>
-    <string name="enum__theme_glass_preset__glass" comment="Enum value label">Glass (default)</string>
+    <string name="enum__theme_glass_preset__signal" comment="Enum value label. Signal is the name of the Ownkey brand theme.">Signal Graphite (default)</string>
+    <string name="enum__theme_glass_preset__signal_black" comment="Enum value label">Signal Black (OLED)</string>
+    <string name="enum__theme_glass_preset__glass" comment="Enum value label">Glass</string>
     <string name="enum__theme_glass_preset__amoled" comment="Enum value label">AMOLED black</string>
     <string name="enum__theme_glass_preset__slate" comment="Enum value label">Slate</string>
     <string name="enum__theme_glass_preset__ocean" comment="Enum value label">Ocean</string>
+    <string name="enum__theme_icon_style__heroicons_mini" comment="Enum value label. Heroicons is the name of the icon set.">Solid (Heroicons Mini)</string>
     <string name="enum__theme_icon_style__thin_outline" comment="Enum value label">Thin outline</string>
     <string name="enum__theme_icon_style__filled" comment="Enum value label">Filled</string>
     <string name="enum__theme_icon_style__rounded" comment="Enum value label">Rounded</string>
@@ -1548,4 +1564,5 @@
     <string name="dictation_fix__manual">The text changed. Add “{word}” in your dictionary instead?</string>
     <string name="dictation_fix__save_failed">“{word}” could not be saved to storage. It is kept for now and saved with the next change; check free space.</string>
     <string name="dictation_fix__manual_open">Open dictionary</string>
+    <string name="floating_split__opacity">Floating split background opacity</string>
 </resources>

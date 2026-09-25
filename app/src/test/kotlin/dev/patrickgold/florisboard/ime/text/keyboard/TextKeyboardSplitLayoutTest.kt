@@ -65,6 +65,48 @@ private fun desiredKey(keyWidth: Float): TextKey {
 }
 
 class TextKeyboardSplitLayoutTest : FunSpec({
+    test("both space bars return after a compact layout pass on the same keyboard") {
+        val row = arrayOf(charKey(), spaceKey(), spaceKey(), charKey())
+        val keyboard = keyboardOf(row)
+        keyboard.layout(KEYBOARD_WIDTH, KEYBOARD_HEIGHT, desiredKey(KEYBOARD_WIDTH / 10f), false, null)
+        keyboard.layout(
+            KEYBOARD_WIDTH, KEYBOARD_HEIGHT, desiredKey((KEYBOARD_WIDTH - GAP_WIDTH) / 10f),
+            false, SplitLayoutSpec(GAP_WIDTH),
+        )
+        (row[1].visibleBounds.width > 0f) shouldBe true
+        (row[2].visibleBounds.width > 0f) shouldBe true
+        (row[2].touchBounds.left - row[1].touchBounds.right) shouldBe (GAP_WIDTH plusOrMinus 0.01f)
+    }
+
+    test("floating cutout excludes staggered row touch targets and clears when docked unsplit") {
+        val rows = arrayOf(Array(10) { charKey() }, Array(9) { charKey() })
+        val keyboard = TextKeyboard(rows, KeyboardMode.CHARACTERS, null, null)
+        val desired = desiredKey((KEYBOARD_WIDTH - GAP_WIDTH) / 10f)
+        keyboard.layout(KEYBOARD_WIDTH, KEYBOARD_HEIGHT, desired, false, SplitLayoutSpec(GAP_WIDTH))
+
+        val gap = requireNotNull(keyboard.splitGap)
+        gap.first shouldBe (440f plusOrMinus 0.01f)
+        gap.second shouldBe (600f plusOrMinus 0.01f)
+        for (row in rows) {
+            for (key in row) {
+                (key.touchBounds.right <= gap.first || key.touchBounds.left >= gap.second) shouldBe true
+            }
+        }
+        keyboard.layout(KEYBOARD_WIDTH, KEYBOARD_HEIGHT, desiredKey(KEYBOARD_WIDTH / 10f), false, null)
+        keyboard.splitGap shouldBe null
+    }
+
+    test("rows which cannot split never expose underlying app touches") {
+        val keyboard = TextKeyboard(
+            arrayOf(Array(10) { charKey() }, arrayOf(spaceKey())), KeyboardMode.CHARACTERS, null, null,
+        )
+        keyboard.layout(
+            KEYBOARD_WIDTH, KEYBOARD_HEIGHT, desiredKey((KEYBOARD_WIDTH - GAP_WIDTH) / 10f),
+            false, SplitLayoutSpec(GAP_WIDTH),
+        )
+        keyboard.splitGap shouldBe null
+    }
+
     test("non-split layout fills the full keyboard width") {
         val row = Array(10) { charKey() }
         val keyboard = keyboardOf(row)

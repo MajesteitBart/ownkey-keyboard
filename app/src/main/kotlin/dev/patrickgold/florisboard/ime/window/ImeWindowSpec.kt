@@ -225,6 +225,10 @@ sealed class ImeWindowSpec {
         override val constraints: ImeWindowConstraints.Floating,
         override val userPreferredOptions: UserPreferredOptions,
     ) : ImeWindowSpec() {
+        val shouldDockOnRelease: Boolean
+            get() = floatingMode != ImeWindowMode.Floating.SPLIT &&
+                props.offsetBottom <= constraints.dockToFixedHeight
+
         override fun movedBy(
             offset: DpOffset,
             rowCount: Int,

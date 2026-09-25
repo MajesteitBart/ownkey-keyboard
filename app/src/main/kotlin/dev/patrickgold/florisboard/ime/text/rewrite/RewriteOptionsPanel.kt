@@ -418,7 +418,7 @@ private fun VoiceInstructionCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_tabler_microphone),
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                     contentDescription = null,
                     tint = accentColor,
                     modifier = Modifier.size(22.dp),
@@ -1170,7 +1170,7 @@ private fun HeardInstruction(
         }
         if (onEditInstruction != null) {
             HeaderIconButton(
-                icon = ImageVector.vectorResource(id = R.drawable.ic_tabler_microphone),
+                icon = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                 contentDescription = "$editLabel. $editDescription",
                 tint = ownkeyAccentColor(),
                 onClick = onEditInstruction,

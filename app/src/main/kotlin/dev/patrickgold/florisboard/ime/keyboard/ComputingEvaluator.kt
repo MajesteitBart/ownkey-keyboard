@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardCapslock
@@ -177,13 +178,51 @@ private fun String.withoutTrailingRegion(): String {
     return if (regionStart > 0 && endsWith(")")) substring(0, regionStart) else this
 }
 
-private fun ComputingEvaluator.tablerIcon(id: Int): ImageVector? {
+private fun ComputingEvaluator.vectorIcon(id: Int): ImageVector? {
     return context()?.vectorResource(id = id)
 }
 
+/** The Heroicons Mini counterpart of each Tabler icon, for the default icon package. */
+private val HeroiconForTabler by lazy {
+    mapOf(
+        R.drawable.ic_tabler_chevron_left to R.drawable.ic_hero_chevron_left,
+        R.drawable.ic_tabler_chevron_right to R.drawable.ic_hero_chevron_right,
+        R.drawable.ic_tabler_chevron_up to R.drawable.ic_hero_chevron_up,
+        R.drawable.ic_tabler_chevron_down to R.drawable.ic_hero_chevron_down,
+        R.drawable.ic_tabler_copy to R.drawable.ic_hero_square_2_stack,
+        R.drawable.ic_tabler_microphone to R.drawable.ic_hero_microphone,
+        R.drawable.ic_tabler_backspace to R.drawable.ic_hero_backspace,
+        R.drawable.ic_tabler_corner_down_left to R.drawable.ic_hero_arrow_turn_down_left,
+        R.drawable.ic_tabler_search to R.drawable.ic_hero_magnifying_glass,
+        R.drawable.ic_tabler_mood_smile to R.drawable.ic_hero_face_smile,
+        R.drawable.ic_tabler_clipboard to R.drawable.ic_hero_clipboard,
+        R.drawable.ic_tabler_world to R.drawable.ic_hero_globe_alt,
+        R.drawable.ic_tabler_settings to R.drawable.ic_hero_cog_6_tooth,
+        R.drawable.ic_tabler_arrow_big_up to R.drawable.ic_hero_arrow_up,
+        R.drawable.ic_tabler_select_all to R.drawable.ic_hero_viewfinder_circle,
+        R.drawable.ic_tabler_arrow_back_up to R.drawable.ic_hero_arrow_uturn_left,
+        R.drawable.ic_tabler_arrow_forward_up to R.drawable.ic_hero_arrow_uturn_right,
+        R.drawable.ic_tabler_dots to R.drawable.ic_hero_ellipsis_horizontal,
+        R.drawable.ic_tabler_sparkles to R.drawable.ic_hero_sparkles,
+    )
+}
+
+private fun ComputingEvaluator.isHeroiconsStyle(): Boolean {
+    val prefs by FlorisPreferenceStore
+    return prefs.theme.iconStyle.get() == ThemeIconStyle.HEROICONS_MINI
+}
+
 /**
- * Picks the icon from the user's selected icon package (Theme settings): thin Tabler outline,
- * or the filled/rounded/sharp Material sets.
+ * A Heroicons Mini icon for keys that have no Tabler variant; null for the other packages, which keep
+ * their Material icon. Heroicons has no forward-delete, space, or autocorrect icon.
+ */
+private fun ComputingEvaluator.heroicon(id: Int): ImageVector? {
+    return if (isHeroiconsStyle()) vectorIcon(id) else null
+}
+
+/**
+ * Picks the icon from the user's selected icon package (Theme settings): solid Heroicons Mini, thin
+ * Tabler outline, or the filled/rounded/sharp Material sets.
  */
 private fun ComputingEvaluator.styledIcon(
     tablerId: Int,
@@ -193,7 +232,8 @@ private fun ComputingEvaluator.styledIcon(
 ): ImageVector? {
     val prefs by FlorisPreferenceStore
     return when (prefs.theme.iconStyle.get()) {
-        ThemeIconStyle.THIN_OUTLINE -> tablerIcon(tablerId) ?: filled
+        ThemeIconStyle.HEROICONS_MINI -> HeroiconForTabler[tablerId]?.let { vectorIcon(it) } ?: filled
+        ThemeIconStyle.THIN_OUTLINE -> vectorIcon(tablerId) ?: filled
         ThemeIconStyle.FILLED -> filled
         ThemeIconStyle.ROUNDED -> rounded
         ThemeIconStyle.SHARP -> sharp
@@ -268,16 +308,16 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             styledIcon(R.drawable.ic_tabler_copy, Icons.Filled.ContentCopy, Icons.Rounded.ContentCopy, Icons.Sharp.ContentCopy)
         }
         KeyCode.CLIPBOARD_CUT -> {
-            Icons.Default.ContentCut
+            heroicon(R.drawable.ic_hero_scissors) ?: Icons.Default.ContentCut
         }
         KeyCode.CLIPBOARD_PASTE -> {
-            Icons.Default.ContentPasteGo
+            heroicon(R.drawable.ic_hero_clipboard_document) ?: Icons.Default.ContentPasteGo
         }
         KeyCode.CLIPBOARD_SELECT_ALL -> {
             styledIcon(R.drawable.ic_tabler_select_all, Icons.Filled.SelectAll, Icons.Rounded.SelectAll, Icons.Sharp.SelectAll)
         }
         KeyCode.CLIPBOARD_CLEAR_PRIMARY_CLIP -> {
-            Icons.Default.DeleteSweep
+            heroicon(R.drawable.ic_hero_trash) ?: Icons.Default.DeleteSweep
         }
         KeyCode.COMPACT_LAYOUT_TO_LEFT,
         KeyCode.COMPACT_LAYOUT_TO_RIGHT,
@@ -296,11 +336,14 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         KeyCode.TOGGLE_RESIZE_MODE -> {
             context()?.vectorResource(id = R.drawable.ic_resize)
         }
+        KeyCode.TOGGLE_VOICE_ONLY -> {
+            heroicon(R.drawable.ic_hero_waveform) ?: Icons.Default.GraphicEq
+        }
         KeyCode.VOICE_INPUT -> {
             styledIcon(R.drawable.ic_tabler_microphone, Icons.Filled.Mic, Icons.Rounded.Mic, Icons.Sharp.Mic)
         }
         KeyCode.IME_HIDE_UI -> {
-            Icons.Default.KeyboardHide
+            heroicon(R.drawable.ic_hero_chevron_double_down) ?: Icons.Default.KeyboardHide
         }
         KeyCode.DELETE -> {
             styledIcon(R.drawable.ic_tabler_backspace, Icons.AutoMirrored.Filled.Backspace, Icons.AutoMirrored.Rounded.Backspace, Icons.AutoMirrored.Sharp.Backspace)
@@ -312,13 +355,13 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
                 styledIcon(R.drawable.ic_tabler_corner_down_left, Icons.AutoMirrored.Filled.KeyboardReturn, Icons.AutoMirrored.Rounded.KeyboardReturn, Icons.AutoMirrored.Sharp.KeyboardReturn)
             } else {
                 when (imeOptions.action) {
-                    ImeOptions.Action.DONE -> Icons.Default.Done
-                    ImeOptions.Action.GO -> Icons.AutoMirrored.Filled.ArrowRightAlt
-                    ImeOptions.Action.NEXT -> Icons.AutoMirrored.Filled.ArrowRightAlt
+                    ImeOptions.Action.DONE -> heroicon(R.drawable.ic_hero_check) ?: Icons.Default.Done
+                    ImeOptions.Action.GO -> heroicon(R.drawable.ic_hero_arrow_right) ?: Icons.AutoMirrored.Filled.ArrowRightAlt
+                    ImeOptions.Action.NEXT -> heroicon(R.drawable.ic_hero_arrow_right) ?: Icons.AutoMirrored.Filled.ArrowRightAlt
                     ImeOptions.Action.NONE -> styledIcon(R.drawable.ic_tabler_corner_down_left, Icons.AutoMirrored.Filled.KeyboardReturn, Icons.AutoMirrored.Rounded.KeyboardReturn, Icons.AutoMirrored.Sharp.KeyboardReturn)
-                    ImeOptions.Action.PREVIOUS -> Icons.AutoMirrored.Filled.ArrowRightAlt
+                    ImeOptions.Action.PREVIOUS -> heroicon(R.drawable.ic_hero_arrow_right) ?: Icons.AutoMirrored.Filled.ArrowRightAlt
                     ImeOptions.Action.SEARCH -> styledIcon(R.drawable.ic_tabler_search, Icons.Filled.Search, Icons.Rounded.Search, Icons.Sharp.Search)
-                    ImeOptions.Action.SEND -> Icons.AutoMirrored.Filled.Send
+                    ImeOptions.Action.SEND -> heroicon(R.drawable.ic_hero_paper_airplane) ?: Icons.AutoMirrored.Filled.Send
                     ImeOptions.Action.UNSPECIFIED -> styledIcon(R.drawable.ic_tabler_corner_down_left, Icons.AutoMirrored.Filled.KeyboardReturn, Icons.AutoMirrored.Rounded.KeyboardReturn, Icons.AutoMirrored.Sharp.KeyboardReturn)
                 }
             }
@@ -340,7 +383,8 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
-                true -> Icons.Default.KeyboardCapslock
+                // A filled circle marks shift and caps lock; the Signal themes also color caps lock.
+                true -> heroicon(R.drawable.ic_hero_arrow_up_circle) ?: Icons.Default.KeyboardCapslock
                 else -> styledIcon(R.drawable.ic_tabler_arrow_big_up, Icons.Filled.ArrowUpward, Icons.Rounded.ArrowUpward, Icons.Sharp.ArrowUpward)
             }
         }
@@ -398,10 +442,10 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             this.context()?.vectorResource(R.drawable.ic_keyboard_char_width_switcher_half)
         }
         KeyCode.DRAG_MARKER -> {
-            if (evaluator.state.debugShowDragAndDropHelpers) Icons.Default.Close else null
+            if (evaluator.state.debugShowDragAndDropHelpers) heroicon(R.drawable.ic_hero_x_mark) ?: Icons.Default.Close else null
         }
         KeyCode.NOOP -> {
-            Icons.Default.Close
+            heroicon(R.drawable.ic_hero_x_mark) ?: Icons.Default.Close
         }
         else -> null
     }
