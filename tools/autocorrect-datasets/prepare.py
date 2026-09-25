@@ -42,6 +42,19 @@ ALLOWED = {
     "nld": re.compile(r"^[A-Za-zà-ÿÀ-Ý ,.!?'’:;\"-]+$"),
 }
 
+# Tatoeba sentences with a mistake, corrected by hand: the clean and context sets are ground truth, so a typo in
+# them would count a right correction as a wrong one. The CC BY changes to the source sentences are these.
+CORRECTIONS = {
+    "Bent u het die dat raport geschreven heeft?": "Bent u het die dat rapport geschreven heeft?",
+    "Tom heeft Misschien Mary gekust.": "Tom heeft misschien Mary gekust.",
+    "Hij zei dat hij naar huist moest lopen.": "Hij zei dat hij naar huis moest lopen.",
+    "Er ist zojuist een ongeluk gebeurd.": "Er is zojuist een ongeluk gebeurd.",
+    "Are you still be obliged to do that?": "Are you still obliged to do that?",
+    "Tom has at least as many books as do.": "Tom has at least as many books as I do.",
+}
+# Lines that are not sentences at all.
+REJECTED = {"Digital Marketing Courses in Pune with Placement Support"}
+
 
 def fetch(url: str, target: Path) -> Path:
     if not target.exists():
@@ -58,11 +71,11 @@ def build_clean_text(cache: Path, lang: str, out_name: str) -> None:
             parts = line.rstrip("\n").split("\t")
             if len(parts) != 3:
                 continue
-            text = parts[2].strip()
+            text = CORRECTIONS.get(parts[2].strip(), parts[2].strip())
             words = text.split()
             if not 4 <= len(words) <= 20:
                 continue
-            if not ALLOWED[lang].match(text):
+            if not ALLOWED[lang].match(text) or text in REJECTED:
                 continue
             sentences.append((int(parts[0]), text))
     sentences.sort()
@@ -87,8 +100,8 @@ def build_context_sentences(cache: Path, lang: str, out_name: str, clean_name: s
             parts = line.rstrip("\n").split("\t")
             if len(parts) != 3:
                 continue
-            sentence_id, text = int(parts[0]), parts[2].strip()
-            if sentence_id % HOLDOUT_MODULUS != 0 or text in clean:
+            sentence_id, text = int(parts[0]), CORRECTIONS.get(parts[2].strip(), parts[2].strip())
+            if sentence_id % HOLDOUT_MODULUS != 0 or text in clean or text in REJECTED:
                 continue
             if not 4 <= len(text.split()) <= 20 or not ALLOWED[lang].match(text):
                 continue

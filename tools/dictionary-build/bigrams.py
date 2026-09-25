@@ -197,13 +197,14 @@ def main() -> None:
         excluded = benchmark_sentences(language)
         names = proper_nouns(path, excluded)
         counts, sentences, tokens = count_bigrams(path, vocabulary, excluded, names)
-        min_count = args.min_count or MIN_COUNT[language]
+        # 0 is a valid choice (keep every pair), so only a missing value falls back to the default.
+        min_count = MIN_COUNT[language] if args.min_count is None else args.min_count
         note = (f"language={language} source=Tatoeba (CC BY 2.0 FR) training_sentences={sentences} "
                 f"tokens={tokens} min_count={min_count} proper_nouns_not_predicted={len(names)}")
         if args.probe:
             print(f"{language}: {sentences} sentences, {tokens} tokens, {len(counts)} distinct bigrams")
             for min_count in (1, 2, 3, 5):
-                text = render(counts, min_count, note)
+                text = render(counts, min_count, note, names)
                 kept = sum(1 for count in counts.values() if count >= min_count)
                 mass = sum(count for count in counts.values() if count >= min_count) / max(1, sum(counts.values()))
                 print(f"  min {min_count}: {kept} bigrams, {mass:.1%} of pair occurrences, "

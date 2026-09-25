@@ -13386,6 +13386,7 @@ calder	646
 cirkels	646
 lak	646
 onterecht	646
+overnieuw	646
 privileges	646
 schuift	646
 ultra	646
@@ -28416,7 +28417,6 @@ terugkrabbelen	516
 troefkaart	516
 uitsluitsel	516
 uitzendkracht	516
-verassingen	516
 vereffend	516
 verkenningsteam	516
 violen	516

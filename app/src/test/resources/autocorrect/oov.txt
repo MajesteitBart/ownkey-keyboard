@@ -1,4 +1,6 @@
-# Legitimate words that are likely missing from the dictionaries and must not be changed.
+# Legitimate words that must not be changed: names, product names, jargon and informal words. Many are missing
+# from the dictionaries; some are also dictionary words (surnames such as bakker, jargon such as backlog), which the
+# report counts under "Already in dictionary". Either way, autocorrect must leave all of them as typed.
 # One per line, typed the way a user would type them. Lines starting with # are ignored.
 # Dutch first names
 Bart

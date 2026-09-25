@@ -2,6 +2,7 @@
 # so autocorrect could never fix them. Reviewed by hand; see .project/projects/autocorrect-engine/tasks/T-005.
 # Apostrophe-less forms (dont, im, youre, didnt, ...) are folded into their contractions by tools/dictionary-build.
 # Also removed by rule, not listed here: tokens with a backtick or U+FFFD, and single letters other than a, i, k, u, x.
+# loosing (loose an arrow) and payed (payed out the rope) are real but rare; typed far more often for losing and paid.
 accidently
 adress
 alot

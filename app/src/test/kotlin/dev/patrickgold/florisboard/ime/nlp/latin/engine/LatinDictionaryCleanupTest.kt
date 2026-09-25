@@ -49,6 +49,12 @@ class LatinDictionaryCleanupTest : FunSpec({
         BenchmarkData.en().shippedWords.keys.filter { it.length == 1 }.sorted() shouldBe listOf("a", "i", "k", "u", "x")
     }
 
+    test("the raw Dutch fallback keeps only u among single letters, like the built list") {
+        val fallback = LatinDictionaryCleanup.apply(BenchmarkData.nl().words, "nl", BenchmarkData.removals("nl"))
+        fallback.keys.filter { it.length == 1 }.sorted() shouldBe listOf("u")
+        BenchmarkData.nl().shippedWords.keys.filter { it.length == 1 }.sorted() shouldBe listOf("u")
+    }
+
     test("built dictionaries have contractions instead of apostrophe-less forms, and keep accepted variants") {
         BenchmarkData.en().model.isKnown("dont").shouldBeFalse()
         BenchmarkData.en().model.isKnown("don't").shouldBeTrue()
@@ -59,6 +65,7 @@ class LatinDictionaryCleanupTest : FunSpec({
         BenchmarkData.nl().model.isKnown("d'r").shouldBeTrue()
         BenchmarkData.nl().model.isKnown("kado").shouldBeTrue()
         BenchmarkData.nl().model.isKnown("ongelofelijk").shouldBeTrue()
+        BenchmarkData.nl().model.isKnown("overnieuw").shouldBeTrue()
     }
 
     test("comments and blank lines are ignored in removal lists") {

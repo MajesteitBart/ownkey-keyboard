@@ -15,6 +15,7 @@ Usage: py -3 tools/dictionary-build/build.py [--cache DIR]
 from __future__ import annotations
 
 import argparse
+import hashlib
 import math
 import re
 import tarfile
@@ -25,8 +26,13 @@ ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "app" / "src" / "main" / "assets" / "ime" / "dict"
 OUT_DIR = ASSETS / "latin"
 
+# Both sources are pinned and checked, so a rebuild gives the same lists. OpenTaal is pinned to the last commit
+# that changed wordlist.txt (2023-03-10), which is what the shipped nl.txt was built from.
 SCOWL_URL = "https://downloads.sourceforge.net/project/wordlist/SCOWL/2020.12.07/scowl-2020.12.07.tar.gz"
-OPENTAAL_URL = "https://raw.githubusercontent.com/OpenTaal/opentaal-wordlist/master/wordlist.txt"
+SCOWL_SHA256 = "5587667caa20c4891390c2d42dbb4d5c4c3f41bee77af1457ece3ba23fb859cc"
+OPENTAAL_URL = ("https://raw.githubusercontent.com/OpenTaal/opentaal-wordlist/"
+                "08879a9cb02c54a0cb057acb621604131cb2f84f/wordlist.txt")
+OPENTAAL_SHA256 = "12e5fb5e3c73840b583b30016926d1f63a75e9bf1652a3a6634b2ba7c49ad7be"
 
 HEADER = "# ownkey-latin-dictionary v1 format=log100"
 
@@ -84,10 +90,14 @@ NL_ZON_SHARE_OF_ZO = 246 / 3158
 NL_SINGLE_LETTERS = {"u"}
 
 
-def fetch(url: str, target: Path) -> Path:
+def fetch(url: str, target: Path, sha256: str) -> Path:
     if not target.exists():
         print(f"downloading {url}")
         urllib.request.urlretrieve(url, target)
+    # Also checks a cached copy: a file from an older, unpinned run must not slip into the build.
+    actual = hashlib.sha256(target.read_bytes()).hexdigest()
+    if actual != sha256:
+        raise SystemExit(f"{target} has sha256 {actual}, expected {sha256}; delete it to download it again")
     return target
 
 
@@ -119,7 +129,7 @@ def load_removals(language: str) -> set[str]:
 
 
 def scowl_words(cache: Path) -> set[str]:
-    archive = fetch(SCOWL_URL, cache / "scowl-2020.12.07.tar.gz")
+    archive = fetch(SCOWL_URL, cache / "scowl-2020.12.07.tar.gz", SCOWL_SHA256)
     words: set[str] = set()
     pattern = re.compile(r"final/(english|american|british)-(words|contractions|upper|proper-names)\.(\d+)$")
     with tarfile.open(archive) as tar:
@@ -138,7 +148,7 @@ def scowl_words(cache: Path) -> set[str]:
 
 
 def opentaal_words(cache: Path) -> set[str]:
-    path = fetch(OPENTAAL_URL, cache / "opentaal-wordlist.txt")
+    path = fetch(OPENTAAL_URL, cache / "opentaal-wordlist-08879a9c.txt", OPENTAAL_SHA256)
     return {w.strip().lower() for w in path.read_text(encoding="utf-8").splitlines() if w.strip()}
 
 
