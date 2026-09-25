@@ -212,7 +212,9 @@ class NlpManager(context: Context) {
         val reqTime = SystemClock.uptimeMillis()
         val isPrivateSession = keyboardManager.activeState.isIncognitoMode
         val allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get()
-        val request = wordSuggestionRequest(content, subtype, isPrivateSession, suggestionSequence.incrementAndGet())
+        val request = wordSuggestionRequest(
+            content, subtype, isPrivateSession, allowPossiblyOffensive, suggestionSequence.incrementAndGet(),
+        )
         scope.launch {
             val emojiSuggestions = when {
                 prefs.emoji.suggestionEnabled.get() -> {
@@ -309,6 +311,7 @@ class NlpManager(context: Context) {
         content: EditorContent,
         subtype: Subtype,
         isPrivateSession: Boolean,
+        allowPossiblyOffensive: Boolean,
         sequence: Long,
     ): WordSuggestionRequest {
         // Main thread: read the constant provider map without the lock.
@@ -319,7 +322,7 @@ class NlpManager(context: Context) {
             inputSessionId = editorInstance.activeInputSessionId,
             isPrivateSession = isPrivateSession,
             sequence = sequence,
-            allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+            allowPossiblyOffensive = allowPossiblyOffensive,
             providerState = provider?.autoCommitStateKey(subtype).orEmpty(),
         )
     }
@@ -352,7 +355,11 @@ class NlpManager(context: Context) {
         val selection = AutoCommitSelector.select(
             // Only the latest suggestion run can stand for this word.
             request = wordSuggestionRequest(
-                content, subtype, keyboardManager.activeState.isIncognitoMode, suggestionSequence.get(),
+                content = content,
+                subtype = subtype,
+                isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+                sequence = suggestionSequence.get(),
             ),
             batch = wordSuggestionBatch,
         ) {

@@ -158,6 +158,9 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
         }
     }
 
+    // The candidates come from the language pack databases, so another set of packs makes earlier runs stale.
+    override fun autoCommitStateKey(subtype: Subtype): String = System.identityHashCode(allLanguagePacks).toString()
+
     override suspend fun suggest(
         subtype: Subtype,
         content: EditorContent,

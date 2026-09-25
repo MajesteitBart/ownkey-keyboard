@@ -105,7 +105,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val isEmailField: Boolean,
         /** Where the word was tapped: the same word tapped differently can get a different correction. */
         val taps: List<LatinTap>?,
-        /** Words the user protected (user and speech dictionaries): adding one must not leave a cached correction. */
+        /** Words the user protected (user, speech and never-correct words): a new one must not stay corrected. */
         val protectedWords: String,
     )
 
@@ -1079,14 +1079,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
-    /** The state of the words the user protected: the user dictionary revision and the speech dictionary. */
+    /**
+     * The state of the words the user protected: the user dictionary revision, the speech dictionary and the
+     * never-correct words, which an undone autocorrection adds to in the background.
+     */
     private fun protectedWordsState(): String {
         val speechDocument = try {
             appContext.speechDictionary().value.state.value.document
         } catch (_: Throwable) {
             null
         }
-        return "${userDictionaryRevision.get()}:${System.identityHashCode(speechDocument)}"
+        val neverCorrect = prefs.dictionary.neverCorrectWordsData.get()
+        return "${userDictionaryRevision.get()}:${System.identityHashCode(speechDocument)}:${neverCorrect.hashCode()}"
     }
 
     override fun autoCommitStateKey(subtype: Subtype): String {
