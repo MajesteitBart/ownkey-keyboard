@@ -491,17 +491,19 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         candidate: SuggestionCandidate,
         originalToken: String?,
     ) {
-        val guarded = originalToken?.takeIf { candidate.isEligibleForAutoCommit }
-        guarded?.let { nlpManager.noteAutocorrectReverted(it) }
+        // The subtype the correction was made on, even if the user switches languages before the provider runs.
+        val subtype = subtypeManager.activeSubtype
+        val guard = originalToken?.takeIf { candidate.isEligibleForAutoCommit }
+            ?.let { nlpManager.noteAutocorrectReverted(it, subtype) }
         scope.launch {
             try {
                 sourceProvider.notifySuggestionReverted(
-                    subtype = subtypeManager.activeSubtype,
+                    subtype = subtype,
                     candidate = candidate,
                     originalToken = originalToken,
                 )
             } finally {
-                guarded?.let { nlpManager.clearAutocorrectReverted(it) }
+                guard?.let { nlpManager.clearAutocorrectReverted(it) }
             }
         }
     }

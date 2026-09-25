@@ -51,6 +51,7 @@ import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.lib.kotlin.collectLatestIn
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
@@ -81,9 +82,8 @@ class NlpManager(context: Context) {
     private var wordSuggestionBatch = WordSuggestionBatch.Empty
     // Numbers the suggestion runs as they are requested; see WordSuggestionRequest.sequence.
     private val suggestionSequence = AtomicLong(0L)
-    // The word whose autocorrection the user just undid, and its subtype, while the provider is being told.
-    @Volatile
-    private var revertedAutocorrect: Pair<String, Long>? = null
+    // The word whose autocorrection the user just undid, while the provider is being told.
+    private val revertedAutocorrect = AtomicReference<RevertedAutocorrect?>(null)
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -310,17 +310,21 @@ class NlpManager(context: Context) {
         }
     }
 
+    /** A word kept as typed on one subtype because the user just undid its autocorrection. */
+    class RevertedAutocorrect internal constructor(val word: String, val subtypeId: Long)
+
     /**
-     * Notes synchronously that the user undid the autocorrection of [originalToken], so a space pressed right away
-     * cannot redo it before the provider has stored the word as one to leave alone. [clearAutocorrectReverted] ends
-     * this once the provider has been told.
+     * Notes synchronously that the user undid the autocorrection of [originalToken] on [subtype], so a space pressed
+     * right away cannot redo it before the provider has stored the word as one to leave alone. Pass the result to
+     * [clearAutocorrectReverted] once the provider has been told.
      */
-    fun noteAutocorrectReverted(originalToken: String) {
-        revertedAutocorrect = originalToken.trim() to subtypeManager.activeSubtype.id
+    fun noteAutocorrectReverted(originalToken: String, subtype: Subtype): RevertedAutocorrect {
+        return RevertedAutocorrect(originalToken.trim(), subtype.id).also { revertedAutocorrect.set(it) }
     }
 
-    fun clearAutocorrectReverted(originalToken: String) {
-        if (revertedAutocorrect?.first == originalToken.trim()) revertedAutocorrect = null
+    /** Ends [guard], unless a newer undo has replaced it in the meantime. */
+    fun clearAutocorrectReverted(guard: RevertedAutocorrect) {
+        revertedAutocorrect.compareAndSet(guard, null)
     }
 
     private fun wordSuggestionRequest(
@@ -378,7 +382,7 @@ class NlpManager(context: Context) {
                 sequence = suggestionSequence.get(),
             ),
             batch = wordSuggestionBatch,
-            revertedInput = revertedAutocorrect?.takeIf { it.second == subtype.id }?.first,
+            revertedInput = revertedAutocorrect.get()?.takeIf { it.subtypeId == subtype.id }?.word,
         ) {
             val start = SystemClock.uptimeMillis()
             // Main thread: read the constant provider map without the lock.
