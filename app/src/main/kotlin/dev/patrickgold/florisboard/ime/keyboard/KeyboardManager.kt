@@ -49,6 +49,7 @@ import dev.patrickgold.florisboard.ime.nlp.AutocorrectRevertCandidate
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
 import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
@@ -472,18 +473,36 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
             if (candidateForRevert.isEligibleForAutoCommit) {
                 TypingSpeedMetrics.recordAutoCorrectUndone()
-                originalToken?.let { nlpManager.noteAutocorrectReverted(it) }
             }
             candidateForRevert.sourceProvider?.let { sourceProvider ->
-                scope.launch {
-                    sourceProvider.notifySuggestionReverted(
-                        subtype = subtypeManager.activeSubtype,
-                        candidate = candidateForRevert,
-                        originalToken = originalToken,
-                    )
-                }
+                notifyReverted(sourceProvider, candidateForRevert, originalToken)
             }
             autocorrectUndoTracker.clearIfCandidateMatches(candidateForRevert)
+        }
+    }
+
+    /**
+     * Tells [sourceProvider] in the background that [candidate] was undone. Until it has stored [originalToken] as a
+     * word to leave alone, a space pressed right away must not redo the autocorrection, so the word is kept as typed
+     * for that long.
+     */
+    private fun notifyReverted(
+        sourceProvider: SuggestionProvider,
+        candidate: SuggestionCandidate,
+        originalToken: String?,
+    ) {
+        val guarded = originalToken?.takeIf { candidate.isEligibleForAutoCommit }
+        guarded?.let { nlpManager.noteAutocorrectReverted(it) }
+        scope.launch {
+            try {
+                sourceProvider.notifySuggestionReverted(
+                    subtype = subtypeManager.activeSubtype,
+                    candidate = candidate,
+                    originalToken = originalToken,
+                )
+            } finally {
+                guarded?.let { nlpManager.clearAutocorrectReverted(it) }
+            }
         }
     }
 
@@ -528,16 +547,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         autocorrectUndoTracker.clearPending()
         if (replacement.candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectUndone()
-            nlpManager.noteAutocorrectReverted(replacement.originalToken)
         }
         replacement.candidate.sourceProvider?.let { sourceProvider ->
-            scope.launch {
-                sourceProvider.notifySuggestionReverted(
-                    subtype = subtypeManager.activeSubtype,
-                    candidate = replacement.candidate,
-                    originalToken = replacement.originalToken,
-                )
-            }
+            notifyReverted(sourceProvider, replacement.candidate, replacement.originalToken)
         }
         return true
     }
