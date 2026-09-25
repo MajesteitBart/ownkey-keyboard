@@ -77,6 +77,9 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.glideTypingManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
+import dev.patrickgold.florisboard.ime.nlp.latin.KeyboardGeometrySource
+import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCue
 import dev.patrickgold.florisboard.ime.text.dictation.DictationRecognitionCues
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
@@ -86,6 +89,7 @@ import dev.patrickgold.florisboard.ime.editor.OperationUnit
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
 import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
@@ -166,9 +170,10 @@ fun TextKeyboardLayout(
 
     val controller = remember { TextKeyboardLayoutController(context) }.also {
         it.keyboard = keyboard
-        if (glideEnabled && keyboard.mode == KeyboardMode.CHARACTERS) {
+        if (keyboard.mode == KeyboardMode.CHARACTERS) {
             val keys = keyboard.keys().asSequence().toList()
-            glideTypingManager.setLayout(keys)
+            KeyboardGeometrySource.update(keys)
+            if (glideEnabled) glideTypingManager.setLayout(keys)
         }
     }
     val touchEventChannel = remember { Channel<MotionEvent>(64) }
@@ -785,6 +790,7 @@ private class TextKeyboardLayoutController(
                 val retData = popupUiController.getActiveKeyData(activeKey)
                 if (retData != null && !pointer.hasTriggeredGestureMove) {
                     if (retData == activeKey.computedData) {
+                        recordTap(activeKey.computedData, event, pointer)
                         if (activeKey.computedData != activeKey.computedDataOnDown) {
                             inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                             inputEventDispatcher.sendDownUp(activeKey.computedData)
@@ -792,6 +798,8 @@ private class TextKeyboardLayoutController(
                             inputEventDispatcher.sendUp(activeKey.computedDataOnDown)
                         }
                     } else {
+                        // A popup alternative: the tap position belongs to the popup, not to a key.
+                        recordTap(retData, event = null, pointer)
                         inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                         inputEventDispatcher.sendDownUp(retData)
                     }
@@ -803,6 +811,7 @@ private class TextKeyboardLayoutController(
                 if (pointer.hasTriggeredGestureMove) {
                     inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                 } else {
+                    recordTap(activeKey.computedData, event, pointer)
                     if (activeKey.computedData != activeKey.computedDataOnDown) {
                         inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                         inputEventDispatcher.sendDownUp(activeKey.computedData)
@@ -814,6 +823,32 @@ private class TextKeyboardLayoutController(
             pointer.activeKey = null
         }
         pointer.hasTriggeredGestureMove = false
+    }
+
+    /**
+     * Remembers where a character key was tapped, for the touch model of autocorrect. Without an [event] the
+     * character is kept without a position.
+     */
+    private fun recordTap(data: KeyData, event: MotionEvent?, pointer: TouchPointer) {
+        if (data.type != KeyType.CHARACTER || data.code <= 0) return
+        val info = editorInstance.activeInfo
+        if (!AutocorrectTriggerPolicy.allowsField(
+                variation = info.inputAttributes.variation,
+                flagTextNoSuggestions = info.inputAttributes.flagTextNoSuggestions,
+                isRichInputEditor = info.isRichInputEditor,
+            )
+        ) {
+            // Passwords and similar fields are never corrected, so their letters are not kept either.
+            TapTrail.clear()
+            return
+        }
+        // Look the pointer up by id: with several fingers down, a cached index can belong to another finger.
+        val index = event?.findPointerIndex(pointer.id) ?: -1
+        if (event == null || index < 0 || pointer.hasTriggeredLongPress) {
+            TapTrail.recordWithoutPosition(data.code)
+        } else {
+            TapTrail.record(data.code, event.getX(index), event.getY(index))
+        }
     }
 
     private fun onTouchCancelInternal(event: MotionEvent, pointer: TouchPointer) {

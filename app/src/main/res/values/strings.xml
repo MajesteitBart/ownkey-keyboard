@@ -93,6 +93,8 @@
     <string name="quick_action__toggle_incognito_mode__tooltip">Toggle incognito mode</string>
     <string name="quick_action__toggle_autocorrect" comment="Please mind the limited available space for the quick action strings">Autocorrect</string>
     <string name="quick_action__toggle_autocorrect__tooltip">Toggle autocorrect</string>
+    <string name="autocorrect__toast_after_enabled">Autocorrect is on</string>
+    <string name="autocorrect__toast_after_disabled">Autocorrect is off. Suggestions still show.</string>
     <string name="quick_action__ai_rewrite" comment="Please mind the limited available space for the quick action strings">Rewrite</string>
     <string name="quick_action__ai_rewrite__tooltip">Rewrite selected text</string>
     <string name="quick_action__voice_input" comment="Please mind the limited available space for the quick action strings">Voice input</string>
@@ -535,6 +537,15 @@
     <string name="pref__suggestion__clear_personalized_data__confirm_message" comment="Dialog message">This deletes all learned word predictions and remembered personal data (such as e-mail addresses) from this device. This action cannot be undone. Continue?</string>
     <string name="pref__suggestion__clear_personalized_data__done" comment="Toast message">Learned data cleared</string>
     <string name="pref__correction__title" comment="Preference group title">Corrections</string>
+    <string name="pref__correction__autocorrect__label" comment="Preference title">Autocorrect</string>
+    <string name="pref__correction__autocorrect__summary" comment="Preference summary">Replace a mistyped word with the word you meant when you press space</string>
+    <string name="pref__correction__autocorrect_strength__label" comment="Preference title">Autocorrect strength</string>
+    <string name="enum__autocorrect_strength__gentle" comment="Enum value label">Gentle</string>
+    <string name="enum__autocorrect_strength__gentle__description" comment="Enum value description">Fixes only the clearest typos</string>
+    <string name="enum__autocorrect_strength__normal" comment="Enum value label">Normal</string>
+    <string name="enum__autocorrect_strength__normal__description" comment="Enum value description">Fixes common typos. Recommended</string>
+    <string name="enum__autocorrect_strength__strong" comment="Enum value label">Strong</string>
+    <string name="enum__autocorrect_strength__strong__description" comment="Enum value description">Fixes more typos, and now and then changes a word you meant</string>
     <string name="pref__correction__auto_capitalization__label" comment="Preference title">Auto-capitalization</string>
     <string name="pref__correction__auto_capitalization__summary" comment="Preference summary">Capitalize words based on the current input context</string>
     <string name="pref__correction__app_specific_autocorrect_profiles_enabled__label" comment="Preference title">App-specific autocorrect profiles</string>
@@ -965,6 +976,8 @@
     <string name="devtools__show_primary_clip__summary" comment="Summary of Show primary clip in Devtools">Overlays the current primary clip of the clipboard</string>
     <string name="devtools__show_input_state_overlay__label" comment="Label of Show input cache overlay in Devtools">Show input state overlay</string>
     <string name="devtools__show_input_state_overlay__summary" comment="Summary of Show input cache overlay in Devtools">Overlays the current input state for debugging</string>
+    <string name="devtools__autocorrect_legacy_engine__label">Use legacy autocorrect engine</string>
+    <string name="devtools__autocorrect_legacy_engine__summary">Score suggestions with the engine from before the autocorrect rebuild, for comparison</string>
     <string name="devtools__show_spelling_overlay__label" comment="Label of Show spelling overlay in Devtools">Show spelling overlay</string>
     <string name="devtools__show_spelling_overlay__summary" comment="Summary of Show spelling overlay in Devtools">Overlays the current spelling results for debugging</string>
     <string name="devtools__show_inline_autofill_overlay__label">Show inline autofill overlay</string>

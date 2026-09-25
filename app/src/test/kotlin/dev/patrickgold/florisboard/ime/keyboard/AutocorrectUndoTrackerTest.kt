@@ -16,11 +16,13 @@
 
 package dev.patrickgold.florisboard.ime.keyboard
 
+import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 class AutocorrectUndoTrackerTest : FunSpec({
@@ -58,6 +60,55 @@ class AutocorrectUndoTrackerTest : FunSpec({
             originalToken = "helo",
             candidate = correctedCandidate,
         )
+    }
+
+    test("undoes a missed-space correction that spans two words") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "this is", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "thisis", correctedCandidate = correctedCandidate)
+
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I think this is ")) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 8, end = 15),
+            originalToken = "thisis",
+            candidate = correctedCandidate,
+        )
+        // Only the whole pair counts: "xthis is" does not end with the corrected words as separate words.
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I think xthis is ")).shouldBeNull()
+    }
+
+    test("undo only applies right after the correction") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        // "I like teh" became "I like the"; the corrected word ends at 10.
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate, correctedEnd = 10)
+
+        tracker.findUndoReplacement(contentAtCursor("I like the ")) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 7, end = 10),
+            originalToken = "teh",
+            candidate = correctedCandidate,
+        )
+        // Typed on, and ended with the same word again: that "the" was typed correctly and must stay.
+        tracker.findUndoReplacement(contentAtCursor("I like the cat sat on the ")).shouldBeNull()
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I like the cat sat on the ")).shouldBeNull()
+    }
+
+    test("undo does not reach across several separators or a selection") {
+        val tracker = AutocorrectUndoTracker()
+        tracker.trackAutoCorrect(
+            originalToken = "teh",
+            correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true),
+        )
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I saw the.\n\n")).shouldBeNull()
+
+        val text = "I saw the cat"
+        val selected = EditorContent(
+            text = text,
+            offset = 0,
+            localSelection = EditorRange(10, 13),
+            localComposing = EditorRange.Unspecified,
+            localCurrentWord = EditorRange.Unspecified,
+        )
+        tracker.findUndoReplacement(selected).shouldBeNull()
     }
 
     test("does not return undo replacement when token near cursor does not match") {
@@ -104,6 +155,17 @@ class AutocorrectUndoTrackerTest : FunSpec({
         tracker.findBackspaceRestoreReplacement(wordContent(text = "hello", cursor = 3)).shouldBeNull()
     }
 
+    test("undo does not apply with the cursor moved inside the corrected word") {
+        val tracker = AutocorrectUndoTracker()
+        tracker.trackAutoCorrect(
+            originalToken = "helo",
+            correctedCandidate = WordSuggestionCandidate(text = "hello", isEligibleForAutoCommit = true),
+        )
+
+        tracker.findUndoReplacement(wordContent(text = "hello", cursor = 3)).shouldBeNull()
+        tracker.findUndoReplacement(wordContent(text = "hello", cursor = 5)).shouldNotBeNull()
+    }
+
     test("does not return backspace restore replacement for active text selection") {
         val tracker = AutocorrectUndoTracker()
         tracker.trackAutoCorrect(
@@ -120,6 +182,20 @@ class AutocorrectUndoTrackerTest : FunSpec({
         )
 
         tracker.findBackspaceRestoreReplacement(content).shouldBeNull()
+    }
+
+    test("undo reports the subtype the correction was made on") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        // Not the default subtype, so a fallback to a default or the active subtype would fail.
+        val subtype = Subtype.DEFAULT.copy(id = 42L)
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate, subtype = subtype)
+
+        tracker.findUndoReplacement(contentAtCursor("I like the "))?.subtype shouldBe subtype
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I like the "))?.subtype shouldBe subtype
+        tracker.subtypeForCandidate(correctedCandidate) shouldBe subtype
+        (subtype == Subtype.DEFAULT) shouldBe false
+        tracker.subtypeForCandidate(WordSuggestionCandidate(text = "tea", isEligibleForAutoCommit = true)).shouldBeNull()
     }
 
     test("returns original token for matching candidate") {

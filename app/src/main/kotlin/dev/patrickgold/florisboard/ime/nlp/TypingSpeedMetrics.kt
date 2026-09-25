@@ -33,6 +33,8 @@ object TypingSpeedMetrics {
     private var top3SuggestionAcceptCount: Long = 0
     private var autoCorrectApplyCount: Long = 0
     private var autoCorrectUndoCount: Long = 0
+    private var autoCommitDecidedNowCount: Long = 0
+    private val autoCommitDecisionLatencySamplesMs = ArrayDeque<Long>(SuggestionLatencyWindowSize)
     private var textInputKeystrokeCount: Long = 0
     private var committedWordCount: Long = 0
     private var hasOpenWord: Boolean = false
@@ -75,6 +77,21 @@ object TypingSpeedMetrics {
         }
     }
 
+    /**
+     * Records an autocorrect decision that had to be made on the spot because the latest suggestions belonged to an
+     * earlier version of the word.
+     */
+    fun recordAutoCommitDecidedNow(latencyMs: Long) {
+        if (!isEnabled) return
+        synchronized(lock) {
+            autoCommitDecidedNowCount += 1
+            if (autoCommitDecisionLatencySamplesMs.size >= SuggestionLatencyWindowSize) {
+                autoCommitDecisionLatencySamplesMs.removeFirst()
+            }
+            autoCommitDecisionLatencySamplesMs.addLast(latencyMs.coerceAtLeast(0))
+        }
+    }
+
     fun recordTextInput(text: String) {
         if (!isEnabled || text.isEmpty()) return
         synchronized(lock) {
@@ -114,6 +131,8 @@ object TypingSpeedMetrics {
                 autoCorrectUndoCount = autoCorrectUndoCount,
                 falseAutocorrectRatio = safeRate(autoCorrectUndoCount, autoCorrectApplyCount),
                 undoAutocorrectFrequency = safeRate(autoCorrectUndoCount, committedWordCount),
+                autoCommitDecidedNowCount = autoCommitDecidedNowCount,
+                autoCommitDecisionLatencyP95Ms = percentile(autoCommitDecisionLatencySamplesMs.toList(), 0.95),
             )
         }
     }
@@ -121,6 +140,8 @@ object TypingSpeedMetrics {
     fun resetForTests() {
         synchronized(lock) {
             suggestionLatencySamplesMs.clear()
+            autoCommitDecidedNowCount = 0
+            autoCommitDecisionLatencySamplesMs.clear()
             suggestionAcceptCount = 0
             top3SuggestionAcceptCount = 0
             autoCorrectApplyCount = 0
@@ -166,5 +187,7 @@ object TypingSpeedMetrics {
         val autoCorrectUndoCount: Long,
         val falseAutocorrectRatio: Double,
         val undoAutocorrectFrequency: Double,
+        val autoCommitDecidedNowCount: Long = 0,
+        val autoCommitDecisionLatencyP95Ms: Double = 0.0,
     )
 }

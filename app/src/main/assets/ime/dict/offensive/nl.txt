@@ -1,0 +1,82 @@
+# Possibly offensive Dutch words: strong profanity, sexual slang and slurs. Every list in this folder applies to every
+# Latin keyboard. With "Block possibly offensive words" on (the default), autocorrect never changes a typed word into
+# one of these, and suggestions and next-word predictions leave them out. A word the user typed is never changed for
+# being on a list.
+# Words still used for a disease or with another common harmless meaning stay off the list (kanker, tyfus, nicht,
+# eikel, pijpen, teef, lullig). tering and pleuris are on it: as diseases they are archaic, as curses they are common.
+# Reviewed by hand against the shipped nl.txt; one word per line, lowercase.
+bitch
+flikker
+flikkers
+fuck
+fucking
+geneukt
+gepijpt
+godsamme
+godver
+godverdomme
+hoer
+hoeren
+hoerenjong
+hoerenkast
+hoerenloper
+hoerenzoon
+hoerig
+hoertje
+hoertjes
+kloot
+kloothommel
+klootzak
+klootzakken
+klote
+kloten
+kloterige
+klotezooi
+kolere
+kut
+kutje
+kutjes
+kutten
+kutwijf
+kutzooi
+lul
+lulhannes
+lulkoek
+lulletje
+mietje
+moffen
+mongool
+neger
+negerin
+negers
+neuk
+neuken
+neuker
+neukt
+neukte
+neukten
+nikker
+nikkers
+pijpbeurt
+pleuris
+porno
+pornofilm
+pornofilms
+pornoster
+rukker
+shit
+slet
+sletje
+sletjes
+sletten
+sletterig
+spleetogen
+spleetoog
+stront
+tering
+teringzooi
+tiet
+tieten
+tietjes
+trut
+trutten

@@ -179,4 +179,17 @@
     <string name="dictation_fix__manual">De tekst is veranderd. “{word}” in je woordenboek toevoegen?</string>
     <string name="dictation_fix__save_failed">“{word}” kon niet worden opgeslagen. Het blijft voorlopig bewaard en wordt bij de volgende wijziging opgeslagen; controleer de vrije ruimte.</string>
     <string name="dictation_fix__manual_open">Woordenboek openen</string>
+    <string name="autocorrect__toast_after_enabled">Autocorrectie staat aan</string>
+    <string name="autocorrect__toast_after_disabled">Autocorrectie staat uit. Suggesties blijven zichtbaar.</string>
+    <string name="pref__correction__autocorrect__label">Autocorrectie</string>
+    <string name="pref__correction__autocorrect__summary">Vervangt een verkeerd getypt woord door het bedoelde woord als je op spatie drukt</string>
+    <string name="devtools__autocorrect_legacy_engine__label">Oude autocorrectie-engine gebruiken</string>
+    <string name="devtools__autocorrect_legacy_engine__summary">Suggesties scoren met de engine van vóór de herbouw van autocorrectie, om te vergelijken</string>
+    <string name="pref__correction__autocorrect_strength__label">Sterkte van autocorrectie</string>
+    <string name="enum__autocorrect_strength__gentle">Voorzichtig</string>
+    <string name="enum__autocorrect_strength__gentle__description">Verbetert alleen de duidelijkste typfouten</string>
+    <string name="enum__autocorrect_strength__normal">Normaal</string>
+    <string name="enum__autocorrect_strength__normal__description">Verbetert gewone typfouten. Aanbevolen</string>
+    <string name="enum__autocorrect_strength__strong">Sterk</string>
+    <string name="enum__autocorrect_strength__strong__description">Verbetert meer typfouten, en verandert af en toe een woord dat je bedoelde</string>
 </resources>

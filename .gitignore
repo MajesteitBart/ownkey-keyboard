@@ -67,3 +67,6 @@ debug/
 target/
 **/*.rs.bk
 *.pdb
+
+# Python bytecode from tools/ scripts
+__pycache__/

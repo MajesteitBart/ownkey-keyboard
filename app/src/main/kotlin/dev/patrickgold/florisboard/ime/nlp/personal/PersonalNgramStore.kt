@@ -50,12 +50,16 @@ class PersonalNgramModel(
     companion object {
         const val MAX_BIGRAMS_DEFAULT = 6000
         const val MAX_TRIGRAMS_DEFAULT = 4000
+        const val MAX_WORDS_DEFAULT = 6000
         private const val KEY_SEPARATOR = " "
         private const val EVICTION_HEADROOM_FACTOR = 1.2
     }
 
     private val bigrams = HashMap<String, Int>()
     private val trigrams = HashMap<String, Int>()
+
+    /** How often each word was typed and kept (only while autocorrect was on). Stored next to the pairs. */
+    private val wordCounts = HashMap<String, Int>()
 
     val bigramCount: Int get() = bigrams.size
     val trigramCount: Int get() = trigrams.size
@@ -64,7 +68,12 @@ class PersonalNgramModel(
      * Records the word sequence ending at the most recently completed word. Only the final bigram and
      * trigram of [tokens] are recorded, so this should be called exactly once per completed word.
      */
-    fun learn(tokens: List<String>) {
+    fun learn(tokens: List<String>, countWord: Boolean = true) {
+        val last = tokens.lastOrNull() ?: return
+        if (countWord && isLearnableWord(last)) {
+            wordCounts.merge(last, 1, Int::plus)
+            evictIfNecessary(wordCounts, MAX_WORDS_DEFAULT)
+        }
         if (tokens.size < 2) return
         val word = tokens.last()
         val prev1 = tokens[tokens.size - 2]
@@ -119,21 +128,30 @@ class PersonalNgramModel(
         return count.toDouble() / (2.0 + count.toDouble())
     }
 
+    /** How often [word] was typed and kept, as far as this model remembers. */
+    fun timesTyped(word: String): Int = wordCounts[word] ?: 0
+
     fun snapshotBigrams(): Map<String, Int> = HashMap(bigrams)
+    fun snapshotWordCounts(): Map<String, Int> = HashMap(wordCounts)
     fun snapshotTrigrams(): Map<String, Int> = HashMap(trigrams)
 
-    fun restore(bigramData: Map<String, Int>, trigramData: Map<String, Int>) {
+    fun restore(bigramData: Map<String, Int>, trigramData: Map<String, Int>, wordCountData: Map<String, Int> = emptyMap()) {
         bigrams.clear()
         trigrams.clear()
         bigrams.putAll(bigramData)
         trigrams.putAll(trigramData)
         evictIfNecessary(bigrams, maxBigrams)
         evictIfNecessary(trigrams, maxTrigrams)
+        // Not rebuilt from the pairs: those also hold words typed while autocorrect was off.
+        wordCounts.clear()
+        wordCounts.putAll(wordCountData)
+        evictIfNecessary(wordCounts, MAX_WORDS_DEFAULT)
     }
 
     fun clear() {
         bigrams.clear()
         trigrams.clear()
+        wordCounts.clear()
     }
 
     private fun isLearnableWord(word: String): Boolean {
@@ -166,6 +184,7 @@ class PersonalNgramStore(context: Context) {
     private data class LanguageNgramData(
         val bigrams: Map<String, Int> = emptyMap(),
         val trigrams: Map<String, Int> = emptyMap(),
+        val words: Map<String, Int> = emptyMap(),
     )
 
     @Serializable
@@ -182,10 +201,11 @@ class PersonalNgramStore(context: Context) {
     private var isLoaded = false
     private var pendingSaveJob: Job? = null
 
-    suspend fun learn(language: String, tokens: List<String>) {
+    /** With [countWord] off, the word pairs are learned but the word does not count as typed and kept. */
+    suspend fun learn(language: String, tokens: List<String>, countWord: Boolean = true) {
         mutex.withLock {
             ensureLoadedLocked()
-            modelForLocked(language).learn(tokens)
+            modelForLocked(language).learn(tokens, countWord)
             scheduleSaveLocked()
         }
     }
@@ -201,6 +221,34 @@ class PersonalNgramStore(context: Context) {
         mutex.withLock {
             ensureLoadedLocked()
             return modelForLocked(language).continuationScore(prev1, word)
+        }
+    }
+
+    /**
+     * Like [continuationScore], but never waits and never loads from disk: returns 0 while the store is busy or not
+     * loaded yet. Safe to call on the main thread.
+     */
+    fun continuationScoreIfLoaded(language: String, prev1: String, word: String): Double {
+        if (!mutex.tryLock()) return 0.0
+        try {
+            if (!isLoaded) return 0.0
+            return models[language.lowercase()]?.continuationScore(prev1, word) ?: 0.0
+        } finally {
+            mutex.unlock()
+        }
+    }
+
+    /**
+     * Like [PersonalNgramModel.timesTyped], but never waits and never loads from disk: returns 0 while the store is
+     * busy or not loaded yet. Safe to call on the main thread.
+     */
+    fun timesTypedIfLoaded(language: String, word: String): Int {
+        if (!mutex.tryLock()) return 0
+        try {
+            if (!isLoaded) return 0
+            return models[language.lowercase()]?.timesTyped(word) ?: 0
+        } finally {
+            mutex.unlock()
         }
     }
 
@@ -230,7 +278,7 @@ class PersonalNgramStore(context: Context) {
             if (!file.exists()) return
             val data = json.decodeFromString<NgramFileData>(file.readText())
             for ((language, languageData) in data.languages) {
-                modelForLocked(language).restore(languageData.bigrams, languageData.trigrams)
+                modelForLocked(language).restore(languageData.bigrams, languageData.trigrams, languageData.words)
             }
         } catch (e: Exception) {
             flogError { "Failed loading personal n-gram data: $e" }
@@ -252,6 +300,7 @@ class PersonalNgramStore(context: Context) {
                     LanguageNgramData(
                         bigrams = model.snapshotBigrams(),
                         trigrams = model.snapshotTrigrams(),
+                        words = model.snapshotWordCounts(),
                     )
                 },
             )

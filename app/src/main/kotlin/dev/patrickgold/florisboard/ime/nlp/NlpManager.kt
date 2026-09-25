@@ -29,6 +29,9 @@ import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.han.HanShapeBasedLanguageProvider
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
+import dev.patrickgold.florisboard.lib.devtools.flogDebug
+import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.ime.nlp.latin.LatinLanguageProvider
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
@@ -47,6 +50,8 @@ import kotlinx.coroutines.sync.withLock
 import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.lib.kotlin.collectLatestIn
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
@@ -63,16 +68,22 @@ class NlpManager(context: Context) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val clipboardSuggestionProvider = ClipboardSuggestionProvider(context)
     private val emojiSuggestionProvider = EmojiSuggestionProvider(context)
-    private val providers = guardedByLock {
-        mapOf(
-            LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
-            HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
-        )
-    }
+    // The map itself never changes after construction, so main-thread callers may read it without the lock.
+    private val providerMap = mapOf(
+        LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
+        HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
+    )
+    private val providers = guardedByLock { providerMap }
     // lock unnecessary because values constant
     private val providersForceSuggestionOn = mutableMapOf<String, Boolean>()
 
     private val internalSuggestionsGuard = Mutex()
+    @Volatile
+    private var wordSuggestionBatch = WordSuggestionBatch.Empty
+    // Numbers the suggestion runs as they are requested; see WordSuggestionRequest.sequence.
+    private val suggestionSequence = AtomicLong(0L)
+    // The word whose autocorrection the user just undid, while the provider is being told.
+    private val revertedAutocorrect = AtomicReference<RevertedAutocorrect?>(null)
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -139,13 +150,19 @@ class NlpManager(context: Context) {
     fun preload(subtype: Subtype) {
         scope.launch {
             emojiSuggestionProvider.preload(subtype)
-            providers.withLock { providers ->
-                subtype.nlpProviders.forEach { _, providerId ->
-                    providers[providerId]?.let { provider ->
-                        provider.createIfNecessary()
-                        provider.preload(subtype)
+            // Only look the providers up under the lock. Preloading loads dictionaries for seconds, and the main
+            // thread takes this lock on every text commit (composing region lookup), so holding it while loading
+            // froze typing right after the keyboard process started.
+            val wrappers = providers.withLock { providers ->
+                buildList {
+                    subtype.nlpProviders.forEach { _, providerId ->
+                        providers[providerId]?.let { add(it) }
                     }
                 }
+            }.distinct()
+            wrappers.forEach { wrapper ->
+                wrapper.createIfNecessary()
+                wrapper.preload(subtype)
             }
         }
     }
@@ -181,12 +198,12 @@ class NlpManager(context: Context) {
     }
 
     fun providerForcesSuggestionOn(subtype: Subtype): Boolean {
-        // Using a cache because I have no idea how fast the runBlocking is
-        return providersForceSuggestionOn.getOrPut(subtype.nlpProviders.suggestion) {
-            runBlocking {
-                getSuggestionProvider(subtype).forcesSuggestionOn
-            }
-        }
+        val providerId = subtype.nlpProviders.suggestion
+        providersForceSuggestionOn[providerId]?.let { return it }
+        // Called on the main thread, so read the constant provider map without the lock.
+        val forcesSuggestionOn = (providerMap[providerId]?.provider as? SuggestionProvider)?.forcesSuggestionOn ?: false
+        providersForceSuggestionOn[providerId] = forcesSuggestionOn
+        return forcesSuggestionOn
     }
 
     fun isSuggestionOn(): Boolean =
@@ -196,6 +213,11 @@ class NlpManager(context: Context) {
 
     fun suggest(subtype: Subtype, content: EditorContent) {
         val reqTime = SystemClock.uptimeMillis()
+        val isPrivateSession = keyboardManager.activeState.isIncognitoMode
+        val allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get()
+        val request = wordSuggestionRequest(
+            content, subtype, isPrivateSession, allowPossiblyOffensive, suggestionSequence.incrementAndGet(),
+        )
         scope.launch {
             val emojiSuggestions = when {
                 prefs.emoji.suggestionEnabled.get() -> {
@@ -203,8 +225,8 @@ class NlpManager(context: Context) {
                         subtype = subtype,
                         content = content,
                         maxCandidateCount = prefs.emoji.suggestionCandidateMaxCount.get(),
-                        allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                        allowPossiblyOffensive = allowPossiblyOffensive,
+                        isPrivateSession = isPrivateSession,
                     )
                 }
                 else -> emptyList()
@@ -218,13 +240,14 @@ class NlpManager(context: Context) {
                         subtype = subtype,
                         content = content,
                         maxCandidateCount = 8,
-                        allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                        allowPossiblyOffensive = allowPossiblyOffensive,
+                        isPrivateSession = isPrivateSession,
                     )
                 }
             }
             internalSuggestionsGuard.withLock {
                 if (internalSuggestions.first < reqTime) {
+                    wordSuggestionBatch = WordSuggestionBatch(request, suggestions)
                     internalSuggestions = reqTime to buildList {
                         addAll(emojiSuggestions)
                         addAll(suggestions)
@@ -268,20 +291,118 @@ class NlpManager(context: Context) {
 
     fun suggestDirectly(suggestions: List<SuggestionCandidate>) {
         val reqTime = SystemClock.uptimeMillis()
+        // Under the lock, so a suggestion run that finishes meanwhile cannot put its batch back afterwards.
         runBlocking {
-            internalSuggestions = reqTime to suggestions
+            internalSuggestionsGuard.withLock {
+                wordSuggestionBatch = WordSuggestionBatch.Empty
+                internalSuggestions = reqTime to suggestions
+            }
         }
     }
 
     fun clearSuggestions() {
         val reqTime = SystemClock.uptimeMillis()
         runBlocking {
-            internalSuggestions = reqTime to emptyList()
+            internalSuggestionsGuard.withLock {
+                wordSuggestionBatch = WordSuggestionBatch.Empty
+                internalSuggestions = reqTime to emptyList()
+            }
         }
     }
 
-    fun getAutoCommitCandidate(): SuggestionCandidate? {
-        return activeCandidates.firstOrNull { it.isEligibleForAutoCommit }
+    /** A word kept as typed on one subtype because the user just undid its autocorrection. */
+    class RevertedAutocorrect internal constructor(val word: String, val subtypeId: Long)
+
+    /**
+     * Notes synchronously that the user undid the autocorrection of [originalToken] on [subtype], so a space pressed
+     * right away cannot redo it before the provider has stored the word as one to leave alone. Pass the result to
+     * [clearAutocorrectReverted] once the provider has been told.
+     */
+    fun noteAutocorrectReverted(originalToken: String, subtype: Subtype): RevertedAutocorrect {
+        return RevertedAutocorrect(originalToken.trim(), subtype.id).also { revertedAutocorrect.set(it) }
+    }
+
+    /** Ends [guard], unless a newer undo has replaced it in the meantime. */
+    fun clearAutocorrectReverted(guard: RevertedAutocorrect) {
+        revertedAutocorrect.compareAndSet(guard, null)
+    }
+
+    private fun wordSuggestionRequest(
+        content: EditorContent,
+        subtype: Subtype,
+        isPrivateSession: Boolean,
+        allowPossiblyOffensive: Boolean,
+        sequence: Long,
+    ): WordSuggestionRequest {
+        // Main thread: read the constant provider map without the lock.
+        val provider = providerMap[subtype.nlpProviders.suggestion]?.provider as? SuggestionProvider
+        return WordSuggestionRequest.of(
+            content = content,
+            subtypeId = subtype.id,
+            inputSessionId = editorInstance.activeInputSessionId,
+            isPrivateSession = isPrivateSession,
+            sequence = sequence,
+            allowPossiblyOffensive = allowPossiblyOffensive,
+            providerState = provider?.autoCommitStateKey(subtype).orEmpty(),
+        )
+    }
+
+    /**
+     * Returns the candidate that should replace the word the user just finished in [content], or null to keep the
+     * word as typed. Only uses suggestions computed for exactly this word; when the latest suggestions belong to an
+     * earlier prefix (fast typing), the provider decides on the spot from in-memory data. [trigger] is the character
+     * that ends the word.
+     */
+    fun autoCommitCandidateFor(content: EditorContent, trigger: String = " "): SuggestionCandidate? {
+        // The toggle can flip between the last suggestion run and the next space press.
+        if (!prefs.correction.highCertaintyAutocorrectEnabled.get()) return null
+        if (!isSuggestionOn()) return null
+        // Right after an accepted suggestion the keyboard is predicting the next word; the accepted word stays.
+        if (editorInstance.phantomSpace.isActive) return null
+        val editorInfo = editorInstance.activeInfo
+        if (!AutocorrectTriggerPolicy.allowsField(
+                variation = editorInfo.inputAttributes.variation,
+                flagTextNoSuggestions = editorInfo.inputAttributes.flagTextNoSuggestions,
+                isRichInputEditor = editorInfo.isRichInputEditor,
+            )
+        ) {
+            return null
+        }
+        if (!AutocorrectTriggerPolicy.isCorrectableToken(AutocorrectTriggerPolicy.tokenBeforeCursor(content.textBeforeSelection), trigger)) {
+            return null
+        }
+        val subtype = subtypeManager.activeSubtype
+        val selection = AutoCommitSelector.select(
+            // Only the latest suggestion run can stand for this word.
+            request = wordSuggestionRequest(
+                content = content,
+                subtype = subtype,
+                isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+                sequence = suggestionSequence.get(),
+            ),
+            batch = wordSuggestionBatch,
+            revertedInput = revertedAutocorrect.get()?.takeIf { it.subtypeId == subtype.id }?.word,
+        ) {
+            val start = SystemClock.uptimeMillis()
+            // Main thread: read the constant provider map without the lock.
+            val provider = providerMap[subtype.nlpProviders.suggestion]?.provider as? SuggestionProvider
+            // A scoring failure must cost one autocorrection, never the keyboard.
+            val decided = try {
+                val allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get()
+                provider?.let { runBlocking { it.decideAutoCommit(subtype, content, allowPossiblyOffensive) } }
+            } catch (e: Exception) {
+                flogError { "Autocorrect decision failed: ${e.javaClass.simpleName}" }
+                null
+            }
+            val latencyMs = SystemClock.uptimeMillis() - start
+            TypingSpeedMetrics.recordAutoCommitDecidedNow(latencyMs)
+            flogDebug { "Autocorrect decided on the spot in $latencyMs ms" }
+            decided
+        }
+        // Never log the typed word itself.
+        flogDebug { "Autocorrect decision source=${selection.source} applies=${selection.candidate != null}" }
+        return selection.candidate
     }
 
     fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
@@ -327,7 +448,9 @@ class NlpManager(context: Context) {
                 }
                 else -> emptyList()
             }
-            activeCandidates = candidates
+            // Right after an autocorrection, the typed word comes first so one tap restores it.
+            val revert = if (isSuggestionOn()) keyboardManager.autocorrectRevertCandidate() else null
+            activeCandidates = if (revert != null) listOf(revert) + candidates.filter { it.text != revert.text } else candidates
             autoExpandCollapseSmartbarActions(candidates, NlpInlineAutofill.suggestions.value)
         }
     }

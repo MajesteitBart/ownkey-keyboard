@@ -143,6 +143,26 @@ interface SuggestionProvider : NlpProvider {
     ): List<SuggestionCandidate>
 
     /**
+     * Decides right away which candidate, if any, should replace the word in [content] when the user finishes it.
+     * Called on the main thread when the latest [suggest] result was computed for a different input, so
+     * implementations must only use data that is already in memory: no database, file or network access.
+     * [allowPossiblyOffensive] has the meaning described in [suggest]: when false, the word must never be replaced
+     * by a possibly offensive one.
+     */
+    suspend fun decideAutoCommit(
+        subtype: Subtype,
+        content: EditorContent,
+        allowPossiblyOffensive: Boolean,
+    ): SuggestionCandidate? = null
+
+    /**
+     * Everything besides the text that decides which suggestion may be auto-committed for [subtype], such as
+     * correction settings or words the user protected. A finished suggestion run is only reused on space while
+     * this value is unchanged. Called on the main thread for every word, so it must be cheap and in-memory.
+     */
+    fun autoCommitStateKey(subtype: Subtype): String = ""
+
+    /**
      * Is called when a suggestion has been accepted, either manually by the user or automatically through auto-commit.
      * This is purely a notification about an event and can safely be ignored if not needed.
      *

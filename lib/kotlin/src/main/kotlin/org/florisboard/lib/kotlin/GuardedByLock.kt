@@ -35,6 +35,19 @@ class GuardedByLock<out T : Any>(@PublishedApi internal val wrapped: T) {
             lock.unlock(owner)
         }
     }
+
+    /**
+     * Runs [action] only if the lock is free right now, without suspending or blocking. Returns null when the lock
+     * is held elsewhere. Meant for callers on the main thread that must never wait.
+     */
+    inline fun <R> tryWithLock(owner: Any? = null, action: (T) -> R): R? {
+        if (!lock.tryLock(owner)) return null
+        try {
+            return action(wrapped)
+        } finally {
+            lock.unlock(owner)
+        }
+    }
 }
 
 inline fun <T : Any> guardedByLock(initializer: () -> T): GuardedByLock<T> {

@@ -1,0 +1,17 @@
+# Words removed from nl_50k.txt at load time. The subtitle-based list counts these misspellings as correct words,
+# so autocorrect could never fix them. Reviewed by hand; see .project/projects/autocorrect-engine/tasks/T-005.
+# Accepted variants stay (kado, ongelofelijk, enigste, overnieuw). Also removed by rule: tokens with a backtick or U+FFFD.
+# verassing(en) is also a real word (cremation), but typed far more often for verrassing(en); the rare meaning gives way.
+alsjeblief
+apartement
+direkt
+eigelijk
+kontakt
+mischien
+moelijk
+ongeloofelijk
+onmiddelijk
+sorrie
+verassing
+verassingen
+waneer

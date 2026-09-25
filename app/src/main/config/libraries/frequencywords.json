@@ -1,0 +1,14 @@
+{
+  "uniqueId": "frequencywords",
+  "name": "FrequencyWords (word frequency lists)",
+  "developers": [
+    {
+      "name": "Hermit Dave",
+      "organisationUrl": "https://github.com/hermitdave"
+    }
+  ],
+  "website": "https://github.com/hermitdave/FrequencyWords",
+  "licenses": [
+    "CC-BY-SA-4.0"
+  ]
+}

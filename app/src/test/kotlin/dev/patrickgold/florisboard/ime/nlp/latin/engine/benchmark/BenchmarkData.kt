@@ -1,0 +1,146 @@
+/*
+ * Copyright (C) 2026 The FlorisBoard Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.patrickgold.florisboard.ime.nlp.latin.engine.benchmark
+
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinBigramModel
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.PossiblyOffensiveWords
+import java.io.File
+import java.util.Locale
+
+/**
+ * A misspelling and the word the user meant. [taps] holds simulated tap positions (in key widths) for each typed
+ * character when the typo came from the tap-noise generator. [before] is the text before the typed word, empty for
+ * the isolated-word sets.
+ */
+internal data class TypoPair(
+    val typed: String,
+    val intended: String,
+    val taps: List<Tap>? = null,
+    val before: String = "",
+)
+
+/** A correctly spelled but wrong word in a sentence ("rather [then]"), and the word that was meant. */
+internal data class RealWordCase(val before: String, val typed: String, val intended: String)
+
+internal data class Tap(val char: Char, val x: Double, val y: Double)
+
+/**
+ * [words] is the raw FrequencyWords list, used to sample typo sets. [model] is what the app ships: the built
+ * dictionary from `tools/dictionary-build` when present, after [LatinDictionaryCleanup]. [rawModel] reproduces the
+ * 2026-09-24 baseline, which ran on the raw list.
+ */
+internal class BenchmarkLanguage(
+    val code: String,
+    val words: Map<String, Int>,
+    removals: Set<String>,
+    builtWords: Map<String, Int>?,
+    bigramFile: File? = null,
+) {
+    val shippedWords: Map<String, Int> by lazy { LatinDictionaryCleanup.apply(builtWords ?: words, code, removals) }
+    val bigrams: LatinBigramModel by lazy {
+        bigramFile?.bufferedReader()?.useLines { LatinBigramModel.parse(it) } ?: LatinBigramModel.Empty
+    }
+    val model: LatinWordModel by lazy { LatinWordModel.build(shippedWords, bigrams) }
+    val rawModel: LatinWordModel by lazy { LatinWordModel.build(words) }
+    val locale: Locale = Locale.forLanguageTag(code)
+
+    fun slot(isPrimary: Boolean, raw: Boolean = false) =
+        LatinScoringLanguage(code, locale, if (raw) rawModel else model, isPrimary)
+}
+
+/**
+ * Loads the shipped dictionaries and the benchmark datasets under `src/test/resources/autocorrect/`.
+ */
+internal object BenchmarkData {
+    private val moduleDir: File by lazy {
+        listOf(File("."), File("app")).map { it.absoluteFile }.first { dir ->
+            File(dir, "src/main/assets/ime/dict/frequencywords").isDirectory
+        }
+    }
+
+    val dictionaryDir: File get() = File(moduleDir, "src/main/assets/ime/dict/frequencywords")
+
+    private val languages = mutableMapOf<String, BenchmarkLanguage>()
+
+    val removalDir: File get() = File(moduleDir, "src/main/assets/${LatinDictionaryCleanup.RemovalAssetDir}")
+
+    fun removals(code: String): Set<String> {
+        val file = File(removalDir, "$code.txt")
+        if (!file.isFile) return emptySet()
+        return file.bufferedReader().useLines { LatinDictionaryCleanup.parseRemovalList(it) }
+    }
+
+    fun offensiveWords(code: String): Set<String> {
+        val file = File(moduleDir, "src/main/assets/${PossiblyOffensiveWords.AssetDir}/$code.txt")
+        if (!file.isFile) return emptySet()
+        return file.bufferedReader().useLines { PossiblyOffensiveWords.parse(it) }
+    }
+
+    fun language(code: String, dictionaryFile: File = File(dictionaryDir, "${code}_50k.txt")): BenchmarkLanguage {
+        return languages.getOrPut("$code:${dictionaryFile.path}") {
+            val words = dictionaryFile.bufferedReader().useLines { LatinText.parseFrequencyList(it) }
+            val built = File(moduleDir, "src/main/assets/ime/dict/latin/$code.txt").takeIf { it.isFile }
+                ?.bufferedReader()?.useLines { LatinText.parseDictionary(it) }
+            val bigrams = File(moduleDir, "src/main/assets/ime/dict/latin/$code.bigrams.txt").takeIf { it.isFile }
+            BenchmarkLanguage(code, words, removals(code), built, bigrams)
+        }
+    }
+
+    fun en() = language("en")
+    fun nl() = language("nl")
+
+    fun enOnly(raw: Boolean = false) = listOf(en().slot(isPrimary = true, raw = raw))
+    fun nlOnly(raw: Boolean = false) = listOf(nl().slot(isPrimary = true, raw = raw))
+    fun nlEn(raw: Boolean = false) = listOf(nl().slot(isPrimary = true, raw = raw), en().slot(isPrimary = false, raw = raw))
+    fun enNl(raw: Boolean = false) = listOf(en().slot(isPrimary = true, raw = raw), nl().slot(isPrimary = false, raw = raw))
+
+    fun resourceLines(name: String): List<String> {
+        val stream = BenchmarkData::class.java.getResourceAsStream("/autocorrect/$name")
+            ?: error("Missing benchmark resource autocorrect/$name")
+        return stream.bufferedReader().useLines { lines ->
+            lines.map { it.trimEnd() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toList()
+        }
+    }
+
+    fun pairs(name: String): List<TypoPair> {
+        return resourceLines(name).map { line ->
+            val parts = line.split('\t', limit = 2)
+            require(parts.size == 2) { "No tab between typed and intended word in $name: $line" }
+            TypoPair(parts[0], parts[1])
+        }
+    }
+
+    fun words(name: String): List<String> = resourceLines(name)
+
+    /** Clean sentences, one per line. */
+    fun sentences(name: String): List<String> = resourceLines(name)
+
+    /** Lines of `text with [typed] word<TAB>intended`. */
+    fun realWords(name: String): List<RealWordCase> {
+        return resourceLines(name).map { line ->
+            val (sentence, intended) = line.split('\t', limit = 2)
+            val open = sentence.indexOf('[')
+            val close = sentence.indexOf(']', open)
+            require(open >= 0 && close > open) { "No [marked] word in: $line" }
+            RealWordCase(sentence.substring(0, open), sentence.substring(open + 1, close), intended)
+        }
+    }
+}

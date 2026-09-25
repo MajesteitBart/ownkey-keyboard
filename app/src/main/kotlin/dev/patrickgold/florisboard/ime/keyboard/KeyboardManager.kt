@@ -17,7 +17,6 @@
 package dev.patrickgold.florisboard.ime.keyboard
 
 import android.content.Context
-import android.icu.lang.UCharacter
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.compose.runtime.getValue
@@ -46,10 +45,14 @@ import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
+import dev.patrickgold.florisboard.ime.nlp.AutocorrectRevertCandidate
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
+import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
@@ -80,6 +83,7 @@ import kotlinx.coroutines.sync.withLock
 import org.florisboard.lib.android.AndroidKeyguardManager
 import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.android.showLongToastSync
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.collectIn
@@ -184,6 +188,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             editorInstance.activeContentFlow.collectIn(scope) { content ->
                 resetSuggestions(content)
+            }
+            prefs.correction.highCertaintyAutocorrectEnabled.asFlow().collectLatestIn(scope) { isEnabled ->
+                activeState.isAutocorrectEnabled = isEnabled
             }
             prefs.devtools.enabled.asFlow().collectLatestIn(scope) {
                 reevaluateDebugFlags()
@@ -319,14 +326,31 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         candidate: SuggestionCandidate,
         origin: CandidateCommitOrigin = CandidateCommitOrigin.MANUAL,
     ) {
+        if (candidate is AutocorrectRevertCandidate) {
+            handleUndoLastAutocorrect()
+            return
+        }
         val candidateIndex = nlpManager.activeCandidates.indexOf(candidate).takeIf { it >= 0 }
+        TapTrail.clear()
         TypingSpeedMetrics.recordSuggestionAccepted(candidateIndex)
         TypingSpeedMetrics.recordWordCommittedBySuggestion()
+        var autocorrectedFrom: String? = null
         if (origin == CandidateCommitOrigin.AUTO_COMMIT && candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectApplied()
             val content = editorInstance.activeContent
             val originalToken = content.composingText.ifBlank { content.currentWordText }
-            autocorrectUndoTracker.trackAutoCorrect(originalToken = originalToken, correctedCandidate = candidate)
+            val wordStart = when {
+                content.composing.isValid -> content.composing.start
+                content.currentWord.isValid -> content.currentWord.start
+                else -> null
+            }
+            autocorrectUndoTracker.trackAutoCorrect(
+                originalToken = originalToken,
+                correctedCandidate = candidate,
+                correctedEnd = wordStart?.plus(candidate.text.length),
+                subtype = subtypeManager.activeSubtype,
+            )
+            autocorrectedFrom = originalToken
         } else {
             autocorrectUndoTracker.clearPending()
         }
@@ -335,7 +359,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
-            else -> editorInstance.commitCompletion(candidate)
+            else -> editorInstance.commitCompletion(candidate, autocorrectedFrom)
         }
     }
 
@@ -447,49 +471,89 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     private fun revertPreviouslyAcceptedCandidate() {
         editorInstance.phantomSpace.candidateForRevert?.let { candidateForRevert ->
+            val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
+            val subtype = autocorrectUndoTracker.subtypeForCandidate(candidateForRevert) ?: subtypeManager.activeSubtype
             if (candidateForRevert.isEligibleForAutoCommit) {
                 TypingSpeedMetrics.recordAutoCorrectUndone()
             }
-            val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
             candidateForRevert.sourceProvider?.let { sourceProvider ->
-                scope.launch {
-                    sourceProvider.notifySuggestionReverted(
-                        subtype = subtypeManager.activeSubtype,
-                        candidate = candidateForRevert,
-                        originalToken = originalToken,
-                    )
-                }
+                notifyReverted(sourceProvider, candidateForRevert, originalToken, subtype)
             }
             autocorrectUndoTracker.clearIfCandidateMatches(candidateForRevert)
         }
     }
 
+    /**
+     * Tells [sourceProvider] in the background that [candidate], made on [subtype], was undone. Until it has stored
+     * [originalToken] as a word to leave alone, a space pressed right away must not redo the autocorrection, so the
+     * word is kept as typed for that long.
+     */
+    private fun notifyReverted(
+        sourceProvider: SuggestionProvider,
+        candidate: SuggestionCandidate,
+        originalToken: String?,
+        subtype: Subtype,
+    ) {
+        val guard = originalToken?.takeIf { candidate.isEligibleForAutoCommit }
+            ?.let { nlpManager.noteAutocorrectReverted(it, subtype) }
+        scope.launch {
+            try {
+                sourceProvider.notifySuggestionReverted(
+                    subtype = subtype,
+                    candidate = candidate,
+                    originalToken = originalToken,
+                )
+            } finally {
+                guard?.let { nlpManager.clearAutocorrectReverted(it) }
+            }
+        }
+    }
+
+    /** Forgets the last autocorrection, for example when another text field gets focus. */
+    fun clearAutocorrectUndo() = autocorrectUndoTracker.clearPending()
+
+    /** The typed word to offer in the suggestion strip while the last autocorrection can still be undone. */
+    fun autocorrectRevertCandidate(): AutocorrectRevertCandidate? {
+        val replacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return null
+        if (!replacement.candidate.isEligibleForAutoCommit) return null
+        return AutocorrectRevertCandidate(replacement.originalToken)
+    }
+
     private fun handleUndoLastAutocorrect(): Boolean {
         val undoReplacement = autocorrectUndoTracker.findUndoReplacement(editorInstance.activeContent) ?: return false
-        return restoreTrackedAutocorrect(undoReplacement)
+        return restoreTrackedAutocorrect(undoReplacement, keepSeparator = true)
     }
 
     private fun handleBackspaceAutocorrectRestore(unit: OperationUnit): Boolean {
         if (unit != OperationUnit.CHARACTERS) return false
         val restoreReplacement = autocorrectUndoTracker.findBackspaceRestoreReplacement(editorInstance.activeContent) ?: return false
-        return restoreTrackedAutocorrect(restoreReplacement)
+        return restoreTrackedAutocorrect(restoreReplacement, keepSeparator = false)
     }
 
-    private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement): Boolean {
-        if (!editorInstance.setSelection(replacement.range.start, replacement.range.end)) return false
-        if (!editorInstance.commitText(replacement.originalToken)) return false
+    /**
+     * Puts the typed word back in place of the correction. Backspace ([keepSeparator] false) also takes the space
+     * typed after the word, so the cursor ends right after the restored word; undo and the revert chip keep the
+     * space and put the cursor back where it was.
+     */
+    private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement, keepSeparator: Boolean): Boolean {
+        val content = editorInstance.activeContent
+        val cursor = content.selection.end
+        // The tracker only allows undo within one separator of the word, so this is the space (or nothing).
+        val separator = if (cursor > replacement.range.end) {
+            content.textBeforeSelection.takeLast(cursor - replacement.range.end)
+        } else {
+            ""
+        }
+        val restored = if (keepSeparator) replacement.originalToken + separator else replacement.originalToken
+        if (!editorInstance.setSelection(replacement.range.start, maxOf(replacement.range.end, cursor))) return false
+        if (!editorInstance.commitText(restored)) return false
         autocorrectUndoTracker.clearPending()
         if (replacement.candidate.isEligibleForAutoCommit) {
             TypingSpeedMetrics.recordAutoCorrectUndone()
         }
         replacement.candidate.sourceProvider?.let { sourceProvider ->
-            scope.launch {
-                sourceProvider.notifySuggestionReverted(
-                    subtype = subtypeManager.activeSubtype,
-                    candidate = replacement.candidate,
-                    originalToken = replacement.originalToken,
-                )
-            }
+            val subtype = replacement.subtype ?: subtypeManager.activeSubtype
+            notifyReverted(sourceProvider, replacement.candidate, replacement.originalToken, subtype)
         }
         return true
     }
@@ -511,6 +575,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         revertPreviouslyAcceptedCandidate()
         editorInstance.deleteBackwards(unit)
+        if (unit == OperationUnit.CHARACTERS) TapTrail.removeLast() else TapTrail.clear()
     }
 
     /**
@@ -530,6 +595,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles a [KeyCode.ENTER] event.
      */
     private fun handleEnter() {
+        TapTrail.clear()
         val info = editorInstance.activeInfo
         val isShiftPressed = inputEventDispatcher.isPressed(KeyCode.SHIFT)
         if (editorInstance.tryPerformEnterCommitRaw()) {
@@ -621,8 +687,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * but skips handling changing to characters keyboard and double space periods.
      */
     fun handleHardwareKeyboardSpace() {
-        val candidate = nlpManager.getAutoCommitCandidate()
+        val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
+        TapTrail.clear()
         TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         // Skip handling changing to characters keyboard and double space periods
         // TODO: this is whether we commit space after selecting candidate. Should be determined by SuggestionProvider
@@ -637,8 +704,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * enabled by the user.
      */
     private fun handleSpace(data: KeyData) {
-        val candidate = nlpManager.getAutoCommitCandidate()
+        val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
+        TapTrail.clear()
         TypingSpeedMetrics.recordTextInput(KeyCode.SPACE.toChar().toString())
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
             when (activeState.keyboardMode) {
@@ -693,10 +761,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     /**
      * Handles a [KeyCode.TOGGLE_AUTOCORRECT] event.
      */
-    private fun handleToggleAutocorrect() {
+    private suspend fun handleToggleAutocorrect() {
+        val isEnabled = !prefs.correction.highCertaintyAutocorrectEnabled.get()
+        prefs.correction.highCertaintyAutocorrectEnabled.set(isEnabled)
+        activeState.isAutocorrectEnabled = isEnabled
         lastToastReference.get()?.cancel()
         lastToastReference = WeakReference(
-            appContext.showLongToastSync("Autocorrect toggle is a placeholder and not yet implemented")
+            appContext.showShortToast(
+                if (isEnabled) R.string.autocorrect__toast_after_enabled else R.string.autocorrect__toast_after_disabled
+            )
         )
     }
 
@@ -781,6 +854,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     override fun onInputKeyUp(data: KeyData) = activeState.batchEdit {
         val windowController = FlorisImeService.windowControllerOrNull() ?: return@batchEdit
+        // Any key other than backspace or undo makes the last autocorrection final; a new one may follow below.
+        if (data.code != KeyCode.DELETE && data.code != KeyCode.UNDO) autocorrectUndoTracker.clearPending()
         when (data.code) {
             KeyCode.ARROW_DOWN,
             KeyCode.ARROW_LEFT,
@@ -896,7 +971,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 dictationFixController.abort()
                 scope.launch { handleToggleIncognitoMode() }
             }
-            KeyCode.TOGGLE_AUTOCORRECT -> handleToggleAutocorrect()
+            KeyCode.TOGGLE_AUTOCORRECT -> scope.launch { handleToggleAutocorrect() }
             KeyCode.UNDO -> if (!handleUndoLastAutocorrect()) editorInstance.performUndo()
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS
             KeyCode.VIEW_NUMERIC -> activeState.keyboardMode = KeyboardMode.NUMERIC
@@ -907,7 +982,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.VIEW_SYMBOLS2 -> activeState.keyboardMode = KeyboardMode.SYMBOLS2
             else -> {
                 if (activeState.imeUiMode == ImeUiMode.MEDIA) {
-                    nlpManager.getAutoCommitCandidate()?.let {
+                    nlpManager.autoCommitCandidateFor(editorInstance.activeContent)?.let {
                         commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
                     }
                     val text = data.asString(isForDisplay = false)
@@ -937,10 +1012,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     else -> when (data.type) {
                         KeyType.CHARACTER, KeyType.NUMERIC ->{
                             val text = data.asString(isForDisplay = false)
-                            if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0))) {
-                                nlpManager.getAutoCommitCandidate()?.let {
+                            if (AutocorrectTriggerPolicy.isTrigger(text)) {
+                                nlpManager.autoCommitCandidateFor(editorInstance.activeContent, trigger = text)?.let {
                                     commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
                                 }
+                                TapTrail.clear()
                             }
                             TypingSpeedMetrics.recordTextInput(text)
                             editorInstance.commitChar(text)

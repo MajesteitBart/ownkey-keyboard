@@ -235,6 +235,7 @@ class FlorisApplication : Application(), androidx.work.Configuration.Provider {
             )
             Log.i("PREFS", result.toString())
             migrateLegacyVoxtralApiKeyIfNeeded()
+            migrateAutocorrectStrengthIfNeeded()
             preferenceStoreLoaded.value = true
         }
         extensionManager.value.init()
@@ -242,6 +243,19 @@ class FlorisApplication : Application(), androidx.work.Configuration.Provider {
         DictionaryManager.init(this)
     }
 
+
+    /**
+     * Maps the hidden pre-rebuild minimum-confidence pref to the nearest autocorrect strength, once. The old key
+     * stays so a rollback still finds it.
+     */
+    private suspend fun migrateAutocorrectStrengthIfNeeded() {
+        if (prefs.correction.autocorrectStrengthMigrated.get()) return
+        val legacyPercent = prefs.correction.highCertaintyAutocorrectMinConfidencePercent.get()
+        prefs.correction.autocorrectStrength.set(
+            dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectStrength.fromLegacyMinConfidencePercent(legacyPercent)
+        )
+        prefs.correction.autocorrectStrengthMigrated.set(true)
+    }
 
     private suspend fun migrateLegacyVoxtralApiKeyIfNeeded() {
         val legacyApiKey = prefs.voxtral.apiKey.get().trim()

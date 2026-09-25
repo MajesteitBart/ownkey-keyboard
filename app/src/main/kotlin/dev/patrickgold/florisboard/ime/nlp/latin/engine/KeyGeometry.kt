@@ -1,0 +1,112 @@
+/*
+ * Copyright (C) 2026 The FlorisBoard Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.patrickgold.florisboard.ime.nlp.latin.engine
+
+import kotlin.math.hypot
+import kotlin.math.roundToInt
+
+/**
+ * Key center positions of the letter keys, in key widths, plus the row height in key widths. Used to price
+ * substitution typos by how far apart the intended and the typed key are.
+ */
+class KeyGeometry(
+    private val centers: Map<Char, Pair<Double, Double>>,
+    private val rowHeight: Double = PhoneRowHeight,
+) {
+    /**
+     * Distance between two keys in key units: horizontal steps count in key widths and vertical steps in rows, so
+     * a neighbor on the next row is about as close as a neighbor on the same row. Null when either key is not on
+     * the layout.
+     */
+    fun distance(a: Char, b: Char): Double? {
+        val pa = centers[a.lowercaseChar()] ?: return null
+        val pb = centers[b.lowercaseChar()] ?: return null
+        return hypot(pa.first - pb.first, (pa.second - pb.second) / rowHeight)
+    }
+
+    fun center(ch: Char): Pair<Double, Double>? = centers[ch.lowercaseChar()]
+
+    /** Letter keys within [maxDistance] key units of [ch], nearest first; empty when [ch] is not on the layout. */
+    fun neighbors(ch: Char, maxDistance: Double): List<Char> {
+        val key = ch.lowercaseChar()
+        if (key !in centers) return emptyList()
+        return centers.keys.asSequence()
+            .filter { it != key }
+            .mapNotNull { other -> distance(key, other)?.takeIf { it <= maxDistance }?.let { other to it } }
+            .sortedBy { it.second }
+            .map { it.first }
+            .toList()
+    }
+
+    /** Letter keys sorted by distance from the point ([x], [y]) in key widths. */
+    fun nearestKeys(x: Double, y: Double, count: Int): List<Char> {
+        return centers.entries.asSequence()
+            .map { (ch, c) -> ch to hypot(c.first - x, (c.second - y) / rowHeight) }
+            .sortedBy { it.second }
+            .take(count)
+            .map { it.first }
+            .toList()
+    }
+
+    val size: Int get() = centers.size
+
+    companion object {
+        /** Row height relative to key width on a typical phone layout. */
+        const val PhoneRowHeight = 1.4
+
+        /** Standard phone QWERTY: row offsets of 0, 0.5 and 1.5 key widths. Used until the real layout is known. */
+        val QwertyPhone: KeyGeometry = rows(listOf("qwertyuiop", "asdfghjkl", "zxcvbnm"), listOf(0.0, 0.5, 1.5))
+
+        fun rows(rows: List<String>, offsets: List<Double>, rowHeight: Double = PhoneRowHeight): KeyGeometry {
+            val centers = HashMap<Char, Pair<Double, Double>>()
+            rows.forEachIndexed { row, letters ->
+                letters.forEachIndexed { index, ch ->
+                    centers[ch] = (offsets[row] + index + 0.5) to (row + 0.5) * rowHeight
+                }
+            }
+            return KeyGeometry(centers, rowHeight)
+        }
+
+        /**
+         * Builds a geometry from measured key centers in pixels. Like [rows], it counts in key pitches, center to
+         * center: the unit is the median distance between neighboring keys of a row and the row height the median
+         * distance between rows. Visible key sizes would leave out the margins between keys and between rows, and
+         * make every step, most of all a step to another row, look longer than on the layouts the costs were tuned
+         * on. Returns null when too few letter keys have been laid out yet.
+         */
+        fun fromPixels(centers: Map<Char, Pair<Float, Float>>): Measured? {
+            if (centers.size < 10) return null
+            // Keys of one row share a center line.
+            val rows = centers.values.groupBy { it.second.roundToInt() }
+            if (rows.size < 2) return null
+            val keyPitch = median(rows.values.flatMap { row -> row.map { it.first }.sorted().zipWithNext { a, b -> b - a } })
+                ?: return null
+            val rowPitch = median(rows.keys.sorted().zipWithNext { a, b -> (b - a).toFloat() }) ?: return null
+            val scaled = centers.mapValues { (_, c) -> c.first / keyPitch to c.second / keyPitch }
+            return Measured(KeyGeometry(scaled, rowPitch / keyPitch), keyPitch)
+        }
+
+        private fun median(values: List<Float>): Double? {
+            val sorted = values.filter { it > 0f }.sorted()
+            if (sorted.isEmpty()) return null
+            return sorted[sorted.size / 2].toDouble()
+        }
+    }
+
+    /** A geometry measured on screen, and its unit: the key pitch in pixels. */
+    class Measured(val geometry: KeyGeometry, val unit: Double)
+}

@@ -49,6 +49,7 @@ import kotlin.properties.Delegates
  *          |          | 1        |          | Is incognito mode
  *          |        1 |          |          | Is quick actions overflow visible
  *          |       1  |          |          | Is quick actions editor visible
+ *          |      1   |          |          | Is autocorrect enabled
  *          |    1     |          |          | Is composing enabled
  *          |   1      |          |          | Is character half-width enabled
  *          |  1       |          |          | Is Kana Kata enabled
@@ -85,6 +86,7 @@ open class KeyboardState protected constructor(open var rawValue: ULong) {
         const val F_IS_INCOGNITO_MODE: ULong =              0x00008000u
         const val F_IS_ACTIONS_OVERFLOW_VISIBLE: ULong =    0x00010000u
         const val F_IS_ACTIONS_EDITOR_VISIBLE: ULong =      0x00020000u
+        const val F_IS_AUTOCORRECT_ENABLED: ULong =         0x00040000u
         const val F_IS_COMPOSING_ENABLED: ULong =           0x00100000u
 
         const val F_IS_CHAR_HALF_WIDTH: ULong =             0x00200000u
@@ -183,6 +185,10 @@ open class KeyboardState protected constructor(open var rawValue: ULong) {
     var isIncognitoMode: Boolean
         get() = getFlag(F_IS_INCOGNITO_MODE)
         set(v) { setFlag(F_IS_INCOGNITO_MODE, v) }
+
+    var isAutocorrectEnabled: Boolean
+        get() = getFlag(F_IS_AUTOCORRECT_ENABLED)
+        set(v) { setFlag(F_IS_AUTOCORRECT_ENABLED, v) }
 
     var isActionsOverflowVisible: Boolean
         get() = getFlag(F_IS_ACTIONS_OVERFLOW_VISIBLE)
