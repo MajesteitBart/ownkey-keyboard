@@ -27,9 +27,9 @@ rotation. Only the bar is touchable: every touch outside it reaches the app, and
 the app is not resized.
 
 The choice persists across fields, rotations, and restarts until you tap the
-keyboard button. Password fields, incognito mode, and number, phone, and date fields show
-the full keyboard instead, because the bar cannot help there, and return to the
-bar in the next ordinary text field. Leaving voice-only restores whichever
+keyboard button. Password fields, incognito mode, and number, phone, and date
+fields show the full keyboard instead, because the bar cannot help there, and
+return to the bar in the next ordinary text field. Leaving voice-only restores whichever
 keyboard was active before, docked or floating.
 
 ![Voice-only bar recording over Messages](screenshots/voice-only-listening.png)

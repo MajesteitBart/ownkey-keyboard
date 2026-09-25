@@ -118,12 +118,21 @@ class ImeWindowControllerTest : FunSpec({
 
         val moved = ImeWindowConfig.VoiceBarOffset(x = -40f, y = -300f)
         controller.actions.moveVoiceBar(moved)
-        val config = controller.activeWindowConfig.first { it.voiceBarOffset == moved }
+        controller.activeWindowConfig.first { it.voiceBarOffset == moved }
         controller.actions.toggleVoiceOnly()
         controller.isVoiceOnlyActive.first { !it }
         prefs.keyboard.voiceOnly.get() shouldBe false
-        config.mode shouldBe ImeWindowMode.FLOATING
+        controller.activeWindowConfig.value.mode shouldBe ImeWindowMode.FLOATING
+        controller.activeWindowSpec.value.shouldBeInstanceOf<ImeWindowSpec.Floating>()
         prefs.keyboard.windowConfig.get()[root.formFactor.typeGuess]?.voiceBarOffset shouldBe moved
+    }
+
+    test("quick repeated voice only toggles each take effect") {
+        val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
+        val controller = ImeWindowController(prefs, backgroundScope)
+        repeat(3) { controller.actions.toggleVoiceOnly() }
+        controller.isVoiceOnlyActive.first { it }
+        prefs.keyboard.voiceOnly.get() shouldBe true
     }
 
     test("voice only survives rotation while the bar position stays per form factor") {

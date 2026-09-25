@@ -367,7 +367,10 @@ class ImeWindowController(
         fun toggleVoiceOnly() {
             editor.disable()
             scope.launch {
-                prefs.keyboard.voiceOnly.set(!prefs.keyboard.voiceOnly.get())
+                // Serialized like window config updates, so two quick taps never read the same value.
+                updateConfigMutex.withLock {
+                    prefs.keyboard.voiceOnly.set(!prefs.keyboard.voiceOnly.get())
+                }
             }
         }
 
