@@ -24,7 +24,11 @@ automatic docking. Use the Dock button to attach the keyboard. Existing saved
 positions are preserved; dragging saves the new position.
 Resizing retains at least 80% of the available width. Phone floating mode
 and tablets with split disabled retain the compact floating window. Window sizes
-and placement are stored separately for the two floating variants.
+and placement are stored separately for the two floating variants. Changing the
+Split keyboard setting while floating switches between the two right away.
+
+The panels use the theme's Window style, including its shape, border, shadow, and
+background image, so custom themes look the same as in the other window modes.
 
 The empty center is transparent and passes touches to the underlying app. Its
 bounds are the intersection of the gaps in every row, preserving the touch areas
@@ -41,6 +45,19 @@ color direction, select the AMOLED black theme preset and an orange accent in
 Theme settings. User theme choices remain in effect in both window modes.
 
 ![Floating split keyboard on the tablet emulator](screenshots/floating-split-tablet.png)
+
+## Verification on 2026-09-25
+
+- `:app:testDebugUnitTest` passed all 508 tests, including switching Split
+  keyboard between Automatic, Never, and Always while floating, voice-only
+  across a phone rotation, and a stored window config that still has the earlier
+  per-form-factor voice-only key. `:app:assembleDebug` and `:app:assembleBeta`
+  passed.
+- Beta build on the API 35 emulator, 1080 × 2400 pixels at 240dpi, Signal
+  Graphite: the floating split panels drew with the theme's rounded shape and
+  shadow. Setting Split keyboard to Never while floating showed the compact
+  floating window on the next keyboard open, without docking first. Voice-only
+  stayed on after rotating to landscape and back.
 
 ## Verification — 2026-09-22
 

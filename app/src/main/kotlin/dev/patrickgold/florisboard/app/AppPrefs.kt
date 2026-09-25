@@ -568,6 +568,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "keyboard__floating_split_opacity",
             default = 100,
         )
+        // One choice for every form factor, so rotating the device keeps the voice-only bar.
+        val voiceOnly = boolean(
+            key = "keyboard__voice_only",
+            default = false,
+        )
         val capitalizationBehavior = enum(
             key = "keyboard__capitalization_behavior",
             default = CapitalizationBehavior.CAPSLOCK_BY_DOUBLE_TAP,

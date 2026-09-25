@@ -38,9 +38,8 @@ typealias ImeWindowConfigByType = Map<ImeFormFactor.Type, ImeWindowConfig>
  * @property floatingMode Describes the floating sub-mode.
  * @property floatingProps Describes the props per floating sub-mode. May not have a mapping for a given sub-mode, in
  *  which case the window constraints should be queried for default props.
- * @property voiceOnly If the keyboard is replaced by the voice-only bar. The other modes stay untouched, so
- *  leaving voice-only restores the previous keyboard.
- * @property voiceBarOffset Where the user dragged the voice-only bar, relative to its default position.
+ * @property voiceBarOffset Where the user dragged the voice-only bar, relative to its default position. Whether the
+ *  bar is on is a single preference for all form factors; only its position is kept per form factor.
  */
 @Serializable
 data class ImeWindowConfig(
@@ -49,7 +48,6 @@ data class ImeWindowConfig(
     val fixedProps: Map<ImeWindowMode.Fixed, ImeWindowProps.Fixed> = emptyMap(),
     val floatingMode: ImeWindowMode.Floating = ImeWindowMode.Floating.NORMAL,
     val floatingProps: Map<ImeWindowMode.Floating, ImeWindowProps.Floating> = emptyMap(),
-    val voiceOnly: Boolean = false,
     val voiceBarOffset: VoiceBarOffset = VoiceBarOffset.Zero,
 ) {
     /**
@@ -67,13 +65,17 @@ data class ImeWindowConfig(
      * Helper for serializing [ImeWindowConfigByType] to prefs.
      */
     object ByTypeSerializer : PreferenceSerializer<ImeWindowConfigByType> {
+        // Tolerates keys this version no longer knows, such as an earlier per-form-factor voice-only flag,
+        // so a stored config keeps its sizes and positions instead of resetting.
+        private val ConfigJson = Json { ignoreUnknownKeys = true }
+
         override fun serialize(value: ImeWindowConfigByType): String {
-            return Json.encodeToString(value)
+            return ConfigJson.encodeToString(value)
         }
 
         override fun deserialize(value: String): ImeWindowConfigByType {
             return try {
-                Json.decodeFromString(value)
+                ConfigJson.decodeFromString(value)
             } catch (e: Throwable) {
                 flogError { "Failed to deserialize ImeWindowConfig.ByType: ${e.message}" }
                 emptyMap()

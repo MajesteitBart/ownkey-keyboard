@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.width
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -143,8 +144,8 @@ class ImeWindowController(
             activeWindowConfig.value = windowConfig
         }
 
-        combine(activeWindowConfig, voiceOnlyAllowed) { windowConfig, allowed ->
-            windowConfig.voiceOnly && allowed
+        combine(prefs.keyboard.voiceOnly.asFlow(), voiceOnlyAllowed) { voiceOnly, allowed ->
+            voiceOnly && allowed
         }.collectIn(scope) { active ->
             isVoiceOnlyActive.value = active
         }
@@ -173,9 +174,10 @@ class ImeWindowController(
             activeRootInsets,
             activeWindowConfig,
             userPreferredOptions,
+            prefs.keyboard.splitLayoutMode.asFlow(),
             editor.version,
-        ) { rootInsets, windowConfig, userConfig, _ ->
-            doComputeWindowSpec(rootInsets, windowConfig, userConfig)
+        ) { rootInsets, windowConfig, userConfig, splitMode, _ ->
+            doComputeWindowSpec(rootInsets, windowConfig, userConfig, splitMode)
         }.collectIn(scope) { windowSpec ->
             activeWindowSpec.value = windowSpec
         }
@@ -301,10 +303,24 @@ class ImeWindowController(
         return isWindowShown.compareAndSet(expect = true, update = false)
     }
 
+    /**
+     * The floating sub-mode that matches the split keyboard setting at the current root width. Derived on every
+     * spec computation, so changing the setting or rotating takes effect without re-entering floating mode.
+     */
+    private fun floatingModeFor(rootInsets: ImeInsets.Root, splitMode: SplitLayoutMode): ImeWindowMode.Floating {
+        val widthDp = rootInsets.boundsDp.width.value.toInt()
+        return if (widthDp >= SplitLayout.AutoMinScreenWidthDp && SplitLayout.isActive(splitMode, widthDp)) {
+            ImeWindowMode.Floating.SPLIT
+        } else {
+            ImeWindowMode.Floating.NORMAL
+        }
+    }
+
     private fun doComputeWindowSpec(
         rootInsets: ImeInsets.Root,
         windowConfig: ImeWindowConfig,
         userPreferredOptions: ImeWindowSpec.UserPreferredOptions,
+        splitMode: SplitLayoutMode,
     ): ImeWindowSpec {
         return when (windowConfig.mode) {
             ImeWindowMode.FIXED -> {
@@ -319,11 +335,12 @@ class ImeWindowController(
                 )
             }
             ImeWindowMode.FLOATING -> {
-                val constraints = ImeWindowConstraints.of(rootInsets, windowConfig.floatingMode)
-                val props = (windowConfig.floatingProps[windowConfig.floatingMode] ?: constraints.defaultProps)
+                val floatingMode = floatingModeFor(rootInsets, splitMode)
+                val constraints = ImeWindowConstraints.of(rootInsets, floatingMode)
+                val props = (windowConfig.floatingProps[floatingMode] ?: constraints.defaultProps)
                     .constrained(constraints)
                 ImeWindowSpec.Floating(
-                    floatingMode = windowConfig.floatingMode,
+                    floatingMode = floatingMode,
                     props = props,
                     userPreferredOptions = userPreferredOptions,
                     constraints = constraints,
@@ -342,18 +359,15 @@ class ImeWindowController(
                     ImeWindowMode.FIXED -> ImeWindowMode.FLOATING
                     ImeWindowMode.FLOATING -> ImeWindowMode.FIXED
                 }
-                val widthDp = activeRootInsets.value.boundsDp.width.value.toInt()
-                val floatingMode = if (widthDp >= SplitLayout.AutoMinScreenWidthDp &&
-                    SplitLayout.isActive(prefs.keyboard.splitLayoutMode.get(), widthDp)
-                ) ImeWindowMode.Floating.SPLIT else ImeWindowMode.Floating.NORMAL
+                val floatingMode = floatingModeFor(activeRootInsets.value, prefs.keyboard.splitLayoutMode.get())
                 config.copy(mode = newMode, floatingMode = floatingMode)
             }
         }
 
         fun toggleVoiceOnly() {
             editor.disable()
-            updateWindowConfig { config ->
-                config.copy(voiceOnly = !config.voiceOnly)
+            scope.launch {
+                prefs.keyboard.voiceOnly.set(!prefs.keyboard.voiceOnly.get())
             }
         }
 
@@ -436,18 +450,20 @@ class ImeWindowController(
 
         fun resetFloatingSize() {
             val rootInsets = activeRootInsets.value
+            val floatingMode = floatingModeFor(rootInsets, prefs.keyboard.splitLayoutMode.get())
             updateWindowConfig { config ->
                 when (config.mode) {
                     ImeWindowMode.FLOATING -> {
-                        val constraints = ImeWindowConstraints.of(rootInsets, config.floatingMode)
+                        val constraints = ImeWindowConstraints.of(rootInsets, floatingMode)
                         val defaultProps = constraints.defaultProps
-                        val newProps = config.floatingProps[config.floatingMode]?.copy(
+                        val newProps = config.floatingProps[floatingMode]?.copy(
                             keyboardHeight = defaultProps.keyboardHeight,
                             keyboardWidth = defaultProps.keyboardWidth,
                         ) ?: defaultProps
                         config.copy(
+                            floatingMode = floatingMode,
                             floatingProps = config.floatingProps.plus(
-                                config.floatingMode to newProps.constrained(constraints)
+                                floatingMode to newProps.constrained(constraints)
                             ),
                         )
                     }

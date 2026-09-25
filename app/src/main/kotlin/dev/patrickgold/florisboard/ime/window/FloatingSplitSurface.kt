@@ -16,27 +16,22 @@
 
 package dev.patrickgold.florisboard.ime.window
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.snygg.SnyggQueryAttributes
 import org.florisboard.lib.snygg.ui.SnyggBox
-import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 
 val ImeWindowSpec.isFloatingSplit: Boolean
     get() = this is ImeWindowSpec.Floating && floatingMode == ImeWindowMode.Floating.SPLIT
@@ -67,10 +62,20 @@ internal fun ImeWindowSurface(
     val opacity = opacityPercent.coerceIn(0, 100) / 100f
     val gap by controller.floatingSplitGap.collectAsState()
     val insets by controller.activeWindowInsets.collectAsState()
-    // Keep the window-mode attributes, so floating-specific Window rules still style the panels.
-    val color = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName, attributes).background()
     val density = LocalDensity.current
-    val shape = RoundedCornerShape(14.dp)
+
+    // Each island takes the complete Window style of the current window mode: background, image, border,
+    // shape and shadow, exactly as a single floating window would.
+    @Composable
+    fun Island(islandModifier: Modifier) {
+        SnyggBox(
+            elementName = FlorisImeUi.Window.elementName,
+            attributes = attributes,
+            modifier = islandModifier,
+            supportsBackgroundImage = true,
+        ) {}
+    }
+
     Box(modifier) {
         if (!inner) {
             Box(Modifier.matchParentSize()) {
@@ -83,18 +88,12 @@ internal fun ImeWindowSurface(
                         val leftWidth = with(density) { leftPx.toDp() }
                         val rightStart = with(density) { rightPx.toDp() }
                         val rightWidth = with(density) { (bounds.width - rightPx).toDp() }
-                        Box(
-                            Modifier.fillMaxHeight().width(leftWidth)
-                                .alpha(opacity).shadow(8.dp, shape).background(color, shape),
-                        )
-                        Box(
-                            Modifier.absoluteOffset(x = rightStart).fillMaxHeight().width(rightWidth)
-                                .alpha(opacity).shadow(8.dp, shape).background(color, shape),
-                        )
+                        Island(Modifier.fillMaxHeight().width(leftWidth).alpha(opacity))
+                        Island(Modifier.absoluteOffset(x = rightStart).fillMaxHeight().width(rightWidth).alpha(opacity))
                     }
                 } else {
                     // An explicitly opened action/media panel uses a single temporary surface.
-                    Box(Modifier.matchParentSize().shadow(8.dp, shape).background(color, shape))
+                    Island(Modifier.matchParentSize())
                 }
             }
         }
