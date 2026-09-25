@@ -59,8 +59,11 @@ class TouchModelTest : FunSpec({
         val benchmark = AutocorrectBenchmark(scorer, BenchmarkPolicies.default())
         val typed = "İstanbul"
         val taps = typed.map { Tap(it, 1.0, 1.0) }
-        benchmark.score(BenchmarkData.enOnly(), typed, "in $typed", taps)
-        benchmark.score(BenchmarkData.nlEn(), typed, "in $typed", taps)
+        for (languages in listOf(BenchmarkData.enOnly(), BenchmarkData.nlEn())) {
+            val withTaps = benchmark.score(languages, typed, "in $typed", taps)
+            val plain = benchmark.score(languages, typed, "in $typed")
+            withTaps.map { it.word to it.confidence } shouldBe plain.map { it.word to it.confidence }
+        }
     }
 
     test("where the typo was tapped decides the correction") {

@@ -49,6 +49,7 @@ import kotlin.properties.Delegates
  *          |          | 1        |          | Is incognito mode
  *          |        1 |          |          | Is quick actions overflow visible
  *          |       1  |          |          | Is quick actions editor visible
+ *          |      1   |          |          | Is autocorrect enabled
  *          |    1     |          |          | Is composing enabled
  *          |   1      |          |          | Is character half-width enabled
  *          |  1       |          |          | Is Kana Kata enabled

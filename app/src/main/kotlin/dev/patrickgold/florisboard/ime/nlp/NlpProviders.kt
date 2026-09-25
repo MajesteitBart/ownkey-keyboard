@@ -146,8 +146,14 @@ interface SuggestionProvider : NlpProvider {
      * Decides right away which candidate, if any, should replace the word in [content] when the user finishes it.
      * Called on the main thread when the latest [suggest] result was computed for a different input, so
      * implementations must only use data that is already in memory: no database, file or network access.
+     * [allowPossiblyOffensive] has the meaning described in [suggest]: when false, the word must never be replaced
+     * by a possibly offensive one.
      */
-    suspend fun decideAutoCommit(subtype: Subtype, content: EditorContent): SuggestionCandidate? = null
+    suspend fun decideAutoCommit(
+        subtype: Subtype,
+        content: EditorContent,
+        allowPossiblyOffensive: Boolean,
+    ): SuggestionCandidate? = null
 
     /**
      * Is called when a suggestion has been accepted, either manually by the user or automatically through auto-commit.

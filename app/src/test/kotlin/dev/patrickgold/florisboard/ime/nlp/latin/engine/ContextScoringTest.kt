@@ -48,7 +48,7 @@ class ContextScoringTest : FunSpec({
 
     test("a typo is fixed toward the word that fits the sentence") {
         val result = benchmark.score(BenchmarkData.enOnly(), "stoer", "we went to the stoer")
-        result.first { it.isAutoCommit }.word shouldBe "store"
+        result.firstOrNull { it.isAutoCommit }?.word shouldBe "store"
     }
 
     test("the first word of a sentence gets no word context") {

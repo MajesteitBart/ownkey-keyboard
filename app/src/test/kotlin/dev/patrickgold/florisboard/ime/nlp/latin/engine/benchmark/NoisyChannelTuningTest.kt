@@ -37,6 +37,8 @@ class NoisyChannelTuningTest : FunSpec({
         val cleanEn = s.cleanEn.take(400)
         val cleanNl = s.cleanNl.take(400)
         val out = StringBuilder()
+        // The tap* columns are the tap-noise sets scored without tap positions: the sweep tunes the costs every
+        // input pays (glide and hardware keyboards have no taps). AutocorrectBenchmarkReportTest gates the with-taps runs.
         out.appendLine(
             listOf(
                 "unknownLogProb", "shortBonus", "subBase", "subDist", "omission", "threshold",

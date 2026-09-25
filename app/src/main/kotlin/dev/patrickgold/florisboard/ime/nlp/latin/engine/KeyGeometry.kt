@@ -17,6 +17,7 @@
 package dev.patrickgold.florisboard.ime.nlp.latin.engine
 
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 /**
  * Key center positions of the letter keys, in key widths, plus the row height in key widths. Used to price
@@ -81,14 +82,22 @@ class KeyGeometry(
         }
 
         /**
-         * Builds a geometry from measured key centers in pixels, normalized by the median key width. Returns null
-         * when too few letter keys have been laid out yet.
+         * Builds a geometry from measured key centers in pixels. Like [rows], it counts in key pitches, center to
+         * center: the unit is the median distance between neighboring keys of a row and the row height the median
+         * distance between rows. Visible key sizes would leave out the margins between keys and between rows, and
+         * make every step, most of all a step to another row, look longer than on the layouts the costs were tuned
+         * on. Returns null when too few letter keys have been laid out yet.
          */
-        fun fromPixels(centers: Map<Char, Pair<Float, Float>>, keyWidths: List<Float>, keyHeights: List<Float>): KeyGeometry? {
+        fun fromPixels(centers: Map<Char, Pair<Float, Float>>): Measured? {
             if (centers.size < 10) return null
-            val unit = median(keyWidths) ?: return null
-            val height = median(keyHeights) ?: return null
-            return KeyGeometry(centers.mapValues { (_, c) -> c.first / unit to c.second / unit }, height / unit)
+            // Keys of one row share a center line.
+            val rows = centers.values.groupBy { it.second.roundToInt() }
+            if (rows.size < 2) return null
+            val keyPitch = median(rows.values.flatMap { row -> row.map { it.first }.sorted().zipWithNext { a, b -> b - a } })
+                ?: return null
+            val rowPitch = median(rows.keys.sorted().zipWithNext { a, b -> (b - a).toFloat() }) ?: return null
+            val scaled = centers.mapValues { (_, c) -> c.first / keyPitch to c.second / keyPitch }
+            return Measured(KeyGeometry(scaled, rowPitch / keyPitch), keyPitch)
         }
 
         private fun median(values: List<Float>): Double? {
@@ -97,4 +106,7 @@ class KeyGeometry(
             return sorted[sorted.size / 2].toDouble()
         }
     }
+
+    /** A geometry measured on screen, and its unit: the key pitch in pixels. */
+    class Measured(val geometry: KeyGeometry, val unit: Double)
 }

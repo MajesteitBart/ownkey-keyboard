@@ -67,6 +67,8 @@ object TapTrail {
 
     @Synchronized
     private fun add(code: Int, tap: LatinTap) {
+        // Custom layouts can carry any code; toChars throws on one outside Unicode.
+        if (!Character.isValidCodePoint(code)) return
         val ch = Character.toChars(code).singleOrNull() ?: return
         if (!ch.isLetter() && ch != '\'' && ch != '’' && ch != '-') return
         if (chars.length == MaxTaps) {

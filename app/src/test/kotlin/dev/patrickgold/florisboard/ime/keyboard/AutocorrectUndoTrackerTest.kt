@@ -21,6 +21,7 @@ import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 class AutocorrectUndoTrackerTest : FunSpec({
@@ -151,6 +152,17 @@ class AutocorrectUndoTrackerTest : FunSpec({
         )
 
         tracker.findBackspaceRestoreReplacement(wordContent(text = "hello", cursor = 3)).shouldBeNull()
+    }
+
+    test("undo does not apply with the cursor moved inside the corrected word") {
+        val tracker = AutocorrectUndoTracker()
+        tracker.trackAutoCorrect(
+            originalToken = "helo",
+            correctedCandidate = WordSuggestionCandidate(text = "hello", isEligibleForAutoCommit = true),
+        )
+
+        tracker.findUndoReplacement(wordContent(text = "hello", cursor = 3)).shouldBeNull()
+        tracker.findUndoReplacement(wordContent(text = "hello", cursor = 5)).shouldNotBeNull()
     }
 
     test("does not return backspace restore replacement for active text selection") {

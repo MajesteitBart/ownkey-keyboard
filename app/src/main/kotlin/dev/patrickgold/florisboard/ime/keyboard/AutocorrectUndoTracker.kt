@@ -108,7 +108,10 @@ internal class AutocorrectUndoTracker {
         val before = content.textBeforeSelection
         var tokenEnd = before.length
         while (tokenEnd > 0 && !before[tokenEnd - 1].isUndoTokenChar()) tokenEnd--
-        return before.length - tokenEnd <= 1
+        val gap = before.length - tokenEnd
+        if (gap > 1) return false
+        // Right at a word, the cursor must be at its end, not moved inside it.
+        return end != null || gap == 1 || content.textAfterSelection.firstOrNull()?.isUndoTokenChar() != true
     }
 
     private fun findCorrectedTokenRange(content: EditorContent, correctedToken: String): EditorRange? {

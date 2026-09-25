@@ -207,6 +207,8 @@ class NlpManager(context: Context) {
 
     fun suggest(subtype: Subtype, content: EditorContent) {
         val reqTime = SystemClock.uptimeMillis()
+        val isPrivateSession = keyboardManager.activeState.isIncognitoMode
+        val request = wordSuggestionRequest(content, subtype, isPrivateSession)
         scope.launch {
             val emojiSuggestions = when {
                 prefs.emoji.suggestionEnabled.get() -> {
@@ -215,7 +217,7 @@ class NlpManager(context: Context) {
                         content = content,
                         maxCandidateCount = prefs.emoji.suggestionCandidateMaxCount.get(),
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                        isPrivateSession = isPrivateSession,
                     )
                 }
                 else -> emptyList()
@@ -230,13 +232,13 @@ class NlpManager(context: Context) {
                         content = content,
                         maxCandidateCount = 8,
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                        isPrivateSession = isPrivateSession,
                     )
                 }
             }
             internalSuggestionsGuard.withLock {
                 if (internalSuggestions.first < reqTime) {
-                    wordSuggestionBatch = WordSuggestionBatch(WordSuggestionBatch.inputOf(content), suggestions)
+                    wordSuggestionBatch = WordSuggestionBatch(request, suggestions)
                     internalSuggestions = reqTime to buildList {
                         addAll(emojiSuggestions)
                         addAll(suggestions)
@@ -280,19 +282,27 @@ class NlpManager(context: Context) {
 
     fun suggestDirectly(suggestions: List<SuggestionCandidate>) {
         val reqTime = SystemClock.uptimeMillis()
-        wordSuggestionBatch = WordSuggestionBatch.Empty
+        // Under the lock, so a suggestion run that finishes meanwhile cannot put its batch back afterwards.
         runBlocking {
-            internalSuggestions = reqTime to suggestions
+            internalSuggestionsGuard.withLock {
+                wordSuggestionBatch = WordSuggestionBatch.Empty
+                internalSuggestions = reqTime to suggestions
+            }
         }
     }
 
     fun clearSuggestions() {
         val reqTime = SystemClock.uptimeMillis()
-        wordSuggestionBatch = WordSuggestionBatch.Empty
         runBlocking {
-            internalSuggestions = reqTime to emptyList()
+            internalSuggestionsGuard.withLock {
+                wordSuggestionBatch = WordSuggestionBatch.Empty
+                internalSuggestions = reqTime to emptyList()
+            }
         }
     }
+
+    private fun wordSuggestionRequest(content: EditorContent, subtype: Subtype, isPrivateSession: Boolean) =
+        WordSuggestionRequest.of(content, subtype.id, editorInstance.activeInputSessionId, isPrivateSession)
 
     /**
      * Returns the candidate that should replace the word the user just finished in [content], or null to keep the
@@ -318,17 +328,18 @@ class NlpManager(context: Context) {
         if (!AutocorrectTriggerPolicy.isCorrectableToken(AutocorrectTriggerPolicy.tokenBeforeCursor(content.textBeforeSelection), trigger)) {
             return null
         }
+        val subtype = subtypeManager.activeSubtype
         val selection = AutoCommitSelector.select(
-            input = WordSuggestionBatch.inputOf(content),
+            request = wordSuggestionRequest(content, subtype, keyboardManager.activeState.isIncognitoMode),
             batch = wordSuggestionBatch,
         ) {
             val start = SystemClock.uptimeMillis()
-            val subtype = subtypeManager.activeSubtype
             // Main thread: read the constant provider map without the lock.
             val provider = providerMap[subtype.nlpProviders.suggestion]?.provider as? SuggestionProvider
             // A scoring failure must cost one autocorrection, never the keyboard.
             val decided = try {
-                provider?.let { runBlocking { it.decideAutoCommit(subtype, content) } }
+                val allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get()
+                provider?.let { runBlocking { it.decideAutoCommit(subtype, content, allowPossiblyOffensive) } }
             } catch (e: Exception) {
                 flogError { "Autocorrect decision failed: ${e.javaClass.simpleName}" }
                 null

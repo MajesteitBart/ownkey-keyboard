@@ -87,12 +87,16 @@ internal object ConfusionSets {
         return (listed + endings).filter { it != word && isKnown(it) }.distinct()
     }
 
+    /**
+     * The d-form sits between the other two: "vind" and "vindt", "gebeurd" and "gebeurt" get mixed up, but a dt-form
+     * and a t-form ("brandt", "brant") are different words that nobody confuses.
+     */
     private fun dutchVerbEndings(word: String): List<String> {
         if (word.length < 3) return emptyList()
         return when {
-            word.endsWith("dt") -> listOf(word.dropLast(1), word.dropLast(2) + "t")
+            word.endsWith("dt") -> listOf(word.dropLast(1))
             word.endsWith("d") -> listOf(word + "t", word.dropLast(1) + "t")
-            word.endsWith("t") -> listOf(word.dropLast(1) + "d", word.dropLast(1) + "dt")
+            word.endsWith("t") -> listOf(word.dropLast(1) + "d")
             else -> emptyList()
         }
     }

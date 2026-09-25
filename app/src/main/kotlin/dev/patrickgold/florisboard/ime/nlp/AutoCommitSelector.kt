@@ -17,16 +17,51 @@
 package dev.patrickgold.florisboard.ime.nlp
 
 import dev.patrickgold.florisboard.ime.editor.EditorContent
+import org.florisboard.lib.kotlin.safeSubstring
 
 /**
- * Word suggestions together with the word they were computed for.
+ * Word suggestions together with the request they were computed for.
  */
 data class WordSuggestionBatch(
-    val input: String,
+    val request: WordSuggestionRequest,
     val candidates: List<SuggestionCandidate>,
 ) {
     companion object {
-        val Empty = WordSuggestionBatch("", emptyList())
+        val Empty = WordSuggestionBatch(WordSuggestionRequest.None, emptyList())
+    }
+}
+
+/**
+ * The word to suggest for and what else its candidates depend on. The same word gets other candidates in another
+ * language, text field or private mode, or after other words, so a batch only stands for an identical request.
+ */
+data class WordSuggestionRequest(
+    val input: String,
+    val subtypeId: Long,
+    val inputSessionId: Long,
+    val isPrivateSession: Boolean,
+    /** The text right before the word: the context that ranks its candidates. */
+    val textBefore: String,
+) {
+    companion object {
+        /** Enough text before the word to hold the words that rank it. */
+        private const val ContextLength = 48
+
+        val None = WordSuggestionRequest("", subtypeId = -1L, inputSessionId = 0L, isPrivateSession = false, textBefore = "")
+
+        fun of(content: EditorContent, subtypeId: Long, inputSessionId: Long, isPrivateSession: Boolean): WordSuggestionRequest {
+            val wordStart = when {
+                content.localComposing.isValid -> content.localComposing.start
+                content.localCurrentWord.isValid -> content.localCurrentWord.start
+                else -> content.localSelection.start
+            }
+            val textBefore = if (wordStart > 0) {
+                content.text.safeSubstring((wordStart - ContextLength).coerceAtLeast(0), wordStart)
+            } else {
+                ""
+            }
+            return WordSuggestionRequest(inputOf(content), subtypeId, inputSessionId, isPrivateSession, textBefore)
+        }
 
         /** The word the suggestion providers score for [content]. */
         fun inputOf(content: EditorContent): String {
@@ -37,8 +72,9 @@ data class WordSuggestionBatch(
 
 /**
  * Picks the candidate to auto-commit for the word the user just finished. Suggestions run asynchronously, so the
- * latest batch can belong to an earlier prefix of the word when the user types fast. A candidate is only taken from
- * a batch computed for exactly [input]; otherwise [decideNow] computes a fresh decision.
+ * latest batch can belong to an earlier prefix of the word when the user types fast, or to the same word before the
+ * language or text field changed. A candidate is only taken from a batch computed for exactly [request]; otherwise
+ * [decideNow] computes a fresh decision.
  */
 object AutoCommitSelector {
     enum class Source { BATCH, DECIDED_NOW, NONE }
@@ -46,12 +82,12 @@ object AutoCommitSelector {
     data class Selection(val candidate: SuggestionCandidate?, val source: Source)
 
     inline fun select(
-        input: String,
+        request: WordSuggestionRequest,
         batch: WordSuggestionBatch,
         decideNow: () -> SuggestionCandidate?,
     ): Selection {
-        if (input.isBlank()) return Selection(null, Source.NONE)
-        if (batch.input == input) {
+        if (request.input.isBlank()) return Selection(null, Source.NONE)
+        if (batch.request == request) {
             return Selection(batch.candidates.firstOrNull { it.isEligibleForAutoCommit }, Source.BATCH)
         }
         return Selection(decideNow(), Source.DECIDED_NOW)

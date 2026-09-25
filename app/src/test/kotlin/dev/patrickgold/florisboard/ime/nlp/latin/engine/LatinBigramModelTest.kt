@@ -76,6 +76,13 @@ class LatinBigramModelTest : FunSpec({
         }
     }
 
+    test("a list cut off before its pairs is rejected, not loaded without context") {
+        val header = "# ownkey-latin-bigrams v2 format=log100"
+        shouldThrow<IllegalArgumentException> { LatinBigramModel.parse(sequenceOf(header, "@words 2", "ben", "ik", "@pairs")) }
+        shouldThrow<IllegalArgumentException> { LatinBigramModel.parse(sequenceOf(header, "@words 2", "ben", "ik")) }
+        LatinBigramModel.parse(sequenceOf(header)).isEmpty() shouldBe true
+    }
+
     test("shipped bigram lists load, fit the heap budget and know common pairs") {
         var totalBytes = 0L
         for (code in listOf("en", "nl")) {

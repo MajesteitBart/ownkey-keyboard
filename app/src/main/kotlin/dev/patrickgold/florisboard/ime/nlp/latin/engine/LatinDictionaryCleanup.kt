@@ -24,9 +24,13 @@ package dev.patrickgold.florisboard.ime.nlp.latin.engine
 internal object LatinDictionaryCleanup {
     const val RemovalAssetDir = "ime/dict/removals"
 
-    /** Single-letter words that are real; other single letters in these languages are OCR noise. */
+    /**
+     * Single-letter words that are real; other single letters in these languages are OCR noise or halves of an
+     * elision ("z'n"). Matches tools/dictionary-build/build.py.
+     */
     private val SingleLetterWords = mapOf(
         "en" to setOf("a", "i", "k", "u", "x"),
+        "nl" to setOf("u"),
     )
 
     fun parseRemovalList(lines: Sequence<String>): Set<String> {

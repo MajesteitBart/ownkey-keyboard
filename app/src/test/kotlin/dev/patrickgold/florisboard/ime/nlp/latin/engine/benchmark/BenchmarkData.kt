@@ -21,6 +21,7 @@ import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.PossiblyOffensiveWords
 import java.io.File
 import java.util.Locale
 
@@ -87,6 +88,11 @@ internal object BenchmarkData {
         return file.bufferedReader().useLines { LatinDictionaryCleanup.parseRemovalList(it) }
     }
 
+    fun offensiveWords(code: String): Set<String> {
+        val file = File(moduleDir, "src/main/assets/${PossiblyOffensiveWords.AssetDir}/$code.txt")
+        return file.bufferedReader().useLines { PossiblyOffensiveWords.parse(it) }
+    }
+
     fun language(code: String, dictionaryFile: File = File(dictionaryDir, "${code}_50k.txt")): BenchmarkLanguage {
         return languages.getOrPut("$code:${dictionaryFile.path}") {
             val words = dictionaryFile.bufferedReader().useLines { LatinText.parseFrequencyList(it) }
@@ -115,8 +121,9 @@ internal object BenchmarkData {
 
     fun pairs(name: String): List<TypoPair> {
         return resourceLines(name).map { line ->
-            val (typed, intended) = line.split('\t', limit = 2)
-            TypoPair(typed, intended)
+            val parts = line.split('\t', limit = 2)
+            require(parts.size == 2) { "No tab between typed and intended word in $name: $line" }
+            TypoPair(parts[0], parts[1])
         }
     }
 

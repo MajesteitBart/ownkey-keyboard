@@ -82,8 +82,9 @@ class BuiltDictionaryRegressionTest : FunSpec({
         LatinText.parseDictionary(sequenceOf("hello 42")) shouldBe mapOf("hello" to 42)
     }
 
-    test("built models are not larger than the raw models") {
-        // A rough heap comparison on the JVM; the device measurement is in the T-007 evidence log.
+    test("built models have fewer words than the raw models") {
+        // The heap and build time are printed for information only: a heap delta around System.gc() is too noisy to
+        // assert on. The device measurement is in the T-007 evidence log; LatinBigramModelTest gates the bigram heap.
         fun measure(build: () -> LatinWordModel): Pair<Long, Long> {
             System.gc()
             val runtime = Runtime.getRuntime()

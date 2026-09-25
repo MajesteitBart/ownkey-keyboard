@@ -1,0 +1,61 @@
+# Possibly offensive words in nl.txt: strong profanity, sexual slang and slurs. With "Block possibly offensive
+# words" on (the default), autocorrect never changes a typed word into one of these and suggestions and next-word
+# predictions leave them out. A word the user typed is never changed for being on this list.
+# Words with a common harmless or medical meaning stay off the list (kanker, tyfus, nicht, eikel, pijpen, teef).
+# Reviewed by hand against the shipped dictionary; one word per line, lowercase.
+bitch
+flikker
+flikkers
+fuck
+fucking
+geneukt
+gepijpt
+godsamme
+godver
+godverdomme
+hoer
+hoeren
+hoerenjong
+hoerenzoon
+hoerig
+kloothommel
+klootzak
+klootzakken
+klote
+kloten
+kolere
+kut
+kutje
+kutten
+kutwijf
+kutzooi
+lul
+lulletje
+mietje
+moffen
+mongool
+neger
+negerin
+negers
+neuk
+neuken
+neukt
+neukte
+neukten
+nikker
+nikkers
+pijpbeurt
+pleuris
+rukker
+shit
+slet
+sletje
+sletten
+spleetogen
+spleetoog
+stront
+tering
+tiet
+tieten
+trut
+trutten

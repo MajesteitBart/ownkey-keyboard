@@ -27,7 +27,8 @@ import dev.patrickgold.florisboard.ime.editor.InputAttributes
  * word the user has not finished typing.
  */
 object AutocorrectTriggerPolicy {
-    private val SentencePunctuation = setOf('.', ',', '!', '?', ';', ':')
+    // The interrobang ends a sentence in the shipped punctuation rule, like ? and !.
+    private val SentencePunctuation = setOf('.', ',', '!', '?', '‽', ';', ':')
 
     /** Whether typing [text] (a single committed character or string) ends the current word for autocorrect. */
     fun isTrigger(text: String): Boolean {

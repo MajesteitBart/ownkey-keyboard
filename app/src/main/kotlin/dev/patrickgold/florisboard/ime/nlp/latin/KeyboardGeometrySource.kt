@@ -16,7 +16,6 @@
 
 package dev.patrickgold.florisboard.ime.nlp.latin
 
-import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.KeyGeometry
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinTap
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKey
@@ -30,28 +29,32 @@ object KeyboardGeometrySource {
     @Volatile
     private var keys: List<TextKey> = emptyList()
 
-    /** Signature of the keys, the geometry built from them, and its unit: the median key width in pixels. */
-    private class Cached(val signature: Long, val geometry: KeyGeometry, val unit: Float)
+    /** Signature of the keys and the geometry measured from them. */
+    private class Cached(val signature: Long, val measured: KeyGeometry.Measured)
 
     @Volatile
     private var cached: Cached? = null
 
     fun update(characterKeys: List<TextKey>) {
+        // Every recomposition hands over a new list, for example when shift turns off after the first letter.
+        // Only other key objects make another layout.
+        if (sameKeys(characterKeys, keys)) return
         // Taps recorded on the previous layout are in other coordinates.
-        if (characterKeys !== keys) TapTrail.clear()
+        TapTrail.clear()
         keys = characterKeys
     }
 
-    fun current(): KeyGeometry? {
+    fun current(): KeyGeometry? = measured()?.geometry
+
+    private fun measured(): KeyGeometry.Measured? {
         val snapshot = keys
         if (snapshot.isEmpty()) return null
         val signature = signatureOf(snapshot)
-        cached?.let { if (it.signature == signature) return it.geometry }
+        cached?.let { if (it.signature == signature) return it.measured }
         val centers = HashMap<Char, Pair<Float, Float>>()
-        val widths = ArrayList<Float>()
-        val heights = ArrayList<Float>()
         for (key in snapshot) {
-            val code = (key.data as? KeyData)?.code ?: continue
+            // The evaluated data: letter keys behind a case or shift selector have no code of their own.
+            val code = key.computedData.code
             if (code <= 0 || !Character.isLetter(code)) continue
             val bounds = key.visibleBounds
             val width = bounds.right - bounds.left
@@ -59,20 +62,26 @@ object KeyboardGeometrySource {
             if (width <= 0f || height <= 0f) continue
             val ch = Character.toChars(code).singleOrNull()?.lowercaseChar() ?: continue
             centers[ch] = (bounds.left + width / 2f) to (bounds.top + height / 2f)
-            widths.add(width)
-            heights.add(height)
         }
-        val geometry = KeyGeometry.fromPixels(centers, widths, heights) ?: return null
-        cached = Cached(signature, geometry, widths.sorted()[widths.size / 2])
-        return geometry
+        val measured = KeyGeometry.fromPixels(centers) ?: return null
+        cached = Cached(signature, measured)
+        return measured
     }
 
-    /** A touch point of the keyboard view in pixels, in the key-width units of [current]; null before layout. */
+    /** A touch point of the keyboard view in pixels, in the key-pitch units of [current]; null before layout. */
     internal fun toKeyUnits(x: Float, y: Float): LatinTap? {
-        current() ?: return null
-        val unit = cached?.unit ?: return null
-        if (unit <= 0f) return null
-        return LatinTap(x / unit.toDouble(), y / unit.toDouble())
+        val unit = measured()?.unit ?: return null
+        if (unit <= 0.0) return null
+        return LatinTap(x / unit, y / unit)
+    }
+
+    private fun sameKeys(a: List<TextKey>, b: List<TextKey>): Boolean {
+        if (a === b) return true
+        if (a.size != b.size) return false
+        for (i in a.indices) {
+            if (a[i] !== b[i]) return false
+        }
+        return true
     }
 
     private fun signatureOf(keys: List<TextKey>): Long {
@@ -80,6 +89,7 @@ object KeyboardGeometrySource {
         for (key in keys) {
             val bounds = key.visibleBounds
             signature = signature * 31 + (bounds.left * 7 + bounds.top * 13 + bounds.right * 17 + bounds.bottom).toLong()
+            signature = signature * 31 + Character.toLowerCase(key.computedData.code)
         }
         return signature
     }

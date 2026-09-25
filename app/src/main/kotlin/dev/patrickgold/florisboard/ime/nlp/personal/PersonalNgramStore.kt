@@ -232,7 +232,7 @@ class PersonalNgramStore(context: Context) {
         if (!mutex.tryLock()) return 0.0
         try {
             if (!isLoaded) return 0.0
-            return models[language]?.continuationScore(prev1, word) ?: 0.0
+            return models[language.lowercase()]?.continuationScore(prev1, word) ?: 0.0
         } finally {
             mutex.unlock()
         }

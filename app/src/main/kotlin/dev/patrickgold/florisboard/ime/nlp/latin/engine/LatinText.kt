@@ -99,11 +99,21 @@ internal object LatinText {
         return words
     }
 
+    /**
+     * The words in [text]. An apostrophe or hyphen belongs to a word inside it ("don't", "z'n") but not at its end
+     * before other text, where it is a closing quote or a dash. At the end of [text] it stays, because the word may
+     * still be being typed there ("don'").
+     */
     fun extractWordTokens(text: String, locale: Locale): List<String> {
         val tokens = mutableListOf<String>()
         val builder = StringBuilder()
 
-        fun flushToken() {
+        fun flushToken(trimJoiners: Boolean = true) {
+            if (trimJoiners) {
+                while (builder.isNotEmpty() && builder.last().let { it == '\'' || it == '’' || it == '-' }) {
+                    builder.setLength(builder.length - 1)
+                }
+            }
             if (builder.isNotEmpty()) {
                 val token = normalizeInputWord(builder.toString(), locale)
                 if (token.isNotBlank()) {
@@ -120,7 +130,7 @@ internal object LatinText {
                 else -> flushToken()
             }
         }
-        flushToken()
+        flushToken(trimJoiners = false)
 
         return tokens
     }

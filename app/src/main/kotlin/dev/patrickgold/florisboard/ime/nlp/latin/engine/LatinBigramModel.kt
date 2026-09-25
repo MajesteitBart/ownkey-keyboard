@@ -123,7 +123,11 @@ internal class LatinBigramModel private constructor(
                     }
                 }
             }
+            // A list cut off before or right after @pairs is broken, not a model without context: fail, so the
+            // caller logs it and falls back.
+            require(!inWords) { "Bigram list ends before @pairs" }
             if (!inPairs && !inNotPredicted) return Empty
+            require(wordCount == 0 || successorIds.size > 0) { "Bigram list has no pairs" }
             for (id in lastPrevious + 1..wordCount) offsets[id] = successorIds.size
 
             val ids = successorIds.toArray()

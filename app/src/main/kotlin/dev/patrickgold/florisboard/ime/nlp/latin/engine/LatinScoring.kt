@@ -77,7 +77,9 @@ internal interface LatinScoringHooks {
  *
  * @property word Normalized (lowercase) candidate word.
  * @property text Candidate as it should be committed, with the input's capitalization applied.
- * @property editDistance Edit distance from the normalized input, 0 for exact and completion candidates.
+ * @property editDistance Edit distance from the normalized input, 0 for the input itself and for next-word
+ *  predictions. The noisy-channel scorer counts the added letters of a completion; the legacy scorer reports 0
+ *  for completions. Nothing ranks by this value.
  * @property isAutoCommit Whether this candidate should replace the input on space.
  */
 internal data class LatinScoredCandidate(

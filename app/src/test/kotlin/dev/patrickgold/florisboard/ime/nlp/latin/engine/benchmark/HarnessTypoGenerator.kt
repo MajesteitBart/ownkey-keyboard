@@ -41,6 +41,8 @@ internal class HarnessTypoGenerator(seed: Long) {
 
     fun sampleWords(words: Map<String, Int>, n: Int, tokenWeighted: Boolean, minLen: Int = 3, maxRank: Int = 10000): List<String> {
         val ranked = rankedWords(words, maxRank, minLen)
+        // The uniform draw skips the 100 most frequent words, and the weighted draw needs some weight to land on.
+        require(ranked.size > if (tokenWeighted) 0 else 100) { "Too few words to sample from: ${ranked.size}" }
         val out = mutableListOf<String>()
         if (tokenWeighted) {
             val total = ranked.fold(0.0) { acc, (_, f) -> acc + f }

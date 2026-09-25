@@ -24,7 +24,7 @@ import io.kotest.matchers.shouldBe
 
 class AutocorrectTriggerPolicyTest : FunSpec({
     test("space and sentence punctuation end a word") {
-        listOf(" ", ".", ",", "!", "?", ";", ":").forEach { AutocorrectTriggerPolicy.isTrigger(it).shouldBeTrue() }
+        listOf(" ", ".", ",", "!", "?", "‽", ";", ":").forEach { AutocorrectTriggerPolicy.isTrigger(it).shouldBeTrue() }
     }
 
     test("apostrophes, hyphens, digits and symbols continue a word") {

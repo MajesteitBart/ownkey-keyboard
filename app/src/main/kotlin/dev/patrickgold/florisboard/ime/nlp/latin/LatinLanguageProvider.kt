@@ -46,6 +46,7 @@ import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LegacyLatinScorer
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.NoisyChannelLatinScorer
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.PossiblyOffensiveWords
 import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.RankedCandidate
 import dev.patrickgold.florisboard.ime.nlp.personal.PersonalDataStore
@@ -81,6 +82,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val PairPredictionScoreRange = 4.0
         private const val AutoCommitCandidateCount = 8
         private const val UserDictionarySnapshotMaxAgeMs = 30_000L
+        // User dictionary entries without a locale apply to every language.
+        private const val AnyLocale = "*"
 
         // Built by tools/dictionary-build/build.py. The raw FrequencyWords lists stay as a fallback for one release.
         private val FrequencyDictionaryAssets = mapOf(
@@ -148,6 +151,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     // Read-only copy of [languageModels] for the main thread, replaced whenever a model is registered.
     @Volatile
     private var loadedModelsSnapshot: Map<String, LatinWordModel> = emptyMap()
+    // Possibly offensive words of every loaded language, loaded with the models so main-thread decisions can use them.
+    @Volatile
+    private var offensiveWordsSnapshot: Set<String> = emptySet()
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
     private val emptyModel = LatinWordModel.Empty
     private val legacyScorer: LatinCurrentWordScorer = LegacyLatinScorer()
@@ -156,9 +162,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     @Volatile
     private var speechWordsCache: Pair<Any, Set<String>>? = null
 
-    // In-memory copy of the user dictionaries, so autocorrect decisions on the main thread never query a database.
+    // In-memory copy of the enabled user dictionaries, so autocorrect decisions on the main thread never query a
+    // database: each word with the locale tags of its entries, AnyLocale for an entry that applies to every language.
     @Volatile
-    private var userDictionarySnapshot: Set<String> = emptySet()
+    private var userDictionarySnapshot: Map<String, Set<String>> = emptyMap()
     @Volatile
     private var userDictionarySnapshotUptimeMs = 0L
     private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
@@ -229,13 +236,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 ),
                 hooks = scoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language)),
             )
-            val suggestions = scored
+            val allowed = PossiblyOffensiveWords.filter(scored, blockedWords(allowPossiblyOffensive), rawWord) { it.text }
+            val suggestions = allowed
                 .filter { it.word != normalizedWord }
                 .map { it.text }
                 .distinct()
                 .take(maxSuggestionCount)
             if (suggestions.isEmpty()) return SpellingResult.validWord()
-            return SpellingResult.typo(suggestions.toTypedArray(), isHighConfidenceResult = scored.any { it.isAutoCommit })
+            return SpellingResult.typo(suggestions.toTypedArray(), isHighConfidenceResult = allowed.any { it.isAutoCommit })
         }
 
         val suggestedWords = LinkedHashSet<String>()
@@ -260,7 +268,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             if (suggestedWords.size >= maxSuggestionCount) break
         }
 
-        val suggestions = suggestedWords.take(maxSuggestionCount)
+        val suggestions = PossiblyOffensiveWords
+            .filter(suggestedWords.toList(), blockedWords(allowPossiblyOffensive), rawWord) { it }
+            .take(maxSuggestionCount)
         if (suggestions.isEmpty()) {
             // Be conservative for unknown words so we don't underline names / domain words all the time.
             return SpellingResult.validWord()
@@ -333,7 +343,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
 
         val mergedSuggestions = mergePersonalEmailCandidates(
-            regular = suggestions,
+            regular = PossiblyOffensiveWords.filter(suggestions, blockedWords(allowPossiblyOffensive), rawInput) { it.text },
             emailCandidates = emailCandidates,
             isEmailField = isEmailField,
             maxCandidateCount = maxCandidateCount,
@@ -344,7 +354,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return mergedSuggestions
     }
 
-    override suspend fun decideAutoCommit(subtype: Subtype, content: EditorContent): SuggestionCandidate? {
+    override suspend fun decideAutoCommit(
+        subtype: Subtype,
+        content: EditorContent,
+        allowPossiblyOffensive: Boolean,
+    ): SuggestionCandidate? {
         val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
         if (rawInput.isBlank()) return null
         val languages = loadedScoringLanguages(subtype)
@@ -366,7 +380,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         )
         // Tap count and mean distance from the typed keys only; never the word itself.
         flogDebug { "Autocorrect taps: ${describeTaps(rawInput)}" }
-        val chosen = scored.firstOrNull { it.isAutoCommit } ?: return null
+        val chosen = PossiblyOffensiveWords.filter(scored, blockedWords(allowPossiblyOffensive), rawInput) { it.text }
+            .firstOrNull { it.isAutoCommit } ?: return null
         return WordSuggestionCandidate(
             text = chosen.text,
             confidence = chosen.confidence,
@@ -509,6 +524,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         languageModels.withLock {
             it.clear()
             loadedModelsSnapshot = emptyMap()
+            offensiveWordsSnapshot = emptySet()
         }
         suggestionCache.withLock {
             it.clear()
@@ -574,11 +590,27 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         modelLoadMutex.withLock {
             if (languageModels.withLock { models -> models.containsKey(language) }) return
             val model = loadLanguageModel(language)
+            val offensiveWords = loadOffensiveWords(language)
             languageModels.withLock { models ->
                 models.putIfAbsent(language, model)
                 loadedModelsSnapshot = models.toMap()
+                offensiveWordsSnapshot = offensiveWordsSnapshot + offensiveWords
             }
         }
+    }
+
+    private fun loadOffensiveWords(language: String): Set<String> {
+        return try {
+            appContext.assets.open("${PossiblyOffensiveWords.AssetDir}/$language.txt").bufferedReader()
+                .useLines { lines -> PossiblyOffensiveWords.parse(lines) }
+        } catch (_: java.io.IOException) {
+            emptySet()
+        }
+    }
+
+    /** The words to leave out of candidates: none when the user allows possibly offensive words. */
+    private fun blockedWords(allowPossiblyOffensive: Boolean): Set<String> {
+        return if (allowPossiblyOffensive) emptySet() else offensiveWordsSnapshot
     }
 
     private suspend fun loadLanguageModel(language: String): LatinWordModel {
@@ -965,10 +997,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private fun inMemoryScoringHooks(subtype: Subtype, language: String): LatinScoringHooks {
         val userWords = userDictionarySnapshot
+        val localeTags = subtype.locales().map { it.localeTag() }
         val speechWords = speechDictionaryWords()
         return object : LatinScoringHooks {
             override fun isUserDictionaryWord(normalizedWord: String): Boolean {
-                return normalizedWord in userWords || normalizedWord in speechWords
+                val entryLocales = userWords[normalizedWord]
+                val isUserWord = entryLocales != null && (AnyLocale in entryLocales || localeTags.any { it in entryLocales })
+                return isUserWord || normalizedWord in speechWords
             }
 
             override fun isBlockedByUserPreference(normalizedWord: String): Boolean {
@@ -996,14 +1031,17 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         userDictionarySnapshot = try {
             val dictionaryManager = DictionaryManager.default()
             dictionaryManager.loadUserDictionariesIfNecessary()
-            buildSet {
-                listOfNotNull(
-                    dictionaryManager.florisUserDictionaryDao(),
-                    dictionaryManager.systemUserDictionaryDao(),
-                ).forEach { dao ->
+            // The same dictionaries and locale rule as DictionaryManager.spell, which the suggestion path uses.
+            val daos = listOfNotNull(
+                dictionaryManager.florisUserDictionaryDao()?.takeIf { prefs.dictionary.enableFlorisUserDictionary.get() },
+                dictionaryManager.systemUserDictionaryDao()?.takeIf { prefs.dictionary.enableSystemUserDictionary.get() },
+            )
+            buildMap<String, MutableSet<String>> {
+                daos.forEach { dao ->
                     dao.queryAll().forEach { entry ->
-                        add(normalizeDictionaryWord(entry.word))
-                        entry.shortcut?.let { add(normalizeDictionaryWord(it)) }
+                        val localeTag = entry.locale ?: AnyLocale
+                        getOrPut(normalizeDictionaryWord(entry.word)) { HashSet() }.add(localeTag)
+                        entry.shortcut?.let { getOrPut(normalizeDictionaryWord(it)) { HashSet() }.add(localeTag) }
                     }
                 }
             }

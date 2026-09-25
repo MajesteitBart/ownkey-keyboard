@@ -799,7 +799,7 @@ private class TextKeyboardLayoutController(
                         }
                     } else {
                         // A popup alternative: the tap position belongs to the popup, not to a key.
-                        if (retData.type == KeyType.CHARACTER) TapTrail.recordWithoutPosition(retData.code)
+                        recordTap(retData, event = null, pointer)
                         inputEventDispatcher.sendCancel(activeKey.computedDataOnDown)
                         inputEventDispatcher.sendDownUp(retData)
                     }
@@ -825,8 +825,11 @@ private class TextKeyboardLayoutController(
         pointer.hasTriggeredGestureMove = false
     }
 
-    /** Remembers where a character key was tapped, for the touch model of autocorrect. */
-    private fun recordTap(data: KeyData, event: MotionEvent, pointer: TouchPointer) {
+    /**
+     * Remembers where a character key was tapped, for the touch model of autocorrect. Without an [event] the
+     * character is kept without a position.
+     */
+    private fun recordTap(data: KeyData, event: MotionEvent?, pointer: TouchPointer) {
         if (data.type != KeyType.CHARACTER || data.code <= 0) return
         val info = editorInstance.activeInfo
         if (!AutocorrectTriggerPolicy.allowsField(
@@ -840,8 +843,8 @@ private class TextKeyboardLayoutController(
             return
         }
         // Look the pointer up by id: with several fingers down, a cached index can belong to another finger.
-        val index = event.findPointerIndex(pointer.id)
-        if (index < 0 || pointer.hasTriggeredLongPress) {
+        val index = event?.findPointerIndex(pointer.id) ?: -1
+        if (event == null || index < 0 || pointer.hasTriggeredLongPress) {
             TapTrail.recordWithoutPosition(data.code)
         } else {
             TapTrail.record(data.code, event.getX(index), event.getY(index))
