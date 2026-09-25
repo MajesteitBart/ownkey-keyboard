@@ -1,0 +1,39 @@
+{
+  "$": "ime.extension.theme",
+  "meta": {
+    "id": "ai.bvdm.ownkey.themes.signal",
+    "version": "1.0.0",
+    "title": "Ownkey Signal",
+    "description": "Brand-reference themes: Graphite, Black (OLED) and Bone (day). Signal orange on enter only.",
+    "maintainers": [
+      "Bart van der Meeren"
+    ],
+    "license": "apache-2.0"
+  },
+  "themes": [
+    {
+      "id": "ownkey_signal_graphite",
+      "label": "Ownkey Signal Graphite",
+      "authors": [
+        "Ownkey"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "ownkey_signal_black",
+      "label": "Ownkey Signal Black",
+      "authors": [
+        "Ownkey"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "ownkey_signal_bone",
+      "label": "Ownkey Signal Bone",
+      "authors": [
+        "Ownkey"
+      ],
+      "isNight": false
+    }
+  ]
+}

@@ -245,9 +245,9 @@ private fun SmartbarMainRow(
                 if (it) 180f else 0f
             }
             val arrowIcon = if (flipToggles) {
-                ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_left)
+                ImageVector.vectorResource(id = R.drawable.ic_hero_chevron_left)
             } else {
-                ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_right)
+                ImageVector.vectorResource(id = R.drawable.ic_hero_chevron_right)
             }
             val incognitoIcon = ImageVector.vectorResource(id = R.drawable.ic_incognito)
             val incognitoDisplayMode = prefs.keyboard.incognitoDisplayMode.collectAsState()
@@ -354,9 +354,9 @@ private fun SmartbarMainRow(
             SnyggIcon(
                 FlorisImeUi.SmartbarExtendedActionsToggle.elementName,
                 imageVector = if (extendedActionsExpanded) {
-                    ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_down)
+                    ImageVector.vectorResource(id = R.drawable.ic_hero_chevron_down)
                 } else {
-                    ImageVector.vectorResource(id = R.drawable.ic_tabler_chevron_up)
+                    ImageVector.vectorResource(id = R.drawable.ic_hero_chevron_up)
                 },
             )
         }

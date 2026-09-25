@@ -20,6 +20,12 @@ enum class TranscriptionBackend(val preference: String) {
         MOCK -> SpeechDictionaryUse.APPLIED
     }
 
+    /**
+     * Whether dictation must stop before recording because the chosen cloud provider has no API key. Recording
+     * first would only fail after the user has spoken.
+     */
+    fun lacksApiKey(hasCloudKey: Boolean): Boolean = this == CLOUD && !hasCloudKey
+
     companion object {
         fun resolve(preference: String, hasCloudKey: Boolean, debug: Boolean): TranscriptionBackend = when (preference) {
             ORUKEET.preference -> ORUKEET // Missing models fail closed; never resolve to cloud.

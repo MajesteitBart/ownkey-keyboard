@@ -18,11 +18,15 @@ package dev.patrickgold.florisboard.ime.window
 
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.graphics.Region
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.width
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
+import dev.patrickgold.florisboard.ime.keyboard.SplitLayoutMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -103,6 +107,32 @@ class ImeWindowController(
 
     private val updateConfigMutex = Mutex()
 
+    /** Empty space between the floating halves, in root pixels; shared by drawing and hit testing. */
+    val floatingSplitGap: StateFlow<IntRect?>
+        field = MutableStateFlow(null)
+
+    fun updateFloatingSplitGap(bounds: IntRect?) {
+        floatingSplitGap.value = bounds
+    }
+
+    /**
+     * If the current editor may show the voice-only bar. Reported by the IME service, which knows the editor:
+     * secure, incognito, and numeric fields get the full keyboard even while voice-only is selected.
+     */
+    val voiceOnlyAllowed: StateFlow<Boolean>
+        field = MutableStateFlow(true)
+
+    fun updateVoiceOnlyAllowed(allowed: Boolean) {
+        voiceOnlyAllowed.value = allowed
+    }
+
+    /**
+     * If the voice-only bar currently replaces the keyboard window. While true, the window insets describe
+     * the bar, and the app behind it is not resized.
+     */
+    val isVoiceOnlyActive: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
     init {
         combine(
             activeRootInsets,
@@ -112,6 +142,12 @@ class ImeWindowController(
             windowConfigByType[typeGuess] ?: ImeWindowConfig.Default
         }.collectIn(scope) { windowConfig ->
             activeWindowConfig.value = windowConfig
+        }
+
+        combine(prefs.keyboard.voiceOnly.asFlow(), voiceOnlyAllowed) { voiceOnly, allowed ->
+            voiceOnly && allowed
+        }.collectIn(scope) { active ->
+            isVoiceOnlyActive.value = active
         }
 
         val userPreferredOptions = combine(
@@ -138,9 +174,10 @@ class ImeWindowController(
             activeRootInsets,
             activeWindowConfig,
             userPreferredOptions,
+            prefs.keyboard.splitLayoutMode.asFlow(),
             editor.version,
-        ) { rootInsets, windowConfig, userConfig, _ ->
-            doComputeWindowSpec(rootInsets, windowConfig, userConfig)
+        ) { rootInsets, windowConfig, userConfig, splitMode, _ ->
+            doComputeWindowSpec(rootInsets, windowConfig, userConfig, splitMode)
         }.collectIn(scope) { windowSpec ->
             activeWindowSpec.value = windowSpec
         }
@@ -193,8 +230,9 @@ class ImeWindowController(
      * even if the touchable area needs to be fullscreen, or matches the visible/content top. This is due to a
      * bug that affects other modes, where no touch input is propagated to the root window in some cases.
      *
-     * If the current window spec is of floating mode, the reported visible/content bounds will be empty. This
-     * causes the underlying application to not resize at all when the floating window is shown.
+     * If the current window spec is of floating mode, or the voice-only bar is active, the reported
+     * visible/content bounds will be empty. This causes the underlying application to not resize at all when
+     * the floating window or the voice-only bar is shown.
      *
      * @param outInsets The out insets to write the response into.
      * @param isFullscreenInputRequired Flag indicating if, despite the current window config not requiring
@@ -211,16 +249,15 @@ class ImeWindowController(
         val windowBounds = windowInsets.boundsPx
         val windowSpec = activeWindowSpec.value
         val editorState = editor.state.value
+        val isVoiceOnly = isVoiceOnlyActive.value
 
-        when (windowSpec) {
-            is ImeWindowSpec.Fixed -> {
-                outInsets.contentTopInsets = windowBounds.top
-                outInsets.visibleTopInsets = windowBounds.top
-            }
-            is ImeWindowSpec.Floating -> {
-                outInsets.contentTopInsets = rootBounds.bottom
-                outInsets.visibleTopInsets = rootBounds.bottom
-            }
+        if (windowSpec is ImeWindowSpec.Fixed && !isVoiceOnly) {
+            outInsets.contentTopInsets = windowBounds.top
+            outInsets.visibleTopInsets = windowBounds.top
+        } else {
+            // Floating windows and the voice-only bar sit above the app without resizing it.
+            outInsets.contentTopInsets = rootBounds.bottom
+            outInsets.visibleTopInsets = rootBounds.bottom
         }
         when {
             isFullscreenInputRequired || editorState.isEnabled -> {
@@ -238,6 +275,15 @@ class ImeWindowController(
                     windowBounds.right,
                     windowBounds.bottom,
                 )
+                if (!isVoiceOnly && windowSpec is ImeWindowSpec.Floating &&
+                    windowSpec.floatingMode == ImeWindowMode.Floating.SPLIT
+                ) {
+                    floatingSplitGap.value?.let { gap ->
+                        outInsets.touchableRegion.op(
+                            gap.left, windowBounds.top, gap.right, windowBounds.bottom, Region.Op.DIFFERENCE,
+                        )
+                    }
+                }
             }
         }
         outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
@@ -257,10 +303,24 @@ class ImeWindowController(
         return isWindowShown.compareAndSet(expect = true, update = false)
     }
 
+    /**
+     * The floating sub-mode that matches the split keyboard setting at the current root width. Derived on every
+     * spec computation, so changing the setting or rotating takes effect without re-entering floating mode.
+     */
+    private fun floatingModeFor(rootInsets: ImeInsets.Root, splitMode: SplitLayoutMode): ImeWindowMode.Floating {
+        val widthDp = rootInsets.boundsDp.width.value.toInt()
+        return if (widthDp >= SplitLayout.AutoMinScreenWidthDp && SplitLayout.isActive(splitMode, widthDp)) {
+            ImeWindowMode.Floating.SPLIT
+        } else {
+            ImeWindowMode.Floating.NORMAL
+        }
+    }
+
     private fun doComputeWindowSpec(
         rootInsets: ImeInsets.Root,
         windowConfig: ImeWindowConfig,
         userPreferredOptions: ImeWindowSpec.UserPreferredOptions,
+        splitMode: SplitLayoutMode,
     ): ImeWindowSpec {
         return when (windowConfig.mode) {
             ImeWindowMode.FIXED -> {
@@ -275,11 +335,12 @@ class ImeWindowController(
                 )
             }
             ImeWindowMode.FLOATING -> {
-                val constraints = ImeWindowConstraints.of(rootInsets, windowConfig.floatingMode)
-                val props = (windowConfig.floatingProps[windowConfig.floatingMode] ?: constraints.defaultProps)
+                val floatingMode = floatingModeFor(rootInsets, splitMode)
+                val constraints = ImeWindowConstraints.of(rootInsets, floatingMode)
+                val props = (windowConfig.floatingProps[floatingMode] ?: constraints.defaultProps)
                     .constrained(constraints)
                 ImeWindowSpec.Floating(
-                    floatingMode = windowConfig.floatingMode,
+                    floatingMode = floatingMode,
                     props = props,
                     userPreferredOptions = userPreferredOptions,
                     constraints = constraints,
@@ -298,7 +359,24 @@ class ImeWindowController(
                     ImeWindowMode.FIXED -> ImeWindowMode.FLOATING
                     ImeWindowMode.FLOATING -> ImeWindowMode.FIXED
                 }
-                config.copy(mode = newMode)
+                val floatingMode = floatingModeFor(activeRootInsets.value, prefs.keyboard.splitLayoutMode.get())
+                config.copy(mode = newMode, floatingMode = floatingMode)
+            }
+        }
+
+        fun toggleVoiceOnly() {
+            editor.disable()
+            scope.launch {
+                // Serialized like window config updates, so two quick taps never read the same value.
+                updateConfigMutex.withLock {
+                    prefs.keyboard.voiceOnly.set(!prefs.keyboard.voiceOnly.get())
+                }
+            }
+        }
+
+        fun moveVoiceBar(offset: ImeWindowConfig.VoiceBarOffset) {
+            updateWindowConfig { config ->
+                config.copy(voiceBarOffset = offset)
             }
         }
 
@@ -375,18 +453,20 @@ class ImeWindowController(
 
         fun resetFloatingSize() {
             val rootInsets = activeRootInsets.value
+            val floatingMode = floatingModeFor(rootInsets, prefs.keyboard.splitLayoutMode.get())
             updateWindowConfig { config ->
                 when (config.mode) {
                     ImeWindowMode.FLOATING -> {
-                        val constraints = ImeWindowConstraints.of(rootInsets, config.floatingMode)
+                        val constraints = ImeWindowConstraints.of(rootInsets, floatingMode)
                         val defaultProps = constraints.defaultProps
-                        val newProps = config.floatingProps[config.floatingMode]?.copy(
+                        val newProps = config.floatingProps[floatingMode]?.copy(
                             keyboardHeight = defaultProps.keyboardHeight,
                             keyboardWidth = defaultProps.keyboardWidth,
                         ) ?: defaultProps
                         config.copy(
+                            floatingMode = floatingMode,
                             floatingProps = config.floatingProps.plus(
-                                config.floatingMode to newProps.constrained(constraints)
+                                floatingMode to newProps.constrained(constraints)
                             ),
                         )
                     }
@@ -461,7 +541,7 @@ class ImeWindowController(
                          config.copy(fixedProps = config.fixedProps.plus(spec.fixedMode to spec.props))
                      }
                     is ImeWindowSpec.Floating -> {
-                        if (spec.props.offsetBottom <= spec.constraints.dockToFixedHeight) {
+                        if (spec.shouldDockOnRelease) {
                             keepEnabled = false
                             config.copy(mode = ImeWindowMode.FIXED)
                         } else {

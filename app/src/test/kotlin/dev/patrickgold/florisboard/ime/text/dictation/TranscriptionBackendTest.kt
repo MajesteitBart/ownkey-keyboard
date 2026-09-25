@@ -21,6 +21,14 @@ class TranscriptionBackendTest : FunSpec({
         TranscriptionBackend.UNAVAILABLE.speechDictionaryUse(hasCloudKey = true, localModelReady = true) shouldBe SpeechDictionaryUse.NOT_SET_UP
     }
 
+    test("only a cloud provider without a key stops dictation before recording") {
+        TranscriptionBackend.CLOUD.lacksApiKey(hasCloudKey = false) shouldBe true
+        TranscriptionBackend.CLOUD.lacksApiKey(hasCloudKey = true) shouldBe false
+        TranscriptionBackend.entries.filter { it != TranscriptionBackend.CLOUD }.forEach { backend ->
+            backend.lacksApiKey(hasCloudKey = false) shouldBe false
+        }
+    }
+
     test("a release install without a cloud key resolves to system voice input, which shows the notice") {
         val backend = TranscriptionBackend.resolve(preference = "", hasCloudKey = false, debug = false)
         backend shouldBe TranscriptionBackend.EXTERNAL_IME

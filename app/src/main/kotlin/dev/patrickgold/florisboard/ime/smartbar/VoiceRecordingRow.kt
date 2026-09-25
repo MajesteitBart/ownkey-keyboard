@@ -33,11 +33,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -50,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -170,9 +167,9 @@ fun VoiceRecordingRowContent(
             ) {
                 Icon(
                     imageVector = if (state.phase == VoiceRecordingPhase.PAUSED) {
-                        Icons.Default.PlayArrow
+                        ImageVector.vectorResource(id = R.drawable.ic_hero_play)
                     } else {
-                        Icons.Default.Pause
+                        ImageVector.vectorResource(id = R.drawable.ic_hero_pause)
                     },
                     contentDescription = null,
                     tint = OwnkeyBrand.Bone,
@@ -185,7 +182,7 @@ fun VoiceRecordingRowContent(
                 contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
                     contentDescription = null,
                     tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
                 )
@@ -220,36 +217,29 @@ fun VoiceRecordingStickyAction(
             CircleControlButton(
                 size = buttonSize,
                 iconSize = 20.dp,
-                background = OwnkeyBrand.Glass.Key,
+                background = OwnkeyBrand.Coal,
                 border = OwnkeyBrand.Bone.copy(alpha = 0.12f),
                 onClick = actions::onCancel,
                 contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
                     contentDescription = null,
                     tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
                 )
             }
         } else {
-            CircleControlButton(
+            // The same listening face as the mic key and the voice-only bar.
+            val stopLabel = stringRes(R.string.voice_recording__stop_dictation)
+            MicButtonFace(
+                state = if (state.phase == VoiceRecordingPhase.PAUSED) MicFaceState.PAUSED else MicFaceState.LISTENING,
+                idleStyle = MicIdleStyle.QUIET,
                 size = buttonSize,
-                iconSize = 22.dp,
-                background = if (state.phase == VoiceRecordingPhase.PAUSED) {
-                    OwnkeyBrand.SignalOrange.copy(alpha = 0.55f)
-                } else {
-                    OwnkeyBrand.SignalOrange
-                },
-                border = OwnkeyBrand.SignalAmber.copy(alpha = 0.34f),
-                onClick = actions::onStop,
-                contentDescription = stringRes(R.string.voice_recording__stop_dictation),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Stop,
-                    contentDescription = null,
-                    tint = Color.White,
-                )
-            }
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(onClickLabel = stopLabel, onClick = actions::onStop)
+                    .semantics { contentDescription = stopLabel },
+            )
         }
     }
 }
@@ -273,7 +263,7 @@ private fun RecordingElapsed(
             modifier = Modifier
                 .size(5.dp)
                 .background(
-                    color = if (paused) OwnkeyBrand.WarningYellow else OwnkeyBrand.SignalOrange,
+                    color = if (paused) OwnkeyBrand.WarningYellow else OwnkeyBrand.Ember,
                     shape = CircleShape,
                 ),
         )
@@ -301,7 +291,7 @@ private fun ProcessingStatus(
         CircularProgressIndicator(
             modifier = Modifier.size(18.dp),
             strokeWidth = 2.5.dp,
-            color = OwnkeyBrand.SignalOrange,
+            color = OwnkeyBrand.Ember,
             trackColor = OwnkeyBrand.Bone.copy(alpha = 0.08f),
         )
         Text(
@@ -336,8 +326,9 @@ private fun VoiceRecordingStatusAnnouncement(state: VoiceRecordingRowState) {
     )
 }
 
+/** Status text shared by the dictation row and the voice-only bar. */
 @Composable
-private fun VoiceRecordingRowState.label(): String = if (local && phase != VoiceRecordingPhase.PAUSED) {
+internal fun VoiceRecordingRowState.label(): String = if (local && phase != VoiceRecordingPhase.PAUSED) {
     stringRes(if (phase == VoiceRecordingPhase.PROCESSING) R.string.orukeet__transcribing else R.string.orukeet__recording)
 } else status.label()
 
@@ -433,7 +424,7 @@ fun MeasuredLevelWaveform(
     barCount: Int,
     paused: Boolean,
     modifier: Modifier = Modifier,
-    color: Color = OwnkeyBrand.SignalOrange,
+    color: Color = OwnkeyBrand.Ember,
     barWidth: Dp = RecordingRowLayoutPolicy.BarWidthDp.dp,
     barPitch: Dp = RecordingRowLayoutPolicy.BarPitchDp.dp,
 ) {

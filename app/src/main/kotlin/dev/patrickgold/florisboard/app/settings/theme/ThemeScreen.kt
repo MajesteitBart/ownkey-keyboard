@@ -35,6 +35,7 @@ import dev.patrickgold.florisboard.ime.theme.ThemeIconStyle
 import dev.patrickgold.florisboard.ime.theme.ThemeKeyRadius
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.theme.extMyTheme
+import dev.patrickgold.florisboard.ime.theme.extSignalTheme
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -55,6 +56,9 @@ private fun styleThemeId(
     showKeyBorders: Boolean,
     keyRadius: ThemeKeyRadius,
 ): ExtensionComponentName {
+    if (preset.isSignal) {
+        return extSignalTheme(if (isNight) "ownkey_signal_${preset.styleId}" else "ownkey_signal_bone")
+    }
     val palette = if (isNight) preset.styleId else "day"
     val border = if (showKeyBorders) "bordered" else "borderless"
     val radius = when (keyRadius) {
@@ -67,7 +71,9 @@ private fun styleThemeId(
 }
 
 private fun isStyleManagedTheme(id: ExtensionComponentName): Boolean {
+    // Signal themes count only from the built-in extension, so a custom theme with a similar id stays the user's.
     return id.componentId.startsWith("ownkey_glass_") ||
+        id.extensionId == extSignalTheme("").extensionId ||
         id.componentId.startsWith("voxtral_") ||
         id.componentId == "ownkey_liquid_glass"
 }
@@ -143,16 +149,19 @@ fun ThemeScreen() = FlorisScreen {
             entries = enumDisplayEntriesOf(ThemeGlassPreset::class),
         )
 
+        // The Signal themes carry their own key shapes, so these two only shape the Glass presets.
         SwitchPreference(
             prefs.theme.showKeyBorders,
             title = stringRes(R.string.pref__theme__show_key_borders__label),
             summary = stringRes(R.string.pref__theme__show_key_borders__summary),
+            visibleIf = { !glassPreset.isSignal },
         )
 
         ListPreference(
             prefs.theme.keyRadius,
             title = stringRes(R.string.pref__theme__key_radius__label),
             entries = enumDisplayEntriesOf(ThemeKeyRadius::class),
+            visibleIf = { !glassPreset.isSignal },
         )
 
         ColorPickerPreference(

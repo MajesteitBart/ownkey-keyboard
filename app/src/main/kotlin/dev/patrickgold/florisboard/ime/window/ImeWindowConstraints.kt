@@ -336,6 +336,26 @@ sealed class ImeWindowConstraints(rootInsets: ImeInsets.Root) {
                 )
             }
         }
+
+        class Split(rootInsets: ImeInsets.Root) : Floating(rootInsets) {
+            // Match the docked tablet's key spacing instead of the compact floating keyboard's.
+            private val docked = Fixed.Normal(rootInsets)
+            override val defKeyMarginH by calculation { docked.defKeyMarginH }
+            override val defKeyMarginV by calculation { docked.defKeyMarginV }
+            override val minKeyboardWidth by calculation { rootBounds.width * 0.8f }
+            override val maxKeyboardWidth by calculation { (rootBounds.width - 24.dp).coerceAtLeast(minKeyboardWidth) }
+            override val defKeyboardWidth by calculation { maxKeyboardWidth }
+
+            override val defaultProps by calculation {
+                ImeWindowProps.Floating(
+                    keyboardHeight = defKeyboardHeight,
+                    keyboardWidth = defKeyboardWidth,
+                    offsetLeft = (rootBounds.width - defKeyboardWidth) / 2,
+                    offsetBottom = 12.dp
+                        .coerceAtMost((rootBounds.height - defKeyboardHeight).coerceAtLeast(0.dp)),
+                )
+            }
+        }
     }
 
     companion object {
@@ -365,6 +385,7 @@ sealed class ImeWindowConstraints(rootInsets: ImeInsets.Root) {
         fun of(rootInsets: ImeInsets.Root, floatingMode: ImeWindowMode.Floating): Floating {
             return when (floatingMode) {
                 ImeWindowMode.Floating.NORMAL -> Floating.Normal(rootInsets)
+                ImeWindowMode.Floating.SPLIT -> Floating.Split(rootInsets)
             }
         }
     }

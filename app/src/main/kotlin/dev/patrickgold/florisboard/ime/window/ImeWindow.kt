@@ -54,6 +54,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
@@ -111,6 +112,7 @@ fun ImeRootWindow() {
     // The dictation key reports its bounds here and the hint is drawn above it from this root, so
     // it can sit above the keyboard without a popup window and without stealing host-app touches.
     val voiceActionHint = remember { VoiceActionHintState() }
+    val isVoiceOnly by windowController.isVoiceOnlyActive.collectAsState()
 
     Box(
         modifier = Modifier
@@ -130,7 +132,11 @@ fun ImeRootWindow() {
     ) {
         CompositionLocalProvider(LocalVoiceActionHintState provides voiceActionHint) {
             DevtoolsOverlay()
-            ImeWindow()
+            if (isVoiceOnly) {
+                VoiceOnlyWindow()
+            } else {
+                ImeWindow()
+            }
             VoiceActionHintOverlay(voiceActionHint)
             BottomSheetWindow()
             ImeSystemUi()
@@ -157,6 +163,12 @@ fun BoxScope.ImeWindow() {
 
     val windowSpec by windowController.activeWindowSpec.collectAsState()
     val windowConfig by windowController.activeWindowConfig.collectAsState()
+    val splitGap by windowController.floatingSplitGap.collectAsState()
+    val view = LocalView.current
+    LaunchedEffect(splitGap) {
+        // Ask the IME service to recompute its touch region after layout or mode changes.
+        view.requestLayout()
+    }
 
     val attributes = remember(windowConfig.mode) {
         mapOf(
@@ -166,8 +178,8 @@ fun BoxScope.ImeWindow() {
 
     FloatingDockToFixedIndicator()
 
-    SnyggBox(
-        elementName = FlorisImeUi.Window.elementName,
+    ImeWindowSurface(
+        floatingSplit = windowSpec.isFloatingSplit,
         attributes = attributes,
         modifier = Modifier
             .align(Alignment.BottomStart)
@@ -186,8 +198,6 @@ fun BoxScope.ImeWindow() {
                 val newInsets = with(density) { ImeInsets.Window.of(boundsPx) }
                 windowController.updateWindowInsets(newInsets)
             },
-        supportsBackgroundImage = true,
-        allowClip = false,
     ) {
         OneHandedPanel()
         ProvideKeyboardRowBaseHeight {
@@ -214,8 +224,9 @@ private fun ImeInnerWindow() {
         }
     }
 
-    SnyggBox(
-        elementName = FlorisImeUi.WindowInner.elementName,
+    ImeWindowSurface(
+        floatingSplit = windowSpec.isFloatingSplit,
+        inner = true,
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
@@ -232,7 +243,6 @@ private fun ImeInnerWindow() {
             .ifIsInstance<ImeWindowProps.Floating>(windowSpec.props) {
                 Modifier.systemGestureExclusion()
             },
-        allowClip = false,
     ) {
         Column {
             when (state.imeUiMode) {
@@ -258,7 +268,7 @@ private fun BoxScope.FloatingDockToFixedIndicator() {
         derivedStateOf {
             windowSpec.let { spec ->
                 editorState.isMoveGesture && spec is ImeWindowSpec.Floating &&
-                    spec.props.offsetBottom <= spec.constraints.dockToFixedHeight
+                    spec.shouldDockOnRelease
             }
         }
     }

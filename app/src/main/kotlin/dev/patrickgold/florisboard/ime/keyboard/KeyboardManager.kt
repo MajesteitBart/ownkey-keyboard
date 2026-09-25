@@ -873,6 +873,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.COMPACT_LAYOUT_TO_LEFT -> windowController.actions.compactLayoutToLeft()
             KeyCode.COMPACT_LAYOUT_TO_RIGHT -> windowController.actions.compactLayoutToRight()
             KeyCode.TOGGLE_RESIZE_MODE -> windowController.editor.toggleEnabled()
+            KeyCode.TOGGLE_VOICE_ONLY -> {
+                // The bar has no room for panels or sheets, so none may stay open behind or over it.
+                isRewriteOptionsVisible = false
+                activeState.isActionsOverflowVisible = false
+                activeState.isActionsEditorVisible = false
+                activeState.isSubtypeSelectionVisible = false
+                dictationFixController.interrupt()
+                windowController.actions.toggleVoiceOnly()
+            }
             KeyCode.DELETE -> handleBackwardDelete(OperationUnit.CHARACTERS)
             KeyCode.DELETE_WORD -> handleBackwardDelete(OperationUnit.WORDS)
             KeyCode.ENTER -> handleEnter()

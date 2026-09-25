@@ -37,6 +37,13 @@ inline fun extMyTheme(id: String) = ExtensionComponentName(
     componentId = id,
 )
 
+/** The Ownkey Signal brand themes: Graphite and Black for night, Bone for day. */
+@Suppress("NOTHING_TO_INLINE")
+inline fun extSignalTheme(id: String) = ExtensionComponentName(
+    extensionId = "ai.bvdm.ownkey.themes.signal",
+    componentId = id,
+)
+
 @Suppress("NOTHING_TO_INLINE")
 inline fun extPreviewTheme(id: String) = ExtensionComponentName(
     extensionId = "local.themes.preview",
