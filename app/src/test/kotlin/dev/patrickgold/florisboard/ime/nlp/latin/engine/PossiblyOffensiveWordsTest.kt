@@ -62,4 +62,10 @@ class PossiblyOffensiveWordsTest : FunSpec({
         PossiblyOffensiveWords.filter(listOf("fuck", "duck"), emptySet(), "fuxk") { it } shouldBe listOf("fuck", "duck")
         PossiblyOffensiveWords.filter(listOf("Fuck", "Duck"), blocked, "Fuxk") { it } shouldBe listOf("Duck")
     }
+
+    test("a missed-space split is checked word by word") {
+        val blocked = setOf("fuck")
+        PossiblyOffensiveWords.filter(listOf("fuck you", "thank you", "fuckyou"), blocked, "fuckyou") { it } shouldBe
+            listOf("thank you", "fuckyou")
+    }
 })

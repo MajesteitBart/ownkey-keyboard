@@ -156,6 +156,13 @@ interface SuggestionProvider : NlpProvider {
     ): SuggestionCandidate? = null
 
     /**
+     * Everything besides the text that decides which suggestion may be auto-committed for [subtype], such as
+     * correction settings or words the user protected. A finished suggestion run is only reused on space while
+     * this value is unchanged. Called on the main thread for every word, so it must be cheap and in-memory.
+     */
+    fun autoCommitStateKey(subtype: Subtype): String = ""
+
+    /**
      * Is called when a suggestion has been accepted, either manually by the user or automatically through auto-commit.
      * This is purely a notification about an event and can safely be ignored if not needed.
      *

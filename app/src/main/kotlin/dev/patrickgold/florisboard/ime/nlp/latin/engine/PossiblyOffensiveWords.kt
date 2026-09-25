@@ -26,13 +26,16 @@ internal object PossiblyOffensiveWords {
 
     fun parse(lines: Sequence<String>): Set<String> = LatinDictionaryCleanup.parseRemovalList(lines)
 
-    /** [candidates] without the words in [blocked], except a candidate that is the [typed] word itself. */
+    /**
+     * [candidates] without the ones that contain a word in [blocked], except a candidate that is the [typed] word
+     * itself. A candidate of several words (a missed-space split such as "fuck you") is checked word by word.
+     */
     fun <T> filter(candidates: List<T>, blocked: Set<String>, typed: String, textOf: (T) -> CharSequence): List<T> {
         if (blocked.isEmpty()) return candidates
         val typedWord = LatinText.normalizeDictionaryWord(typed)
         return candidates.filter { candidate ->
-            val word = LatinText.normalizeDictionaryWord(textOf(candidate).toString())
-            word == typedWord || word !in blocked
+            val text = LatinText.normalizeDictionaryWord(textOf(candidate).toString())
+            text == typedWord || text.split(' ').none { it in blocked }
         }
     }
 }

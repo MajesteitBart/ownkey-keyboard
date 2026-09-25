@@ -73,6 +73,24 @@ class AutoCommitSelectorTest : FunSpec({
         }
     }
 
+    test("only the latest suggestion run counts, under the same settings") {
+        val batch = WordSuggestionBatch(
+            request("thr").copy(sequence = 4L, providerState = "Normal|rev1"),
+            listOf(candidate("the", true)),
+        )
+        AutoCommitSelector.select(request("thr").copy(sequence = 4L, providerState = "Normal|rev1"), batch) { null }
+            .source shouldBe AutoCommitSelector.Source.BATCH
+        // The word was deleted and typed again with other taps: run 5 is still pending.
+        listOf(
+            request("thr").copy(sequence = 5L, providerState = "Normal|rev1"),
+            request("thr").copy(sequence = 4L, providerState = "Strong|rev1"),
+            request("thr").copy(sequence = 4L, providerState = "Normal|rev2"),
+            request("thr").copy(sequence = 4L, providerState = "Normal|rev1", allowPossiblyOffensive = true),
+        ).forEach { other ->
+            AutoCommitSelector.select(other, batch) { null }.source shouldBe AutoCommitSelector.Source.DECIDED_NOW
+        }
+    }
+
     test("a batch with no eligible candidate keeps the word") {
         val batch = WordSuggestionBatch(request("hello"), listOf(candidate("hello", false), candidate("hell", false)))
         AutoCommitSelector.select(request("hello"), batch) { error("must not decide again") }.candidate.shouldBeNull()

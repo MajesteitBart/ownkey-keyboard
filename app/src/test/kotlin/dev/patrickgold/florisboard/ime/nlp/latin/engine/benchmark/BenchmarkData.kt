@@ -90,6 +90,7 @@ internal object BenchmarkData {
 
     fun offensiveWords(code: String): Set<String> {
         val file = File(moduleDir, "src/main/assets/${PossiblyOffensiveWords.AssetDir}/$code.txt")
+        if (!file.isFile) return emptySet()
         return file.bufferedReader().useLines { PossiblyOffensiveWords.parse(it) }
     }
 

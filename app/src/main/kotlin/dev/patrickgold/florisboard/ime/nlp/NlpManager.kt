@@ -50,6 +50,7 @@ import kotlinx.coroutines.sync.withLock
 import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.lib.kotlin.collectLatestIn
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
@@ -78,6 +79,8 @@ class NlpManager(context: Context) {
     private val internalSuggestionsGuard = Mutex()
     @Volatile
     private var wordSuggestionBatch = WordSuggestionBatch.Empty
+    // Numbers the suggestion runs as they are requested; see WordSuggestionRequest.sequence.
+    private val suggestionSequence = AtomicLong(0L)
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -208,7 +211,8 @@ class NlpManager(context: Context) {
     fun suggest(subtype: Subtype, content: EditorContent) {
         val reqTime = SystemClock.uptimeMillis()
         val isPrivateSession = keyboardManager.activeState.isIncognitoMode
-        val request = wordSuggestionRequest(content, subtype, isPrivateSession)
+        val allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get()
+        val request = wordSuggestionRequest(content, subtype, isPrivateSession, suggestionSequence.incrementAndGet())
         scope.launch {
             val emojiSuggestions = when {
                 prefs.emoji.suggestionEnabled.get() -> {
@@ -216,7 +220,7 @@ class NlpManager(context: Context) {
                         subtype = subtype,
                         content = content,
                         maxCandidateCount = prefs.emoji.suggestionCandidateMaxCount.get(),
-                        allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+                        allowPossiblyOffensive = allowPossiblyOffensive,
                         isPrivateSession = isPrivateSession,
                     )
                 }
@@ -231,7 +235,7 @@ class NlpManager(context: Context) {
                         subtype = subtype,
                         content = content,
                         maxCandidateCount = 8,
-                        allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+                        allowPossiblyOffensive = allowPossiblyOffensive,
                         isPrivateSession = isPrivateSession,
                     )
                 }
@@ -301,8 +305,24 @@ class NlpManager(context: Context) {
         }
     }
 
-    private fun wordSuggestionRequest(content: EditorContent, subtype: Subtype, isPrivateSession: Boolean) =
-        WordSuggestionRequest.of(content, subtype.id, editorInstance.activeInputSessionId, isPrivateSession)
+    private fun wordSuggestionRequest(
+        content: EditorContent,
+        subtype: Subtype,
+        isPrivateSession: Boolean,
+        sequence: Long,
+    ): WordSuggestionRequest {
+        // Main thread: read the constant provider map without the lock.
+        val provider = providerMap[subtype.nlpProviders.suggestion]?.provider as? SuggestionProvider
+        return WordSuggestionRequest.of(
+            content = content,
+            subtypeId = subtype.id,
+            inputSessionId = editorInstance.activeInputSessionId,
+            isPrivateSession = isPrivateSession,
+            sequence = sequence,
+            allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+            providerState = provider?.autoCommitStateKey(subtype).orEmpty(),
+        )
+    }
 
     /**
      * Returns the candidate that should replace the word the user just finished in [content], or null to keep the
@@ -330,7 +350,10 @@ class NlpManager(context: Context) {
         }
         val subtype = subtypeManager.activeSubtype
         val selection = AutoCommitSelector.select(
-            request = wordSuggestionRequest(content, subtype, keyboardManager.activeState.isIncognitoMode),
+            // Only the latest suggestion run can stand for this word.
+            request = wordSuggestionRequest(
+                content, subtype, keyboardManager.activeState.isIncognitoMode, suggestionSequence.get(),
+            ),
             batch = wordSuggestionBatch,
         ) {
             val start = SystemClock.uptimeMillis()

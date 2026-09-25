@@ -33,7 +33,8 @@ data class WordSuggestionBatch(
 
 /**
  * The word to suggest for and what else its candidates depend on. The same word gets other candidates in another
- * language, text field or private mode, or after other words, so a batch only stands for an identical request.
+ * language, text field or private mode, after other words, or under other settings, so a batch only stands for an
+ * identical request.
  */
 data class WordSuggestionRequest(
     val input: String,
@@ -42,6 +43,14 @@ data class WordSuggestionRequest(
     val isPrivateSession: Boolean,
     /** The text right before the word: the context that ranks its candidates. */
     val textBefore: String,
+    /**
+     * Which suggestion run this is; runs are numbered as they are requested. Only the latest run can stand for the
+     * word: a word deleted and typed again gets a new run with new taps.
+     */
+    val sequence: Long = 0L,
+    val allowPossiblyOffensive: Boolean = false,
+    /** [SuggestionProvider.autoCommitStateKey] when the run was requested: settings, protected words. */
+    val providerState: String = "",
 ) {
     companion object {
         /** Enough text before the word to hold the words that rank it. */
@@ -49,7 +58,15 @@ data class WordSuggestionRequest(
 
         val None = WordSuggestionRequest("", subtypeId = -1L, inputSessionId = 0L, isPrivateSession = false, textBefore = "")
 
-        fun of(content: EditorContent, subtypeId: Long, inputSessionId: Long, isPrivateSession: Boolean): WordSuggestionRequest {
+        fun of(
+            content: EditorContent,
+            subtypeId: Long,
+            inputSessionId: Long,
+            isPrivateSession: Boolean,
+            sequence: Long = 0L,
+            allowPossiblyOffensive: Boolean = false,
+            providerState: String = "",
+        ): WordSuggestionRequest {
             val wordStart = when {
                 content.localComposing.isValid -> content.localComposing.start
                 content.localCurrentWord.isValid -> content.localCurrentWord.start
@@ -60,7 +77,10 @@ data class WordSuggestionRequest(
             } else {
                 ""
             }
-            return WordSuggestionRequest(inputOf(content), subtypeId, inputSessionId, isPrivateSession, textBefore)
+            return WordSuggestionRequest(
+                inputOf(content), subtypeId, inputSessionId, isPrivateSession, textBefore,
+                sequence, allowPossiblyOffensive, providerState,
+            )
         }
 
         /** The word the suggestion providers score for [content]. */

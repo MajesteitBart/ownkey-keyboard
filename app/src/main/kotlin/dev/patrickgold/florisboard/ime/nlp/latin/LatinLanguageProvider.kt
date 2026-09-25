@@ -65,6 +65,7 @@ import kotlinx.serialization.json.Json
 import org.florisboard.lib.android.readText
 import org.florisboard.lib.kotlin.guardedByLock
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 
 class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider {
     companion object {
@@ -104,6 +105,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val isEmailField: Boolean,
         /** Where the word was tapped: the same word tapped differently can get a different correction. */
         val taps: List<LatinTap>?,
+        /** Words the user protected (user and speech dictionaries): adding one must not leave a cached correction. */
+        val protectedWords: String,
     )
 
     private data class AutocorrectPolicySnapshot(
@@ -151,7 +154,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     // Read-only copy of [languageModels] for the main thread, replaced whenever a model is registered.
     @Volatile
     private var loadedModelsSnapshot: Map<String, LatinWordModel> = emptyMap()
-    // Possibly offensive words of every loaded language, loaded with the models so main-thread decisions can use them.
+    // Possibly offensive words of every shipped list, loaded with the first model so main-thread decisions can use them.
     @Volatile
     private var offensiveWordsSnapshot: Set<String> = emptySet()
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
@@ -168,6 +171,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private var userDictionarySnapshot: Map<String, Set<String>> = emptyMap()
     @Volatile
     private var userDictionarySnapshotUptimeMs = 0L
+    // The input session the snapshot was taken in: the user dictionary settings are edited outside the text field,
+    // so a new session always takes a new snapshot.
+    @Volatile
+    private var userDictionarySnapshotSessionId = -1L
+    // Changes whenever the snapshot content changes, so cached suggestions and suggestion runs can tell.
+    private val userDictionaryRevision = AtomicLong(0L)
     private val rapidVocabularyLearner = RapidPersonalVocabularyLearner()
     private val mixedLanguageScoringPolicy = MixedLanguageScoringPolicy()
     private val personalNgramStore by lazy { PersonalNgramStore(appContext) }
@@ -287,6 +296,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
+        // Before the cache lookup: a word the user protected since must not come back as a cached correction.
+        refreshUserDictionarySnapshotIfStale()
         val autocorrectAppContext = currentAutocorrectAppContext()
         val autocorrectPolicySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(autocorrectAppContext)
         val isEmailField = isEmailInputField()
@@ -302,7 +313,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         suggestionCache.withLock { cache ->
             cache[cacheKey]?.let { return it }
         }
-        refreshUserDictionarySnapshotIfStale()
 
         val primaryLocale = subtype.primaryLocale.base
         val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
@@ -590,20 +600,29 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         modelLoadMutex.withLock {
             if (languageModels.withLock { models -> models.containsKey(language) }) return
             val model = loadLanguageModel(language)
-            val offensiveWords = loadOffensiveWords(language)
+            val offensiveWords = offensiveWordsSnapshot.ifEmpty { loadOffensiveWords() }
             languageModels.withLock { models ->
                 models.putIfAbsent(language, model)
                 loadedModelsSnapshot = models.toMap()
-                offensiveWordsSnapshot = offensiveWordsSnapshot + offensiveWords
+                offensiveWordsSnapshot = offensiveWords
             }
         }
     }
 
-    private fun loadOffensiveWords(language: String): Set<String> {
+    /**
+     * All lists at once, whatever the keyboard's languages: the dictionaries borrow each other's words, so the Dutch
+     * one has English slurs too.
+     */
+    private fun loadOffensiveWords(): Set<String> {
         return try {
-            appContext.assets.open("${PossiblyOffensiveWords.AssetDir}/$language.txt").bufferedReader()
-                .useLines { lines -> PossiblyOffensiveWords.parse(lines) }
-        } catch (_: java.io.IOException) {
+            appContext.assets.list(PossiblyOffensiveWords.AssetDir).orEmpty()
+                .filter { it.endsWith(".txt") }
+                .flatMapTo(HashSet()) { name ->
+                    appContext.assets.open("${PossiblyOffensiveWords.AssetDir}/$name").bufferedReader()
+                        .useLines { lines -> PossiblyOffensiveWords.parse(lines) }
+                }
+        } catch (e: java.io.IOException) {
+            flogError { "Failed loading the possibly offensive word lists: $e" }
             emptySet()
         }
     }
@@ -1026,9 +1045,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private fun refreshUserDictionarySnapshotIfStale() {
         val now = SystemClock.uptimeMillis()
         val last = userDictionarySnapshotUptimeMs
-        if (last != 0L && now - last < UserDictionarySnapshotMaxAgeMs) return
+        val sessionId = editorInstance.activeInputSessionId
+        if (last != 0L && now - last < UserDictionarySnapshotMaxAgeMs && sessionId == userDictionarySnapshotSessionId) {
+            return
+        }
         userDictionarySnapshotUptimeMs = now
-        userDictionarySnapshot = try {
+        userDictionarySnapshotSessionId = sessionId
+        val previous = userDictionarySnapshot
+        val next = try {
             val dictionaryManager = DictionaryManager.default()
             dictionaryManager.loadUserDictionariesIfNecessary()
             // The same dictionaries and locale rule as DictionaryManager.spell, which the suggestion path uses.
@@ -1047,8 +1071,27 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         } catch (e: Throwable) {
             flogError { "Failed refreshing user dictionary snapshot: $e" }
-            userDictionarySnapshot
+            previous
         }
+        if (next != previous) {
+            userDictionarySnapshot = next
+            userDictionaryRevision.incrementAndGet()
+        }
+    }
+
+    /** The state of the words the user protected: the user dictionary revision and the speech dictionary. */
+    private fun protectedWordsState(): String {
+        val speechDocument = try {
+            appContext.speechDictionary().value.state.value.document
+        } catch (_: Throwable) {
+            null
+        }
+        return "${userDictionaryRevision.get()}:${System.identityHashCode(speechDocument)}"
+    }
+
+    override fun autoCommitStateKey(subtype: Subtype): String {
+        val policy = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
+        return "${policy.signature}|${protectedWordsState()}"
     }
 
     private fun scorerFor(snapshot: AutocorrectPolicySnapshot): LatinCurrentWordScorer {
@@ -1152,6 +1195,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             autocorrectPolicySignature = autocorrectPolicySignature,
             isEmailField = isEmailField,
             taps = TapTrail.tapsFor(content.composingText.ifBlank { content.currentWordText }.trim()),
+            protectedWords = protectedWordsState(),
         )
     }
 

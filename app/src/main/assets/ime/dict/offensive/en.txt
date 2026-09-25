@@ -1,8 +1,9 @@
-# Possibly offensive words in en.txt: strong profanity, sexual slang and slurs. With "Block possibly offensive
-# words" on (the default), autocorrect never changes a typed word into one of these and suggestions and next-word
-# predictions leave them out. A word the user typed is never changed for being on this list.
-# Clinical and everyday words stay off the list even when they can offend (penis, rape, queer, damn).
-# Reviewed by hand against the shipped dictionary; one word per line, lowercase.
+# Possibly offensive words: strong profanity, sexual slang and slurs. Every list in this folder applies to every Latin
+# keyboard, because the dictionaries borrow each other's words (nl.txt also has "fuck" and "nigga"). With "Block
+# possibly offensive words" on (the default), autocorrect never changes a typed word into one of these, and
+# suggestions and next-word predictions leave them out. A word the user typed is never changed for being on a list.
+# Clinical and everyday words stay off the list even when they can offend (penis, rape, queer, damn, booby).
+# Reviewed by hand against the shipped en.txt; one word per line, lowercase.
 arse
 arsehole
 arseholes
@@ -24,6 +25,7 @@ boob
 boobies
 boobs
 bullshit
+bullshitter
 bullshitting
 chink
 chinks
@@ -59,15 +61,19 @@ fucks
 gook
 gooks
 jackass
+jackasses
 kike
 motherfucker
 motherfuckers
+motherfuckin
 motherfucking
 nigga
 niggas
 nigger
 niggers
 piss
+pissed
+pisser
 pisses
 pissing
 porn
@@ -80,7 +86,11 @@ retard
 retarded
 retards
 shit
+shitfaced
 shithead
+shitheads
+shithole
+shitload
 shits
 shitting
 shitty
@@ -101,4 +111,5 @@ wankers
 wanking
 wetback
 whore
+whorehouse
 whores
