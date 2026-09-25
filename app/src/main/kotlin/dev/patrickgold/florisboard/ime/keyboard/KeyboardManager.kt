@@ -348,6 +348,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 originalToken = originalToken,
                 correctedCandidate = candidate,
                 correctedEnd = wordStart?.plus(candidate.text.length),
+                subtype = subtypeManager.activeSubtype,
             )
             autocorrectedFrom = originalToken
         } else {
@@ -471,28 +472,28 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private fun revertPreviouslyAcceptedCandidate() {
         editorInstance.phantomSpace.candidateForRevert?.let { candidateForRevert ->
             val originalToken = autocorrectUndoTracker.originalTokenForCandidate(candidateForRevert)
+            val subtype = autocorrectUndoTracker.subtypeForCandidate(candidateForRevert) ?: subtypeManager.activeSubtype
             if (candidateForRevert.isEligibleForAutoCommit) {
                 TypingSpeedMetrics.recordAutoCorrectUndone()
             }
             candidateForRevert.sourceProvider?.let { sourceProvider ->
-                notifyReverted(sourceProvider, candidateForRevert, originalToken)
+                notifyReverted(sourceProvider, candidateForRevert, originalToken, subtype)
             }
             autocorrectUndoTracker.clearIfCandidateMatches(candidateForRevert)
         }
     }
 
     /**
-     * Tells [sourceProvider] in the background that [candidate] was undone. Until it has stored [originalToken] as a
-     * word to leave alone, a space pressed right away must not redo the autocorrection, so the word is kept as typed
-     * for that long.
+     * Tells [sourceProvider] in the background that [candidate], made on [subtype], was undone. Until it has stored
+     * [originalToken] as a word to leave alone, a space pressed right away must not redo the autocorrection, so the
+     * word is kept as typed for that long.
      */
     private fun notifyReverted(
         sourceProvider: SuggestionProvider,
         candidate: SuggestionCandidate,
         originalToken: String?,
+        subtype: Subtype,
     ) {
-        // The subtype the correction was made on, even if the user switches languages before the provider runs.
-        val subtype = subtypeManager.activeSubtype
         val guard = originalToken?.takeIf { candidate.isEligibleForAutoCommit }
             ?.let { nlpManager.noteAutocorrectReverted(it, subtype) }
         scope.launch {
@@ -551,7 +552,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             TypingSpeedMetrics.recordAutoCorrectUndone()
         }
         replacement.candidate.sourceProvider?.let { sourceProvider ->
-            notifyReverted(sourceProvider, replacement.candidate, replacement.originalToken)
+            val subtype = replacement.subtype ?: subtypeManager.activeSubtype
+            notifyReverted(sourceProvider, replacement.candidate, replacement.originalToken, subtype)
         }
         return true
     }

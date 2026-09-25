@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.keyboard
 
+import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
@@ -181,6 +182,18 @@ class AutocorrectUndoTrackerTest : FunSpec({
         )
 
         tracker.findBackspaceRestoreReplacement(content).shouldBeNull()
+    }
+
+    test("undo reports the subtype the correction was made on") {
+        val tracker = AutocorrectUndoTracker()
+        val correctedCandidate = WordSuggestionCandidate(text = "the", isEligibleForAutoCommit = true)
+        val subtype = Subtype.DEFAULT
+        tracker.trackAutoCorrect(originalToken = "teh", correctedCandidate = correctedCandidate, subtype = subtype)
+
+        tracker.findUndoReplacement(contentAtCursor("I like the "))?.subtype shouldBe subtype
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("I like the "))?.subtype shouldBe subtype
+        tracker.subtypeForCandidate(correctedCandidate) shouldBe subtype
+        tracker.subtypeForCandidate(WordSuggestionCandidate(text = "tea", isEligibleForAutoCommit = true)).shouldBeNull()
     }
 
     test("returns original token for matching candidate") {

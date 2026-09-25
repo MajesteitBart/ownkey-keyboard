@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.keyboard
 
+import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
@@ -24,6 +25,8 @@ internal data class AutocorrectUndoReplacement(
     val range: EditorRange,
     val originalToken: String,
     val candidate: SuggestionCandidate,
+    /** The subtype the correction was made on; the user may have switched languages since. */
+    val subtype: Subtype? = null,
 )
 
 internal class AutocorrectUndoTracker {
@@ -32,10 +35,16 @@ internal class AutocorrectUndoTracker {
     private var pendingOperation: PendingAutocorrectOperation? = null
 
     /**
-     * Remembers an autocorrection. [correctedEnd] is where the corrected word ends in the editor, when known; undo
-     * then only applies with the cursor right there or one separator (the space that triggered it) after it.
+     * Remembers an autocorrection made on [subtype]. [correctedEnd] is where the corrected word ends in the editor,
+     * when known; undo then only applies with the cursor right there or one separator (the space that triggered it)
+     * after it.
      */
-    fun trackAutoCorrect(originalToken: String, correctedCandidate: SuggestionCandidate, correctedEnd: Int? = null) {
+    fun trackAutoCorrect(
+        originalToken: String,
+        correctedCandidate: SuggestionCandidate,
+        correctedEnd: Int? = null,
+        subtype: Subtype? = null,
+    ) {
         val normalizedOriginalToken = originalToken.trim()
         val correctedToken = correctedCandidate.text.toString().trim()
         pendingOperation = if (
@@ -50,6 +59,7 @@ internal class AutocorrectUndoTracker {
                 correctedToken = correctedToken,
                 candidate = correctedCandidate,
                 correctedEnd = correctedEnd,
+                subtype = subtype,
             )
         }
     }
@@ -62,6 +72,7 @@ internal class AutocorrectUndoTracker {
             range = correctedTokenRange,
             originalToken = operation.originalToken,
             candidate = operation.candidate,
+            subtype = operation.subtype,
         )
     }
 
@@ -74,12 +85,18 @@ internal class AutocorrectUndoTracker {
             range = correctedTokenRange,
             originalToken = operation.originalToken,
             candidate = operation.candidate,
+            subtype = operation.subtype,
         )
     }
 
     fun originalTokenForCandidate(candidate: SuggestionCandidate?): String? {
         val pending = pendingOperation ?: return null
         return if (candidate == pending.candidate) pending.originalToken else null
+    }
+
+    fun subtypeForCandidate(candidate: SuggestionCandidate?): Subtype? {
+        val pending = pendingOperation ?: return null
+        return if (candidate == pending.candidate) pending.subtype else null
     }
 
     fun clearPending() {
@@ -173,5 +190,6 @@ internal class AutocorrectUndoTracker {
         val correctedToken: String,
         val candidate: SuggestionCandidate,
         val correctedEnd: Int?,
+        val subtype: Subtype?,
     )
 }
