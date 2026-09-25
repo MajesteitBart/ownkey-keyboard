@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtMost
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
@@ -48,6 +50,12 @@ import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.snygg.ui.SnyggIcon
 import org.florisboard.lib.snygg.ui.SnyggIconButton
 import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
+
+/**
+ * Size of each action button in a split panel row: 48dp, or less when the panel is too narrow to fit them all.
+ * Overflowing into the center gap would leave a button that looks tappable but passes touches to the app.
+ */
+internal fun splitActionSize(panelWidth: Dp, count: Int): Dp = (panelWidth / count).coerceAtMost(48.dp)
 
 /** Controls stay on the islands, leaving the entire space between them free. */
 @Composable
@@ -66,13 +74,16 @@ internal fun FloatingSplitControls(actions: Boolean = false) {
     val rightPx = (split.right - bounds.left).coerceIn(leftPx, bounds.width)
     val left = with(density) { leftPx.toDp() }
     val center = with(density) { (rightPx - leftPx).toDp() }
+    val right = with(density) { (bounds.width - rightPx).toDp() }
+    val leftActionSize = splitActionSize(left, count = 4)
+    val rightActionSize = splitActionSize(right, count = 3)
 
     @Composable
-    fun Action(data: TextKeyData) {
+    fun Action(data: TextKeyData, size: Dp) {
         QuickActionButton(
             action = QuickAction.InsertKey(data),
             evaluator = evaluator,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(size),
             aspectRatio = 1f,
             // In the strip the mic is one action among peers, so it idles quietly.
             micIdleStyle = MicIdleStyle.QUIET,
@@ -93,10 +104,10 @@ internal fun FloatingSplitControls(actions: Boolean = false) {
         Column(Modifier.width(left).background(controlBackground, RoundedCornerShape(14.dp))) {
             if (actions) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    Action(TextKeyData.AI_REWRITE)
-                    Action(TextKeyData.UNDO)
-                    Action(TextKeyData.CLIPBOARD_COPY)
-                    Action(TextKeyData.TOGGLE_ACTIONS_OVERFLOW)
+                    Action(TextKeyData.AI_REWRITE, leftActionSize)
+                    Action(TextKeyData.UNDO, leftActionSize)
+                    Action(TextKeyData.CLIPBOARD_COPY, leftActionSize)
+                    Action(TextKeyData.TOGGLE_ACTIONS_OVERFLOW, leftActionSize)
                 }
             } else {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -108,9 +119,9 @@ internal fun FloatingSplitControls(actions: Boolean = false) {
         Column(Modifier.weight(1f).background(controlBackground, RoundedCornerShape(14.dp))) {
             if (actions) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    Action(TextKeyData.CLIPBOARD_PASTE)
-                    Action(TextKeyData.IME_UI_MODE_CLIPBOARD)
-                    Action(TextKeyData.VOICE_INPUT)
+                    Action(TextKeyData.CLIPBOARD_PASTE, rightActionSize)
+                    Action(TextKeyData.IME_UI_MODE_CLIPBOARD, rightActionSize)
+                    Action(TextKeyData.VOICE_INPUT, rightActionSize)
                 }
             } else {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
