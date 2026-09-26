@@ -1,22 +1,39 @@
-<p><i>Ownkey Keyboard</i> is an open-source Android keyboard focused on practical AI input with user control.</p>
+Ownkey Keyboard is an open-source Android keyboard with voice dictation and AI rewrite built in. You bring your own API key, and your requests go straight to the provider you choose. There is no Ownkey account and no Ownkey server in between.
 
-<p><b>Core focus:</b></p>
-<ul>
-  <li>Mistral Voxtral ASR as the default voice input path</li>
-  <li>Bring your own API key (BYOK)</li>
-  <li>Autocorrect and suggestions tuned for real typing</li>
-  <li>Clean dark UI with practical customization</li>
-</ul>
+Typing in English and Dutch
+• Autocorrect fixes typos when you press space, based on nearby keys, where you tapped and the word before
+• Next-word predictions that fit what you just typed
+• Apostrophes added for you: "dont" becomes "don't"
+• One tap brings back the word you typed
+• Choose Gentle, Normal or Strong correction
+• Words you keep typing stop getting corrected
+• Type Dutch and English on the same keyboard
 
-<p><b>What you can do:</b></p>
-<ul>
-  <li>Dictate text with Voxtral ASR from inside the keyboard flow</li>
-  <li>Set your own endpoint and model in settings</li>
-  <li>Use encrypted on-device key storage</li>
-  <li>Use updated EN/NL suggestion dictionaries and improved correction ranking</li>
-  <li>Customize appearance, key borders, and key corner radius</li>
-</ul>
+Keyboard layouts for many other languages come from FlorisBoard. The rebuilt autocorrect covers English and Dutch.
 
-<p><b>Privacy:</b> Ownkey does not add in-app monitoring of private user content. If you enable cloud ASR, requests go to your configured ASR endpoint.</p>
+Dictate instead of typing
+• Tap the microphone, speak, and the transcript appears at your cursor
+• Uses Mistral Voxtral by default, or another compatible transcription service
+• A personal dictionary for names and jargon, with saved corrections and filler word removal
+• Voice-only mode swaps the keyboard for a small dictation bar
 
-<p><b>Open-source:</b> You can inspect the code and follow development on GitHub.</p>
+Rewrite what you wrote
+• Select text and pick a voice: Improve writing, Fix grammar, Make shorter, Rewrite in Dutch, Plainspoken or one you write yourself
+• Or hold the microphone key and say what to change
+• Review the result before it replaces your text
+• Works with OpenAI, Anthropic, Mistral, OpenRouter or any OpenAI-compatible endpoint
+
+Tablets and foldables
+• Split keyboard with a space bar on each half
+• Floating split mode with two panels you can drag and resize
+
+Your keys, your provider
+• API keys are stored encrypted on your phone with Android Keystore
+• Normal typing sends no AI requests, and learning stays on your phone
+• Learning pauses in incognito mode and password fields
+• Ownkey adds no monitoring of what you type or say
+
+Dictation and rewrite send your audio or text to the provider you set up, and that provider's privacy policy, retention terms and billing apply. You need an API key from that provider. A ChatGPT or Claude app subscription doesn't include API access.
+
+Open source
+Ownkey is based on FlorisBoard and released under the Apache 2.0 license. Read the code at https://github.com/MajesteitBart/ownkey-keyboard

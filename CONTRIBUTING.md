@@ -1,78 +1,64 @@
-# Contribution guidelines
+# Contributing to Ownkey
 
-Thanks for considering contributing to FlorisBoard!
+Ownkey Keyboard is a fork of [FlorisBoard](https://github.com/florisboard/florisboard) with its own issue tracker, releases and priorities. Report problems and send changes to this repository, not to FlorisBoard. Write issues and pull requests in English and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
-There are several ways to contribute to FlorisBoard. This document provides some general guidelines for each type of contribution.
+## Report a bug
 
-The FlorisBoard community is international, as such we require all contributions, including issues, pull requests, and participation in the Matrix chat to be in English, follow the [code of conduct](https://github.com/florisboard/florisboard/blob/main/CODE_OF_CONDUCT.md), and adhere to our current [AI Policy](https://github.com/florisboard/florisboard/blob/main/AI_POLICY.md). Contributions not adhering to these requirements will be dismissed. Thanks for making the FlorisBoard community an inclusive and safe space for everyone!
+Open an issue at [github.com/MajesteitBart/ownkey-keyboard/issues](https://github.com/MajesteitBart/ownkey-keyboard/issues). Include:
 
-## Non-code contributions
+- the Ownkey version and where you got it (GitHub release, debug or beta build)
+- your phone model and Android version
+- the keyboard language you were typing in
+- for dictation or rewrite problems, the provider and model, but never the API key
+- the steps that trigger the bug, what you expected and what happened
 
-### Translations
+When Ownkey crashes, its crash screen lets you copy the log to paste into the issue. You can also capture a log with `adb logcat`.
 
-Ownkey-specific translations, such as Orukeet settings, belong in `app/src/main/res/values-<locale>/ownkey.xml` and can be reviewed in feature pull requests. Keep the inherited localized `strings.xml` files managed by FlorisBoard's Crowdin project; the upstream policy below applies to those files.
+Logs and screenshots can contain what you typed or dictated. Remove personal text and API keys before you post them.
 
-To make FlorisBoard accessible in as many languages as possible, the platform [Crowdin](https://crowdin.florisboard.org) is used to crowdsource and manage translations.  The list of languages in Crowdin covers a good range of languages, but feel free to email [florisboard@patrickgold.dev](mailto:florisboard@patrickgold.dev) to request a new language.
+If the same bug also happens in FlorisBoard, mention that in the issue. Bugs in inherited code are often best fixed upstream first.
 
-> [!IMPORTANT]
-> This is the only source of translations - **PRs that add/update translations are not accepted.**
+## Suggest a feature
 
-### Bug reporting
+Open an issue that describes the problem you want solved and how you type today. For larger changes, agree on the approach in the issue before writing code.
 
-Allows us to see where FlorisBoard has flaws and should be improved to maximize stability and user experience. To make this process as smooth as possible, please use the pre-made [bug report template](https://github.com/florisboard/florisboard/issues/new?template=bug_report.yml). This makes it easy for us to understand what the bug is and how to solve it.
+## Translations
 
-#### Capturing error logs
+Ownkey's own strings, such as the AI and Orukeet settings, are translated in `app/src/main/res/values-<locale>/ownkey.xml`. Changes to those files can go in a normal pull request.
 
-Logs are captured by FlorisBoard's crash handler, which gives you the ability to copy it to the clipboard and paste it in the crash report [issue template](https://github.com/florisboard/florisboard/issues/new?template=crash_report.yml). This is the preferred way to capture logs.
-
-Alternatively, you can also use ADB (Android Debug Bridge) to capture the error log. This is recommended for experienced users only.
-
-### Feature proposals
-
-Use the feature proposal [issue template](https://github.com/florisboard/florisboard/issues/new?template=feature_request.yml) to suggest a new idea or improvement for this project.
-
-### Feedback
-
-You can [give general feedback](https://github.com/florisboard/florisboard/discussions/new?category=feedback) directly here on GitHub. This is the preferred way to give feedback, as it allows not only for me to read and respond to feedback, but for everyone in this community.
+The inherited `strings.xml` translations come from FlorisBoard's [Crowdin project](https://crowdin.florisboard.org). A check on pull requests rejects edits to translated `strings.xml` files, so send those translations to Crowdin instead.
 
 ## Code contributions
 
-You are always welcome to contribute new features or work on existing issues, there are a lot to choose from :) It is always best to quickly ask if someone is already working on this issue to avoid duplicate issues.
+### Requirements
 
-> [!NOTE]
-> If you intend to implement a bigger feature please coordinate with us so we can prevent that there's a major difference in expected implementation.
+- JDK 17
+- Android Studio, or the Android SDK for API 36 with the NDK and CMake versions from [`gradle/tools.versions.toml`](gradle/tools.versions.toml)
+- [Rust](https://www.rust-lang.org/tools/install) installed through `rustup`, for the native library in `lib/native`. The build adds the Android targets itself.
+- Git
+- Python 3, only for the dictionary and dataset scripts in `tools/`
 
-If you are overwhelmed by the code don't hesitate to ask for help in the [dev chat](https://matrix.to/#/#florisboard-dev:matrix.org) or the discussions tab! Some issues are also marked as good first issue, which are easy to do tasks.
+Gradle gets 4 GB of heap (`org.gradle.jvmargs=-Xmx4096m`), so a machine with 16 GB of RAM is comfortable next to Android Studio. CI builds on Linux, and the maintainer builds on Windows.
 
-### System requirements for development
+### Build and test
 
-- Desktop PC with Linux or WSL2 (Windows)
-  - MacOS and Windows without WSL2 probably works too however there's no official support
-- At least 16GB of RAM (because of Android Studio / IntelliJ)
-- The following tools must be installed:
-  - Android Studio (bundles SDK and NDK) or IntelliJ with Android and Compose plugin
-  - Java 17
-  - CMake 3.22+
-  - Clang 15+
-  - Git
-  - [Rust](https://www.rust-lang.org/tools/install)
-- Utilities (optional)
-  - Python 3.10+
-  - Bash, realpath, grep, ...
+```bash
+./gradlew :app:assembleDebug
+./gradlew :app:testDebugUnitTest
+./gradlew :wear:assembleDebug
+```
 
-> [!IMPORTANT]
-> If using IntelliJ IDEA you have to enable `Future AGP Versions` otherwise AGP 9.0.0 will not work with your IDE.
-> How to do this is described in this [comment on YouTrack](https://youtrack.jetbrains.com/issue/IDEA-348937/2024.1-Beta-missing-option-to-enable-sync-with-future-AGP-versions#focus=Comments-27-11721710.0-0)
+On Windows, use `.\gradlew.bat`. Debug builds install as `nl.bartvandermeeren.ownkey.debug`, next to a release install.
 
-### Manual build without Android Studio
+### What we look for
 
-If you want to manually build the project without Android Studio you must ensure that the Android SDK and NDK are properly installed on your system. Then issue
+- Typing comes first. AI network work must never block typing, suggestions or opening the keyboard. Keep network calls off the main thread and cancel them when the keyboard closes.
+- Private text stays private. Don't log typed text, transcripts, rewrite instructions or API keys, and don't add analytics. Cloud requests go only to the endpoint the user configured.
+- User-facing copy uses "AI" for dictation and rewrite together. Provider names such as Voxtral, OpenAI or Anthropic are configuration details. Don't claim that Ownkey hosts AI or that cloud requests are processed on the phone.
+- Autocorrect changes need benchmark numbers. `AutocorrectBenchmarkReportTest` runs with the unit tests and fails when a result drops below its floor. Put the before and after numbers in the pull request. When precision and recall conflict, precision wins. See the [autocorrect spec](.project/projects/autocorrect-engine/spec.md).
+- Logic changes come with tests. UI changes come with a screenshot or short recording.
+- Keep the Apache-2.0 license header and FlorisBoard attribution in source files.
 
-```./gradlew clean && ./gradlew assembleDebug```
+### Pull requests
 
-and Gradle should take care of every build task.
-
-## Donating
-
-You can also show your support by buying me a coffee, so I can stay up all night and chase away bugs or add new cool stuff :)
-See the `Sponsors` button for available options!
+Branch from `main` and open the pull request against `main`. CI builds phone and Wear debug APKs for every pull request, and you can download them from the Actions run to test on a device. Describe what changed, why, and how you tested it, including which devices you used.

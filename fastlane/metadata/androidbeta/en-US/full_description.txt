@@ -1,20 +1,17 @@
-<p><i>Ownkey Keyboard Beta</i> is the preview channel for Ownkey Keyboard.</p>
+Ownkey Keyboard Beta is the preview channel of Ownkey Keyboard, an open-source Android keyboard with voice dictation and AI rewrite built in. Beta builds get new features before the stable release, so expect rough edges. For stable behavior, use the regular Ownkey Keyboard app.
 
-<p>You get early access to new improvements around:</p>
-<ul>
-  <li>Mistral Voxtral ASR voice input</li>
-  <li>BYOK configuration and endpoint flexibility</li>
-  <li>Autocorrect quality and typing suggestions</li>
-  <li>UI and design refinements</li>
-</ul>
+What you can try
+• Autocorrect for English and Dutch that fixes typos when you press space and predicts the next word
+• Voice dictation with Mistral Voxtral by default, or another compatible transcription service
+• Rewrite selected text with OpenAI, Anthropic, Mistral, OpenRouter or any OpenAI-compatible endpoint
+• Voice-only mode and a floating split keyboard for tablets
 
-<p><b>Current direction:</b></p>
-<ul>
-  <li>Open-source Android keyboard</li>
-  <li>Privacy-first behavior</li>
-  <li>No in-app monitoring of private user content</li>
-</ul>
+Your keys, your provider
+• You bring your own API key. There is no Ownkey account and no Ownkey server in between.
+• API keys are stored encrypted on your phone with Android Keystore
+• Normal typing sends no AI requests, and learning stays on your phone
+• Ownkey adds no monitoring of what you type or say
 
-<p>Beta builds can contain unfinished features. If you want stable behavior, use the stable track once available.</p>
+Cloud dictation and rewrite send your audio or text to the provider you set up, and that provider's privacy policy, retention terms and billing apply.
 
-<p>If cloud ASR is enabled, requests are sent to your configured endpoint.</p>
+Ownkey is based on FlorisBoard and released under the Apache 2.0 license. Read the code at https://github.com/MajesteitBart/ownkey-keyboard

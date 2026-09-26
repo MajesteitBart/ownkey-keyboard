@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://ownkey.bvdm.ai">
-    <img src="assets/branding/readme/ownkey-android-intro.png" alt="Ownkey Keyboard — a full Android keyboard with dictation and AI rewrite built in" width="781">
+    <img src="assets/branding/readme/ownkey-android-intro.png" alt="Ownkey Keyboard, a full Android keyboard with dictation and AI rewrite built in" width="781">
   </a>
 </p>
 
@@ -18,163 +18,126 @@
 <p align="center">
   <a href="https://ownkey.bvdm.ai"><strong>Website</strong></a>
   ·
-  <a href="https://github.com/MajesteitBart/ownkey-keyboard"><strong>Source</strong></a>
+  <a href="https://github.com/MajesteitBart/ownkey-keyboard/releases/latest"><strong>Download</strong></a>
   ·
   <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
 </p>
 
-<p align="center">
-  <sub>OPEN SOURCE · NO OWNKEY ACCOUNT · BRING YOUR OWN PROVIDER</sub>
-</p>
+# Ownkey Keyboard
 
----
+Ownkey is an open-source Android keyboard with voice dictation and AI rewrite built in. You bring your own API key. Dictation audio and rewrite requests go straight from your phone to the provider you configure. There is no Ownkey account and no Ownkey server in between.
 
-## 01 · The promise
+Ownkey is a fork of [FlorisBoard](https://github.com/florisboard/florisboard), so it keeps FlorisBoard's layouts, themes, clipboard and glide typing. On top of that it adds dictation, rewrite, a rebuilt English and Dutch autocorrect, a floating split keyboard for tablets and a voice-only mode.
 
-### Your keys. Your voice. Your space.
+## Install
 
-Ownkey is a privacy-first, open-source Android keyboard for practical AI input. It combines everyday typing, voice dictation, and selected-text rewrite without putting an Ownkey account or hosted AI service between you and the provider you choose.
+Download the APK for your phone from the [latest release](https://github.com/MajesteitBart/ownkey-keyboard/releases/latest). Almost every current phone needs `arm64-v8a`. Older 32-bit phones need `armeabi-v7a`, and the `x86_64` and `x86` builds are for emulators. Each release lists the checksums in `SHA256SUMS`.
 
-| | |
+Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. In release builds, dictation and rewrite use a cloud provider, so they need an API key. [Set up AI](#set-up-ai) walks through it.
+
+## What it does
+
+### Typing and autocorrect
+
+Autocorrect was rebuilt in 0.8.0 for English, Dutch and mixed Dutch and English typing. When you press space, it fixes typos based on which keys are next to each other, where your finger actually landed and the word before. It also predicts the next word, adds apostrophes (`dont` becomes "don't") and splits words that ran together.
+
+Choose Gentle, Normal or Strong under **Autocorrect strength** in the typing settings. After a correction, the word you typed is the first suggestion, and backspace brings it back too. Words you keep typing stop getting corrected. With "Block possibly offensive words" on, which is the default, words on Ownkey's reviewed block lists stay out of suggestions, predictions and autocorrect.
+
+Keyboards in other languages fall back to FlorisBoard's older English word list. They get the new scoring, but not the new dictionaries, word-pair data or apostrophe rules.
+
+Ownkey learns your own word sequences to improve predictions. That data stays on the phone, and learning is skipped in incognito mode and password fields.
+
+### Dictation
+
+Tap the microphone, speak and tap stop. Ownkey inserts the transcript at the cursor. Dictation uses Mistral Voxtral by default, and you can point it at another compatible transcription endpoint and model.
+
+The personal dictionary under **Settings → AI** helps with names and jargon. With Mistral and OpenAI, saved words go along as recognition hints. Saved corrections are applied to every transcript, and filler words can be removed. When dictation mishears a word, "Fix a word" on the keyboard turns it into a saved correction.
+
+**More → Voice only** replaces the keyboard with a small bar that holds the microphone. You can drag it anywhere on screen. Password, incognito and number fields still get the full keyboard. See [docs/voice-only-keyboard.md](docs/voice-only-keyboard.md).
+
+### Rewrite
+
+Select text, open AI rewrite and pick a voice: Improve writing, Fix grammar, Make shorter, Rewrite in Dutch, Plainspoken or one you write yourself. You see the result first, and your text only changes when you tap Insert. To give the instruction by voice, hold the microphone key instead.
+
+Rewrite has presets for OpenAI (Responses and Chat Completions), Anthropic, Mistral and OpenRouter, and it accepts any OpenAI-compatible endpoint. OpenRouter is the default.
+
+### Tablets and foldables
+
+On a wide screen the keyboard can split in two, with a space bar on each half. **More → Floating** turns the halves into two panels you can drag and resize, with rewrite, clipboard and dictation above the keys. See [docs/floating-split-tablet.md](docs/floating-split-tablet.md).
+
+### Wear OS
+
+[`wear/`](wear/) contains a dictation-first keyboard for Wear OS 3 and newer. The stable releases don't include it yet. The rolling [Ownkey CI debug](https://github.com/MajesteitBart/ownkey-keyboard/releases/tag/ci-debug) prerelease has a debug build, `ownkey-wear-ci-debug.apk`, or you can build it from source.
+
+## Set up AI
+
+1. Create an API key with the provider you want. A ChatGPT or Claude app subscription doesn't include API access.
+2. Open **Settings → AI**.
+3. For dictation, keep the Mistral defaults or enter another endpoint and model, then paste your key.
+4. For rewrite, pick a provider, check the model, then paste its key.
+
+| | Provider | Endpoint | Model |
+| --- | --- | --- | --- |
+| Dictation | Mistral | `https://api.mistral.ai/v1/audio/transcriptions` | `voxtral-mini-latest` |
+| Rewrite | OpenRouter | `https://openrouter.ai/api/v1/chat/completions` | `meta/muse-spark-1.1` |
+
+Ownkey stores API keys encrypted on the phone, using Android Keystore. [VOXTRAL_API_SETUP.md](VOXTRAL_API_SETUP.md) explains how to send dictation through your own relay instead of calling Mistral directly.
+
+## Where your data goes
+
+| What you do | What leaves the phone |
 | --- | --- |
-| **Bring your own key** | Use your own provider account and API key. Ownkey does not sell an AI subscription. |
-| **No added content monitoring** | Ownkey does not add monitoring of what you type or say. |
-| **Encrypted local keys** | Dictation and rewrite keys are kept in Android Keystore-backed encrypted preferences. |
-| **Open by design** | The app is developed in the open and distributed under Apache-2.0. |
+| Type | No AI requests. Suggestions, autocorrect and learning run on the phone. |
+| Dictate | The recording goes to your dictation endpoint. By default, Mistral and OpenAI endpoints also get your personal dictionary words as hints. The personal dictionary settings can turn this off or send hints to any endpoint. |
+| Rewrite | The selected text and the instruction go to your rewrite endpoint. |
+| Rewrite by voice | The spoken instruction goes to your dictation endpoint. The selected text and the recognized instruction then go to your rewrite endpoint. |
 
-Ownkey is derived from [FlorisBoard](https://github.com/florisboard/florisboard) and keeps the full keyboard experience at its core—not just the AI features.
+Ownkey doesn't operate a relay of its own and doesn't add monitoring of what you type or say. Once a request reaches your provider, that provider's privacy policy, retention terms and billing apply.
 
----
+### On-device dictation
 
-## 02 · What it does
+Debug and beta builds include Orukeet, an on-device speech model that transcribes Dutch and English without an API key or internet connection. The audio stays on the phone. It's a 672 MB download. Public releases don't include it yet, because testing on physical phones isn't finished.
 
-### Speak when it is faster
+## Build from source
 
-Tap the microphone, speak, and insert the transcript without switching to another keyboard. Dictation defaults to Mistral Voxtral ASR and supports a configurable model and compatible transcription endpoint.
-
-### Rewrite when the words are not quite right
-
-Select text and rewrite it from the keyboard. Built-in provider presets cover OpenAI, Anthropic, Mistral, and OpenRouter, with a custom OpenAI-compatible endpoint option. Rewrite voices can improve writing, fix grammar, shorten text, change tone, or follow your own instruction.
-
-### Type normally—and keep it fast
-
-Ownkey includes suggestions, autocorrect, EN/NL frequency data, local next-word personalization, incognito controls, and split layouts for larger screens. Personalized learning stays on the device and is skipped in incognito sessions and password fields.
-
-### Keep provider control visible
-
-Dictation and rewrite are configured together under **Settings → AI**. Provider, endpoint, model, and key controls remain explicit, so it is clear which service handles each request.
-
----
-
-## 03 · How data moves
-
-Ownkey does not operate an AI proxy or hosted cloud service.
-
-| Action | Ownkey behavior |
-| --- | --- |
-| **Normal typing** | No AI network request. Suggestions and personalized learning run on the device. |
-| **Voice dictation** | Recorded audio is sent directly to the ASR endpoint configured in Ownkey; the transcript is returned to the keyboard. |
-| **AI rewrite** | The selected text and rewrite instruction are sent directly to the configured LLM endpoint; the result is returned for review before insertion. |
-| **API keys** | Keys are stored encrypted on the Android device using Keystore-backed storage. |
-
-When you use a cloud provider, that provider receives the request data and its privacy policy, retention terms, and billing apply. A ChatGPT or Claude app subscription does not replace API access.
-
----
-
-## 04 · Bring your own key
-
-1. **Get an API key** from the provider you want to use.
-2. **Open Settings → AI** and configure dictation, rewrite, or both.
-3. **Choose the provider, endpoint, and model**, then save the corresponding key.
-4. **Dictate or rewrite** from the keyboard.
-
-Dictation defaults to:
-
-- Endpoint: `https://api.mistral.ai/v1/audio/transcriptions`
-- Model: `voxtral-mini-latest`
-
-See [VOXTRAL_API_SETUP.md](VOXTRAL_API_SETUP.md) for direct-provider and relay setup notes.
-
----
-
-## 05 · Install and build
-
-Ownkey is currently pre-release; Google Play distribution is coming soon. Developers and testers can build it from source.
-
-### Requirements
-
-- Android Studio (current stable)
-- JDK 17
-- Android SDK 36
-- Android 8.0 / API 26 or newer for the phone app
-
-### Build the Android app
+You need JDK 17, [Rust](https://www.rust-lang.org/tools/install) through `rustup`, and the Android SDK for API 36. The build also uses the NDK and CMake versions listed in [`gradle/tools.versions.toml`](gradle/tools.versions.toml). [CONTRIBUTING.md](CONTRIBUTING.md) has the full list.
 
 ```bash
-./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug        # phone app
+./gradlew :app:testDebugUnitTest    # unit tests, including the autocorrect benchmark
+./gradlew :wear:assembleDebug       # Wear OS keyboard
 ```
 
-On Windows, use:
+On Windows, use `.\gradlew.bat` instead of `./gradlew`.
 
-```powershell
-.\gradlew.bat :app:assembleDebug
-```
+| Build type | Package | Notes |
+| --- | --- | --- |
+| `debug` | `nl.bartvandermeeren.ownkey.debug` | Installs next to the release app. Includes Orukeet. |
+| `beta` | `nl.bartvandermeeren.ownkey.beta` | Minified and signed with the debug key. Includes Orukeet. |
+| `release` | `nl.bartvandermeeren.ownkey` | Signed with the key in `keystore.properties` if present, otherwise with the debug key. |
 
-Install the generated debug APK, enable **Ownkey Keyboard** in Android's keyboard settings, then open Ownkey and complete setup.
+APKs are split per processor type. Pass `-Pownkey.apkSplits=false` to build a single APK. The [Android CI workflow](.github/workflows/android.yml) builds the phone and Wear apps for every pull request to `main`.
 
-### Optional Wear OS companion
+## Repository map
 
-The repository also contains a Wear OS IME focused on transcript-first voice input:
-
-```bash
-./gradlew :wear:assembleDebug
-```
-
-Phone and Wear artifacts are built by the [Ownkey Android CI workflow](.github/workflows/android.yml). Release runs can also produce AABs for both modules.
-
----
-
-## 06 · Repository map
-
-| Path | Purpose |
+| Path | Contents |
 | --- | --- |
-| [`app/`](app/) | Main Android keyboard, setup, settings, dictation, rewrite, prediction, and autocorrect |
-| [`wear/`](wear/) | Wear OS companion IME |
-| [`lib/`](lib/) | Shared Android, Compose, Kotlin, native, and theme libraries |
-| [`assets/branding/`](assets/branding/) | Ownkey source artwork and store graphics |
-| [`docs/brandbook/`](docs/brandbook/) | Brand references and visual direction |
-| [`fastlane/metadata/android/`](fastlane/metadata/android/) | Google Play metadata and assets |
+| [`app/`](app/) | The phone keyboard: typing, autocorrect, dictation, rewrite and settings |
+| [`wear/`](wear/) | Wear OS keyboard |
+| [`lib/`](lib/) | Shared Android, Compose, Kotlin, native and theme libraries |
+| [`tools/`](tools/) | Dictionary build scripts, autocorrect test data and the Orukeet runtime |
+| [`docs/`](docs/) | Feature notes, screenshots and the brand book |
+| [`.project/`](.project/) | Specs, plans and decisions per feature, such as the [autocorrect rebuild](.project/projects/autocorrect-engine/spec.md) |
+| [`fastlane/metadata/android/`](fastlane/metadata/android/) | Google Play listing text and images |
 
-Useful project documents:
+## Contributing
 
-- [Changelog](CHANGELOG.md)
-- [Roadmap](ROADMAP.md)
-- [Voxtral API setup](VOXTRAL_API_SETUP.md)
-- [Feature scope](VOXTRAL_FEATURE_SCOPE.md)
-- [Ownkey brand reference](docs/brandbook/ownkey-delano-brand-reference-2026-05-31.html)
+Issues and pull requests are welcome in this repository. [CONTRIBUTING.md](CONTRIBUTING.md) covers bug reports, translations, build requirements and what a pull request needs.
 
----
-
-## 07 · Contributing
-
-Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
-
-The project prioritizes:
-
-1. Responsive, trustworthy everyday typing
-2. Clear privacy boundaries and provider control
-3. Low-friction dictation and rewrite
-4. Accessible, consistent Ownkey design
-5. Respectful attribution of FlorisBoard and other upstream work
-
----
+Typing speed comes first. AI network work must never block normal typing, suggestions or opening the keyboard.
 
 ## License and attribution
 
-Ownkey Keyboard is distributed under the [Apache License 2.0](LICENSE).
+Ownkey Keyboard is licensed under the [Apache License 2.0](LICENSE). It is derived from [FlorisBoard](https://github.com/florisboard/florisboard) by Patrick Goldinger and contributors.
 
-It is derived from [FlorisBoard](https://github.com/florisboard/florisboard), with Ownkey-specific work across AI dictation and rewrite, encrypted key storage, typing quality, Wear OS support, and product design.
-
-<p align="center">
-  <strong>Your keys. Your voice. Your space.</strong>
-</p>
+The English and Dutch dictionaries are built from FrequencyWords (CC BY-SA 4.0), SCOWL, the OpenTaal word list and Tatoeba sentences (CC BY 2.0 FR). See [the dictionary attribution](app/src/main/assets/ime/dict/latin/ATTRIBUTION.md) for versions and licenses.

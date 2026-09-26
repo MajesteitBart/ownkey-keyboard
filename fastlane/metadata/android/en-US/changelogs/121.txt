@@ -1,0 +1,5 @@
+• Voice rewrite: hold the microphone key, say what to change and review the result before it replaces your text
+• The rewrite panel shows one step at a time
+• A new dictation waveform and haptic feedback on the microphone key
+• Dictated text after punctuation gets the right spacing
+• Less battery use while the keyboard is idle
