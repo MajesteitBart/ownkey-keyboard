@@ -143,9 +143,7 @@ class VoiceRewriteSessionManager(
     private val transcriptionOperation: TranscriptionOnlyOperation = TranscriptionOnlyOperation(),
     private val instructionTranscriptionClientProvider: () -> TranscriptionClient? = { null },
     private val transcriptionSessionProvider: (suspend () -> TranscriptionSession)? = null,
-    private val rewriteOperation: VoiceRewriteOperation = VoiceRewriteOperation { _, _ ->
-        Result.failure(IllegalStateException("Voice rewrite operation is not configured"))
-    },
+    private val rewriteOperation: VoiceRewriteOperation = UnconfiguredVoiceRewriteOperation,
     private val maxRecordingDurationMs: Long = VOICE_REWRITE_MAX_RECORDING_MS,
     private val nowMs: () -> Long = { System.currentTimeMillis() },
 ) {

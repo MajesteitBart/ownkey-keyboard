@@ -244,7 +244,9 @@ private fun replacementManager(
         disclosureVersion = 1,
         transcriptionOperation = TranscriptionOnlyOperation(dispatcher),
         instructionTranscriptionClientProvider = { transcription },
-        rewriteOperation = VoiceRewriteOperation { _, _ -> Result.success("rewritten text") },
+        rewriteOperation = object : VoiceRewriteOperation {
+            override suspend fun rewrite(sourceText: String, instruction: String) = Result.success("rewritten text")
+        },
     )
 }
 

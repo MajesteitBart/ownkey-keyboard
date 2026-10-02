@@ -17,8 +17,19 @@ object VoiceRewritePolicy {
             "explicitly requests another language. Preserve mixed-language source text rather than normalizing it."
 }
 
-fun interface VoiceRewriteOperation {
+/**
+ * Not a `fun interface` on purpose. Kotlin 2.3 compiled the SAM-converted suspend lambda for this
+ * interface so that it returned the inline-class [Result] boxed, while callers expect it unboxed when
+ * the call finishes without suspending. The session manager then got a `Result` inside a `Result` and
+ * crashed with a ClassCastException. Implement this interface with a class or object.
+ */
+interface VoiceRewriteOperation {
     suspend fun rewrite(sourceText: String, instruction: String): Result<String>
+}
+
+internal object UnconfiguredVoiceRewriteOperation : VoiceRewriteOperation {
+    override suspend fun rewrite(sourceText: String, instruction: String): Result<String> =
+        Result.failure(IllegalStateException("Voice rewrite operation is not configured"))
 }
 
 class LlmVoiceRewriteOperation(

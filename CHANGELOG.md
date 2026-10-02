@@ -2,6 +2,13 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
+## 0.8.1 (2026-10-02)
+
+Version code 123.
+
+### Fixed
+- Voice rewrite no longer crashes the keyboard when the rewrite provider answers ([#19](https://github.com/MajesteitBart/ownkey-keyboard/pull/19)). The crash hit every voice rewrite that reached the provider, with any dictation provider, including Orukeet.
+
 ## 0.8.0 (2026-09-25)
 
 Version code 122.

@@ -79,9 +79,7 @@ fun createVoiceRewriteSessionManager(
         disclosureStore = PreferenceVoiceRewriteDisclosureStore(scope),
         disclosureVersion = VOICE_REWRITE_DISCLOSURE_VERSION,
         transcriptionSessionProvider = { dictationManager.snapshotSession(dev.patrickgold.florisboard.ime.text.dictation.TranscriptionPurpose.VOICE_REWRITE_INSTRUCTION) },
-        rewriteOperation = { sourceText, instruction ->
-            rewriteManager.voiceRewriteOperation().rewrite(sourceText, instruction)
-        },
+        rewriteOperation = rewriteManager.voiceRewriteOperation(),
     )
 }
 
