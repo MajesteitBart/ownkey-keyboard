@@ -5,7 +5,7 @@ This file lists notable changes to Ownkey Keyboard. Version numbers match the [G
 ## Unreleased
 
 ### Added
-- Live dictation with Orukeet ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)). Words appear in the text field while you talk. Only the sentence you're saying can still change, and never more than its last 12 words, so finished sentences stay put. In a pause the text settles after about two seconds, and silence isn't processed.
+- Live dictation with Orukeet ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)). Words appear in the text field while you talk. Only the sentence you're saying can still change, at most its last 12 words, so finished sentences stay put. With TalkBack on, or in fields that can't show text while it's being written, the text goes in when you stop. In a pause the text settles after about two seconds, and after 1.6 seconds of quiet the silence isn't processed.
 
 ### Changed
 - Orukeet dictation no longer stops after 30 seconds. A recording runs until you stop it, with a safety stop after 10 minutes ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)).

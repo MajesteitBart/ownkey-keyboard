@@ -89,6 +89,30 @@ class LiveDictationTextTest : FunSpec({
         text.update(listOf("I", "use"), listOf("own", "key")) shouldBe ("I use" to " Ownkey")
     }
 
+    test("a correction of several words still applies when its words become final apart") {
+        val rules = listOf(CorrectionRule("own key", "Ownkey"))
+        val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = false, fillerWords = emptyList(), corrections = rules))
+        // "own" froze while "key" was still live.
+        val split = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean, corrections = rules)
+        split.update(listOf("I", "use", "own"), listOf("key")) shouldBe ("I use" to " Ownkey")
+        split.update(listOf("key", "daily"), emptyList()) shouldBe (" Ownkey" to " daily")
+        split.finish(emptyList()) shouldBe " daily"
+        split.committedText shouldBe "I use Ownkey daily"
+        split.rawTranscript shouldBe "I use own key daily"
+        // "own" and "key" froze in consecutive updates.
+        val apart = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean, corrections = rules)
+        apart.update(listOf("I", "use", "own"), emptyList()) shouldBe ("I use" to " own")
+        apart.update(listOf("key"), emptyList()) shouldBe ("" to " Ownkey")
+        apart.finish(listOf("today.")) shouldBe " Ownkey today."
+        apart.committedText shouldBe "I use Ownkey today."
+    }
+
+    test("a filler at the start of a dictation mid-sentence doesn't capitalize the word after it") {
+        val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = true, fillerWords = listOf("uh"), corrections = emptyList()))
+        val text = LiveDictationText(textBefore = "I said ", textAfter = "", clean = cleaner::clean)
+        text.update(listOf("uh", "hello"), emptyList()).first shouldBe "hello"
+    }
+
     test("a piece of only fillers adds nothing") {
         val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = true, fillerWords = listOf("uh", "um"), corrections = emptyList()))
         val text = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean)

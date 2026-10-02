@@ -10,6 +10,9 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CorrectionRule
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.TranscriptCleanup
+
 /**
  * The text one live dictation puts into the editor. Words that froze become committed text and never
  * change again; the live words after them are replaced on every preview. Both pass through the
@@ -20,9 +23,22 @@ class LiveDictationText(
     private val textBefore: String,
     private val textAfter: String,
     private val clean: (String) -> String = { it },
+    corrections: List<CorrectionRule> = emptyList(),
 ) {
     private val committed = StringBuilder()
     private val raw = StringBuilder()
+
+    /** The dictionary corrections of more than one word, with their length in words. */
+    private val phrases = TranscriptCleanup.normalizeCorrections(corrections)
+        .map { it.source.split(' ').size to TranscriptCleanup.compileCorrection(it) }
+        .filter { (words, _) -> words > 1 }
+
+    /**
+     * Final words that aren't committed yet, because a correction may span them and the words after them:
+     * "own" waits for "key", so the pair can still become "Ownkey". Until then they show with the live words.
+     */
+    private val waiting = ArrayList<String>()
+    private val waitWords = (phrases.maxOfOrNull { (words, _) -> words } ?: 1) - 1
 
     /** Whether the last committed words were removed entirely by cleanup, for example as fillers. */
     private var lastPieceCleanedAway = true
@@ -41,8 +57,11 @@ class LiveDictationText(
      * to show after it.
      */
     fun update(frozen: List<String>, liveWords: List<String>): Pair<String, String> {
-        val commit = append(frozen)
-        val piece = cleanPiece(liveWords)
+        waiting += frozen
+        val ready = waiting.take(committable())
+        repeat(ready.size) { waiting.removeAt(0) }
+        val commit = append(ready)
+        val piece = cleanPiece(waiting + liveWords)
         live = if (piece.isEmpty()) "" else DictationInsertionSpacing.join(piece, tail(), "")
         return commit to live
     }
@@ -50,7 +69,9 @@ class LiveDictationText(
     /** The final words after Stop. Returns the text to commit, including the space before the following text. */
     fun finish(frozen: List<String>): String {
         live = ""
-        val commit = StringBuilder(append(frozen))
+        val words = waiting + frozen
+        waiting.clear()
+        val commit = StringBuilder(append(words))
         if (committed.isNotEmpty()) {
             val last = committed.last().toString()
             val trailing = DictationInsertionSpacing.join(last, "", textAfter).substring(last.length)
@@ -60,12 +81,39 @@ class LiveDictationText(
         return commit.toString()
     }
 
+    /**
+     * How many waiting words can be committed: all but the last few, which could start a correction, and
+     * none from the start of a correction that committing would split.
+     */
+    private fun committable(): Int {
+        var count = (waiting.size - waitWords).coerceAtLeast(0)
+        if (phrases.isEmpty() || count == 0) return count
+        val starts = ArrayList<Int>()
+        val text = joinWords(waiting, starts)
+        var split = true
+        while (split) {
+            split = false
+            for ((_, pattern) in phrases) {
+                val matcher = pattern.matcher(text)
+                while (matcher.find()) {
+                    val first = starts.indexOfLast { it <= matcher.start() }
+                    val last = starts.indexOfLast { it < matcher.end() }
+                    if (first < count && count <= last) {
+                        count = first
+                        split = true
+                    }
+                }
+            }
+        }
+        return count
+    }
+
     private fun append(words: List<String>): String {
         if (words.isEmpty()) return ""
         // A mark decided after a pause comes first, and may arrive together with the words after it.
         val marks = words.takeWhile { word -> word.all { it in ATTACHED_MARKS } }
         if (marks.isNotEmpty() && marks.size < words.size) return append(marks) + append(words.drop(marks.size))
-        val spoken = words.joinToString(" ")
+        val spoken = joinWords(words)
         // A sentence mark decided after a pause arrives on its own and belongs to the word before it.
         val loneMark = spoken.all { it in ATTACHED_MARKS }
         if (raw.isNotEmpty() && spoken.first() !in ATTACHED_MARKS) raw.append(' ')
@@ -86,14 +134,24 @@ class LiveDictationText(
      */
     private fun cleanPiece(words: List<String>): String {
         if (words.isEmpty()) return ""
-        val text = words.joinToString(" ")
+        val text = joinWords(words)
         // The first decode has no context, so its first word's casing is arbitrary. Like typing, a new
         // field or a new sentence starts with a capital; mid-sentence the model's casing stays.
         val previous = committed.trimEnd().lastOrNull() ?: textBefore.trimEnd().lastOrNull()
         if (previous == null || previous in SENTENCE_END) return capitalized(clean(text).trim())
-        if (committed.isEmpty()) return clean(text).trim()
         val cleaned = clean("$CONTEXT $text")
         return if (cleaned.startsWith(CONTEXT)) cleaned.removePrefix(CONTEXT).trim() else clean(text).trim()
+    }
+
+    /** Words joined by spaces. A sentence mark on its own belongs to the word before it. [starts] receives where each word starts. */
+    private fun joinWords(words: List<String>, starts: MutableList<Int>? = null): String {
+        val text = StringBuilder()
+        for (word in words) {
+            if (text.isNotEmpty() && !word.all { it in ATTACHED_MARKS }) text.append(' ')
+            starts?.add(text.length)
+            text.append(word)
+        }
+        return text.toString()
     }
 
     private fun capitalized(text: String): String {

@@ -302,6 +302,10 @@ class LiveWindowTest {
         assertEquals(9.0 - 2.0 - 2.0, window.decodeStart(), 1e-9)
     }
 
+    @Test fun `more words left live after the cap than the cap allows is refused`() {
+        assertFailsWith<IllegalArgumentException> { LiveWindow.Config(maxLiveWords = 4) }
+    }
+
     @Test fun `silence from the start is skipped without a word ever being heard`() {
         val window = LiveWindow()
         assertNull(window.accept(emptyList(), audioEnd = 25.0))

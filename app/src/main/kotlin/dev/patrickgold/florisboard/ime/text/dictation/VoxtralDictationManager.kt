@@ -460,7 +460,12 @@ class VoxtralDictationManager(
     private suspend fun startLive(source: LiveOrukeetSession, lease: AudioSessionLease, session: TranscriptionSession) {
         val content = editorInstance.activeContent
         val cleaner = session.dictionary?.cleaner
-        val text = LiveDictationText(content.textBeforeSelection, content.textAfterSelection) { cleaner?.clean(it) ?: it }
+        val text = LiveDictationText(
+            textBefore = content.textBeforeSelection,
+            textAfter = content.textAfterSelection,
+            clean = { cleaner?.clean(it) ?: it },
+            corrections = cleaner?.settings?.corrections.orEmpty(),
+        )
         val sessionId = lease.sessionId
         val transcription = source.start(
             onUpdate = { update -> onLiveUpdate(sessionId, update) },
@@ -483,7 +488,10 @@ class VoxtralDictationManager(
         val current = live?.takeIf { it.sessionId == sessionId } ?: return
         // Updates keep arriving in order after Stop; words that froze in them are not in the final text.
         val (commit, shown) = current.text.update(update.frozen, update.live)
-        if (current.draft) editorInstance.updateDictationDraft(commit, shown)
+        if (current.draft && !editorInstance.updateDictationDraft(commit, shown) && live === current) {
+            // The editor turned the text down or went away, so the words can't be shown. What is there stays.
+            failLive(sessionId, VoiceActionErrorReason.EDITOR_COMMIT, IllegalStateException("Editor rejected live text"))
+        }
     }
 
     /** Recording or inference failed while the user was talking. What they already see stays. */
@@ -491,11 +499,23 @@ class VoxtralDictationManager(
         // After Stop, the stop path reports the failure itself.
         if (live?.sessionId != sessionId || _stateFlow.value == DictationState.TRANSCRIBING) return
         flogError { "Live dictation failed: ${(cause as? LocalAsrException)?.reason ?: cause.javaClass.simpleName}" }
+        val current = live
         endLive(keepText = true)
+        current?.let(::insertWaitingText)
         val lease = activeLease ?: return
         abortSession(lease)
         feedbackController.error(lease.sessionId, reason)
         setError(appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__live_stopped), cause)
+    }
+
+    /**
+     * Without a draft the text waits for Stop. When the session ends early it goes in anyway, so the text
+     * so far is kept as it is with a draft. The watch is still in place, so the cursor hasn't moved.
+     */
+    private fun insertWaitingText(current: LiveDictation) {
+        if (current.draft || !current.watched) return
+        val text = current.text.committedText + current.text.live
+        if (text.isNotBlank()) editorInstance.commitText(text)
     }
 
     /**
@@ -572,6 +592,7 @@ class VoxtralDictationManager(
             if (final == null) {
                 // Keep what the user saw rather than throw it away.
                 editorInstance.abandonDictationDraft()
+                insertWaitingText(current)
                 feedbackController.error(lease.sessionId, if (recording == null) VoiceActionErrorReason.RECORDING else VoiceActionErrorReason.TRANSCRIPTION)
                 finishSession(lease)
                 setError(appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__live_stopped), IllegalStateException("Live dictation failed"))

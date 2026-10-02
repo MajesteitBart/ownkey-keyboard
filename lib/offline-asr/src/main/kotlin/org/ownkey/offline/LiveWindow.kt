@@ -41,7 +41,11 @@ class LiveWindow(private val config: Config = Config()) {
         val settleAnywayAfterSeconds: Double = 3.5,
         /** With nothing live, quiet audio beyond this is left out of the next decodes. */
         val quietWindowSeconds: Double = 4.0,
-    )
+    ) {
+        init {
+            require(maxLiveWords >= 1 && keepWordsAfterCap in 1..maxLiveWords) { "keepWordsAfterCap must be within 1..maxLiveWords" }
+        }
+    }
 
     /** A sentence mark held back when the live words settled in a pause. The speech after it, or Stop, decides. */
     private class HeldMark(val mark: String, val start: Double, val word: String)

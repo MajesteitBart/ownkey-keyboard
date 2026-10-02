@@ -419,7 +419,7 @@ abstract class AbstractEditorInstance(context: Context) {
         val replacedText: String,
         val originalSelection: EditorRange,
         val deferred: Boolean,
-        /** A raw editor: no selection reports, so only keyboard edits end the session. */
+        /** No usable selection, in a raw editor or before the content is known: only keyboard edits end the session. */
         val raw: Boolean = false,
     ) {
         val committed = StringBuilder()
@@ -479,7 +479,7 @@ abstract class AbstractEditorInstance(context: Context) {
     private fun beginDraft(deferred: Boolean): Boolean {
         val ic = currentInputConnection() ?: return false
         val content = activeContent
-        if (deferred && activeInfo.isRawInputEditor) {
+        if (deferred && (activeInfo.isRawInputEditor || content.selection.isNotValid || content.offset < 0)) {
             dictationDraft = DictationDraft(0, "", "", "", EditorRange.Unspecified, deferred = true, raw = true)
             return true
         }
@@ -499,7 +499,8 @@ abstract class AbstractEditorInstance(context: Context) {
 
     /**
      * Commits [commit] after the draft's committed text and shows [live] as composing text after it.
-     * Returns false, and ends the draft, when the field no longer looks the way the draft left it.
+     * Returns false, and ends the draft, when the field no longer looks the way the draft left it or the
+     * editor turns the text down.
      */
     fun updateDictationDraft(commit: String, live: String): Boolean {
         val draft = dictationDraft?.takeIf { !it.deferred } ?: return false
@@ -512,13 +513,12 @@ abstract class AbstractEditorInstance(context: Context) {
             draft.touched = true
             if (commit.isNotEmpty()) {
                 // Replaces the previous live words (or the selection) with the newly final ones.
-                ic.setComposingText(commit, 1)
-                ic.finishComposingText()
+                if (!ic.setComposingText(commit, 1) || !ic.finishComposingText()) return dropDraft()
                 draft.committed.append(commit)
                 draft.liveText = ""
                 draft.expect(EditorRange.cursor(draft.end))
             }
-            if (live.isNotEmpty() || commit.isEmpty()) ic.setComposingText(live, 1)
+            if ((live.isNotEmpty() || commit.isEmpty()) && !ic.setComposingText(live, 1)) return dropDraft()
             draft.liveText = live
             draft.expect(EditorRange.cursor(draft.end))
             publishDraftContent(draft, live)
@@ -539,8 +539,7 @@ abstract class AbstractEditorInstance(context: Context) {
         val ic = currentInputConnection() ?: return false
         ic.beginBatchEdit()
         try {
-            ic.setComposingText(commit, 1)
-            ic.finishComposingText()
+            if (!ic.setComposingText(commit, 1) || !ic.finishComposingText()) return dropDraft()
             draft.committed.append(commit)
             draft.liveText = ""
             dictationDraft = null
@@ -556,6 +555,12 @@ abstract class AbstractEditorInstance(context: Context) {
             ic.endBatchEdit()
         }
         return true
+    }
+
+    /** The editor turned down a draft write, usually because it went away. The draft ends; its text stays as it is. */
+    private fun dropDraft(): Boolean {
+        dictationDraft = null
+        return false
     }
 
     /** Cancel, or nothing to insert: removes everything the draft added and puts back any text it replaced. */
@@ -594,8 +599,9 @@ abstract class AbstractEditorInstance(context: Context) {
     }
 
     /**
-     * The keyboard is about to edit the field or move the cursor: any key other than the voice key. In
-     * every kind of editor, that ends dictation first, so live text never mixes with what the user types.
+     * The keyboard is about to edit the field or move the cursor: a key other than the voice key, a
+     * suggestion, the clipboard, a gesture or a quick action. In every kind of editor, that ends dictation
+     * first, so live text never mixes with what the user types.
      */
     fun notifyKeyboardEdit() {
         if (dictationDraft != null) interruptDraft(settle = true)
@@ -910,6 +916,7 @@ abstract class AbstractEditorInstance(context: Context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun sendDownUpKeyEvent(keyEventCode: Int, metaState: Int = meta(), count: Int = 1): Boolean {
+        notifyKeyboardEdit()
         if (count < 1) return false
         val ic = currentInputConnection() ?: return false
         ic.beginBatchEdit()

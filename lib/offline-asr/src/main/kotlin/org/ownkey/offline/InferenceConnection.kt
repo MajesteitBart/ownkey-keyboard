@@ -161,7 +161,12 @@ class InferenceConnection(context: Context) {
                         if (hotwords.isNotEmpty()) putString(InferenceService.KEY_HOTWORDS, hotwords)
                     }
                 })
-            } catch (_: Exception) { died() }
+            } catch (_: Exception) {
+                // The caller hears about it from this exception, not from the failure callback as well.
+                liveFailure = null
+                died()
+                throw LocalAsrException(LocalAsrFailure.PROCESS_DIED)
+            }
             LiveTranscription(this@InferenceConnection, id)
         }
     }
@@ -194,15 +199,17 @@ class InferenceConnection(context: Context) {
                 }
             }
             if (result.getString("state") != "ok") {
-                _state.value = RuntimeState.FAILED
-                throw result.failure()
+                val failure = result.failure()
+                _state.value = if (failure.reason == LocalAsrFailure.CANCELLED) RuntimeState.READY else RuntimeState.FAILED
+                throw failure
             }
             _state.value = RuntimeState.READY
             result.liveUpdate()
         } catch (_: TimeoutCancellationException) {
             val detail = "no final text from the inference process after ${elapsedMs()} ms"
             Log.w(TAG, "Live finish timed out: $detail")
-            disconnect(kill = true)
+            // Only while this session still holds the connection; a newer one must not end with it.
+            if (liveId == id) disconnect(kill = true)
             throw LocalAsrException(LocalAsrFailure.TIMEOUT, detail)
         } catch (cancel: CancellationException) {
             // The native decode can't be interrupted; ending the process is the bounded way to stop it.
@@ -222,9 +229,12 @@ class InferenceConnection(context: Context) {
                     data = Bundle().apply { putLong("request", id) }
                 })
             }
-            // A finish that was waiting belongs to this session; its caller is cancelled with it.
+            // A finish that was waiting belongs to this session. It ends now, cancelled, instead of waiting
+            // for its timeout.
+            val waiting = pending
             pending = null
             endLive()
+            waiting?.invoke(Bundle().apply { putString("state", "error"); putString("failure", LocalAsrFailure.CANCELLED.name) })
         }
     }
 

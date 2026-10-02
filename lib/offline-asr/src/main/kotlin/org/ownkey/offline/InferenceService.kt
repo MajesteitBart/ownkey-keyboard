@@ -137,7 +137,8 @@ class InferenceService : Service() {
             main.post {
                 loaded.fold(
                     onSuccess = { run.engine = it; schedule(run) },
-                    onFailure = { failLive(run, it) },
+                    // A run cancelled while its model loaded is already closed; whatever runs now isn't its business.
+                    onFailure = { if (!run.closed) failLive(run, it) },
                 )
             }
         }
@@ -222,13 +223,14 @@ class InferenceService : Service() {
     }
 
     private fun closeLive(run: LiveRun) {
+        if (run.closed) return
         run.closed = true
         if (live === run) live = null
         if (run.decoding) {
             // Native decoding can't be interrupted. Let a short preview finish, but release its resources
-            // within the cancellation deadline. A session that started meanwhile ends with the process; its
-            // client sees the process die and reports it.
-            main.postDelayed({ if (run.decoding) terminate() }, CANCEL_DEADLINE_MS)
+            // within the cancellation deadline, unless a new request came in meanwhile: its work waits on the
+            // same worker thread, and ending the process would end it too.
+            main.postDelayed({ if (run.decoding && !active) terminate() }, CANCEL_DEADLINE_MS)
         } else {
             runCatching { run.audio.close() }
         }

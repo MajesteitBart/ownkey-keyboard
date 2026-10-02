@@ -57,6 +57,9 @@ class PcmAudioRecorder(
     private var thread: Thread? = null
     @Volatile private var running = false
     @Volatile private var paused = false
+
+    /** Counts pauses: a read a pause cut short isn't a broken microphone, even when a resume followed. */
+    @Volatile private var pauses = 0
     @Volatile private var peak = 0f
     private var startedAtMs: Long? = null
     private var pausedAtMs: Long? = null
@@ -159,6 +162,7 @@ class PcmAudioRecorder(
         val samples = ShortArray(CHUNK)
         val bytes = ByteArray(CHUNK * 2)
         while (running) {
+            val pausesBefore = pauses
             if (paused) {
                 Thread.sleep(20)
                 continue
@@ -166,7 +170,7 @@ class PcmAudioRecorder(
             val count = audio.read(samples, 0, CHUNK)
             if (count < 0) {
                 // Pausing stops the recorder under a blocked read; anything else is a lasting error.
-                if (!running || paused) continue
+                if (!running || paused || pauses != pausesBefore) continue
                 fail()
                 break
             }
@@ -201,6 +205,7 @@ class PcmAudioRecorder(
     override fun pause(): Boolean {
         if (thread == null || paused) return false
         paused = true
+        pauses++
         record?.let { runCatching { it.stop() } }
         pausedAtMs = nowMs()
         return true
@@ -284,15 +289,16 @@ private object TestMicrophone {
         val wav = File(context.noBackupFilesDir, "test-mic.wav")
         if (!wav.isFile) return null
         val bytes = runCatching { wav.readBytes() }.getOrNull() ?: return null
-        // Find the "data" chunk; the header before it varies between tools.
-        var offset = 12
+        // Find the "data" chunk; the header before it varies between tools. Chunk sizes are unsigned 32-bit.
+        var offset = 12L
         while (offset + 8 <= bytes.size) {
-            val id = String(bytes, offset, 4, Charsets.US_ASCII)
-            val size = (bytes[offset + 4].toInt() and 0xff) or ((bytes[offset + 5].toInt() and 0xff) shl 8) or
-                ((bytes[offset + 6].toInt() and 0xff) shl 16) or ((bytes[offset + 7].toInt() and 0xff) shl 24)
+            val at = offset.toInt()
+            val id = String(bytes, at, 4, Charsets.US_ASCII)
+            val size = (bytes[at + 4].toLong() and 0xff) or ((bytes[at + 5].toLong() and 0xff) shl 8) or
+                ((bytes[at + 6].toLong() and 0xff) shl 16) or ((bytes[at + 7].toLong() and 0xff) shl 24)
             if (id == "data") {
-                val start = offset + 8
-                val count = minOf(size, bytes.size - start) / 2
+                val start = at + 8
+                val count = (minOf(size, (bytes.size - start).toLong()) / 2).toInt()
                 return ShortArray(count) { i ->
                     ((bytes[start + 2 * i].toInt() and 0xff) or (bytes[start + 2 * i + 1].toInt() shl 8)).toShort()
                 }
