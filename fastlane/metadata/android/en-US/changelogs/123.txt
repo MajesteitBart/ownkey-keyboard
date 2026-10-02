@@ -1,0 +1,1 @@
+• Voice rewrite no longer crashes the keyboard after you speak your instruction
