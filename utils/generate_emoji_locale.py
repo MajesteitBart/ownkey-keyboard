@@ -35,7 +35,8 @@ def read_annotation_xml(kind, locale, cldr_dir):
     if cldr_dir is not None:
         return (pathlib.Path(cldr_dir) / kind / f"{locale}.xml").read_bytes()
     url = CLDR_RAW_URL.format(version=CLDR_VERSION, kind=kind, locale=locale)
-    with urllib.request.urlopen(url) as response:
+    # urlopen raises HTTPError for any non-2xx response
+    with urllib.request.urlopen(url, timeout=60) as response:
         return response.read()
 
 

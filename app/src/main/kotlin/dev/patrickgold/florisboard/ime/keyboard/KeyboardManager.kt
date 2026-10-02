@@ -17,7 +17,6 @@
 package dev.patrickgold.florisboard.ime.keyboard
 
 import android.content.Context
-import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.compose.runtime.getValue
@@ -48,6 +47,7 @@ import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.media.emoji.Emoji
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiHistoryHelper
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchHardwareKeyAction
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchSession
 import dev.patrickgold.florisboard.ime.nlp.AutocorrectRevertCandidate
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
@@ -1166,8 +1166,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun onHardwareKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (emojiSearch.isActive) {
-            return handleEmojiSearchHardwareKey(keyCode, event)
+        if (emojiSearch.isActive && handleEmojiSearchHardwareKey(keyCode, event)) {
+            return true
         }
         when (keyCode) {
             KeyEvent.KEYCODE_SPACE -> {
@@ -1187,7 +1187,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun onHardwareKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (emojiSearch.isActive && isEmojiSearchHardwareKey(keyCode, event)) {
+        if (emojiSearch.isActive && emojiSearchHardwareKeyAction(keyCode, event).consumesKey) {
             return true
         }
         when (keyCode) {
@@ -1199,33 +1199,35 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    /** Whether a physical key edits the emoji search query, so the app must not receive it. */
-    private fun isEmojiSearchHardwareKey(keyCode: Int, event: KeyEvent?): Boolean {
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> true
-            // Dead accent keys have a negative unicodeChar (the COMBINING_ACCENT flag) and must not reach the app
-            else -> (event?.unicodeChar ?: 0) != 0
-        }
+    private fun emojiSearchHardwareKeyAction(keyCode: Int, event: KeyEvent?): EmojiSearchHardwareKeyAction {
+        return EmojiSearchHardwareKeyAction.of(
+            keyCode = keyCode,
+            unicodeChar = event?.unicodeChar ?: 0,
+            isShortcut = event != null && (event.isCtrlPressed || event.isMetaPressed),
+            isModifierOrSystem = KeyEvent.isModifierKey(keyCode) || event?.isSystem == true,
+        )
     }
 
-    /** Sends physical keyboard input to the emoji search query, the same way as on-screen keys. */
+    /**
+     * Sends physical keyboard input to the emoji search query, the same way as on-screen keys, and returns true if
+     * the app must not receive the key.
+     */
     private fun handleEmojiSearchHardwareKey(keyCode: Int, event: KeyEvent?): Boolean {
-        if (!isEmojiSearchHardwareKey(keyCode, event)) return false
-        when (keyCode) {
-            KeyEvent.KEYCODE_DEL -> emojiSearch.deleteBackward()
-            KeyEvent.KEYCODE_SPACE -> emojiSearch.type(" ")
-            KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                emojiSearch.topResult?.let { commitEmojiFromSearch(it) }
+        val action = emojiSearchHardwareKeyAction(keyCode, event)
+        when (action) {
+            EmojiSearchHardwareKeyAction.TYPE -> {
+                event?.unicodeChar?.let { emojiSearch.type(String(Character.toChars(it))) }
             }
-            else -> {
-                val char = event?.unicodeChar ?: 0
-                // A dead key only puts an accent on the next letter, and search ignores accents anyway
-                if ((char and KeyCharacterMap.COMBINING_ACCENT) == 0) {
-                    emojiSearch.type(String(Character.toChars(char)))
-                }
+            EmojiSearchHardwareKeyAction.DELETE -> emojiSearch.deleteBackward()
+            EmojiSearchHardwareKeyAction.SPACE -> emojiSearch.type(" ")
+            EmojiSearchHardwareKeyAction.ENTER -> emojiSearch.topResult?.let { commitEmojiFromSearch(it) }
+            EmojiSearchHardwareKeyAction.IGNORE, EmojiSearchHardwareKeyAction.PASS -> Unit
+            EmojiSearchHardwareKeyAction.CLOSE -> {
+                emojiSearch.stop()
+                reevaluateInputShiftState()
             }
         }
-        return true
+        return action.consumesKey
     }
 
     inner class KeyboardManagerResources {

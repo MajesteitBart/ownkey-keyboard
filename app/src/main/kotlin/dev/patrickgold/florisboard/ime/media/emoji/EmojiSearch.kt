@@ -17,6 +17,8 @@
 package dev.patrickgold.florisboard.ime.media.emoji
 
 import android.content.Context
+import android.view.KeyCharacterMap
+import android.view.KeyEvent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -83,6 +85,42 @@ class EmojiSearchSession {
 
     companion object {
         const val MaxQueryLength = 40
+    }
+}
+
+/** What a physical key does while emoji search is open. */
+enum class EmojiSearchHardwareKeyAction(val consumesKey: Boolean) {
+    /** Adds the key's character to the query. */
+    TYPE(true),
+    DELETE(true),
+    SPACE(true),
+    ENTER(true),
+    /** Swallowed, like forward delete on the on-screen keyboard or a dead accent key. */
+    IGNORE(true),
+    /** Modifiers and system keys such as volume work as usual and keep the search open. */
+    PASS(false),
+    /** Shortcuts and navigation keys close the search and then do their normal job, as on-screen keys do. */
+    CLOSE(false);
+
+    companion object {
+        /**
+         * Classifies a physical key. [isShortcut] means Ctrl or Meta is held; [isModifierOrSystem] means the key is a
+         * modifier such as Shift or a system key such as volume or back.
+         */
+        fun of(keyCode: Int, unicodeChar: Int, isShortcut: Boolean, isModifierOrSystem: Boolean): EmojiSearchHardwareKeyAction {
+            return when {
+                isModifierOrSystem -> PASS
+                isShortcut -> CLOSE
+                keyCode == KeyEvent.KEYCODE_DEL -> DELETE
+                keyCode == KeyEvent.KEYCODE_FORWARD_DEL -> IGNORE
+                keyCode == KeyEvent.KEYCODE_SPACE -> SPACE
+                keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> ENTER
+                // A dead key only puts an accent on the next letter, and search ignores accents anyway
+                (unicodeChar and KeyCharacterMap.COMBINING_ACCENT) != 0 -> IGNORE
+                unicodeChar != 0 -> TYPE
+                else -> CLOSE
+            }
+        }
     }
 }
 

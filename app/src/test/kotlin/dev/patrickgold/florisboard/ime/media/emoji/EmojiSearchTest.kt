@@ -16,6 +16,8 @@
 
 package dev.patrickgold.florisboard.ime.media.emoji
 
+import android.view.KeyCharacterMap
+import android.view.KeyEvent
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
@@ -176,5 +178,41 @@ class EmojiSearchSessionTest : FunSpec({
         session.start()
         repeat(EmojiSearchSession.MaxQueryLength + 10) { session.type("a") }
         session.query.length shouldBe EmojiSearchSession.MaxQueryLength
+    }
+})
+
+class EmojiSearchHardwareKeyActionTest : FunSpec({
+    fun action(keyCode: Int, unicodeChar: Int = 0, isShortcut: Boolean = false, isModifierOrSystem: Boolean = false) =
+        EmojiSearchHardwareKeyAction.of(keyCode, unicodeChar, isShortcut, isModifierOrSystem)
+
+    test("letters, space, backspace and enter edit the search and never reach the app") {
+        action(KeyEvent.KEYCODE_C, unicodeChar = 'c'.code) shouldBe EmojiSearchHardwareKeyAction.TYPE
+        action(KeyEvent.KEYCODE_SPACE, unicodeChar = ' '.code) shouldBe EmojiSearchHardwareKeyAction.SPACE
+        action(KeyEvent.KEYCODE_DEL) shouldBe EmojiSearchHardwareKeyAction.DELETE
+        action(KeyEvent.KEYCODE_ENTER, unicodeChar = '\n'.code) shouldBe EmojiSearchHardwareKeyAction.ENTER
+        action(KeyEvent.KEYCODE_NUMPAD_ENTER) shouldBe EmojiSearchHardwareKeyAction.ENTER
+    }
+
+    test("forward delete and dead accent keys are swallowed instead of reaching the app") {
+        val forwardDelete = action(KeyEvent.KEYCODE_FORWARD_DEL)
+        forwardDelete shouldBe EmojiSearchHardwareKeyAction.IGNORE
+        forwardDelete.consumesKey shouldBe true
+        val deadAcute = action(KeyEvent.KEYCODE_APOSTROPHE, unicodeChar = KeyCharacterMap.COMBINING_ACCENT or 0x0301)
+        deadAcute shouldBe EmojiSearchHardwareKeyAction.IGNORE
+        deadAcute.consumesKey shouldBe true
+    }
+
+    test("shortcuts and navigation keys close the search before the app gets them") {
+        val paste = action(KeyEvent.KEYCODE_V, unicodeChar = 'v'.code, isShortcut = true)
+        paste shouldBe EmojiSearchHardwareKeyAction.CLOSE
+        paste.consumesKey shouldBe false
+        action(KeyEvent.KEYCODE_DPAD_LEFT) shouldBe EmojiSearchHardwareKeyAction.CLOSE
+    }
+
+    test("modifiers and system keys keep the search open and work as usual") {
+        val shift = action(KeyEvent.KEYCODE_SHIFT_LEFT, isModifierOrSystem = true)
+        shift shouldBe EmojiSearchHardwareKeyAction.PASS
+        shift.consumesKey shouldBe false
+        action(KeyEvent.KEYCODE_VOLUME_UP, isModifierOrSystem = true) shouldBe EmojiSearchHardwareKeyAction.PASS
     }
 })

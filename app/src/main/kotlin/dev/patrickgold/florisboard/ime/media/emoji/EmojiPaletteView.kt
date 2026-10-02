@@ -111,7 +111,10 @@ private val EmojiCategoryValues = EmojiCategory.entries
 private val EmojiBaseWidth = 42.dp
 private val EmojiDefaultFontSize = 22.sp
 
-/** Emoji cells are at least this wide: 9 per row on a typical phone and 10 on wider ones, as in Gboard and WhatsApp. */
+/**
+ * Emoji cells are at least this wide: 8 per row below 405dp, 9 from 405dp (such as a 411dp Pixel) and 10 from 450dp,
+ * which matches WhatsApp on a 480dp phone.
+ */
 private val EmojiMinCellSize = 45.dp
 
 /** Emoji text size relative to its cell. The glyph then fills about two thirds of the cell. */

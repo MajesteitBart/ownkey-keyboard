@@ -86,10 +86,13 @@ import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 /** The results row is a bit taller than the Smartbar, so the emojis in it are easy to hit. */
 private const val ResultsRowHeightFactor = 1.25f
 
-/** Emojis found for [query], so results that arrive late are never taken for those of a newer query. */
-private data class SearchResults(val query: String, val emojis: List<Emoji>) {
+/**
+ * Emojis found for [query] in [index], so results that arrive late are never taken for those of a newer query or of
+ * another set of languages.
+ */
+private data class SearchResults(val query: String, val index: EmojiSearchIndex?, val emojis: List<Emoji>) {
     companion object {
-        val None = SearchResults("", emptyList())
+        val None = SearchResults("", null, emptyList())
     }
 }
 
@@ -144,7 +147,7 @@ fun EmojiSearchBar(modifier: Modifier = Modifier) {
     fun canDraw(emoji: Emoji) = emojiCompatInstance.canDraw(emoji, metadataVersion, systemFontPaint)
 
     // Read once, like the palette's recent tab, so recents do not reorder under the finger as emojis go in
-    val recentEmojis = remember(emojiCompatInstance) {
+    val recentEmojis = remember(emojiCompatInstance, metadataVersion) {
         val deviceLocked = context.systemService(AndroidKeyguardManager::class)
             .let { it.isDeviceLocked || it.isKeyguardLocked }
         if (prefs.emoji.historyEnabled.get() && !deviceLocked) {
@@ -154,7 +157,7 @@ fun EmojiSearchBar(modifier: Modifier = Modifier) {
         }
     }
     val recentValues = remember(recentEmojis) { recentEmojis.map { it.value }.toSet() }
-    val matches by produceState(SearchResults.None, index, query, preferredSkinTone, emojiCompatInstance) {
+    val matches by produceState(SearchResults.None, index, query, preferredSkinTone, emojiCompatInstance, metadataVersion) {
         val currentIndex = index ?: return@produceState
         value = withContext(Dispatchers.Default) {
             val emojis = currentIndex
@@ -163,12 +166,12 @@ fun EmojiSearchBar(modifier: Modifier = Modifier) {
                     // The base emoji is drawable, but the chosen skin tone variant may not be
                     emojiSet.base(withSkinTone = preferredSkinTone).takeIf { canDraw(it) } ?: emojiSet.emojis.first()
                 }
-            SearchResults(query, emojis)
+            SearchResults(query, currentIndex, emojis)
         }
     }
     val hasQuery = query.isNotBlank()
     // Until the search for the latest query is done, the previous results stay visible but enter inserts nothing
-    val isCurrent = matches.query == query
+    val isCurrent = matches.query == query && matches.index === index
     val results = if (hasQuery) matches.emojis else recentEmojis
     SideEffect {
         search.topResult = if (hasQuery && isCurrent) matches.emojis.firstOrNull() else null
