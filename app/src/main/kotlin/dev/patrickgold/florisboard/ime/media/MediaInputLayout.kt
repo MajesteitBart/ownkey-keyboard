@@ -24,10 +24,10 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material3.Icon
@@ -44,12 +44,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiData
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiPaletteView
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchField
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
@@ -98,7 +100,12 @@ fun MediaInputLayout(
                     fontWeight = FontWeight.Bold,
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            EmojiSearchField(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
+                onClick = { keyboardManager.startEmojiSearch() },
+            )
             KeyboardLikeButton(
                 elementName = FlorisImeUi.MediaBottomRowButton.elementName,
                 inputEventDispatcher = keyboardManager.inputEventDispatcher,

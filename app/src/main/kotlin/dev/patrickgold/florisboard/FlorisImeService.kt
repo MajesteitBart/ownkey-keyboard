@@ -420,6 +420,8 @@ class FlorisImeService : LifecycleInputMethodService() {
         super.onStartInputView(info, restarting)
         if (info == null) return
         val editorInfo = FlorisEditorInfo.wrap(info)
+        // An app may restart input on the same field after an emoji goes in; only a new field ends the search.
+        if (!restarting) keyboardManager.emojiSearch.stop()
         activeState.batchEdit {
             if (activeState.imeUiMode != ImeUiMode.CLIPBOARD || prefs.clipboard.historyHideOnNextTextField.get()) {
                 activeState.imeUiMode = ImeUiMode.TEXT
@@ -491,6 +493,7 @@ class FlorisImeService : LifecycleInputMethodService() {
         super.onWindowHidden()
         if (windowController.onWindowHidden()) {
             flogInfo(LogTopic.IMS_EVENTS)
+            keyboardManager.emojiSearch.stop()
             activeState.batchEdit {
                 activeState.imeUiMode = ImeUiMode.TEXT
                 activeState.isActionsOverflowVisible = false

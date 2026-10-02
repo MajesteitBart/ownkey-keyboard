@@ -192,4 +192,9 @@
     <string name="enum__autocorrect_strength__normal__description">Verbetert gewone typfouten. Aanbevolen</string>
     <string name="enum__autocorrect_strength__strong">Sterk</string>
     <string name="enum__autocorrect_strength__strong__description">Verbetert meer typfouten, en verandert af en toe een woord dat je bedoelde</string>
+    <string name="emoji__search__hint">Emoji\'s zoeken</string>
+    <string name="emoji__search__start_hint">Typ een woord om een emoji te vinden</string>
+    <string name="emoji__search__no_results">Geen emoji gevonden</string>
+    <string name="emoji__search__close">Terug naar emoji\'s</string>
+    <string name="emoji__search__clear">Zoekopdracht wissen</string>
 </resources>

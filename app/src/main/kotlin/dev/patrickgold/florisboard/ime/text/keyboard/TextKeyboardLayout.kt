@@ -151,6 +151,7 @@ fun TextKeyboardLayout(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val glideTypingManager by context.glideTypingManager()
+    val keyboardManager by context.keyboardManager()
     val voxtralDictationManager by context.voxtralDictationManager()
     val dictationState by voxtralDictationManager.stateFlow.collectAsState()
     val showVoiceRecordingIndicator = dictationState == VoxtralDictationManager.DictationState.LISTENING
@@ -163,7 +164,7 @@ fun TextKeyboardLayout(
     }
     val glideEnabledInternal by prefs.glide.enabled.collectAsState()
     val glideEnabled = glideEnabledInternal && evaluator.editorInfo.isRichInputEditor &&
-        evaluator.state.keyVariation != KeyVariation.PASSWORD
+        evaluator.state.keyVariation != KeyVariation.PASSWORD && !keyboardManager.emojiSearch.isActive
     val glideShowTrail by prefs.glide.showTrail.collectAsState()
     val glideTrailStyle = rememberSnyggThemeQuery(FlorisImeUi.GlideTrail.elementName)
     val glideTrailColor = glideTrailStyle.foreground(default = Color.Green)
@@ -544,8 +545,9 @@ private class TextKeyboardLayoutController(
     lateinit var keyboard: TextKeyboard
     var size = Size.Zero
 
+    // Glide and swipe gestures write to the app directly, so they stay off while the emoji search query is typed
     val isGlideEnabled: Boolean get() = prefs.glide.enabled.get() && editorInstance.activeInfo.isRichInputEditor &&
-        keyboardManager.activeState.keyVariation != KeyVariation.PASSWORD
+        keyboardManager.activeState.keyVariation != KeyVariation.PASSWORD && !keyboardManager.emojiSearch.isActive
 
     fun onTouchEventInternal(event: MotionEvent) {
         flogDebug { "event=$event" }
@@ -831,6 +833,8 @@ private class TextKeyboardLayoutController(
      */
     private fun recordTap(data: KeyData, event: MotionEvent?, pointer: TouchPointer) {
         if (data.type != KeyType.CHARACTER || data.code <= 0) return
+        // Emoji search letters never reach the app, so they must not join the trail of the word being typed there
+        if (keyboardManager.emojiSearch.isActive) return
         val info = editorInstance.activeInfo
         if (!AutocorrectTriggerPolicy.allowsField(
                 variation = info.inputAttributes.variation,
@@ -874,6 +878,7 @@ private class TextKeyboardLayoutController(
     }
 
     override fun onSwipe(event: SwipeGesture.Event): Boolean {
+        if (keyboardManager.emojiSearch.isActive) return false
         val pointer = pointerMap.findById(event.pointerId) ?: return false
         val initialKey = pointer.initialKey ?: return false
         val activeKey = pointer.activeKey
