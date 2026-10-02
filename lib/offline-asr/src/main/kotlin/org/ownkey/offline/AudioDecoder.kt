@@ -78,6 +78,21 @@ internal object AudioDecoder {
         }
     }
 
+    /**
+     * Reads samples [fromSample, toSample) of a raw 16 kHz mono 16-bit recording that may still be
+     * growing. Stops early at the current end of the file.
+     */
+    fun readPcm16(fd: FileDescriptor, fromSample: Long, toSample: Long): FloatArray {
+        val bytes = ByteArray(((toSample - fromSample).coerceIn(0, 16000L * 31) * 2).toInt())
+        var read = 0
+        while (read < bytes.size) {
+            val count = Os.pread(fd, bytes, read, bytes.size - read, fromSample * 2 + read)
+            if (count <= 0) break
+            read += count
+        }
+        return pcm16ToMono16k(if (read == bytes.size) bytes else bytes.copyOf(read - read % 2), 16000, 1)
+    }
+
     internal fun pcm16ToMono16k(bytes: ByteArray, rate: Int, channels: Int): FloatArray {
         require(rate in 8000..48000 && channels in 1..2 && bytes.size % (2 * channels) == 0)
         val frames = bytes.size / (2 * channels)

@@ -4,6 +4,7 @@ import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
+import com.k2fsa.sherpa.onnx.OfflineRecognizerResult
 import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
 import java.io.File
 
@@ -38,7 +39,13 @@ internal class OrukeetEngine(directory: File, val profile: DecoderProfile = Deco
         ),
     )
 
-    fun transcribe(samples: FloatArray, hotwords: String = ""): String {
+    fun transcribe(samples: FloatArray, hotwords: String = ""): String = decode(samples, hotwords) { it.text.trim() }
+
+    /** Live dictation: the words with their start times, in seconds from the start of [samples]. */
+    fun transcribeWords(samples: FloatArray, hotwords: String = ""): List<TimedWord> =
+        decode(samples, hotwords) { LiveWindow.words(it.tokens, it.timestamps, samples.size / 16000.0) }
+
+    private fun <T> decode(samples: FloatArray, hotwords: String, read: (OfflineRecognizerResult) -> T): T {
         require(samples.size <= 16000 * 31)
         val stream = if (hotwords.isNotEmpty() && profile == DecoderProfile.BEAM_HOTWORDS) {
             recognizer.createStream(hotwords)
@@ -48,7 +55,7 @@ internal class OrukeetEngine(directory: File, val profile: DecoderProfile = Deco
         return try {
             stream.acceptWaveform(samples, 16000)
             recognizer.decode(stream)
-            recognizer.getResult(stream).text.trim()
+            read(recognizer.getResult(stream))
         } finally { stream.release() }
     }
 

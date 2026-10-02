@@ -25,6 +25,9 @@ class InferenceConnection(context: Context) {
     private var pending: ((Bundle) -> Unit)? = null
     private var connecting: CompletableDeferred<Unit>? = null
     private var requestStartedAt = 0L
+    private var liveId = 0L
+    private var liveUpdate: ((LiveUpdate) -> Unit)? = null
+    private var liveFailure: ((LocalAsrException) -> Unit)? = null
     private val reply = Messenger(Handler(Looper.getMainLooper()) { message ->
         val data = message.data
         if (data.getLong("request") == nextRequest && binding != null) {
@@ -32,7 +35,22 @@ class InferenceConnection(context: Context) {
             when (data.getString("state")) {
                 "loading" -> _state.value = RuntimeState.LOADING
                 "transcribing" -> _state.value = RuntimeState.TRANSCRIBING
-                else -> pending?.invoke(data)
+                "live_update" -> {
+                    _state.value = RuntimeState.TRANSCRIBING
+                    liveUpdate?.invoke(data.liveUpdate())
+                }
+                else -> {
+                    val callback = pending
+                    if (callback != null) {
+                        callback(data)
+                    } else if (liveId != 0L) {
+                        // A live session failed between updates, before anyone asked for the final text.
+                        val failure = liveFailure
+                        endLive()
+                        _state.value = RuntimeState.FAILED
+                        failure?.invoke(data.failure())
+                    }
+                }
             }
         }
         true
@@ -90,6 +108,150 @@ class InferenceConnection(context: Context) {
         } finally { mutex.unlock() }
     }
 
+    /**
+     * Starts live dictation over a raw 16 kHz mono 16-bit recording that the caller keeps writing to
+     * [audio]. Report progress with [LiveTranscription.append]. [onUpdate] and [onFailure] run on the
+     * main thread; after [onFailure] the session is over. The connection stays reserved for this
+     * session until it finishes, fails or is cancelled.
+     */
+    suspend fun startLive(
+        modelId: String,
+        audio: ParcelFileDescriptor,
+        hotwords: String,
+        onUpdate: (LiveUpdate) -> Unit,
+        onFailure: (LocalAsrException) -> Unit,
+    ): LiveTranscription {
+        var started = 0L
+        try {
+            return openLive(modelId, audio, hotwords, onUpdate, onFailure) { started = it }
+        } catch (cancel: CancellationException) {
+            // withContext can throw after the block finished; the session it started must not stay reserved.
+            if (started != 0L) cancelLive(started)
+            throw cancel
+        }
+    }
+
+    private suspend fun openLive(
+        modelId: String,
+        audio: ParcelFileDescriptor,
+        hotwords: String,
+        onUpdate: (LiveUpdate) -> Unit,
+        onFailure: (LocalAsrException) -> Unit,
+        onStarted: (Long) -> Unit,
+    ): LiveTranscription = withContext(Dispatchers.Main.immediate) {
+        audio.use {
+            if (!mutex.tryLock()) throw LocalAsrException(LocalAsrFailure.BUSY)
+            requestStartedAt = SystemClock.elapsedRealtime()
+            try {
+                connect()
+            } catch (error: Throwable) {
+                mutex.unlock()
+                throw error
+            }
+            val id = ++nextRequest
+            liveId = id
+            liveUpdate = onUpdate
+            liveFailure = onFailure
+            onStarted(id)
+            try {
+                remote!!.send(Message.obtain(null, InferenceService.LIVE_START).apply {
+                    replyTo = reply
+                    data = Bundle().apply {
+                        putLong("request", id); putString("model", modelId); putParcelable("audio", audio)
+                        if (hotwords.isNotEmpty()) putString(InferenceService.KEY_HOTWORDS, hotwords)
+                    }
+                })
+            } catch (_: Exception) { died() }
+            LiveTranscription(this@InferenceConnection, id)
+        }
+    }
+
+    internal fun appendLive(id: Long, samples: Long) {
+        main.post {
+            if (liveId != id) return@post
+            runCatching {
+                remote?.send(Message.obtain(null, InferenceService.LIVE_APPEND).apply {
+                    data = Bundle().apply { putLong("request", id); putLong(InferenceService.KEY_SAMPLES, samples) }
+                })
+            }
+        }
+    }
+
+    internal suspend fun finishLive(id: Long, samples: Long): LiveUpdate = withContext(Dispatchers.Main.immediate) {
+        if (liveId != id) throw LocalAsrException(LocalAsrFailure.CANCELLED)
+        try {
+            val result = withTimeout(FINISH_TIMEOUT_MS) {
+                suspendCancellableCoroutine<Bundle> { continuation ->
+                    pending = { bundle ->
+                        pending = null
+                        if (continuation.isActive) continuation.resume(bundle)
+                    }
+                    try {
+                        remote!!.send(Message.obtain(null, InferenceService.LIVE_FINISH).apply {
+                            data = Bundle().apply { putLong("request", id); putLong(InferenceService.KEY_SAMPLES, samples) }
+                        })
+                    } catch (_: Exception) { died() }
+                }
+            }
+            if (result.getString("state") != "ok") {
+                _state.value = RuntimeState.FAILED
+                throw result.failure()
+            }
+            _state.value = RuntimeState.READY
+            result.liveUpdate()
+        } catch (_: TimeoutCancellationException) {
+            val detail = "no final text from the inference process after ${elapsedMs()} ms"
+            Log.w(TAG, "Live finish timed out: $detail")
+            disconnect(kill = true)
+            throw LocalAsrException(LocalAsrFailure.TIMEOUT, detail)
+        } catch (cancel: CancellationException) {
+            // The native decode can't be interrupted; ending the process is the bounded way to stop it.
+            if (liveId == id) disconnect(kill = true)
+            throw cancel
+        } finally {
+            if (liveId == id) endLive()
+        }
+    }
+
+    /** Ends a live session without a result. A decode that is already running finishes and is discarded. */
+    internal fun cancelLive(id: Long) {
+        onMain {
+            if (liveId != id) return@onMain
+            runCatching {
+                remote?.send(Message.obtain(null, InferenceService.LIVE_CANCEL).apply {
+                    data = Bundle().apply { putLong("request", id) }
+                })
+            }
+            // A finish that was waiting belongs to this session; its caller is cancelled with it.
+            pending = null
+            endLive()
+        }
+    }
+
+    private fun onMain(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) action() else main.post(action)
+    }
+
+    private fun endLive() {
+        if (liveId == 0L) return
+        liveId = 0L
+        liveUpdate = null
+        liveFailure = null
+        mutex.unlock()
+    }
+
+    private fun Bundle.liveUpdate() = LiveUpdate(
+        getStringArrayList(InferenceService.KEY_FROZEN).orEmpty(),
+        getStringArrayList(InferenceService.KEY_LIVE).orEmpty(),
+    )
+
+    private fun Bundle.failure(): LocalAsrException {
+        val failure = runCatching { LocalAsrFailure.valueOf(getString("failure")!!) }.getOrDefault(LocalAsrFailure.PROCESS_DIED)
+        val detail = getString(InferenceService.KEY_DETAIL)
+        Log.w(TAG, "Request failed: $failure${detail?.let { " ($it)" }.orEmpty()}")
+        return LocalAsrException(failure, detail)
+    }
+
     private suspend fun connect() {
         if (remote != null) return
         val ready = CompletableDeferred<Unit>()
@@ -115,13 +277,15 @@ class InferenceConnection(context: Context) {
 
     private fun died() {
         val callback = pending
+        val liveCallback = liveFailure.takeIf { callback == null }
         val detail = "inference process ended after ${elapsedMs()} ms"
-        if (callback != null) Log.w(TAG, "Request lost: $detail")
+        if (callback != null || liveCallback != null) Log.w(TAG, "Request lost: $detail")
         disconnect(kill = false)
         callback?.invoke(Bundle().apply {
             putString("state", "error"); putString("failure", LocalAsrFailure.PROCESS_DIED.name)
             putString(InferenceService.KEY_DETAIL, detail)
         })
+        liveCallback?.invoke(LocalAsrException(LocalAsrFailure.PROCESS_DIED, detail))
     }
 
     private fun elapsedMs(): Long = SystemClock.elapsedRealtime() - requestStartedAt
@@ -135,6 +299,7 @@ class InferenceConnection(context: Context) {
             processId?.takeIf { it != Process.myPid() }?.let { Process.killProcess(it) }
         }
         remote = null; processId = null; pending = null
+        endLive()
         connecting?.completeExceptionally(LocalAsrException(LocalAsrFailure.PROCESS_DIED))
         connecting = null
         if (old != null) runCatching { context.unbindService(old) }
@@ -153,5 +318,18 @@ class InferenceConnection(context: Context) {
     private companion object {
         const val TAG = "OwnkeyAsr"
         const val REQUEST_TIMEOUT_MS = 90_000L
+        const val FINISH_TIMEOUT_MS = 30_000L
     }
+}
+
+/** One live dictation on an [InferenceConnection]. */
+class LiveTranscription internal constructor(private val connection: InferenceConnection, private val id: Long) {
+    /** The recording now holds [samples] samples. Any thread. */
+    fun append(samples: Long) { connection.appendLive(id, samples) }
+
+    /** Decodes what is still live once more and returns it as final. The recording must hold [samples] samples. */
+    suspend fun finish(samples: Long): LiveUpdate = connection.finishLive(id, samples)
+
+    /** Ends the session without a final decode. Any thread. */
+    fun cancel() { connection.cancelLive(id) }
 }
