@@ -54,7 +54,9 @@
     <string name="orukeet__rewrite_disclosure">Orukeet zet je instructie op dit apparaat om naar tekst. Daarna worden de instructietekst en de te herschrijven tekst naar je ingestelde herschrijfprovider gestuurd.</string>
     <string name="orukeet__rewrite_audio_row">Audio blijft op dit apparaat · {provider}</string>
     <string name="orukeet__transcribing">Spraak op dit apparaat omzetten…</string>
-    <string name="orukeet__recording">Op apparaat · max. 30s</string>
+    <string name="orukeet__recording">Op apparaat</string>
+    <string name="orukeet__live_stopped">Dicteren is gestopt. De tekst tot nu toe is bewaard.</string>
+    <string name="orukeet__live_limit">Dicteren stopt na 10 minuten. De tekst is bewaard.</string>
     <string name="orukeet__waiting_internet">Geen internetverbinding beschikbaar. De download start zodra er een verbinding is.</string>
     <string name="orukeet__waiting_wifi">Wachten op wifi of ethernet. Mobiele data is uitgeschakeld voor deze download.</string>
     <string name="orukeet__retry_download">Download opnieuw proberen</string>

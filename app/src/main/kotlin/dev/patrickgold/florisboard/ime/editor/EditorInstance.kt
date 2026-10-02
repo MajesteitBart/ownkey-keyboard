@@ -324,6 +324,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      *
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
+    /** Live dictation supplies its own spacing, so the keyboard's automatic spaces stay out of it. */
+    override fun beginDictationDraft(): Boolean {
+        autoSpace.setInactive()
+        phantomSpace.setInactive()
+        return super.beginDictationDraft()
+    }
+
     override fun commitText(text: String): Boolean {
         notifyTextBoundaryIfNeeded(text)
         val isPhantomSpaceActive = phantomSpace.determine(text)
