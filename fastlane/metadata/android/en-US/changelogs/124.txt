@@ -1,0 +1,4 @@
+• Emoji search: type a name or keyword in your keyboard languages or English
+• Larger emojis, 9 or 10 per row on most phones
+• Dutch emoji names and keywords
+• Voice rewrite no longer crashes the keyboard after you speak your instruction

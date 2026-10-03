@@ -2,17 +2,28 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
-## Unreleased
+## 0.9.0 (2026-10-03)
+
+Version code 124. It also contains the voice rewrite crash fix from 0.8.1, which was never published on its own.
 
 ### Added
-- Live dictation with Orukeet ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)). Words appear in the text field while you talk. Only the sentence you're saying can still change, at most its last 12 words, so finished sentences stay put. With TalkBack on, or in fields that can't show text while it's being written, the text goes in when you stop. In a pause the text settles after about two seconds, and after 1.6 seconds of quiet the silence isn't processed.
+- Emoji search ([#21](https://github.com/MajesteitBart/ownkey-keyboard/pull/21)). Tap "Search emoji" in the emoji palette and type a name or keyword in any of your keyboard languages or English. Case and accents don't matter. With Dutch as a keyboard language, "duim" finds 👍 and "hart" finds ❤️. Flags also match their country code. Tap a result to insert it, or press Enter for the best match.
+- Dutch emoji names and keywords ([#21](https://github.com/MajesteitBart/ownkey-keyboard/pull/21)).
 
 ### Changed
+- Emojis are larger ([#21](https://github.com/MajesteitBart/ownkey-keyboard/pull/21)). Most phones show 9 or 10 per row, and the system font size no longer changes them.
+
+### Fixed
+- Keywords the old emoji data dropped are back for 91 English, 699 German and 266 Italian emojis, and escaped text such as `&lt;3` reads `<3` again ([#21](https://github.com/MajesteitBart/ownkey-keyboard/pull/21)).
+- The keycap emoji #️⃣ is back in the palette ([#21](https://github.com/MajesteitBart/ownkey-keyboard/pull/21)).
+
+### Internal builds only
+- Live dictation with Orukeet ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)). Words appear in the text field while you talk. Only the sentence you're saying can still change, at most its last 12 words, so finished sentences stay put. With TalkBack on, or in fields that can't show text while it's being written, the text goes in when you stop. In a pause the text settles after about two seconds, and after 1.6 seconds of quiet the silence isn't processed.
 - Orukeet dictation no longer stops after 30 seconds. A recording runs until you stop it, with a safety stop after 10 minutes ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)).
 
 ## 0.8.1 (2026-10-02)
 
-Version code 123.
+Version code 123. This version was never published. Its fix ships in 0.9.0.
 
 ### Fixed
 - Voice rewrite no longer crashes the keyboard when the rewrite provider answers ([#19](https://github.com/MajesteitBart/ownkey-keyboard/pull/19)). The crash hit every voice rewrite that reached the provider, with any dictation provider, including Orukeet.
