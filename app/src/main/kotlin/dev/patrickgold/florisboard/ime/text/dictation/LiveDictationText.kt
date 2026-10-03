@@ -159,8 +159,9 @@ class LiveDictationText(
     private companion object {
         const val SENTENCE_END = ".!?…"
         const val ATTACHED_MARKS = ".,!?…;:"
-        const val MAX_PHRASE_WORDS = 6
-        const val MAX_WAITING_WORDS = 12
+        /** As many words as live dictation keeps live; a longer correction never fits in one view. */
+        const val MAX_PHRASE_WORDS = 12
+        const val MAX_WAITING_WORDS = 24
         const val CONTEXT = ""
     }
 }

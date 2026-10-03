@@ -232,7 +232,8 @@ class InferenceConnection(context: Context) {
             }
             // Late messages for this session no longer count, so they can't bring back its state.
             nextRequest++
-            _state.value = if (binding != null) RuntimeState.READY else RuntimeState.UNLOADED
+            // Ready only once the model loaded: a live update means it did. Still loading counts as unloaded.
+            _state.value = if (binding != null && _state.value == RuntimeState.TRANSCRIBING) RuntimeState.READY else RuntimeState.UNLOADED
             // A finish that was waiting belongs to this session. It ends now, cancelled, instead of waiting
             // for its timeout.
             val waiting = pending

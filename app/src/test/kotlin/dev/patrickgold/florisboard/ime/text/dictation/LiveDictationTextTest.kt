@@ -117,11 +117,22 @@ class LiveDictationTextTest : FunSpec({
         text.committedText shouldBe "Done next"
     }
 
-    test("a very long correction doesn't hold the words back") {
+    test("a correction of seven words still applies when its words become final apart") {
         val rules = listOf(CorrectionRule("one two three four five six seven", "seven words"))
         val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = false, fillerWords = emptyList(), corrections = rules))
         val text = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean, corrections = rules)
-        text.update(listOf("one", "two"), emptyList()) shouldBe ("One two" to "")
+        text.update(listOf("one", "two", "three"), emptyList())
+        text.update(listOf("four", "five", "six", "seven", "done"), emptyList())
+        text.finish(emptyList())
+        text.committedText shouldBe "Seven words done"
+    }
+
+    test("a correction longer than the live words doesn't hold the words back") {
+        val source = (1..13).joinToString(" ") { "w$it" }
+        val rules = listOf(CorrectionRule(source, "thirteen"))
+        val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = false, fillerWords = emptyList(), corrections = rules))
+        val text = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean, corrections = rules)
+        text.update(listOf("w1", "w2"), emptyList()) shouldBe ("W1 w2" to "")
     }
 
     test("a filler at the start of a dictation mid-sentence doesn't capitalize the word after it") {

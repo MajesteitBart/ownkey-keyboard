@@ -238,13 +238,14 @@ class InferenceService : Service() {
 
     /**
      * Native decoding can't be interrupted. A short preview may finish, but a cancelled decode that runs past
-     * the deadline ends the process, unless a request came in meanwhile: its work waits on the same worker
-     * thread and would end with the process. Then the check repeats until that request is over too.
+     * the deadline ends the process. A request that came in meanwhile waits for it on the same worker thread
+     * and would end with the process, so the decode gets until [STALE_DECODE_LIMIT_MS] then; a decode that
+     * takes longer is stuck, and the new request's client sees the process end and reports it.
      */
-    private fun watchCancelledDecode(run: LiveRun) {
+    private fun watchCancelledDecode(run: LiveRun, since: Long = SystemClock.elapsedRealtime()) {
         main.postDelayed({
             if (!run.decoding) return@postDelayed
-            if (active) watchCancelledDecode(run) else terminate()
+            if (active && SystemClock.elapsedRealtime() - since < STALE_DECODE_LIMIT_MS) watchCancelledDecode(run, since) else terminate()
         }, CANCEL_DEADLINE_MS)
     }
 
@@ -323,6 +324,8 @@ class InferenceService : Service() {
         /** The engine accepts at most 31 s per decode. */
         private const val MAX_DECODE_SAMPLES = SAMPLE_RATE * 30L
         private const val CANCEL_DEADLINE_MS = 2_000L
+        /** A 30 s decode takes a few seconds; one still running after this is stuck. */
+        private const val STALE_DECODE_LIMIT_MS = 10_000L
         private const val TAG = "OwnkeyAsr"
     }
 }
