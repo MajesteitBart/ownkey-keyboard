@@ -3,7 +3,7 @@ name: Optional Orukeet offline dictation
 status: active
 lead: ownkey-keyboard-team
 created: 2026-09-15T10:30:28Z
-updated: 2026-09-15T22:34:27Z
+updated: 2026-10-03T07:32:16Z
 linear_project_id:
 risk_level: high
 spec_status_at_plan_time: active
@@ -13,7 +13,7 @@ spec_status_at_plan_time: active
 
 ## What Changed After Probe
 
-The user authorized full implementation after reviewing the emulator results. The spec and plan are active for implementation with the conventional inference service. Physical-device findings remain release gates and the required probe stays pending; this explicit user instruction supersedes the earlier task-activation hold. Execute the mapped tasks, retain measured evidence, and do not treat a successful emulator run as release approval.
+The user authorized full implementation after reviewing the emulator results. The spec and plan are active for implementation with the conventional inference service. Physical-device findings remain release gates and the required probe stays pending; this explicit user instruction supersedes the earlier task-activation hold. Execute the mapped tasks, retain measured evidence, and do not treat a successful emulator run as release approval. On 2026-10-03 the owner enabled the public download in 0.10.0 before the physical gates passed and skipped the staged rollout below; see the decision log. The gates remain open and can restrict availability again.
 
 The review prompted separate activation/steady-state memory gates, per-file model delivery, a larger probe, an isolated-process comparison, explicit audio-file ownership, and reproducible typing measurements. Source checks also corrected three claims: sherpa has a filename loader, the pinned Hugging Face revision has no individual payload URLs, and upstream publishes Dutch FLEURS results. See [review findings](research/review-revisions/findings.md).
 
@@ -173,7 +173,7 @@ Keep model `LICENSE-WEIGHTS`, `NOTICE.md`, NVIDIA/Oruk attribution, and runtime 
 - `research/android-integration/`: inspected evidence and research closeout.
 - `research/review-revisions/`: review triage, primary-source corrections, and revision evidence.
 - `decisions.md`, `updates/`: recommendations, planning outcome, validation.
-- `workstreams/`, `tasks/`: active implementation contracts under the user-authorized probe exception; physical qualification remains a release gate.
+- `workstreams/`, `tasks/`: active implementation contracts under the user-authorized probe exception; physical qualification remains open after the 2026-10-03 owner override and decides the supported-device policy.
 
 ## Complexity Exceptions
 
@@ -241,7 +241,7 @@ If the 6 GB device fails activation, first confirm the filename loader and elimi
 - Re-export the INT8 model using ONNX external tensor data and a path-based loader, to test whether mapped weights reduce activation pressure. This is a new artifact with new files, hashes, catalog entry, distribution notices/provenance, quality parity, and memory/latency tests. Mapping depends on the runtime/platform and is not guaranteed; revisit isolated-process FD access for external tensors. [ORT external-data loading](https://github.com/microsoft/onnxruntime/blob/v1.27.0/onnxruntime/core/framework/tensorprotoutils.cc).
 - Build on the ONNX Runtime Android package directly with a Kotlin TDT decoder. Estimate feature extraction, per-feature normalization, recurrent state, token/duration decoding, output parity, and cancellation work; this is more than swapping a dependency. Direct ORT can give control over allocations, but loading the same self-contained graph does not itself solve embedded-weight memory overhead.
 
-If the recent phone fails materially, keep public availability disabled. An inconclusive 3-5 day probe is not a pass. Record failed gates, a bounded next experiment and revised estimate, or a no-go. The spec remains active for authorized implementation; release requires the missing evidence.
+If the recent phone fails materially, restrict or disable public availability again. An inconclusive 3-5 day probe is not a pass. Record failed gates, a bounded next experiment and revised estimate, or a no-go. The spec remains active for authorized implementation; release requires the missing evidence.
 
 ### Typing and keyboard-open measurement protocol
 
