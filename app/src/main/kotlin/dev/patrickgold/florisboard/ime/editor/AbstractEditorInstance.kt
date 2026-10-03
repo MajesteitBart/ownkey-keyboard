@@ -165,7 +165,13 @@ abstract class AbstractEditorInstance(context: Context) {
     open fun handleSelectionUpdate(oldSelection: EditorRange, newSelection: EditorRange, composing: EditorRange) {
         dictationDraft?.let { draft ->
             // Raw editors report no usable selection; keyboard edits end their dictation instead.
-            if (draft.raw) return@let
+            if (draft.raw) {
+                // An editor whose content wasn't known at the start: from its first selection on, moves count too.
+                if (draft.adoptsSelection && newSelection.isValid) {
+                    dictationDraft = DictationDraft(newSelection.start, "", "", "", newSelection, deferred = true)
+                }
+                return@let
+            }
             // Updates for the draft's own edits can arrive late or mid-batch; they leave everything as is.
             if (draft.acknowledge(newSelection)) return
             interruptDraft(settle = false)
@@ -421,6 +427,8 @@ abstract class AbstractEditorInstance(context: Context) {
         val deferred: Boolean,
         /** No usable selection, in a raw editor or before the content is known: only keyboard edits end the session. */
         val raw: Boolean = false,
+        /** The content wasn't known at the start; the first valid selection becomes the one to watch. */
+        val adoptsSelection: Boolean = false,
     ) {
         val committed = StringBuilder()
         var liveText = ""
@@ -480,7 +488,10 @@ abstract class AbstractEditorInstance(context: Context) {
         val ic = currentInputConnection() ?: return false
         val content = activeContent
         if (deferred && (activeInfo.isRawInputEditor || content.selection.isNotValid || content.offset < 0)) {
-            dictationDraft = DictationDraft(0, "", "", "", EditorRange.Unspecified, deferred = true, raw = true)
+            dictationDraft = DictationDraft(
+                0, "", "", "", EditorRange.Unspecified, deferred = true, raw = true,
+                adoptsSelection = !activeInfo.isRawInputEditor,
+            )
             return true
         }
         if (activeInfo.isRawInputEditor || content.selection.isNotValid || content.offset < 0) return false
@@ -916,8 +927,8 @@ abstract class AbstractEditorInstance(context: Context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun sendDownUpKeyEvent(keyEventCode: Int, metaState: Int = meta(), count: Int = 1): Boolean {
-        notifyKeyboardEdit()
         if (count < 1) return false
+        notifyKeyboardEdit()
         val ic = currentInputConnection() ?: return false
         ic.beginBatchEdit()
         val eventTime = SystemClock.uptimeMillis()

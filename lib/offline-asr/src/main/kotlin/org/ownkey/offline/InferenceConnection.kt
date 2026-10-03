@@ -200,7 +200,8 @@ class InferenceConnection(context: Context) {
             }
             if (result.getString("state") != "ok") {
                 val failure = result.failure()
-                _state.value = if (failure.reason == LocalAsrFailure.CANCELLED) RuntimeState.READY else RuntimeState.FAILED
+                // Cancelled: the cancel or the unload that did it already set the state.
+                if (failure.reason != LocalAsrFailure.CANCELLED) _state.value = RuntimeState.FAILED
                 throw failure
             }
             _state.value = RuntimeState.READY
@@ -229,6 +230,9 @@ class InferenceConnection(context: Context) {
                     data = Bundle().apply { putLong("request", id) }
                 })
             }
+            // Late messages for this session no longer count, so they can't bring back its state.
+            nextRequest++
+            _state.value = if (binding != null) RuntimeState.READY else RuntimeState.UNLOADED
             // A finish that was waiting belongs to this session. It ends now, cancelled, instead of waiting
             // for its timeout.
             val waiting = pending

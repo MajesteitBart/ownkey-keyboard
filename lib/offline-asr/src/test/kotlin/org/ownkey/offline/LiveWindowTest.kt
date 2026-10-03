@@ -251,8 +251,8 @@ class LiveWindowTest {
         val sentence = spoken("Hij bewoog zich tans met groot gemak.", from = 19.5)
         window.accept(sentence, audioEnd = 23.0)
         assertEquals("gemak", window.accept(sentence, audioEnd = 26.0)!!.frozen.last())
-        // Two seconds before the cut is silence after "gemak"; the decode starts on "tans" instead.
-        assertEquals(20.7 - 0.1, window.decodeStart(), 1e-9)
+        // Two seconds before the cut is silence after "gemak"; the decode starts six words back, on "bewoog".
+        assertEquals(19.9 - 0.1, window.decodeStart(), 1e-9)
         val resumed = window.accept(spoken("tans met groot gemak.", from = 20.7) + spoken("Onder Franks", from = 25.8), audioEnd = 26.8)!!
         assertEquals(listOf("."), resumed.frozen)
         assertEquals(listOf("Onder", "Franks"), resumed.live)
@@ -304,6 +304,15 @@ class LiveWindowTest {
 
     @Test fun `more words left live after the cap than the cap allows is refused`() {
         assertFailsWith<IllegalArgumentException> { LiveWindow.Config(maxLiveWords = 4) }
+    }
+
+    @Test fun `after the words settle the next decode starts a few words back`() {
+        val window = LiveWindow()
+        val sentence = spoken("gekleed als een dandy innemend en minzaam", from = 2.0, gap = 0.5)
+        window.accept(sentence, audioEnd = 6.0)
+        assertEquals(7, window.accept(sentence, audioEnd = 7.2)!!.frozen.size)
+        // Two seconds before the cut reaches only "minzaam"; the decode starts on "als", six words back.
+        assertEquals(2.5 - 0.1, window.decodeStart(), 1e-9)
     }
 
     @Test fun `silence from the start is skipped without a word ever being heard`() {

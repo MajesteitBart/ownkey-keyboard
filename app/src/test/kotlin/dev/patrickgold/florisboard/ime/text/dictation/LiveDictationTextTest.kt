@@ -107,6 +107,23 @@ class LiveDictationTextTest : FunSpec({
         apart.committedText shouldBe "I use Ownkey today."
     }
 
+    test("corrections that build on each other aren't cut apart") {
+        val rules = listOf(CorrectionRule("foo bar", "baz"), CorrectionRule("baz qux", "done"))
+        val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = false, fillerWords = emptyList(), corrections = rules))
+        val text = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean, corrections = rules)
+        text.update(listOf("foo", "bar", "qux"), emptyList()) shouldBe ("" to "Done")
+        text.update(listOf("next"), emptyList()) shouldBe ("Done" to " next")
+        text.finish(emptyList())
+        text.committedText shouldBe "Done next"
+    }
+
+    test("a very long correction doesn't hold the words back") {
+        val rules = listOf(CorrectionRule("one two three four five six seven", "seven words"))
+        val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = false, fillerWords = emptyList(), corrections = rules))
+        val text = LiveDictationText(textBefore = "", textAfter = "", clean = cleaner::clean, corrections = rules)
+        text.update(listOf("one", "two"), emptyList()) shouldBe ("One two" to "")
+    }
+
     test("a filler at the start of a dictation mid-sentence doesn't capitalize the word after it") {
         val cleaner = TranscriptCleaner(CleanupSettings(removeFillers = true, fillerWords = listOf("uh"), corrections = emptyList()))
         val text = LiveDictationText(textBefore = "I said ", textAfter = "", clean = cleaner::clean)

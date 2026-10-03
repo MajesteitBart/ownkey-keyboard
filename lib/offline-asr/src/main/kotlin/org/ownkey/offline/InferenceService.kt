@@ -227,16 +227,25 @@ class InferenceService : Service() {
         run.closed = true
         if (live === run) live = null
         if (run.decoding) {
-            // Native decoding can't be interrupted. Let a short preview finish, but release its resources
-            // within the cancellation deadline, unless a new request came in meanwhile: its work waits on the
-            // same worker thread, and ending the process would end it too.
-            main.postDelayed({ if (run.decoding && !active) terminate() }, CANCEL_DEADLINE_MS)
+            watchCancelledDecode(run)
         } else {
             runCatching { run.audio.close() }
         }
         active = false
         main.removeCallbacks(idle)
         main.postDelayed(idle, ModelCatalog.IDLE_RETENTION_MS)
+    }
+
+    /**
+     * Native decoding can't be interrupted. A short preview may finish, but a cancelled decode that runs past
+     * the deadline ends the process, unless a request came in meanwhile: its work waits on the same worker
+     * thread and would end with the process. Then the check repeats until that request is over too.
+     */
+    private fun watchCancelledDecode(run: LiveRun) {
+        main.postDelayed({
+            if (!run.decoding) return@postDelayed
+            if (active) watchCancelledDecode(run) else terminate()
+        }, CANCEL_DEADLINE_MS)
     }
 
     private fun failLive(run: LiveRun, error: Throwable) {

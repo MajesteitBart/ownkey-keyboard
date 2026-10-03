@@ -89,7 +89,15 @@ class LiveWindow(private val config: Config = Config()) {
         // After a short pause the decode reaches back to the word with the held mark, so the decoder reads it
         // with the new speech after it. A decode that starts in the silence can't tell, and doesn't always
         // capitalize a new sentence either.
-        held?.let { if (keepFrom - it.start <= HELD_REACH_SECONDS) target = min(target, it.start - 1.0) }
+        held?.let { if (keepFrom - it.start <= REACH_BACK_SECONDS) target = min(target, it.start - 1.0) }
+        // With nothing live, the cut sits in the silence after the last words, and two seconds back reaches only
+        // the last one or two. Orukeet reads a few words followed by silence badly and invents words after them
+        // ("en minzaam" became "And Mint John."), so the decode starts a few words earlier while they're close.
+        if (live.isEmpty()) {
+            frozenStarts.getOrNull(frozenStarts.size - CONTEXT_WORDS)
+                ?.takeIf { keepFrom - it <= REACH_BACK_SECONDS }
+                ?.let { target = min(target, it) }
+        }
         if (target <= 0.0) return 0.0
         val word = frozenStarts.lastOrNull { it <= target }
         // No frozen word just before the target means it falls in silence, which is a safe place to start.
@@ -341,8 +349,11 @@ class LiveWindow(private val config: Config = Config()) {
         /** Speech that started this close to the end of a decode may not be written out yet. */
         private const val JUST_STARTED_SECONDS = 0.5
 
-        /** How far back a decode may reach for the word with a held mark. */
-        private const val HELD_REACH_SECONDS = 6.0
+        /** How far back a decode may reach for the word with a held mark, or for words of context. */
+        private const val REACH_BACK_SECONDS = 6.0
+
+        /** Frozen words a decode starts with when nothing is live. */
+        private const val CONTEXT_WORDS = 6
         private val sentenceEnd = Regex("[.!?…]['\")\\]”’»]*$")
 
         fun endsSentence(word: String): Boolean = sentenceEnd.containsMatchIn(word)

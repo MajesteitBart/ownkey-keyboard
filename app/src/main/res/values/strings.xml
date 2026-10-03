@@ -1412,7 +1412,7 @@
     <string name="orukeet__summary">Optional local dictation. Download once, then transcribe without an API key or internet connection.</string>
     <string name="orukeet__selected">Selected dictation: %1$s</string>
     <string name="orukeet__size">Model download: 672 MB. First installation needs about 940 MB of free storage.</string>
-    <string name="orukeet__languages_cap">Automatic language recognition, including Dutch and English. Record up to 30 seconds at a time.</string>
+    <string name="orukeet__languages_cap">Automatic language recognition, including Dutch and English. Dictation types while you talk. A spoken rewrite instruction can be up to 30 seconds.</string>
     <string name="orukeet__unsupported">Local dictation is not available on this device or in this app version.</string>
     <string name="orukeet__checking">Checking downloaded model…</string>
     <string name="orukeet__activating">Loading local model…</string>

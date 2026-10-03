@@ -28,17 +28,19 @@ class LiveDictationText(
     private val committed = StringBuilder()
     private val raw = StringBuilder()
 
-    /** The dictionary corrections of more than one word, with their length in words. */
-    private val phrases = TranscriptCleanup.normalizeCorrections(corrections)
-        .map { it.source.split(' ').size to TranscriptCleanup.compileCorrection(it) }
-        .filter { (words, _) -> words > 1 }
-
     /**
      * Final words that aren't committed yet, because a correction may span them and the words after them:
      * "own" waits for "key", so the pair can still become "Ownkey". Until then they show with the live words.
      */
     private val waiting = ArrayList<String>()
-    private val waitWords = (phrases.maxOfOrNull { (words, _) -> words } ?: 1) - 1
+
+    /** One less than the longest correction of several words; longer ones aren't waited for. */
+    private val waitWords = (
+        TranscriptCleanup.normalizeCorrections(corrections)
+            .map { it.source.split(' ').size }
+            .filter { it in 2..MAX_PHRASE_WORDS }
+            .maxOrNull() ?: 1
+        ) - 1
 
     /** Whether the last committed words were removed entirely by cleanup, for example as fillers. */
     private var lastPieceCleanedAway = true
@@ -83,30 +85,23 @@ class LiveDictationText(
 
     /**
      * How many waiting words can be committed: all but the last few, which could start a correction, and
-     * none from the start of a correction that committing would split.
+     * only up to where the words read the same cleaned on their own as they do with the rest. That keeps a
+     * correction, or corrections that build on each other, from being cut apart.
      */
     private fun committable(): Int {
         var count = (waiting.size - waitWords).coerceAtLeast(0)
-        if (phrases.isEmpty() || count == 0) return count
-        val starts = ArrayList<Int>()
-        val text = joinWords(waiting, starts)
-        var split = true
-        while (split) {
-            split = false
-            for ((_, pattern) in phrases) {
-                val matcher = pattern.matcher(text)
-                while (matcher.find()) {
-                    val first = starts.indexOfLast { it <= matcher.start() }
-                    val last = starts.indexOfLast { it < matcher.end() }
-                    if (first < count && count <= last) {
-                        count = first
-                        split = true
-                    }
-                }
-            }
-        }
+        if (waitWords == 0 || count == 0) return count
+        val whole = tokens(clean(joinWords(waiting)))
+        while (count > 0 && !startsWith(whole, tokens(clean(joinWords(waiting.take(count)))))) count--
+        // Whatever the cleanup does, words don't wait longer than about a sentence.
+        if (count == 0 && waiting.size > MAX_WAITING_WORDS) count = waiting.size - waitWords
         return count
     }
+
+    private fun tokens(text: String): List<String> = text.split(' ', '\n', '\t').filter { it.isNotEmpty() }
+
+    private fun startsWith(whole: List<String>, part: List<String>): Boolean =
+        whole.size >= part.size && whole.subList(0, part.size) == part
 
     private fun append(words: List<String>): String {
         if (words.isEmpty()) return ""
@@ -143,12 +138,11 @@ class LiveDictationText(
         return if (cleaned.startsWith(CONTEXT)) cleaned.removePrefix(CONTEXT).trim() else clean(text).trim()
     }
 
-    /** Words joined by spaces. A sentence mark on its own belongs to the word before it. [starts] receives where each word starts. */
-    private fun joinWords(words: List<String>, starts: MutableList<Int>? = null): String {
+    /** Words joined by spaces. A sentence mark on its own belongs to the word before it. */
+    private fun joinWords(words: List<String>): String {
         val text = StringBuilder()
         for (word in words) {
             if (text.isNotEmpty() && !word.all { it in ATTACHED_MARKS }) text.append(' ')
-            starts?.add(text.length)
             text.append(word)
         }
         return text.toString()
@@ -165,6 +159,8 @@ class LiveDictationText(
     private companion object {
         const val SENTENCE_END = ".!?…"
         const val ATTACHED_MARKS = ".,!?…;:"
+        const val MAX_PHRASE_WORDS = 6
+        const val MAX_WAITING_WORDS = 12
         const val CONTEXT = ""
     }
 }

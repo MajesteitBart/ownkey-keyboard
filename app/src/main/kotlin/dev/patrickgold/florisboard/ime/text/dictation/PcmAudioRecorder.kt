@@ -248,8 +248,9 @@ class PcmAudioRecorder(
 
     override fun cancel() {
         val target = file
-        release()
-        target?.delete()
+        // Typing can end a live dictation; the keystroke mustn't wait for the capture thread to stop.
+        val teardown = detach()
+        Thread({ teardown(); target?.delete() }, "ownkey-mic-release").start()
     }
 
     override fun currentAmplitude(): Float {
@@ -257,15 +258,16 @@ class PcmAudioRecorder(
         return peak.also { peak = 0f }
     }
 
-    private fun release() {
+    private fun release() = detach().invoke()
+
+    /** Resets the recorder at once and returns what may block: stopping capture and closing the file. */
+    private fun detach(): () -> Unit {
         running = false
         val audio = record
+        val capture = thread
+        val stream = output
         record = null
-        runCatching { audio?.stop() }
-        thread?.let { runCatching { it.join(1_000) } }
         thread = null
-        runCatching { audio?.release() }
-        runCatching { output?.close() }
         output = null
         file = null
         startedAtMs = null
@@ -273,6 +275,12 @@ class PcmAudioRecorder(
         pausedDurationMs = 0L
         onSamples = null
         onFailure = null
+        return {
+            runCatching { audio?.stop() }
+            capture?.let { runCatching { it.join(1_000) } }
+            runCatching { audio?.release() }
+            runCatching { stream?.close() }
+        }
     }
 
     companion object {
