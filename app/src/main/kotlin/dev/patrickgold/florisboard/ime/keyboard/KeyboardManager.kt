@@ -46,6 +46,7 @@ import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.media.emoji.Emoji
+import dev.patrickgold.florisboard.ime.media.emoji.ConsumedKeyTracker
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiHistoryHelper
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchHardwareKeyAction
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchSession
@@ -120,6 +121,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     var smartbarVisibleDynamicActionsCount by mutableIntStateOf(0)
     var isRewriteOptionsVisible by mutableStateOf(false)
     val emojiSearch = EmojiSearchSession()
+    private val emojiSearchHardwareKeys = ConsumedKeyTracker()
     private var lastToastReference = WeakReference<Toast>(null)
 
     private val activeEvaluatorGuard = Mutex(locked = false)
@@ -381,7 +383,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         activeState.batchEdit {
             it.isActionsOverflowVisible = false
             it.keyboardMode = KeyboardMode.CHARACTERS
-            it.inputShiftState = InputShiftState.UNSHIFTED
+            // Caps lock stays on, as it does on the way through the emoji palette
+            if (it.inputShiftState != InputShiftState.CAPS_LOCK) it.inputShiftState = InputShiftState.UNSHIFTED
             it.imeUiMode = ImeUiMode.TEXT
         }
     }
@@ -1167,6 +1170,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     fun onHardwareKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (emojiSearch.isActive && handleEmojiSearchHardwareKey(keyCode, event)) {
+            emojiSearchHardwareKeys.markConsumed(keyCode)
             return true
         }
         when (keyCode) {
@@ -1187,7 +1191,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun onHardwareKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (emojiSearch.isActive && emojiSearchHardwareKeyAction(keyCode, event).consumesKey) {
+        if (emojiSearchHardwareKeys.releaseKey(keyCode)) {
             return true
         }
         when (keyCode) {

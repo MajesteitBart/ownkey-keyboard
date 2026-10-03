@@ -216,3 +216,22 @@ class EmojiSearchHardwareKeyActionTest : FunSpec({
         action(KeyEvent.KEYCODE_VOLUME_UP, isModifierOrSystem = true) shouldBe EmojiSearchHardwareKeyAction.PASS
     }
 })
+
+class ConsumedKeyTrackerTest : FunSpec({
+    test("a key-up is consumed exactly when its key-down was") {
+        val tracker = ConsumedKeyTracker()
+        tracker.markConsumed(KeyEvent.KEYCODE_DEL)
+        // Search may have closed while the key was held; the key-up still belongs to the search
+        tracker.releaseKey(KeyEvent.KEYCODE_DEL) shouldBe true
+        tracker.releaseKey(KeyEvent.KEYCODE_DEL) shouldBe false
+        // A key pressed before search opened was never consumed, so its key-up goes to the app
+        tracker.releaseKey(KeyEvent.KEYCODE_A) shouldBe false
+    }
+
+    test("key repeats leave a single key-up to consume") {
+        val tracker = ConsumedKeyTracker()
+        repeat(3) { tracker.markConsumed(KeyEvent.KEYCODE_DEL) }
+        tracker.releaseKey(KeyEvent.KEYCODE_DEL) shouldBe true
+        tracker.releaseKey(KeyEvent.KEYCODE_DEL) shouldBe false
+    }
+})

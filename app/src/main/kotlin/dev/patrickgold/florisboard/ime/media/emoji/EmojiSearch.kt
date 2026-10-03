@@ -88,6 +88,21 @@ class EmojiSearchSession {
     }
 }
 
+/**
+ * Remembers which physical keys emoji search took on key-down, so each key-up goes where its key-down went, even if the
+ * search opened or closed while the key was held.
+ */
+class ConsumedKeyTracker {
+    private val keyCodes = mutableSetOf<Int>()
+
+    fun markConsumed(keyCode: Int) {
+        keyCodes += keyCode
+    }
+
+    /** Returns true if the key-down of [keyCode] was consumed, so its key-up must be consumed too. */
+    fun releaseKey(keyCode: Int): Boolean = keyCodes.remove(keyCode)
+}
+
 /** What a physical key does while emoji search is open. */
 enum class EmojiSearchHardwareKeyAction(val consumesKey: Boolean) {
     /** Adds the key's character to the query. */
