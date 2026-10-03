@@ -207,6 +207,7 @@ class EmojiSearchHardwareKeyActionTest : FunSpec({
         paste shouldBe EmojiSearchHardwareKeyAction.CLOSE
         paste.consumesKey shouldBe false
         action(KeyEvent.KEYCODE_DPAD_LEFT) shouldBe EmojiSearchHardwareKeyAction.CLOSE
+        action(KeyEvent.KEYCODE_TAB, unicodeChar = '\t'.code) shouldBe EmojiSearchHardwareKeyAction.CLOSE
     }
 
     test("modifiers and system keys keep the search open and work as usual") {

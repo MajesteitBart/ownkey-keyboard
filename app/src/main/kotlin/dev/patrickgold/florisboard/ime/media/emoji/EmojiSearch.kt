@@ -130,6 +130,8 @@ enum class EmojiSearchHardwareKeyAction(val consumesKey: Boolean) {
                 keyCode == KeyEvent.KEYCODE_FORWARD_DEL -> IGNORE
                 keyCode == KeyEvent.KEYCODE_SPACE -> SPACE
                 keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER -> ENTER
+                // Tab has the character "\t" but moves focus, so it is navigation, not text
+                keyCode == KeyEvent.KEYCODE_TAB -> CLOSE
                 // A dead key only puts an accent on the next letter, and search ignores accents anyway
                 (unicodeChar and KeyCharacterMap.COMBINING_ACCENT) != 0 -> IGNORE
                 unicodeChar != 0 -> TYPE
