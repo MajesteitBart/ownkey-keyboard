@@ -2,6 +2,14 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
+## Unreleased
+
+### Added
+- Live dictation with Orukeet ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)). Words appear in the text field while you talk. Only the sentence you're saying can still change, at most its last 12 words, so finished sentences stay put. With TalkBack on, or in fields that can't show text while it's being written, the text goes in when you stop. In a pause the text settles after about two seconds, and after 1.6 seconds of quiet the silence isn't processed.
+
+### Changed
+- Orukeet dictation no longer stops after 30 seconds. A recording runs until you stop it, with a safety stop after 10 minutes ([#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)).
+
 ## 0.8.1 (2026-10-02)
 
 Version code 123.

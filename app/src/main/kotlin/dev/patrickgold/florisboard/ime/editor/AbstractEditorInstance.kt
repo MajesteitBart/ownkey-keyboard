@@ -163,6 +163,19 @@ abstract class AbstractEditorInstance(context: Context) {
     }
 
     open fun handleSelectionUpdate(oldSelection: EditorRange, newSelection: EditorRange, composing: EditorRange) {
+        dictationDraft?.let { draft ->
+            // Raw editors report no usable selection; keyboard edits end their dictation instead.
+            if (draft.raw) {
+                // An editor whose content wasn't known at the start: from its first selection on, moves count too.
+                if (draft.adoptsSelection && newSelection.isValid) {
+                    dictationDraft = DictationDraft(newSelection.start, "", "", "", newSelection, deferred = true)
+                }
+                return@let
+            }
+            // Updates for the draft's own edits can arrive late or mid-batch; they leave everything as is.
+            if (draft.acknowledge(newSelection)) return
+            interruptDraft(settle = false)
+        }
         val ic = currentInputConnection()
         val editorInfo = activeInfo
         if (ic == null || newSelection.isNotValid || editorInfo.isRawInputEditor) {
@@ -219,6 +232,7 @@ abstract class AbstractEditorInstance(context: Context) {
     }
 
     protected open fun reset() {
+        dictationDraft = null
         activeInfo = FlorisEditorInfo.Unspecified
         activeCursorCapsMode = InputAttributes.CapsMode.NONE
         activeContent = EditorContent.Unspecified
@@ -252,7 +266,16 @@ abstract class AbstractEditorInstance(context: Context) {
             } else {
                 EditorRange.Unspecified
             }
-        val localComposing = if (determineComposingEnabled()) localCurrentWord else EditorRange.Unspecified
+        val draft = dictationDraft
+        val localComposing = when {
+            draft != null -> if (draft.liveLength > 0 && localSelection.isCursorMode && selection.start == draft.end) {
+                EditorRange(localSelection.start - draft.liveLength, localSelection.start)
+            } else {
+                EditorRange.Unspecified
+            }
+            determineComposingEnabled() -> localCurrentWord
+            else -> EditorRange.Unspecified
+        }
 
         // Build and publish text and content
         val text = buildString {
@@ -387,6 +410,257 @@ abstract class AbstractEditorInstance(context: Context) {
             ic.endBatchEdit()
         }
         return true
+    }
+
+    /**
+     * Live dictation writes into the editor while the user talks. Words that became final are
+     * committed as normal text; the live words after them stay composing text, so each preview
+     * replaces them in one call. [start] is where the session's text begins. A deferred draft writes
+     * nothing until the end; it only watches for the user taking over the field.
+     */
+    private class DictationDraft(
+        val start: Int,
+        val textBefore: String,
+        val textAfter: String,
+        val replacedText: String,
+        val originalSelection: EditorRange,
+        val deferred: Boolean,
+        /** No usable selection, in a raw editor or before the content is known: only keyboard edits end the session. */
+        val raw: Boolean = false,
+        /** The content wasn't known at the start; the first valid selection becomes the one to watch. */
+        val adoptsSelection: Boolean = false,
+    ) {
+        val committed = StringBuilder()
+        var liveText = ""
+        val liveLength: Int get() = liveText.length
+
+        /** True once the draft wrote to the field; until then the original selection is untouched. */
+        var touched = false
+        val end: Int get() = start + committed.length + liveLength
+
+        /** The selection the editor reports when nothing but the draft changed the field. */
+        val expectedSelection: EditorRange get() = if (touched) EditorRange.cursor(end) else originalSelection
+
+        private val pending = ArrayDeque<EditorRange>()
+        private var acknowledged = originalSelection
+
+        /** Records a selection one of the draft's own edits will produce, in order. */
+        fun expect(selection: EditorRange) {
+            pending.addLast(selection)
+            while (pending.size > 32) pending.removeFirst()
+        }
+
+        /**
+         * True for the draft's own edits. Updates can arrive late, coalesced or mid-batch, so an expected
+         * selection is accepted together with every older one. Once acknowledged, older positions no
+         * longer count: moving the cursor back to one of them is the user's doing.
+         */
+        fun acknowledge(selection: EditorRange): Boolean {
+            if (selection == acknowledged) return true
+            val index = pending.indexOf(selection)
+            if (index < 0) return false
+            repeat(index + 1) { pending.removeFirst() }
+            acknowledged = selection
+            return true
+        }
+    }
+
+    private var dictationDraft: DictationDraft? = null
+
+    /** Called when the user or the app changes the text or moves the cursor during a draft. The text stays. */
+    var onDictationDraftInterrupted: (() -> Unit)? = null
+
+    val isDictationDraftActive: Boolean get() = dictationDraft != null
+
+    /**
+     * Starts a draft at the cursor, or over the selection, which the first text replaces. Returns false
+     * for editors that can't hold composing text; dictation then commits once at the end.
+     */
+    open fun beginDictationDraft(): Boolean = beginDraft(deferred = false)
+
+    /**
+     * For dictation that inserts its text only at Stop, as with TalkBack: watches for the user moving
+     * the cursor or editing, which ends the session. Returns false when the editor can't report that.
+     */
+    fun beginDictationWatch(): Boolean = beginDraft(deferred = true)
+
+    private fun beginDraft(deferred: Boolean): Boolean {
+        val ic = currentInputConnection() ?: return false
+        val content = activeContent
+        if (deferred && (activeInfo.isRawInputEditor || content.selection.isNotValid || content.offset < 0)) {
+            dictationDraft = DictationDraft(
+                0, "", "", "", EditorRange.Unspecified, deferred = true, raw = true,
+                adoptsSelection = !activeInfo.isRawInputEditor,
+            )
+            return true
+        }
+        if (activeInfo.isRawInputEditor || content.selection.isNotValid || content.offset < 0) return false
+        val selection = content.selection
+        if (!deferred) ic.finishComposingText()
+        dictationDraft = DictationDraft(
+            start = selection.start,
+            textBefore = content.textBeforeSelection,
+            textAfter = content.textAfterSelection,
+            replacedText = content.selectedText,
+            originalSelection = selection,
+            deferred = deferred,
+        )
+        return true
+    }
+
+    /**
+     * Commits [commit] after the draft's committed text and shows [live] as composing text after it.
+     * Returns false, and ends the draft, when the field no longer looks the way the draft left it or the
+     * editor turns the text down.
+     */
+    fun updateDictationDraft(commit: String, live: String): Boolean {
+        val draft = dictationDraft?.takeIf { !it.deferred } ?: return false
+        // Nothing to show yet: leave a selection in place until there is text to replace it with.
+        if (!draft.touched && commit.isEmpty() && live.isEmpty()) return true
+        if (!isDraftIntact(draft)) return false
+        val ic = currentInputConnection() ?: return false
+        ic.beginBatchEdit()
+        try {
+            draft.touched = true
+            if (commit.isNotEmpty()) {
+                // Replaces the previous live words (or the selection) with the newly final ones.
+                if (!ic.setComposingText(commit, 1) || !ic.finishComposingText()) return dropDraft()
+                draft.committed.append(commit)
+                draft.liveText = ""
+                draft.expect(EditorRange.cursor(draft.end))
+            }
+            if ((live.isNotEmpty() || commit.isEmpty()) && !ic.setComposingText(live, 1)) return dropDraft()
+            draft.liveText = live
+            draft.expect(EditorRange.cursor(draft.end))
+            publishDraftContent(draft, live)
+        } finally {
+            ic.endBatchEdit()
+        }
+        return true
+    }
+
+    /** Replaces the live words with [commit], commits everything and ends the draft. */
+    fun commitDictationDraft(commit: String): Boolean {
+        val draft = dictationDraft?.takeIf { !it.deferred } ?: return false
+        if (!draft.touched && commit.isEmpty()) {
+            dictationDraft = null
+            return true
+        }
+        if (!isDraftIntact(draft)) return false
+        val ic = currentInputConnection() ?: return false
+        ic.beginBatchEdit()
+        try {
+            if (!ic.setComposingText(commit, 1) || !ic.finishComposingText()) return dropDraft()
+            draft.committed.append(commit)
+            draft.liveText = ""
+            dictationDraft = null
+            val cursor = EditorRange.cursor(draft.end)
+            _lastCommitPosition.handleCommit(cursor)
+            runBlocking {
+                val before = (draft.textBefore + draft.committed).takeLast(NumCharsBeforeCursor)
+                val content = generateContent(activeInfo, cursor, before, draft.textAfter, "")
+                expectedContentQueue.push(content)
+                ic.setComposingRegion(content.composing)
+            }
+        } finally {
+            ic.endBatchEdit()
+        }
+        return true
+    }
+
+    /** The editor turned down a draft write, usually because it went away. The draft ends; its text stays as it is. */
+    private fun dropDraft(): Boolean {
+        dictationDraft = null
+        return false
+    }
+
+    /** Cancel, or nothing to insert: removes everything the draft added and puts back any text it replaced. */
+    fun removeDictationDraft(): Boolean {
+        val draft = dictationDraft ?: return false
+        dictationDraft = null
+        if (draft.deferred || !draft.touched) return true
+        val ic = currentInputConnection() ?: return false
+        ic.beginBatchEdit()
+        try {
+            ic.setComposingRegion(draft.start, draft.end)
+            ic.setComposingText(draft.replacedText, 1)
+            ic.finishComposingText()
+        } finally {
+            ic.endBatchEdit()
+        }
+        return true
+    }
+
+    /** Ends the draft and leaves its text as it is, for example when the session is invalidated. */
+    fun abandonDictationDraft() {
+        val draft = dictationDraft ?: return
+        dictationDraft = null
+        if (!draft.deferred && draft.touched) currentInputConnection()?.finishComposingText()
+    }
+
+    /**
+     * Every keyboard edit records the state it expects next, so a selection other than the draft's own
+     * means something else changed the field, for example the user typing. The draft then ends without
+     * writing, so live text never lands after what the user typed.
+     */
+    private fun isDraftIntact(draft: DictationDraft): Boolean {
+        if (activeContent.selection == draft.expectedSelection) return true
+        interruptDraft(settle = false)
+        return false
+    }
+
+    /**
+     * The keyboard is about to edit the field or move the cursor: a key other than the voice key, a
+     * suggestion, the clipboard, a gesture or a quick action. In every kind of editor, that ends dictation
+     * first, so live text never mixes with what the user types.
+     */
+    fun notifyKeyboardEdit() {
+        if (dictationDraft != null) interruptDraft(settle = true)
+    }
+
+    /**
+     * Ends the draft and tells the dictation owner. With [settle], the cursor is still where the draft
+     * left it: the live words become plain text and the keyboard's own view of the field is brought up
+     * to date before the coming edit. Otherwise the field already changed and the normal update path
+     * reads it again.
+     */
+    private fun interruptDraft(settle: Boolean) {
+        val draft = dictationDraft ?: return
+        dictationDraft = null
+        if (settle && !draft.deferred && draft.touched) {
+            currentInputConnection()?.let { ic ->
+                ic.beginBatchEdit()
+                try {
+                    ic.finishComposingText()
+                    val cursor = EditorRange.cursor(draft.end)
+                    runBlocking {
+                        // The live words stay in the field as plain text, so they are part of what precedes the cursor.
+                        val before = (draft.textBefore + draft.committed + draft.liveText).takeLast(NumCharsBeforeCursor)
+                        val content = generateContent(activeInfo, cursor, before, draft.textAfter, "")
+                        expectedContentQueue.clear()
+                        expectedContentQueue.push(content)
+                        ic.setComposingRegion(content.composing)
+                    }
+                } finally {
+                    ic.endBatchEdit()
+                }
+            }
+        }
+        onDictationDraftInterrupted?.invoke()
+    }
+
+    private fun publishDraftContent(draft: DictationDraft, live: String) {
+        val cursor = EditorRange.cursor(draft.end)
+        val before = (draft.textBefore + draft.committed + live).takeLast(NumCharsBeforeCursor)
+        runBlocking {
+            val content = generateContent(activeInfo, cursor, before, draft.textAfter, "")
+            // Selection updates for the draft are acknowledged without the queue, so it holds only the newest state.
+            expectedContentQueue.clear()
+            expectedContentQueue.push(content)
+            // Those updates also skip the usual shift re-evaluation, so a key typed next gets the right case.
+            activeCursorCapsMode = content.cursorCapsMode()
+            keyboardManager.reevaluateInputShiftState()
+        }
     }
 
     open fun commitText(text: String): Boolean = commitTextInternal(text)
@@ -654,6 +928,7 @@ abstract class AbstractEditorInstance(context: Context) {
      */
     fun sendDownUpKeyEvent(keyEventCode: Int, metaState: Int = meta(), count: Int = 1): Boolean {
         if (count < 1) return false
+        notifyKeyboardEdit()
         val ic = currentInputConnection() ?: return false
         ic.beginBatchEdit()
         val eventTime = SystemClock.uptimeMillis()

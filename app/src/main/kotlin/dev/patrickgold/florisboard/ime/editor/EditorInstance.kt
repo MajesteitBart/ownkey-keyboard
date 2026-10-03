@@ -198,6 +198,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success or if the selection is already at specified position, false otherwise.
      */
     fun setSelection(start: Int, end: Int): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         val selection = EditorRange.normalized(start, end)
@@ -288,6 +289,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     }
 
     override fun commitChar(char: String): Boolean {
+        notifyKeyboardEdit()
         notifyTextBoundaryIfNeeded(char)
         val isInsertAutoSpaceBeforeChar = shouldInsertAutoSpaceBefore(char)
         val deferredAutoSpace = resolveDeferredAutoSpace(char)
@@ -312,6 +314,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         )
     }
 
+    /** Live dictation supplies its own spacing, so the keyboard's automatic spaces stay out of it. */
+    override fun beginDictationDraft(): Boolean {
+        autoSpace.setInactive()
+        phantomSpace.setInactive()
+        return super.beginDictationDraft()
+    }
+
     /**
      * Commits the given [text] to this editor instance and adjusts both the cursor position and
      * composing region, if any.
@@ -325,6 +334,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     override fun commitText(text: String): Boolean {
+        notifyKeyboardEdit()
         notifyTextBoundaryIfNeeded(text)
         val isPhantomSpaceActive = phantomSpace.determine(text)
         autoSpace.setInactive()
@@ -351,6 +361,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun commitCompletion(candidate: SuggestionCandidate, autocorrectedFrom: String? = null): Boolean {
+        notifyKeyboardEdit()
         val text = candidate.text.toString()
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val styled = autocorrectionMarked(text, autocorrectedFrom)
@@ -406,6 +417,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun commitGesture(text: String): Boolean {
+        notifyKeyboardEdit()
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val isPhantomSpaceActive = phantomSpace.determine(text, forceActive = true)
         phantomSpace.setActive(showComposingRegion = true)
@@ -428,6 +440,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if something went wrong.
      */
     fun commitClipboardItem(item: ClipboardItem?): Boolean {
+        notifyKeyboardEdit()
         if (item == null) return false
         val mimeTypes = item.mimeTypes
         return when (item.type) {
@@ -466,6 +479,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun deleteBackwards(unit: OperationUnit): Boolean {
+        notifyKeyboardEdit()
         val content = activeContent
         if (unit == OperationUnit.CHARACTERS) {
             if (phantomSpace.isActive && content.currentWord.isValid && prefs.glide.immediateBackspaceDeletesWord.get()) {
@@ -489,6 +503,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun deleteForwards(unit: OperationUnit): Boolean {
+        notifyKeyboardEdit()
         val content = activeContent
         autoSpace.setInactive()
         phantomSpace.setInactive()
@@ -500,6 +515,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     }
 
     fun setSelectionSurrounding(n: Int, unit: OperationUnit, scope: OperationScope): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         val content = activeContent
@@ -543,6 +559,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performClipboardCut(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         val text = activeContent.selectedText.ifBlank { currentInputConnection()?.getSelectedText(0) }
@@ -561,6 +578,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performClipboardCopy(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         val text = activeContent.selectedText.ifBlank { currentInputConnection()?.getSelectedText(0) }
@@ -580,6 +598,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performClipboardPaste(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         return commitClipboardItem(clipboardManager.primaryClip).also { result ->
@@ -596,6 +615,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performClipboardSelectAll(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         val ic = currentInputConnection() ?: return false
@@ -613,6 +633,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performEnter(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         return if (activeInfo.isRawInputEditor) {
@@ -623,6 +644,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     }
 
     fun tryPerformEnterCommitRaw(): Boolean {
+        notifyKeyboardEdit()
         return if (subtypeManager.activeSubtype.primaryLocale.language.startsWith("zh") && activeContent.composing.length > 0) {
             finalizeComposingText(activeContent.composingText)
         } else {
@@ -638,6 +660,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performEnterAction(action: ImeOptions.Action): Boolean {
+        notifyKeyboardEdit()
         notifyTextBoundaryIfNeeded("\n")
         autoSpace.setInactive()
         phantomSpace.setInactive()
@@ -651,6 +674,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performUndo(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         return sendDownUpKeyEvent(KeyEvent.KEYCODE_Z, meta(ctrl = true))
@@ -662,6 +686,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun performRedo(): Boolean {
+        notifyKeyboardEdit()
         autoSpace.setInactive()
         phantomSpace.setInactive()
         return sendDownUpKeyEvent(KeyEvent.KEYCODE_Z, meta(ctrl = true, shift = true))
