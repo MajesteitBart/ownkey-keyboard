@@ -4,7 +4,7 @@
     <string name="orukeet__summary">Optioneel lokaal dicteren. Download eenmalig en zet spraak om zonder API-sleutel of internetverbinding.</string>
     <string name="orukeet__selected">Geselecteerd voor dicteren: %1$s</string>
     <string name="orukeet__size">Modeldownload: 672 MB. De eerste installatie vereist ongeveer 940 MB vrije opslagruimte.</string>
-    <string name="orukeet__languages_cap">Automatische taalherkenning, waaronder Nederlands en Engels. Neem maximaal 30 seconden per keer op.</string>
+    <string name="orukeet__languages_cap">Automatische taalherkenning, waaronder Nederlands en Engels. Dicteren typt mee terwijl je praat. Een gesproken herschrijfinstructie mag maximaal 30 seconden duren.</string>
     <string name="orukeet__unsupported">Lokaal dicteren is niet beschikbaar op dit apparaat of in deze appversie.</string>
     <string name="orukeet__checking">Gedownload model controleren…</string>
     <string name="orukeet__activating">Lokaal model laden…</string>
@@ -54,7 +54,9 @@
     <string name="orukeet__rewrite_disclosure">Orukeet zet je instructie op dit apparaat om naar tekst. Daarna worden de instructietekst en de te herschrijven tekst naar je ingestelde herschrijfprovider gestuurd.</string>
     <string name="orukeet__rewrite_audio_row">Audio blijft op dit apparaat · {provider}</string>
     <string name="orukeet__transcribing">Spraak op dit apparaat omzetten…</string>
-    <string name="orukeet__recording">Op apparaat · max. 30s</string>
+    <string name="orukeet__recording">Op dit apparaat</string>
+    <string name="orukeet__live_stopped">Dicteren is gestopt. De tekst tot nu toe is bewaard.</string>
+    <string name="orukeet__live_limit">Dicteren stopt na 10 minuten. De tekst is bewaard.</string>
     <string name="orukeet__waiting_internet">Geen internetverbinding beschikbaar. De download start zodra er een verbinding is.</string>
     <string name="orukeet__waiting_wifi">Wachten op wifi of ethernet. Mobiele data is uitgeschakeld voor deze download.</string>
     <string name="orukeet__retry_download">Download opnieuw proberen</string>

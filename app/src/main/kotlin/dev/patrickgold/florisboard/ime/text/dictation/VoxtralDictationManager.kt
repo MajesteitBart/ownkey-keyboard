@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import dev.patrickgold.florisboard.ime.text.dictation.offline.LiveOrukeetSession
 import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
 import android.Manifest
 import android.content.Context
@@ -49,6 +50,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.android.showShortToastSync
+import org.ownkey.offline.LiveTranscription
+import org.ownkey.offline.LiveUpdate
+import org.ownkey.offline.LocalAsrException
+
+/** Live dictation has no practical length limit; this only ends a session left running by accident. */
+private const val LIVE_SAFETY_LIMIT_MS = 10 * 60_000L
 
 /** Dictation entrypoint with an immutable backend/client/model snapshot for each recording. */
 class VoxtralDictationManager(
@@ -118,6 +125,25 @@ class VoxtralDictationManager(
     }
 
     private var activeSession: TranscriptionSession? = null
+
+    /**
+     * Orukeet dictation types while the user talks. Words that froze are already in the field; the live
+     * words after them are composing text that each preview replaces. Main thread only.
+     */
+    private class LiveDictation(
+        val sessionId: Long,
+        val source: LiveOrukeetSession,
+        val transcription: LiveTranscription,
+        val text: LiveDictationText,
+        /**
+         * The text goes into the field while the user talks. False for editors that can't hold composing
+         * text and with TalkBack on; the text then goes in at Stop.
+         */
+        val draft: Boolean,
+        /** The editor reports the user taking over the field: through the draft, or a watch when the text waits for Stop. */
+        val watched: Boolean,
+    )
+    private var live: LiveDictation? = null
     private var sessionGeneration = 0L
     private var autoStopJob: Job? = null
     private var activeLease: AudioSessionLease? = null
@@ -193,10 +219,15 @@ class VoxtralDictationManager(
             }
             var snapshot: TranscriptionSession? = null
             var acquired: AudioSessionLease? = null
+            var liveSource: LiveOrukeetSession? = null
             try {
                 kotlinx.coroutines.withContext(Dispatchers.IO) {
                     // Assign before crossing the dispatcher boundary so cancellation cannot lose the lease.
-                    snapshot = snapshotSession(TranscriptionPurpose.DICTATION, mode)
+                    if (mode == TranscriptionBackend.ORUKEET) {
+                        liveSource = snapshotLiveSession().also { snapshot = it.session }
+                    } else {
+                        snapshot = snapshotSession(TranscriptionPurpose.DICTATION, mode)
+                    }
                 }
                 val session = requireNotNull(snapshot)
                 val started = kotlinx.coroutines.withContext(Dispatchers.IO) {
@@ -213,6 +244,7 @@ class VoxtralDictationManager(
                     _stateFlow.value = DictationState.ERROR
                     return@launch
                 }
+                liveSource?.let { source -> startLive(source, lease, session) }
                 activeSession = snapshot
                 activeLease = lease
                 feedbackController.begin(lease.sessionId)
@@ -220,9 +252,11 @@ class VoxtralDictationManager(
                 _stateFlow.value = DictationState.LISTENING
                 insertionListener?.onDictationStarted()
                 if (session.backend == TranscriptionBackend.ORUKEET) {
+                    // Live dictation decodes a few seconds at a time, so only a safety limit remains.
                     autoStopJob = scope.launch {
                         while (lease.isCurrent && _stateFlow.value in setOf(DictationState.LISTENING, DictationState.PAUSED)) {
-                            if ((lease.state?.elapsedMs(System.currentTimeMillis()) ?: 0) >= org.ownkey.offline.ModelCatalog.RECORDING_CAP_MS) {
+                            if ((lease.state?.elapsedMs(System.currentTimeMillis()) ?: 0) >= LIVE_SAFETY_LIMIT_MS) {
+                                appContext.showShortToastSync(appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__live_limit))
                                 stopAndInsertTranscript(); break
                             }
                             delay(100)
@@ -251,6 +285,7 @@ class VoxtralDictationManager(
     }
 
     fun cancelDictation() {
+        endLive(keepText = false)
         val lease = activeLease ?: run {
             sessionGeneration++
             operationJob?.cancel(); operationJob = null
@@ -281,6 +316,10 @@ class VoxtralDictationManager(
             return
         }
         if (operationJob?.isActive == true) return
+        live?.takeIf { it.sessionId == lease.sessionId }?.let { current ->
+            stopLive(lease, current)
+            return
+        }
         operationJob = scope.launch {
             _stateFlow.value = DictationState.TRANSCRIBING
             feedbackController.processing(lease.sessionId)
@@ -395,6 +434,7 @@ class VoxtralDictationManager(
     }
 
     fun invalidateSession(reason: AudioSessionInvalidation) {
+        endLive(keepText = true)
         sessionGeneration++
         autoStopJob?.cancel(); autoStopJob = null
         val sessionId = audioSessionCoordinator.state.value?.sessionId
@@ -407,6 +447,206 @@ class VoxtralDictationManager(
         _recordingSessionFlow.value = null
         _stateFlow.value = DictationState.IDLE
     }
+
+    private suspend fun snapshotLiveSession(): LiveOrukeetSession {
+        val dictionary = speechDictionary.snapshot()
+        return appContext.offlineDictation().liveSession(
+            vocabulary = if (prefs.voxtral.localVocabularyHints.get()) dictionary.vocabulary else emptyList(),
+            dictionary = dictionary,
+        )
+    }
+
+    /** The recorder already runs; this connects it to the inference process and starts the draft. */
+    private suspend fun startLive(source: LiveOrukeetSession, lease: AudioSessionLease, session: TranscriptionSession) {
+        val content = editorInstance.activeContent
+        val cleaner = session.dictionary?.cleaner
+        val text = LiveDictationText(
+            textBefore = content.textBeforeSelection,
+            textAfter = content.textAfterSelection,
+            clean = { cleaner?.clean(it) ?: it },
+            corrections = cleaner?.settings?.corrections.orEmpty(),
+        )
+        val sessionId = lease.sessionId
+        val transcription = source.start(
+            onUpdate = { update -> onLiveUpdate(sessionId, update) },
+            onFailure = { error -> failLive(sessionId, VoiceActionErrorReason.TRANSCRIPTION, error) },
+        )
+        val draft = !isTouchExplorationEnabled() && editorInstance.beginDictationDraft()
+        // Without a draft (TalkBack, raw editors) a watch still ends the session when the user takes over.
+        val watched = draft || editorInstance.beginDictationWatch()
+        if (watched) editorInstance.onDictationDraftInterrupted = { onLiveDraftInterrupted(sessionId) }
+        // Dispatched, never immediate: a failure replayed right here must wait until the session is set up.
+        source.recorder.onFailure = {
+            scope.launch(Dispatchers.Main) {
+                failLive(sessionId, VoiceActionErrorReason.RECORDING, IllegalStateException("Microphone capture failed"))
+            }
+        }
+        live = LiveDictation(sessionId, source, transcription, text, draft, watched)
+    }
+
+    private fun onLiveUpdate(sessionId: Long, update: LiveUpdate) {
+        val current = live?.takeIf { it.sessionId == sessionId } ?: return
+        // Updates keep arriving in order after Stop; words that froze in them are not in the final text.
+        val (commit, shown) = current.text.update(update.frozen, update.live)
+        if (current.draft && !editorInstance.updateDictationDraft(commit, shown) && live === current) {
+            // The editor turned the text down or went away, so the words can't be shown. What is there stays.
+            failLive(sessionId, VoiceActionErrorReason.EDITOR_COMMIT, IllegalStateException("Editor rejected live text"))
+        }
+    }
+
+    /** Recording or inference failed while the user was talking. What they already see stays. */
+    private fun failLive(sessionId: Long, reason: VoiceActionErrorReason, cause: Throwable) {
+        // After Stop, the stop path reports the failure itself.
+        if (live?.sessionId != sessionId || _stateFlow.value == DictationState.TRANSCRIBING) return
+        flogError { "Live dictation failed: ${(cause as? LocalAsrException)?.reason ?: cause.javaClass.simpleName}" }
+        val current = live
+        endLive(keepText = true)
+        current?.let(::insertWaitingText)
+        val lease = activeLease ?: return
+        abortSession(lease)
+        feedbackController.error(lease.sessionId, reason)
+        setError(appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__live_stopped), cause)
+    }
+
+    /**
+     * Without a draft the text waits for Stop. When the session ends early it goes in anyway, so the text
+     * so far is kept as it is with a draft. The watch is still in place, so the cursor hasn't moved.
+     */
+    private fun insertWaitingText(current: LiveDictation) {
+        if (current.draft || !current.watched) return
+        val text = current.text.committedText + current.text.live
+        if (text.isNotBlank()) editorInstance.commitText(text)
+    }
+
+    /**
+     * The user typed or moved the cursor. Text already in the field stays where it is; text waiting for
+     * Stop is dropped, because the place it was meant for has changed. Dictation ends.
+     */
+    private fun onLiveDraftInterrupted(sessionId: Long) {
+        if (live?.sessionId != sessionId) return
+        endLive(keepText = true)
+        val lease = activeLease ?: return
+        abortSession(lease)
+        feedbackController.cancel(lease.sessionId)
+        _stateFlow.value = DictationState.IDLE
+    }
+
+    private fun abortSession(lease: AudioSessionLease) {
+        sessionGeneration++
+        autoStopJob?.cancel(); autoStopJob = null
+        operationJob?.cancel(); operationJob = null
+        lease.cancel()
+        activeLease = null
+        activeSession = null
+        _recordingSessionFlow.value = null
+    }
+
+    /** Ends the live session without a final decode. [keepText] leaves the visible text; otherwise it is removed. */
+    private fun endLive(keepText: Boolean) {
+        val current = detachLive() ?: return
+        if (current.draft && !keepText) editorInstance.removeDictationDraft() else editorInstance.abandonDictationDraft()
+    }
+
+    /**
+     * Clears the live session and releases its reservation of the inference process. Every way a session
+     * ends goes through here; cancelling after a finished or failed finish is a no-op.
+     */
+    private fun detachLive(): LiveDictation? {
+        val current = live ?: return null
+        live = null
+        editorInstance.onDictationDraftInterrupted = null
+        current.source.recorder.onFailure = null
+        current.transcription.cancel()
+        return current
+    }
+
+    private fun stopLive(lease: AudioSessionLease, current: LiveDictation) {
+        operationJob = scope.launch {
+            _stateFlow.value = DictationState.TRANSCRIBING
+            feedbackController.processing(lease.sessionId)
+            autoStopJob?.cancel(); autoStopJob = null
+            val stopped = kotlinx.coroutines.withContext(Dispatchers.IO) { lease.stop() }
+            if (stopped is AudioSessionStopResult.AlreadyStopped || stopped is AudioSessionStopResult.Stale) {
+                if (live === current) endLive(keepText = true)
+                feedbackController.cancel(lease.sessionId)
+                return@launch
+            }
+            val recording = (stopped as? AudioSessionStopResult.Stopped)?.recording
+            val final = try {
+                if (recording == null) null else current.transcription.finish(current.source.recorder.samplesWritten)
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                recording?.close()
+                throw cancel
+            } catch (error: Exception) {
+                flogError { "Live dictation could not finish: ${(error as? LocalAsrException)?.reason ?: error.javaClass.simpleName}" }
+                null
+            }
+            recording?.close()
+            if (live !== current || !lease.isCurrent) {
+                if (live === current) endLive(keepText = true)
+                feedbackController.cancel(lease.sessionId)
+                return@launch
+            }
+            // Releases the inference reservation too when the recording failed and finish never ran.
+            detachLive()
+            if (final == null) {
+                // Keep what the user saw rather than throw it away.
+                editorInstance.abandonDictationDraft()
+                insertWaitingText(current)
+                feedbackController.error(lease.sessionId, if (recording == null) VoiceActionErrorReason.RECORDING else VoiceActionErrorReason.TRANSCRIPTION)
+                finishSession(lease)
+                setError(appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__live_stopped), IllegalStateException("Live dictation failed"))
+                return@launch
+            }
+            val commit = current.text.finish(final.frozen)
+            val inserted = current.text.committedText
+            if (inserted.isBlank()) {
+                // Nothing to insert: take the draft back and restore any text it replaced.
+                editorInstance.removeDictationDraft()
+                finishSession(lease)
+                if (current.text.rawTranscript.isNotBlank()) {
+                    // Neutral result: the recognizer worked, there was just nothing left to insert.
+                    feedbackController.cancel(lease.sessionId)
+                    _stateFlow.value = DictationState.IDLE
+                    appContext.showShortToastSync(appContext.getString(dev.patrickgold.florisboard.R.string.speech_dictionary__only_fillers))
+                } else {
+                    feedbackController.error(lease.sessionId, VoiceActionErrorReason.EMPTY_AUDIO)
+                    setError("Dictation returned empty text", IllegalStateException("Empty transcription"))
+                }
+                return@launch
+            }
+            val committed = if (current.draft) {
+                editorInstance.commitDictationDraft(commit)
+            } else {
+                // The watch ends before the commit moves the cursor.
+                editorInstance.abandonDictationDraft()
+                editorInstance.commitText(inserted)
+            }
+            if (!committed) {
+                feedbackController.error(lease.sessionId, VoiceActionErrorReason.EDITOR_COMMIT)
+                finishSession(lease)
+                setError("Could not insert dictated text", IllegalStateException("Editor commit failed"))
+                return@launch
+            }
+            feedbackController.success(lease.sessionId)
+            finishSession(lease)
+            _stateFlow.value = DictationState.IDLE
+            val info = editorInstance.activeInfo
+            insertionListener?.onDictationInserted(
+                DictationInsertion(
+                    rawTranscript = current.text.rawTranscript,
+                    committedText = inserted,
+                    editorSessionId = editorInstance.activeInputSessionId,
+                    hostPackage = info.packageName,
+                    fieldId = info.base.fieldId,
+                    committedAtMs = System.currentTimeMillis(),
+                ),
+            )
+        }
+    }
+
+    private fun isTouchExplorationEnabled(): Boolean =
+        appContext.getSystemService(android.view.accessibility.AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
 
     private fun resolveTranscriptionBackend(): TranscriptionBackend = TranscriptionBackend.resolve(
         prefs.voxtral.dictationBackend.get(), apiKey().isNotBlank(), BuildConfig.DEBUG,

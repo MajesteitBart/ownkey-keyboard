@@ -837,6 +837,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     override fun onInputKeyDown(data: KeyData) {
         val windowController = FlorisImeService.windowControllerOrNull()
         windowController?.editor?.disableIfNoGestureInProgress()
+        if (editsOrMovesCursor(data)) editorInstance.notifyKeyboardEdit()
         when (data.code) {
             KeyCode.ARROW_DOWN,
             KeyCode.ARROW_LEFT,
@@ -851,6 +852,22 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.SHIFT -> handleShiftDown(data)
         }
     }
+
+    /** Special keys that change the text or move the cursor, as opposed to switching layouts, modes or shift. */
+    private val editingKeyCodes = setOf(
+        KeyCode.DELETE, KeyCode.DELETE_WORD, KeyCode.FORWARD_DELETE, KeyCode.FORWARD_DELETE_WORD,
+        KeyCode.CLIPBOARD_CUT, KeyCode.CLIPBOARD_PASTE, KeyCode.CLIPBOARD_SELECT, KeyCode.CLIPBOARD_SELECT_ALL,
+        KeyCode.UNDO, KeyCode.REDO,
+        KeyCode.ARROW_DOWN, KeyCode.ARROW_LEFT, KeyCode.ARROW_RIGHT, KeyCode.ARROW_UP,
+        KeyCode.MOVE_START_OF_PAGE, KeyCode.MOVE_END_OF_PAGE, KeyCode.MOVE_START_OF_LINE, KeyCode.MOVE_END_OF_LINE,
+    )
+
+    /**
+     * Characters, space, enter and tab have positive codes; characters made of several code points and
+     * emoji have none, so their key type counts too.
+     */
+    private fun editsOrMovesCursor(data: KeyData): Boolean = data.code > 0 || data.code in editingKeyCodes ||
+        data.type == KeyType.CHARACTER || data.type == KeyType.NUMERIC
 
     override fun onInputKeyUp(data: KeyData) = activeState.batchEdit {
         val windowController = FlorisImeService.windowControllerOrNull() ?: return@batchEdit

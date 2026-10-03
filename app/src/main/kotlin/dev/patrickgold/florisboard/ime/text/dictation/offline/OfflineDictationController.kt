@@ -210,6 +210,54 @@ class OfflineDictationController(private val app: FlorisApplication) {
             )
         }
     }
+
+    /** Like [session], for ordinary dictation that types while the user talks. */
+    suspend fun liveSession(
+        vocabulary: List<String> = emptyList(),
+        dictionary: dev.patrickgold.florisboard.ime.text.dictation.dictionary.SpeechDictionarySnapshot? = null,
+    ): LiveOrukeetSession {
+        initialized.await()
+        val hotwords = HotwordTransport.encode(vocabulary).hotwords
+        return lifecycle.withLock {
+            if (!ready) throw LocalAsrException(if (compatible) LocalAsrFailure.MODEL_MISSING else LocalAsrFailure.UNSUPPORTED)
+            val model = store.acquire()
+            val recorder = PcmAudioRecorder(app)
+            LiveOrukeetSession(
+                session = TranscriptionSession(
+                    backend = TranscriptionBackend.ORUKEET,
+                    recorder = recorder,
+                    client = null,
+                    dictionary = dictionary,
+                    release = model::close,
+                ),
+                recorder = recorder,
+                runtime = runtime,
+                modelId = model.id,
+                hotwords = hotwords,
+            )
+        }
+    }
+}
+
+/**
+ * Live Orukeet dictation: a raw PCM recorder whose file the inference process reads while it grows.
+ * Start the recorder through the audio session first, then call [start].
+ */
+class LiveOrukeetSession internal constructor(
+    val session: TranscriptionSession,
+    val recorder: PcmAudioRecorder,
+    private val runtime: InferenceConnection,
+    private val modelId: String,
+    private val hotwords: String,
+) {
+    suspend fun start(onUpdate: (LiveUpdate) -> Unit, onFailure: (LocalAsrException) -> Unit): LiveTranscription {
+        val file = recorder.file ?: throw LocalAsrException(LocalAsrFailure.AUDIO)
+        val audio = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+        val live = runtime.startLive(modelId, audio, hotwords, onUpdate, onFailure)
+        recorder.onSamples = live::append
+        live.append(recorder.samplesWritten)
+        return live
+    }
 }
 
 fun Context.offlineDictation(): OfflineDictationController = (applicationContext as FlorisApplication).offlineDictation.value

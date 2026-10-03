@@ -1405,12 +1405,14 @@
     <string name="orukeet__verifying">Verifying model…</string>
     <string name="orukeet__not_ready">Local dictation is not ready. Open Settings → AI to check the model.</string>
     <string name="orukeet__transcription_failed">Local transcription failed. Retry or check the model in Settings → AI. Audio was not sent to a provider.</string>
+    <string name="orukeet__live_stopped">Dictation stopped. The text so far was kept.</string>
+    <string name="orukeet__live_limit">Dictation stops after 10 minutes. The text was kept.</string>
     <string name="orukeet__rewrite_disclosure">Orukeet transcribes your instruction on this device. Your instruction text and the text you want to rewrite are then sent to your configured rewrite provider.</string>
     <string name="orukeet__rewrite_audio_row">Audio stays on this device · {provider}</string>
     <string name="orukeet__summary">Optional local dictation. Download once, then transcribe without an API key or internet connection.</string>
     <string name="orukeet__selected">Selected dictation: %1$s</string>
     <string name="orukeet__size">Model download: 672 MB. First installation needs about 940 MB of free storage.</string>
-    <string name="orukeet__languages_cap">Automatic language recognition, including Dutch and English. Record up to 30 seconds at a time.</string>
+    <string name="orukeet__languages_cap">Automatic language recognition, including Dutch and English. Dictation types while you talk. A spoken rewrite instruction can be up to 30 seconds.</string>
     <string name="orukeet__unsupported">Local dictation is not available on this device or in this app version.</string>
     <string name="orukeet__checking">Checking downloaded model…</string>
     <string name="orukeet__activating">Loading local model…</string>
@@ -1452,7 +1454,7 @@
     <string name="orukeet__load_runtime">The speech runtime could not load the model on this device.</string>
     <string name="orukeet__error_detail">Technical detail: %1$s</string>
     <string name="orukeet__transcribing">Transcribing on this device…</string>
-    <string name="orukeet__recording">On device · 30s max</string>
+    <string name="orukeet__recording">On device</string>
     <string name="orukeet__waiting_internet">No internet connection is available. The download will start when a connection is available.</string>
     <string name="orukeet__waiting_wifi">Waiting for Wi-Fi or Ethernet. Mobile data is disabled for this download.</string>
     <string name="orukeet__retry_download">Retry download</string>
