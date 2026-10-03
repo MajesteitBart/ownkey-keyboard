@@ -42,7 +42,7 @@ Ownkey is open-source and FlorisBoard-derived, so the keyboard can be inspected 
 
 ## Copy Caveats
 
-- Cloud AI is not local or fully private. Cloud dictation and rewrite send request data to the configured provider. Orukeet on-device dictation is implemented for internal builds; publish that claim only after its physical release gates pass and public enablement ships. Voice rewrite still sends its instruction transcript and selected text to the rewrite provider.
+- Cloud AI is not local or fully private. Cloud dictation and rewrite send request data to the configured provider. Orukeet on-device dictation ships publicly from 0.10.0 for arm64 installs, by owner decision before the physical phone gates were measured. Claim on-device dictation for Orukeet only, and don't claim measured phone speed, memory use or accuracy until those gates pass. Voice rewrite still sends its instruction transcript and selected text to the rewrite provider.
 - Do not imply that ChatGPT or Claude subscriptions replace API access.
 - Do not mention a specific OpenAI model in store copy unless it has been rechecked near release.
 - Avoid saying "secure" as a broad promise; use concrete implementation language like "encrypted on-device key storage."

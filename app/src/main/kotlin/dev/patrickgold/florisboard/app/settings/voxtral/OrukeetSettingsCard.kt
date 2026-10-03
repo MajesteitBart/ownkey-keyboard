@@ -27,11 +27,11 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
     val selected by prefs.voxtral.dictationBackend.collectAsState()
-    // Keep a way back to cloud for an imported/older local selection, but do not advertise the
-    // internal feature to public-build users who have not selected it.
-    if (!BuildConfig.ORUKEET_INTERNAL && selected != TranscriptionBackend.ORUKEET.preference) return
-    val previous by prefs.voxtral.previousDictationBackend.collectAsState()
     val controller = remember { context.offlineDictation() }
+    // Public builds don't offer a download the device can't run. A restored local selection still
+    // gets the card, so there is a way back to cloud. Internal builds show it to report the reason.
+    if (!BuildConfig.ORUKEET_INTERNAL && !controller.compatible && selected != TranscriptionBackend.ORUKEET.preference) return
+    val previous by prefs.voxtral.previousDictationBackend.collectAsState()
     val state by controller.state.collectAsState()
     val runtime by controller.runtime.state.collectAsState()
     val scope = rememberCoroutineScope()

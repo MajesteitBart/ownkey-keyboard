@@ -61,9 +61,11 @@ use Android's `noBackupFilesDir`; platform backup rules and the manual backup ex
 allowlist exclude this directory. A restored `orukeet` preference without files fails
 closed and requires a new explicit download and activation.
 
-Local inference is enabled in internal debug, beta and benchmark builds. Public
-release builds keep it unavailable until the physical arm64 quality/performance and
-supported-device policy gates in the delivery spec pass. Before enabling it publicly,
-revise Play copy to distinguish **on-device dictation** from **cloud dictation and
-rewrite**. Voice rewrite still sends the instruction transcript and selected text to
-the configured rewrite endpoint. Do not describe every AI operation as local.
+Since 0.10.0, release builds offer the Orukeet download on arm64 installs with a 64-bit
+process. Debug builds also allow x86_64 emulators. `ORUKEET_INTERNAL` now only controls
+internal diagnostics: debug, beta and benchmark builds show failure details and show the
+Orukeet card on unsupported devices. The project owner enabled public download on
+2026-10-03 before the physical phone gates in the delivery spec were measured; those
+measurements remain open. Store and README copy distinguish **on-device dictation** from
+**cloud dictation and rewrite**. Voice rewrite still sends the instruction transcript and
+selected text to the configured rewrite endpoint. Do not describe every AI operation as local.

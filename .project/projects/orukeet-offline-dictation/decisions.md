@@ -61,3 +61,15 @@ The user requested full implementation after the emulator probe. Proceed with th
 The stock sherpa-onnx 1.13.4 AAR contains unused TTS/eSpeak code. Its source build enables TTS by default and statically includes the GPL-3.0 eSpeak dependency. No app APK was published. Replace its native payload with the same sherpa revision built with TTS, speaker diarization, C API, executables, websocket and portaudio disabled. Compile Eigen with EIGEN_MPL2_ONLY. Keep the existing ONNX Runtime 1.27.0 binaries and Kotlin bindings; pin the resulting build-time AAR and retain full dependency notices. Publish the reproduction script and source/input pins with that artifact. Repeat native/packaging checks against it; earlier runtime-size and soak results are historical. Model hashes and the published data mirror remain unchanged.
 
 Evidence: [upstream TTS default](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.4/CMakeLists.txt), [pinned eSpeak inclusion](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.4/cmake/espeak-ng-for-piper.cmake), [eSpeak licence](https://github.com/csukuangfj/espeak-ng/blob/ed530aa113046142eb5115cf2fc9157854d0ffe1/COPYING).
+
+## 2026-10-03T07:20:00Z: Public download enabled by owner decision
+
+After 0.9.0 shipped without the Orukeet card, the project owner asked to let users download the model. This overrides the earlier rule that release builds keep the capability gate until a validated device policy is recorded. It does not mark the physical gates as passed. T-009 stays open, and its measurements now inform later releases instead of blocking this one.
+
+| Decision | Rationale and status |
+| --- | --- |
+| Offer the download in release builds on arm64 installs with a 64-bit process | The arm64 release split already contains the native runtime. x86_64 stays limited to debug emulator builds. 32-bit processes stay unsupported. |
+| Hide the card on unsupported devices in public builds | Public users don't see a download their device can't run. A restored Orukeet selection still shows the card, so there is a way back to cloud or system voice input. Internal builds keep showing the card with its reason. |
+| Keep `ORUKEET_INTERNAL` for diagnostics only | Debug, beta and benchmark builds still show failure details. It no longer controls availability. |
+| Ship as 0.10.0 with route-accurate copy | README, Play description and changelog separate on-device dictation from cloud dictation and rewrite, say where the model download comes from, and state that phone testing is limited. |
+| Verify the minified release path before publishing | A local release-variant build with x86_64 temporarily allowed downloaded and verified the model, activated it, and transcribed a fixture live on an API 35 emulator. This checks R8 and packaging, not arm64 phone performance. |

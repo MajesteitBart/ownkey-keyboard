@@ -4,7 +4,7 @@ slug: orukeet-offline-dictation
 owner: ownkey-keyboard-team
 status: active
 created: 2026-09-15T10:30:28Z
-updated: 2026-09-15T22:34:27Z
+updated: 2026-10-03T07:32:16Z
 outcome: Users on validated Android phones can explicitly download and activate Orukeet, dictate short phrases offline, and remove the model, with no more than 5% regression in typing and keyboard-open p95 latency.
 uncertainty: high
 probe_required: true
@@ -19,7 +19,7 @@ Add **Orukeet (on device)** under Settings -> AI -> Dictation. Orukeet is speech
 
 The first release handles bounded recordings followed by completed transcripts. Reuse the mic, pause/resume, cancel, insertion, and voice-rewrite review flows. Local dictation requires microphone permission and verified model files, but no API key or network. Voice rewrite can transcribe the instruction locally and then send instruction text and selected text to the configured cloud LLM.
 
-The user authorized full implementation after the emulator probe. The integrated app now includes model lifecycle controls, pinned downloads, session snapshots and conventional-process inference. The isolated path failed model reopening and M4A decoding. Physical acceptance remains pending and public enablement stays gated. See [implementation verification](research/implementation-verification.md), [initial probe findings](research/emulator-runtime.md) and [the delivery plan](plan.md).
+The user authorized full implementation after the emulator probe. The integrated app now includes model lifecycle controls, pinned downloads, session snapshots and conventional-process inference. The isolated path failed model reopening and M4A decoding. Physical acceptance remains pending. On 2026-10-03 the project owner enabled the public download for arm64 installs in 0.10.0 before those gates were measured; see the decision log. See [implementation verification](research/implementation-verification.md), [initial probe findings](research/emulator-runtime.md) and [the delivery plan](plan.md).
 
 ## Problem and Users
 
@@ -117,7 +117,7 @@ The required physical-device probe remains pending. No device pass, supported ti
 - The recorder's byte-array/cache behavior, cloud-named editor policy, and missing typing benchmark require explicit work.
 - Upstream reports Dutch FLEURS WER of 5.60% for 364 recordings. Ownkey still needs pinned INT8 phone and in-domain quality evidence.
 
-Before public enablement, complete the following findings from the standalone `tools/orukeet-probe/` harness and revise the plan. Partial emulator evidence does not waive the remaining gates.
+Complete the following findings from the standalone `tools/orukeet-probe/` harness and revise the plan. Partial emulator evidence does not waive the remaining gates. The owner enabled the public download on 2026-10-03 before they were complete, so they now set the supported-device policy for later releases.
 
 | Required finding | Evidence/result |
 | --- | --- |
@@ -129,7 +129,7 @@ Before public enablement, complete the following findings from the standalone `t
 | Isolated service FD loading, permissions and cancellation/death outcome | Isolated UID/no-INTERNET confirmed; stock model reopening and M4A failed. Conventional kill/cancel/retry passed in the harness; integrated checks pass; phone checks pending. |
 | Immediate/two-minute/five-minute retention, trim and background process death | Pending physical-device probe |
 | Package overhead, supported tier, failed gates and contingency decision | All 16 ELF libraries and probe APK pass 16 KB alignment; x86_64 loads. Continue conventional service after isolation failure. ASR-only release APK sizes/alignment are recorded; arm64 execution and supported tier pending. |
-| Go/no-go and spec approval basis | Implementation authorized explicitly; public enablement remains blocked on phone/corpus gates. |
+| Go/no-go and spec approval basis | Implementation authorized explicitly. Public download enabled by owner decision on 2026-10-03 (0.10.0) with phone/corpus gates still open. |
 
 ## Footguns Discovered
 
@@ -151,4 +151,4 @@ Existing voice-prompt-rewrite audio/session and editor-safety contracts; a verif
 
 ## Approval Notes
 
-The user explicitly requested full implementation after the emulator findings. Implementation is authorized with the conventional inference service. This supersedes the earlier hold on production tasks. Physical performance, quality, memory/thermal and supported-tier findings remain required release gates; `probe_status: pending` is retained honestly. Do not publish the app or claim those gates passed without evidence.
+The user explicitly requested full implementation after the emulator findings. Implementation is authorized with the conventional inference service. This supersedes the earlier hold on production tasks. Physical performance, quality, memory/thermal and supported-tier findings remain required release gates; `probe_status: pending` is retained honestly. On 2026-10-03 the owner chose to publish the download before those gates passed; see the decision log. Do not claim the gates passed without evidence.

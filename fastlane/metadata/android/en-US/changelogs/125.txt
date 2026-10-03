@@ -1,0 +1,1 @@
+On-device dictation: download the Orukeet speech model once, then dictate Dutch and English on your phone without an internet connection or API key. Words appear while you talk. Needs a 64-bit ARM phone.

@@ -2,6 +2,16 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
+## 0.10.0 (2026-10-03)
+
+Version code 125.
+
+### Added
+- On-device dictation with Orukeet on 64-bit ARM phones ([#13](https://github.com/MajesteitBart/ownkey-keyboard/pull/13), [#20](https://github.com/MajesteitBart/ownkey-keyboard/pull/20)). Under **Settings → AI**, download the 672 MB model and activate it to dictate Dutch and English without an internet connection or API key. The audio stays on the phone. Words appear in the text field while you talk, and a recording runs until you stop it, with a safety stop after 10 minutes. Voice rewrite can use Orukeet for the spoken instruction; the selected text and the instruction still go to your rewrite provider.
+
+### Known limits
+- Orukeet has had little testing on physical phones. Speed and memory use on older or low-memory phones are not measured yet. The download isn't offered on 32-bit phones.
+
 ## 0.9.0 (2026-10-03)
 
 Version code 124. It also contains the voice rewrite crash fix from 0.8.1, which was never published on its own.
