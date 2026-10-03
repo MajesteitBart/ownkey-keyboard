@@ -1,7 +1,7 @@
 # Progress
 
 ## What Changed
-- 2026-10-03: 0.10.0 lets public arm64 installs download and activate Orukeet. The owner chose to ship before the physical phone gates were measured. [Decision](../projects/orukeet-offline-dictation/decisions.md).
+- 2026-10-03: 0.10.0 lets public arm64 installs with a 64-bit process download and activate Orukeet. The owner chose to ship before the physical phone gates were measured. [Decision](../projects/orukeet-offline-dictation/decisions.md).
 - 2026-09-17: The recovered internal build reopens the existing onboarding flow once after updating, preserving other preferences. [Setup verification](../projects/ownkey-brand-system-refresh/updates/2026-09-17-reopen-setup.md).
 - 2026-09-17: Recovered the uncommitted Orukeet integration and combined it with saved-voice persistence recovery on `fix/saved-voices-orukeet`. [Validation and internal APK handoff](../projects/voice-prompt-rewrite/updates/2026-09-17-orukeet-reconciliation.md).
 - 2026-09-15: Orukeet local dictation implemented for internal builds, including model downloads, explicit activation, session snapshots, local instruction transcription and separate inference process. [Delivery evidence](../projects/orukeet-offline-dictation/research/implementation-verification.md) records checks and remaining public-release gates.
@@ -17,7 +17,7 @@
 - Rewrite provider presets exist for OpenAI Responses, OpenAI Chat Completions, Anthropic, Mistral, OpenRouter, and Other / Custom.
 - Rewrite client handles OpenAI Responses, Anthropic Messages, and chat-completions-shaped providers separately.
 - Default rewrite provider is OpenRouter with model setting `meta/muse-spark-1.1`.
-- Existing installations preserve their dictation route. Since 0.10.0, public arm64 installs can explicitly download and activate Orukeet, as internal builds already could. Phone qualification is still open.
+- Existing installations preserve their dictation route. Since 0.10.0, public arm64 installs with a 64-bit process can explicitly download and activate Orukeet, as internal builds already could. Phone qualification is still open.
 - Store icon and feature graphic were refreshed during the brand pass.
 
 ## Latest Validation
