@@ -1148,6 +1148,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     override fun onInputKeyRepeat(data: KeyData) {
         FlorisImeService.inputFeedbackController()?.keyRepeatedAction(data)
+        // A held key goes through emoji search like a tap does, so a held arrow closes the search before it moves
+        if (emojiSearch.isActive && handleEmojiSearchKey(data)) return
         when (data.code) {
             KeyCode.ARROW_DOWN,
             KeyCode.ARROW_LEFT,

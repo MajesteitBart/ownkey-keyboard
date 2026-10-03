@@ -51,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -173,6 +174,8 @@ fun EmojiSearchBar(modifier: Modifier = Modifier) {
     // Until the search for the latest query is done, the previous results stay visible but enter inserts nothing
     val isCurrent = matches.query == query && matches.index === index
     val results = if (hasQuery) matches.emojis else recentEmojis
+    // Read by the tap handlers, which outlive a single composition
+    val resultsAreCurrent by rememberUpdatedState(!hasQuery || isCurrent)
     SideEffect {
         search.topResult = if (hasQuery && isCurrent) matches.emojis.firstOrNull() else null
     }
@@ -220,7 +223,11 @@ fun EmojiSearchBar(modifier: Modifier = Modifier) {
                                 .pointerInput(emoji) {
                                     detectTapGestures(
                                         onPress = { inputFeedbackController.keyPress(TextKeyData.UNSPECIFIED) },
-                                        onTap = { keyboardManager.commitEmojiFromSearch(emoji) },
+                                        onTap = {
+                                            // Results of an older query may still show for a moment; a tap then
+                                            // could hit an emoji that is about to change under the finger
+                                            if (resultsAreCurrent) keyboardManager.commitEmojiFromSearch(emoji)
+                                        },
                                     )
                                 },
                             contentAlignment = Alignment.Center,
