@@ -45,6 +45,11 @@ import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
+import dev.patrickgold.florisboard.ime.media.emoji.Emoji
+import dev.patrickgold.florisboard.ime.media.emoji.ConsumedKeyTracker
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiHistoryHelper
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchHardwareKeyAction
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchSession
 import dev.patrickgold.florisboard.ime.nlp.AutocorrectRevertCandidate
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
@@ -115,6 +120,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     val activeState = ObservableKeyboardState.new()
     var smartbarVisibleDynamicActionsCount by mutableIntStateOf(0)
     var isRewriteOptionsVisible by mutableStateOf(false)
+    val emojiSearch = EmojiSearchSession()
+    private val emojiSearchHardwareKeys = ConsumedKeyTracker()
     private var lastToastReference = WeakReference<Toast>(null)
 
     private val activeEvaluatorGuard = Mutex(locked = false)
@@ -250,7 +257,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     fun reevaluateInputShiftState() {
         if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
-            val shift = prefs.correction.autoCapitalization.get()
+            // The emoji search query is not part of the app's text, so the app's capitalization does not apply
+            val shift = !emojiSearch.isActive
+                && prefs.correction.autoCapitalization.get()
                 && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
                 && editorInstance.activeCursorCapsMode != InputAttributes.CapsMode.NONE
             activeState.inputShiftState = when {
@@ -363,7 +372,94 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
+    /**
+     * Opens emoji search: the letter keyboard comes back, but typed characters go to the search query instead of the
+     * app until [closeEmojiSearch].
+     */
+    fun startEmojiSearch() {
+        isRewriteOptionsVisible = false
+        dictationFixController.interrupt()
+        emojiSearch.start()
+        activeState.batchEdit {
+            it.isActionsOverflowVisible = false
+            it.keyboardMode = KeyboardMode.CHARACTERS
+            // Caps lock stays on, as it does on the way through the emoji palette
+            if (it.inputShiftState != InputShiftState.CAPS_LOCK) it.inputShiftState = InputShiftState.UNSHIFTED
+            it.imeUiMode = ImeUiMode.TEXT
+        }
+    }
+
+    /** Closes emoji search and returns to the emoji palette. */
+    fun closeEmojiSearch() {
+        emojiSearch.stop()
+        reevaluateInputShiftState()
+        activeState.imeUiMode = ImeUiMode.MEDIA
+    }
+
+    /** Inserts an emoji picked from the search results into the app, as a tap in the emoji palette would. */
+    fun commitEmojiFromSearch(emoji: Emoji) {
+        autocorrectUndoTracker.clearPending()
+        nlpManager.autoCommitCandidateFor(editorInstance.activeContent)?.let {
+            commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT)
+        }
+        TypingSpeedMetrics.recordTextInput(emoji.value)
+        editorInstance.commitText(emoji.value)
+        scope.launch { EmojiHistoryHelper.markEmojiUsed(prefs, emoji) }
+    }
+
+    /**
+     * Applies a key to the emoji search query while the search is open and returns true if the key was used. Shift,
+     * the symbol layouts and layout switches work as usual. Any other key that is not text, such as hide keyboard or
+     * voice input, closes the search and then does its normal job.
+     */
+    private fun handleEmojiSearchKey(data: KeyData): Boolean {
+        when (data.code) {
+            KeyCode.DELETE -> emojiSearch.deleteBackward()
+            KeyCode.DELETE_WORD -> emojiSearch.deleteWordBackward()
+            KeyCode.FORWARD_DELETE, KeyCode.FORWARD_DELETE_WORD -> Unit
+            KeyCode.SPACE, KeyCode.CJK_SPACE -> emojiSearch.type(" ")
+            KeyCode.ENTER -> emojiSearch.topResult?.let { commitEmojiFromSearch(it) }
+            KeyCode.SHIFT,
+            KeyCode.CAPS_LOCK,
+            KeyCode.VIEW_CHARACTERS,
+            KeyCode.VIEW_NUMERIC,
+            KeyCode.VIEW_NUMERIC_ADVANCED,
+            KeyCode.VIEW_PHONE,
+            KeyCode.VIEW_PHONE2,
+            KeyCode.VIEW_SYMBOLS,
+            KeyCode.VIEW_SYMBOLS2,
+            KeyCode.LANGUAGE_SWITCH,
+            KeyCode.IME_PREV_SUBTYPE,
+            KeyCode.IME_NEXT_SUBTYPE,
+            KeyCode.CHAR_WIDTH_SWITCHER,
+            KeyCode.CHAR_WIDTH_FULL,
+            KeyCode.CHAR_WIDTH_HALF,
+            KeyCode.KANA_SWITCHER,
+            KeyCode.KANA_HIRA,
+            KeyCode.KANA_KATA,
+            KeyCode.KANA_HALF_KATA -> return false
+            else -> when (data.type) {
+                KeyType.CHARACTER, KeyType.NUMERIC -> {
+                    emojiSearch.type(data.asString(isForDisplay = false))
+                    if (activeState.inputShiftState != InputShiftState.CAPS_LOCK &&
+                        !inputEventDispatcher.isPressed(KeyCode.SHIFT)
+                    ) {
+                        activeState.inputShiftState = InputShiftState.UNSHIFTED
+                    }
+                }
+                else -> {
+                    emojiSearch.stop()
+                    reevaluateInputShiftState()
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
     fun commitGesture(word: String) {
+        // A glide word classified after emoji search opened must not land in the app
+        if (emojiSearch.isActive) return
         editorInstance.commitGesture(fixCase(word))
     }
 
@@ -871,6 +967,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     override fun onInputKeyUp(data: KeyData) = activeState.batchEdit {
         val windowController = FlorisImeService.windowControllerOrNull() ?: return@batchEdit
+        if (emojiSearch.isActive && handleEmojiSearchKey(data)) return@batchEdit
         // Any key other than backspace or undo makes the last autocorrection final; a new one may follow below.
         if (data.code != KeyCode.DELETE && data.code != KeyCode.UNDO) autocorrectUndoTracker.clearPending()
         when (data.code) {
@@ -1068,6 +1165,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     override fun onInputKeyRepeat(data: KeyData) {
         FlorisImeService.inputFeedbackController()?.keyRepeatedAction(data)
+        // A held key goes through emoji search like a tap does, so a held arrow closes the search before it moves
+        if (emojiSearch.isActive && handleEmojiSearchKey(data)) return
         when (data.code) {
             KeyCode.ARROW_DOWN,
             KeyCode.ARROW_LEFT,
@@ -1089,6 +1188,10 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun onHardwareKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (emojiSearch.isActive && handleEmojiSearchHardwareKey(keyCode, event)) {
+            emojiSearchHardwareKeys.markConsumed(keyCode)
+            return true
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_SPACE -> {
                 handleHardwareKeyboardSpace()
@@ -1107,6 +1210,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun onHardwareKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (emojiSearchHardwareKeys.releaseKey(keyCode)) {
+            return true
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT -> {
                 inputEventDispatcher.sendUp(TextKeyData.SHIFT)
@@ -1114,6 +1220,37 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             else -> return false
         }
+    }
+
+    private fun emojiSearchHardwareKeyAction(keyCode: Int, event: KeyEvent?): EmojiSearchHardwareKeyAction {
+        return EmojiSearchHardwareKeyAction.of(
+            keyCode = keyCode,
+            unicodeChar = event?.unicodeChar ?: 0,
+            isShortcut = event != null && (event.isCtrlPressed || event.isMetaPressed),
+            isModifierOrSystem = KeyEvent.isModifierKey(keyCode) || event?.isSystem == true,
+        )
+    }
+
+    /**
+     * Sends physical keyboard input to the emoji search query, the same way as on-screen keys, and returns true if
+     * the app must not receive the key.
+     */
+    private fun handleEmojiSearchHardwareKey(keyCode: Int, event: KeyEvent?): Boolean {
+        val action = emojiSearchHardwareKeyAction(keyCode, event)
+        when (action) {
+            EmojiSearchHardwareKeyAction.TYPE -> {
+                event?.unicodeChar?.let { emojiSearch.type(String(Character.toChars(it))) }
+            }
+            EmojiSearchHardwareKeyAction.DELETE -> emojiSearch.deleteBackward()
+            EmojiSearchHardwareKeyAction.SPACE -> emojiSearch.type(" ")
+            EmojiSearchHardwareKeyAction.ENTER -> emojiSearch.topResult?.let { commitEmojiFromSearch(it) }
+            EmojiSearchHardwareKeyAction.IGNORE, EmojiSearchHardwareKeyAction.PASS -> Unit
+            EmojiSearchHardwareKeyAction.CLOSE -> {
+                emojiSearch.stop()
+                reevaluateInputShiftState()
+            }
+        }
+        return action.consumesKey
     }
 
     inner class KeyboardManagerResources {

@@ -23,6 +23,7 @@ import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.aspectRatio
@@ -72,6 +73,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
@@ -108,6 +110,21 @@ import kotlin.math.ceil
 private val EmojiCategoryValues = EmojiCategory.entries
 private val EmojiBaseWidth = 42.dp
 private val EmojiDefaultFontSize = 22.sp
+
+/**
+ * Emoji cells are at least this wide: 8 per row below 405dp, 9 from 405dp (such as a 411dp Pixel) and 10 from 450dp,
+ * which matches WhatsApp on a 480dp phone.
+ */
+private val EmojiMinCellSize = 45.dp
+
+/** Emoji text size relative to its cell. The glyph then fills about two thirds of the cell. */
+internal const val EmojiFontSizeToCellRatio = 0.6f
+
+/** Whether this device can draw [emoji], through EmojiCompat or the system font. */
+internal fun EmojiCompat?.canDraw(emoji: Emoji, metadataVersion: Int, systemFontPaint: Paint): Boolean {
+    return this?.getEmojiMatch(emoji.value, metadataVersion) == EmojiCompat.EMOJI_SUPPORTED ||
+        systemFontPaint.hasGlyph(emoji.value)
+}
 
 private val VariantsTriangleShapeLtr = GenericShape { size, _ ->
     moveTo(x = size.width, y = 0f)
@@ -150,8 +167,7 @@ fun EmojiPaletteView(
         fullEmojiMappings.byCategory.mapValues { (_, emojiSetList) ->
             emojiSetList.mapNotNull { emojiSet ->
                 emojiSet.emojis.filter { emoji ->
-                    emojiCompatInstance?.getEmojiMatch(emoji.value, metadataVersion) == EmojiCompat.EMOJI_SUPPORTED ||
-                        systemFontPaint.hasGlyph(emoji.value)
+                    emojiCompatInstance.canDraw(emoji, metadataVersion, systemFontPaint)
                 }.let { if (it.isEmpty()) null else EmojiSet(it) }
             }
         }
@@ -184,12 +200,16 @@ fun EmojiPaletteView(
     @Composable
     fun EmojiKeyWrapper(
         emojiSet: EmojiSet,
+        cellSize: Dp,
+        fontSize: TextUnit,
         isPinned: Boolean = false,
         isRecent: Boolean = false,
     ) {
         EmojiKey(
             emojiSet = emojiSet,
             emojiCompatInstance = emojiCompatInstance,
+            cellSize = cellSize,
+            fontSize = fontSize,
             preferredSkinTone = preferredSkinTone,
             isPinned = isPinned,
             isRecent = isRecent,
@@ -276,114 +296,118 @@ fun EmojiPaletteView(
         }
     }
 
-    Column(
-        modifier = modifier
-    ) {
-        val pagerState = rememberPagerState(
-            pageCount = { calculatePageNumbers() }
-        )
+    BoxWithConstraints(modifier = modifier) {
+        val columns = (maxWidth / EmojiMinCellSize).toInt().coerceAtLeast(1)
+        val cellSize = maxWidth / columns
+        // Sized from the cell rather than the system font scale, so emojis never outgrow or underfill their cells
+        val emojiFontSize = with(LocalDensity.current) { (cellSize * EmojiFontSizeToCellRatio).toSp() }
+        Column {
+            val pagerState = rememberPagerState(
+                pageCount = { calculatePageNumbers() }
+            )
 
-        // Reset the pager to the first page when emojiHistory is enabled
-        LaunchedEffect(emojiHistoryEnabled) {
-            pagerState.animateScrollToPage(0)
-        }
-
-        EmojiCategoriesTabRow(
-            activeCategory = activeCategory,
-            onCategoryChange = { category ->
-                activeCategory = category
-                scope.launch { pagerState.animateScrollToPage(categoryToPageNumber(activeCategory)) }
-            },
-        )
-        HorizontalPager(pagerState, beyondViewportPageCount = 1) { page ->
-            // Every page needs its own lazyGridState in order to scroll correctly
-            val lazyGridState = rememberLazyGridState()
-
-            // Update the lazyGridState and active category on scroll
-            LaunchedEffect(pagerState) {
-                snapshotFlow { pagerState.currentPage }.collect { page ->
-                    lazyGridState.scrollToItem(0)
-                    activeCategory = pageNumberToCategory(page)
-                    recentlyUsedVersion++
-                }
+            // Reset the pager to the first page when emojiHistory is enabled
+            LaunchedEffect(emojiHistoryEnabled) {
+                pagerState.animateScrollToPage(0)
             }
 
-            val category = pageNumberToCategory(page)
-            val emojiMapping = if (category == EmojiCategory.RECENTLY_USED) {
-                // Purposely using remember here to prevent recomposition, as this would cause rapid
-                // emoji changes for the user when in recently used category.
-                remember(recentlyUsedVersion) {
-                    val data = prefs.emoji.historyData.get()
+            EmojiCategoriesTabRow(
+                activeCategory = activeCategory,
+                onCategoryChange = { category ->
+                    activeCategory = category
+                    scope.launch { pagerState.animateScrollToPage(categoryToPageNumber(activeCategory)) }
+                },
+            )
+            HorizontalPager(pagerState, beyondViewportPageCount = 1) { page ->
+                // Every page needs its own lazyGridState in order to scroll correctly
+                val lazyGridState = rememberLazyGridState()
+
+                // Update the lazyGridState and active category on scroll
+                LaunchedEffect(pagerState) {
+                    snapshotFlow { pagerState.currentPage }.collect { page ->
+                        lazyGridState.scrollToItem(0)
+                        activeCategory = pageNumberToCategory(page)
+                        recentlyUsedVersion++
+                    }
+                }
+
+                val category = pageNumberToCategory(page)
+                val emojiMapping = if (category == EmojiCategory.RECENTLY_USED) {
+                    // Purposely using remember here to prevent recomposition, as this would cause rapid
+                    // emoji changes for the user when in recently used category.
+                    remember(recentlyUsedVersion) {
+                        val data = prefs.emoji.historyData.get()
+                        EmojiMappingForView(
+                            pinned = data.pinned.map { EmojiSet(listOf(it)) },
+                            recent = data.recent.map { EmojiSet(listOf(it)) },
+                            simple = emptyList(),
+                        )
+                    }
+                } else {
                     EmojiMappingForView(
-                        pinned = data.pinned.map { EmojiSet(listOf(it)) },
-                        recent = data.recent.map { EmojiSet(listOf(it)) },
-                        simple = emptyList(),
+                        pinned = emptyList(),
+                        recent = emptyList(),
+                        simple = emojiMappings[category]!!,
                     )
                 }
-            } else {
-                EmojiMappingForView(
-                    pinned = emptyList(),
-                    recent = emptyList(),
-                    simple = emojiMappings[category]!!,
-                )
-            }
 
-            val isEmojiHistoryEmpty = emojiMapping.pinned.isEmpty() && emojiMapping.recent.isEmpty()
-            when (category) {
-                EmojiCategory.RECENTLY_USED if deviceLocked -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(all = 8.dp),
-                    ) {
-                        Text(
-                            text = stringRes(R.string.emoji__history__phone_locked_message),
-                        )
-                    }
-                }
-                EmojiCategory.RECENTLY_USED if isEmojiHistoryEmpty -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(all = 8.dp),
-                    ) {
-                        Text(
-                            text = stringRes(R.string.emoji__history__empty_message),
-                        )
-                        Text(
-                            modifier = Modifier.padding(top = 8.dp),
-                            text = stringRes(R.string.emoji__history__usage_tip),
-                            fontStyle = FontStyle.Italic,
-                        )
-                    }
-                }
-                else -> key(emojiMapping) {
-                    LazyVerticalGrid(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .florisScrollbar(lazyGridState),
-                        columns = GridCells.Adaptive(minSize = EmojiBaseWidth),
-                        state = lazyGridState,
-                    ) {
-                        if (emojiMapping.pinned.isNotEmpty()) {
-                            header("header_pinned") {
-                                GridHeader(text = stringRes(R.string.emoji__history__pinned))
-                            }
-                            items(emojiMapping.pinned) { emojiSet ->
-                                EmojiKeyWrapper(emojiSet, isPinned = true)
-                            }
+                val isEmojiHistoryEmpty = emojiMapping.pinned.isEmpty() && emojiMapping.recent.isEmpty()
+                when (category) {
+                    EmojiCategory.RECENTLY_USED if deviceLocked -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(all = 8.dp),
+                        ) {
+                            Text(
+                                text = stringRes(R.string.emoji__history__phone_locked_message),
+                            )
                         }
-                        if (emojiMapping.recent.isNotEmpty()) {
-                            header("header_recent") {
-                                GridHeader(text = stringRes(R.string.emoji__history__recent))
-                            }
-                            items(emojiMapping.recent) { emojiSet ->
-                                EmojiKeyWrapper(emojiSet, isRecent = true)
-                            }
+                    }
+                    EmojiCategory.RECENTLY_USED if isEmojiHistoryEmpty -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(all = 8.dp),
+                        ) {
+                            Text(
+                                text = stringRes(R.string.emoji__history__empty_message),
+                            )
+                            Text(
+                                modifier = Modifier.padding(top = 8.dp),
+                                text = stringRes(R.string.emoji__history__usage_tip),
+                                fontStyle = FontStyle.Italic,
+                            )
                         }
-                        if (emojiMapping.simple.isNotEmpty()) {
-                            items(emojiMapping.simple) { emojiSet ->
-                                EmojiKeyWrapper(emojiSet)
+                    }
+                    else -> key(emojiMapping) {
+                        LazyVerticalGrid(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .florisScrollbar(lazyGridState),
+                            columns = GridCells.Fixed(columns),
+                            state = lazyGridState,
+                        ) {
+                            if (emojiMapping.pinned.isNotEmpty()) {
+                                header("header_pinned") {
+                                    GridHeader(text = stringRes(R.string.emoji__history__pinned))
+                                }
+                                items(emojiMapping.pinned) { emojiSet ->
+                                    EmojiKeyWrapper(emojiSet, cellSize, emojiFontSize, isPinned = true)
+                                }
+                            }
+                            if (emojiMapping.recent.isNotEmpty()) {
+                                header("header_recent") {
+                                    GridHeader(text = stringRes(R.string.emoji__history__recent))
+                                }
+                                items(emojiMapping.recent) { emojiSet ->
+                                    EmojiKeyWrapper(emojiSet, cellSize, emojiFontSize, isRecent = true)
+                                }
+                            }
+                            if (emojiMapping.simple.isNotEmpty()) {
+                                items(emojiMapping.simple) { emojiSet ->
+                                    EmojiKeyWrapper(emojiSet, cellSize, emojiFontSize)
+                                }
                             }
                         }
                     }
@@ -397,6 +421,8 @@ fun EmojiPaletteView(
 private fun EmojiKey(
     emojiSet: EmojiSet,
     emojiCompatInstance: EmojiCompat?,
+    cellSize: Dp,
+    fontSize: TextUnit,
     preferredSkinTone: EmojiSkinTone,
     isPinned: Boolean,
     isRecent: Boolean,
@@ -432,6 +458,7 @@ private fun EmojiKey(
             modifier = Modifier.align(Alignment.Center),
             text = base.value,
             emojiCompatInstance = emojiCompatInstance,
+            fontSize = fontSize,
         )
         if (variations.isNotEmpty() || isPinned || isRecent) {
             val style = rememberSnyggThemeQuery(FlorisImeUi.MediaEmojiKeyPopupExtendedIndicator.elementName)
@@ -466,6 +493,8 @@ private fun EmojiKey(
                 variations = variations,
                 visible = showVariantsBox,
                 emojiCompatInstance = emojiCompatInstance,
+                cellSize = cellSize,
+                fontSize = fontSize,
                 onEmojiTap = { emoji ->
                     onEmojiInput(emoji)
                     showVariantsBox = false
@@ -484,16 +513,16 @@ private fun EmojiVariationsPopup(
     variations: List<Emoji>,
     visible: Boolean,
     emojiCompatInstance: EmojiCompat?,
+    cellSize: Dp,
+    fontSize: TextUnit,
     onEmojiTap: (Emoji) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val emojiKeyHeight = FlorisImeSizing.smartbarHeight
-
     if (visible) {
         Popup(
             alignment = Alignment.TopCenter,
             offset = with(LocalDensity.current) {
-                val y = -emojiKeyHeight * ceil(variations.size / 6f)
+                val y = -cellSize * ceil(variations.size / 6f)
                 IntOffset(x = 0, y = y.toPx().toInt())
             },
             onDismissRequest = onDismiss,
@@ -501,7 +530,7 @@ private fun EmojiVariationsPopup(
             SnyggRow(
                 elementName = FlorisImeUi.MediaEmojiKeyPopupBox.elementName,
                 modifier = Modifier
-                    .widthIn(max = EmojiBaseWidth * 6),
+                    .widthIn(max = cellSize * 6),
             ) {
                 for (emoji in variations) {
                     SnyggBox(
@@ -510,13 +539,13 @@ private fun EmojiVariationsPopup(
                             .pointerInput(Unit) {
                                 detectTapGestures { onEmojiTap(emoji) }
                             }
-                            .width(EmojiBaseWidth)
-                            .height(emojiKeyHeight),
+                            .size(cellSize),
                     ) {
                         EmojiText(
                             modifier = Modifier.align(Alignment.Center),
                             text = emoji.value,
                             emojiCompatInstance = emojiCompatInstance,
+                            fontSize = fontSize,
                         )
                     }
                 }
@@ -645,6 +674,7 @@ fun EmojiText(
                 }
             },
             update = { view ->
+                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize.value)
                 view.text = text
             },
         )
@@ -658,6 +688,7 @@ fun EmojiText(
                 }
             },
             update = { view ->
+                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize.value)
                 view.text = text
             },
         )

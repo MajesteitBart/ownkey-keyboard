@@ -67,6 +67,10 @@ data class EmojiData(
         }
 
         private fun loadEmojiDataMap(context: Context, path: String): EmojiData {
+            return context.assets.bufferedReader(path).useLines { lines -> parse(lines) }
+        }
+
+        internal fun parse(lines: Sequence<String>): EmojiData {
             val byCategory = newByCategory()
             val bySkinTone = newBySkinTone()
 
@@ -78,39 +82,38 @@ data class EmojiData(
                 emojiEditorList = null
             }
 
-            context.assets.bufferedReader(path).useLines { lines ->
-                for (line in lines) {
-                    if (line.startsWith("#")) {
-                        // Comment line
-                    } else if (line.startsWith("[")) {
+            for (line in lines) {
+                // The keycap emoji line "#️⃣;..." also starts with "#", so only "# " marks a comment
+                if (line.startsWith("# ")) {
+                    // Comment line
+                } else if (line.startsWith("[")) {
+                    commitEmojiEditorList()
+                    ec = EmojiCategory.entries.find { it.id == line.slice(1 until (line.length - 1)) }
+                } else if (line.trim().isEmpty() || ec == null) {
+                    // Empty line
+                    continue
+                } else {
+                    if (!line.startsWith("\t")) {
                         commitEmojiEditorList()
-                        ec = EmojiCategory.entries.find { it.id == line.slice(1 until (line.length - 1)) }
-                    } else if (line.trim().isEmpty() || ec == null) {
-                        // Empty line
-                        continue
-                    } else {
-                        if (!line.startsWith("\t")) {
-                            commitEmojiEditorList()
-                        }
-                        // Assume it is a data line
-                        val data = line.split(";")
-                        if (data.size == 3) {
-                            val base = emojiEditorList?.first()
-                            val emoji = Emoji(
-                                value = data[0].trim(),
-                                name = base?.name ?: data[1].trim(),
-                                keywords = data[2].split("|").map { it.trim() },
-                            )
-                            if (emojiEditorList != null) {
-                                emojiEditorList!!.add(emoji)
-                            } else {
-                                emojiEditorList = mutableListOf(emoji)
-                            }
+                    }
+                    // Assume it is a data line
+                    val data = line.split(";")
+                    if (data.size == 3) {
+                        val base = emojiEditorList?.first()
+                        val emoji = Emoji(
+                            value = data[0].trim(),
+                            name = base?.name ?: data[1].trim(),
+                            keywords = data[2].split("|").map { it.trim() },
+                        )
+                        if (emojiEditorList != null) {
+                            emojiEditorList!!.add(emoji)
+                        } else {
+                            emojiEditorList = mutableListOf(emoji)
                         }
                     }
                 }
-                commitEmojiEditorList()
             }
+            commitEmojiEditorList()
 
             for (category in byCategory.keys) {
                 for (emojiSet in byCategory[category]!!) {

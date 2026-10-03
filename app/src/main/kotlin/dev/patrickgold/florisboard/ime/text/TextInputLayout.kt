@@ -36,6 +36,7 @@ import dev.patrickgold.florisboard.ime.window.FloatingSplitControls
 import dev.patrickgold.florisboard.ime.keyboard.SplitLayout
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSearchBar
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsStyleCache
 import dev.patrickgold.florisboard.ime.smartbar.Smartbar
@@ -92,9 +93,13 @@ fun TextInputLayout(
         val dictationFixOffered by androidx.compose.runtime.remember(dictationFixController) {
             dictationFixController.state.map { it is DictationFixState.Offered }.distinctUntilChanged()
         }.collectAsState(initial = dictationFixController.state.value is DictationFixState.Offered)
-        val showSmartbar = !compactSplit || state.isActionsOverflowVisible ||
+        val emojiSearchActive = keyboardManager.emojiSearch.isActive
+        val showSmartbar = !compactSplit || state.isActionsOverflowVisible || emojiSearchActive ||
             keyboardManager.isRewriteOptionsVisible || dictationFixChoosing || dictationFixOffered || audioSessionActive
-        if (showSmartbar) {
+        if (emojiSearchActive) {
+            // Typed keys go to the emoji search query, so its bar takes the Smartbar's place
+            EmojiSearchBar()
+        } else if (showSmartbar) {
             Smartbar()
         } else {
             FloatingSplitControls(actions = true)
