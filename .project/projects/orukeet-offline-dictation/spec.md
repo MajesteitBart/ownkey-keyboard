@@ -4,7 +4,7 @@ slug: orukeet-offline-dictation
 owner: ownkey-keyboard-team
 status: active
 created: 2026-09-15T10:30:28Z
-updated: 2026-09-15T22:34:27Z
+updated: 2026-10-03T07:20:00Z
 outcome: Users on validated Android phones can explicitly download and activate Orukeet, dictate short phrases offline, and remove the model, with no more than 5% regression in typing and keyboard-open p95 latency.
 uncertainty: high
 probe_required: true
@@ -19,7 +19,7 @@ Add **Orukeet (on device)** under Settings -> AI -> Dictation. Orukeet is speech
 
 The first release handles bounded recordings followed by completed transcripts. Reuse the mic, pause/resume, cancel, insertion, and voice-rewrite review flows. Local dictation requires microphone permission and verified model files, but no API key or network. Voice rewrite can transcribe the instruction locally and then send instruction text and selected text to the configured cloud LLM.
 
-The user authorized full implementation after the emulator probe. The integrated app now includes model lifecycle controls, pinned downloads, session snapshots and conventional-process inference. The isolated path failed model reopening and M4A decoding. Physical acceptance remains pending and public enablement stays gated. See [implementation verification](research/implementation-verification.md), [initial probe findings](research/emulator-runtime.md) and [the delivery plan](plan.md).
+The user authorized full implementation after the emulator probe. The integrated app now includes model lifecycle controls, pinned downloads, session snapshots and conventional-process inference. The isolated path failed model reopening and M4A decoding. Physical acceptance remains pending. On 2026-10-03 the project owner enabled the public download for arm64 installs in 0.10.0 before those gates were measured; see the decision log. See [implementation verification](research/implementation-verification.md), [initial probe findings](research/emulator-runtime.md) and [the delivery plan](plan.md).
 
 ## Problem and Users
 

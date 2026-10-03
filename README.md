@@ -25,7 +25,7 @@
 
 # Ownkey Keyboard
 
-Ownkey is an open-source Android keyboard with voice dictation and AI rewrite built in. You bring your own API key. Dictation audio and rewrite requests go straight from your phone to the provider you configure. There is no Ownkey account and no Ownkey server in between.
+Ownkey is an open-source Android keyboard with voice dictation and AI rewrite built in. You bring your own API key, or you dictate on the phone itself with Orukeet, a speech model you download once. Cloud dictation audio and rewrite requests go straight from your phone to the provider you configure. There is no Ownkey account and no Ownkey server in between.
 
 Ownkey is a fork of [FlorisBoard](https://github.com/florisboard/florisboard), so it keeps FlorisBoard's layouts, themes, clipboard and glide typing. On top of that it adds dictation, rewrite, a rebuilt English and Dutch autocorrect, a floating split keyboard for tablets and a voice-only mode.
 
@@ -33,7 +33,7 @@ Ownkey is a fork of [FlorisBoard](https://github.com/florisboard/florisboard), s
 
 Download the APK for your phone from the [latest release](https://github.com/MajesteitBart/ownkey-keyboard/releases/latest). Almost every current phone needs `arm64-v8a`. Older 32-bit phones need `armeabi-v7a`, and the `x86_64` and `x86` builds are for emulators. Each release lists the checksums in `SHA256SUMS`.
 
-Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. In release builds, dictation and rewrite use a cloud provider, so they need an API key. [Set up AI](#set-up-ai) walks through it.
+Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. Rewrite uses a cloud provider and needs an API key. Dictation can use a cloud provider as well, or [Orukeet on the phone](#on-device-dictation) on 64-bit ARM phones. [Set up AI](#set-up-ai) walks through it.
 
 ## What it does
 
@@ -49,7 +49,7 @@ Ownkey learns your own word sequences to improve predictions. That data stays on
 
 ### Dictation
 
-Tap the microphone, speak and tap stop. Ownkey inserts the transcript at the cursor. Dictation uses Mistral Voxtral by default, and you can point it at another compatible transcription endpoint and model.
+Tap the microphone, speak and tap stop. Ownkey inserts the transcript at the cursor. Dictation uses Mistral Voxtral by default, and you can point it at another compatible transcription endpoint and model. On 64-bit ARM phones you can also download Orukeet and dictate without a connection. Words then appear while you talk. See [On-device dictation](#on-device-dictation).
 
 The personal dictionary under **Settings → AI** helps with names and jargon. With Mistral and OpenAI, saved words go along as recognition hints. Saved corrections are applied to every transcript, and filler words can be removed. When dictation mishears a word, "Fix a word" on the keyboard turns it into a saved correction.
 
@@ -88,15 +88,19 @@ Ownkey stores API keys encrypted on the phone, using Android Keystore. [VOXTRAL_
 | What you do | What leaves the phone |
 | --- | --- |
 | Type | No AI requests. Suggestions, autocorrect and learning run on the phone. |
-| Dictate | The recording goes to your dictation endpoint. By default, Mistral and OpenAI endpoints also get your personal dictionary words as hints. The personal dictionary settings can turn this off or send hints to any endpoint. |
+| Dictate with a cloud provider | The recording goes to your dictation endpoint. By default, Mistral and OpenAI endpoints also get your personal dictionary words as hints. The personal dictionary settings can turn this off or send hints to any endpoint. |
+| Dictate with Orukeet | Nothing. The recording is transcribed on the phone. |
+| Download Orukeet | The model files come from this repository's GitHub releases, so GitHub sees the download. |
 | Rewrite | The selected text and the instruction go to your rewrite endpoint. |
-| Rewrite by voice | The spoken instruction goes to your dictation endpoint. The selected text and the recognized instruction then go to your rewrite endpoint. |
+| Rewrite by voice | The spoken instruction goes to your dictation endpoint, or stays on the phone with Orukeet. The selected text and the recognized instruction then go to your rewrite endpoint. |
 
 Ownkey doesn't operate a relay of its own and doesn't add monitoring of what you type or say. Once a request reaches your provider, that provider's privacy policy, retention terms and billing apply.
 
 ### On-device dictation
 
-Debug and beta builds include Orukeet, an on-device speech model that transcribes Dutch and English without an API key or internet connection. The audio stays on the phone. It's a 672 MB download. Public releases don't include it yet, because testing on physical phones isn't finished.
+Orukeet is a speech model that transcribes Dutch and English on the phone, without an API key or internet connection. The audio stays on the phone. Open **Settings → AI**, download the model under **Orukeet (on device)** and activate it. The download is 672 MB, and the first installation needs about 940 MB of free storage. You can delete the model or switch back to cloud dictation from the same card.
+
+Orukeet runs on 64-bit ARM phones, which means the `arm64-v8a` APK. The card doesn't appear on other devices. Testing on physical phones is still limited, so speed and memory use on older or low-memory phones are not measured yet.
 
 ## Build from source
 
@@ -112,8 +116,8 @@ On Windows, use `.\gradlew.bat` instead of `./gradlew`.
 
 | Build type | Package | Notes |
 | --- | --- | --- |
-| `debug` | `nl.bartvandermeeren.ownkey.debug` | Installs next to the release app. Includes Orukeet. |
-| `beta` | `nl.bartvandermeeren.ownkey.beta` | Minified and signed with the debug key. Includes Orukeet. |
+| `debug` | `nl.bartvandermeeren.ownkey.debug` | Installs next to the release app. Orukeet also runs on x86_64 emulators. |
+| `beta` | `nl.bartvandermeeren.ownkey.beta` | Minified and signed with the debug key. Shows Orukeet failure details. |
 | `release` | `nl.bartvandermeeren.ownkey` | Signed with the key in `keystore.properties` if present, otherwise with the debug key. |
 
 APKs are split per processor type. Pass `-Pownkey.apkSplits=false` to build a single APK. The [Android CI workflow](.github/workflows/android.yml) builds the phone and Wear apps for every pull request to `main`.

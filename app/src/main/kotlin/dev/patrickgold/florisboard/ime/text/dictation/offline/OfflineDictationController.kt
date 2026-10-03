@@ -46,9 +46,8 @@ class OfflineDictationController(private val app: FlorisApplication) {
         store.reconcile()
         publish()
     }
-    // Experimental internal builds can gather phone evidence. Public support requires a validated device policy.
     val compatible: Boolean get() = supportsOrukeetRuntime(
-        BuildConfig.ORUKEET_INTERNAL, BuildConfig.DEBUG, android.os.Process.is64Bit(), Build.SUPPORTED_ABIS.toList(),
+        BuildConfig.DEBUG, android.os.Process.is64Bit(), Build.SUPPORTED_ABIS.toList(),
     )
     val selected: Boolean get() = prefs.voxtral.dictationBackend.get() == TranscriptionBackend.ORUKEET.preference
     val ready: Boolean get() = compatible && store.currentId != null && state.value.phase !in setOf(ModelPhase.ACTIVATING, ModelPhase.REMOVING)

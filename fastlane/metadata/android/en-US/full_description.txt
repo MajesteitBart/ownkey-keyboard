@@ -1,4 +1,4 @@
-Ownkey Keyboard is an open-source Android keyboard with voice dictation and AI rewrite built in. You bring your own API key, and your requests go straight to the provider you choose. There is no Ownkey account and no Ownkey server in between.
+Ownkey Keyboard is an open-source Android keyboard with voice dictation and AI rewrite built in. You bring your own API key, and your requests go straight to the provider you choose. Or you dictate on the phone itself with a speech model you download once. There is no Ownkey account and no Ownkey server in between.
 
 Typing in English and Dutch
 • Autocorrect fixes typos when you press space, based on nearby keys, where you tapped and the word before
@@ -14,6 +14,7 @@ Keyboard layouts for many other languages come from FlorisBoard. The rebuilt aut
 Dictate instead of typing
 • Tap the microphone, speak, and the transcript appears at your cursor
 • Uses Mistral Voxtral by default, or another compatible transcription service
+• On-device dictation with Orukeet: download the 672 MB model once, then dictate Dutch and English without an internet connection or API key, and watch the words appear while you talk. Needs a 64-bit ARM phone.
 • A personal dictionary for names and jargon, with saved corrections and filler word removal
 • Voice-only mode swaps the keyboard for a small dictation bar
 
@@ -33,7 +34,7 @@ Your keys, your provider
 • Learning pauses in incognito mode and password fields
 • Ownkey adds no monitoring of what you type or say
 
-Dictation and rewrite send your audio or text to the provider you set up, and that provider's privacy policy, retention terms and billing apply. You need an API key from that provider. A ChatGPT or Claude app subscription doesn't include API access.
+With Orukeet, dictation audio stays on your phone. Cloud dictation and rewrite send your audio or text to the provider you set up, and that provider's privacy policy, retention terms and billing apply. They need an API key from that provider. A ChatGPT or Claude app subscription doesn't include API access. Voice rewrite always sends the selected text and your instruction to your rewrite provider, also when Orukeet recognizes the instruction.
 
 Open source
 Ownkey is based on FlorisBoard and released under the Apache 2.0 license. Read the code at https://github.com/MajesteitBart/ownkey-keyboard
