@@ -642,6 +642,7 @@
     <string name="pref__voxtral__api_key__status_set" comment="Status text shown when the cloud dictation API key is configured">Dictation API key saved.</string>
     <string name="pref__voxtral__api_key__status_missing" comment="Status text shown when the cloud dictation API key is missing">No dictation API key yet.</string>
     <string name="pref__voxtral__api_key__save_action" comment="Button label to save the cloud dictation API key">Save API key</string>
+    <string name="pref__voxtral__api_key__save_failed" comment="Toast when the dictation settings could not be stored, so the API key was not saved">Couldn\'t save the API key. Try again.</string>
     <string name="pref__voxtral__api_key__clear_action" comment="Button label to remove the cloud dictation API key">Remove API key</string>
     <string name="pref__voxtral__endpoint__label" comment="Label of the cloud dictation endpoint URL text field">Endpoint URL</string>
     <string name="pref__voxtral__endpoint__summary" comment="Supporting text under the cloud dictation endpoint field">Mistral by default. Any OpenAI-compatible transcription endpoint works, including a self-hosted one.</string>
@@ -668,7 +669,7 @@
     <string name="pref__ai__overview_provider_model" comment="AI overview value; {provider} is a provider name, {model} a model name">{provider} · {model}</string>
     <string name="pref__ai__overview_key_missing" comment="AI overview value; {provider} is a provider name">{provider} · API key missing</string>
     <string name="pref__ai__overview_endpoint_missing" comment="AI overview value; {provider} is a provider name">{provider} · endpoint or model missing</string>
-    <string name="pref__ai__overview_endpoint_invalid" comment="AI overview value when the rewrite endpoint has no http(s) scheme; {provider} is a provider name">{provider} · endpoint must start with https://</string>
+    <string name="pref__ai__overview_endpoint_invalid" comment="AI overview value when the rewrite endpoint has no http(s) scheme; {provider} is a provider name">{provider} · endpoint must start with http:// or https://</string>
     <string name="pref__ai__overview_not_set_up" comment="AI overview value when no dictation provider is usable">Not set up</string>
     <string name="pref__ai__api_key__section" comment="Section label above an API key field">API key</string>
     <string name="pref__ai__dictation_group__label" comment="Title of the dictation provider choice">Dictation</string>
@@ -812,6 +813,7 @@
     <string name="rewrite_panel__action_insert">Insert</string>
     <string name="rewrite_panel__action_back_to_options">Back to options</string>
     <string name="rewrite_panel__state_inserted">Inserted</string>
+    <string name="rewrite_panel__text_changed_copied" comment="Toast when the text changed while a rewrite was generated, so the result was copied instead of inserted">Your text changed, so the rewrite was copied instead. Paste it where you want it.</string>
     <string name="rewrite_panel__state_rewriting" comment="Generic generating label with no named voice">Rewriting…</string>
     <string name="rewrite_panel__state_rewriting_with_voice" comment="Generating label naming the chosen rewrite voice">Rewriting — {voice}…</string>
     <string name="rewrite_panel__smartbar_title" comment="Quiet smartbar title while the AI rewrite panel replaces the keyboard">AI rewrite</string>

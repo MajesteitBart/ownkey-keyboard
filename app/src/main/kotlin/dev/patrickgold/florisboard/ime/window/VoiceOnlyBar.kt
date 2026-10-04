@@ -154,6 +154,7 @@ internal fun voiceBarLayout(maxBarWidth: Dp, languageAvailable: Boolean): VoiceB
  */
 internal fun <T> nextLanguage(items: List<T>, active: T, language: (T) -> String): T? {
     val start = items.indexOf(active)
+    if (start < 0) return null
     val activeLanguage = language(active)
     for (step in 1 until items.size) {
         val candidate = items[(start + step).mod(items.size)]

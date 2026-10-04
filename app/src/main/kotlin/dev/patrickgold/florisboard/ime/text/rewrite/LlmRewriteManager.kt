@@ -18,7 +18,9 @@ package dev.patrickgold.florisboard.ime.text.rewrite
 
 import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.appContext
+import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.keyboardManager
@@ -60,15 +62,18 @@ class LlmRewriteManager(
         val resultText: String? = null,
     )
 
+    /** The captured text and where it was, plus the identity checked again right before replacing it. */
     private data class RewriteTarget(
         val text: String,
         val start: Int,
         val end: Int,
+        val snapshot: VoiceRewriteTargetSnapshot,
     )
 
     private val appContext by context.appContext()
     private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
+    private val clipboardManager by context.clipboardManager()
     private val prefs by FlorisPreferenceStore
     private val secretsStore = LlmRewriteSecretsStore(appContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -87,12 +92,17 @@ class LlmRewriteManager(
     private var activeTargeting = false
 
     // Created on first use, so the editor is only touched once a preset is tapped.
+    private val targetGateway by lazy { EditorInstanceVoiceRewriteGateway(editorInstance) }
     private val targeting by lazy {
         PresetRewriteTargeting(
-            source = VoiceRewriteTargetResolver(EditorInstanceVoiceRewriteGateway(editorInstance)),
+            source = VoiceRewriteTargetResolver(targetGateway),
             editor = object : PresetRewriteEditor {
                 override val sessionId: Long get() = editorInstance.activeInputSessionId
                 override val selection: EditorRange get() = editorInstance.activeContent.selection
+                override val selectionReachesFieldEnd: Boolean
+                    get() = editorInstance.activeContent.let {
+                        it.selection.isSelectionMode && it.textAfterSelection.isEmpty()
+                    }
                 override fun setSelection(range: EditorRange): Boolean =
                     editorInstance.setSelection(range.start, range.end)
             },
@@ -135,7 +145,7 @@ class LlmRewriteManager(
             when (val resolution = targeting.capture()) {
                 is VoiceRewriteTargetResolution.Resolved -> {
                     val snapshot = resolution.snapshot
-                    val target = RewriteTarget(snapshot.sourceText, snapshot.range.start, snapshot.range.end)
+                    val target = RewriteTarget(snapshot.sourceText, snapshot.range.start, snapshot.range.end, snapshot)
                     activeTarget = target
                     runGeneration(prompt, target)
                 }
@@ -178,6 +188,16 @@ class LlmRewriteManager(
         val resultText = state.resultText ?: return
         val target = activeTarget ?: return
         generateJob = scope.launch {
+            // The field may have changed while the result was generated, for example by autofill or the app itself.
+            // Replacing the old range then would overwrite newer text, so the result goes to the clipboard instead.
+            if (target.snapshot.verify(targetGateway.currentFrame()) != null) {
+                clipboardManager.addNewPlaintext(resultText)
+                appContext.showShortToastSync(R.string.rewrite_panel__text_changed_copied)
+                activeTarget = null
+                abandonTarget()
+                _uiStateFlow.value = RewriteUiState()
+                return@launch
+            }
             val selected = editorInstance.setSelection(target.start, target.end)
             val committed = selected && editorInstance.commitText(resultText)
             if (!committed) {

@@ -90,6 +90,7 @@ import dev.patrickgold.florisboard.lib.util.launchUrl
 import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.compose.stringRes
 import java.net.URI
 
@@ -217,10 +218,21 @@ fun VoxtralScreen() = FlorisScreen {
                             label = stringRes(R.string.pref__voxtral__api_key__save_action),
                             onClick = {
                                 val normalizedApiKey = apiKeyInput.trim()
-                                voxtralSecretsStore.setApiKey(normalizedApiKey)
-                                apiKeyInput = ""
-                                hasStoredApiKey = voxtralSecretsStore.hasApiKey()
+                                val keep = TranscriptionBackend.choiceToKeepOnKeySave(
+                                    selectedBackend,
+                                    hasStoredApiKey,
+                                    BuildConfig.DEBUG,
+                                )
                                 coroutineScope.launch {
+                                    // The shown choice is stored before the key: a key without it would let an
+                                    // undecided install send its next recording to the cloud.
+                                    if (keep != null && prefsRef.voxtral.dictationBackend.set(keep.preference).isFailure) {
+                                        context.showShortToast(R.string.pref__voxtral__api_key__save_failed)
+                                        return@launch
+                                    }
+                                    voxtralSecretsStore.setApiKey(normalizedApiKey)
+                                    apiKeyInput = ""
+                                    hasStoredApiKey = voxtralSecretsStore.hasApiKey()
                                     prefsRef.voxtral.apiKey.set("")
                                 }
                             },

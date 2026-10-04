@@ -109,5 +109,9 @@ class VoiceOnlyBarTest : FunSpec({
             nextLanguage(listOf("en-qwerty", "en-dvorak"), "en-qwerty", language) shouldBe null
             nextLanguage(listOf("en-qwerty"), "en-qwerty", language) shouldBe null
         }
+
+        test("an active layout missing from the list offers nothing rather than a guess") {
+            nextLanguage(layouts, "fr-azerty", language) shouldBe null
+        }
     }
 })

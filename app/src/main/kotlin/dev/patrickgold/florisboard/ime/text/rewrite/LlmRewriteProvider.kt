@@ -41,7 +41,8 @@ data class ResolvedRewriteProvider(
     val isComplete: Boolean get() = endpointUrl.isNotBlank() && model.isNotBlank()
 
     /** Requests only go to http(s) URLs, so an endpoint typed without a scheme can't be used. */
-    val hasHttpEndpoint: Boolean get() = endpointUrl.startsWith("https://") || endpointUrl.startsWith("http://")
+    val hasHttpEndpoint: Boolean
+        get() = endpointUrl.startsWith("https://", ignoreCase = true) || endpointUrl.startsWith("http://", ignoreCase = true)
 }
 
 object LlmRewriteProviders {

@@ -26,6 +26,8 @@ import kotlinx.coroutines.launch
 internal interface PresetRewriteEditor {
     val sessionId: Long
     val selection: EditorRange
+    /** If [selection] runs to the end of the field, as a Select All does. */
+    val selectionReachesFieldEnd: Boolean
     fun setSelection(range: EditorRange): Boolean
 }
 
@@ -35,8 +37,8 @@ internal interface PresetRewriteEditor {
  * cursor back when the rewrite is abandoned; otherwise the next keystroke would replace all of the user's text.
  *
  * Only the selection this capture made is undone. Select All is asynchronous, so before the resolver confirms it
- * the capture's selection is recognised by its shape: it starts at the beginning of the field and covers the
- * original cursor. A different selection made by the user is left alone.
+ * the capture's selection is recognised by its shape: it spans the whole field, from the start to the end. Any
+ * other selection the user makes is left alone.
  */
 internal class PresetRewriteTargeting(
     private val source: VoiceRewriteTargetSource,
@@ -117,6 +119,7 @@ internal class PresetRewriteTargeting(
 
     private fun isOurs(selection: EditorRange, restore: PendingRestore): Boolean {
         restore.captured?.let { return selection == it }
-        return selection.isSelectionMode && selection.start == 0 && selection.end >= restore.cursor.end
+        return selection.isSelectionMode && selection.start == 0 && selection.end >= restore.cursor.end &&
+            editor.selectionReachesFieldEnd
     }
 }

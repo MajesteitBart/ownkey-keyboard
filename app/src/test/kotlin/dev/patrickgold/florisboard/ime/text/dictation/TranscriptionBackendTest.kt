@@ -34,4 +34,15 @@ class TranscriptionBackendTest : FunSpec({
         backend shouldBe TranscriptionBackend.EXTERNAL_IME
         backend.speechDictionaryUse(hasCloudKey = false, localModelReady = false) shouldBe SpeechDictionaryUse.SYSTEM_VOICE_INPUT
     }
+
+    test("saving a cloud key keeps an undecided install on system voice input") {
+        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = false, debug = false) shouldBe TranscriptionBackend.EXTERNAL_IME
+    }
+
+    test("saving a cloud key leaves an explicit choice, an existing key and debug demo dictation alone") {
+        TranscriptionBackend.choiceToKeepOnKeySave("orukeet", hasCloudKey = false, debug = false) shouldBe null
+        TranscriptionBackend.choiceToKeepOnKeySave("external", hasCloudKey = false, debug = false) shouldBe null
+        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = true, debug = false) shouldBe null
+        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = false, debug = true) shouldBe null
+    }
 })
