@@ -16,6 +16,8 @@
 
 package dev.patrickgold.florisboard.ime.text.rewrite
 
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
+
 data class LlmRewriteProviderPreset(
     val id: String,
     val label: String,
@@ -41,8 +43,7 @@ data class ResolvedRewriteProvider(
     val isComplete: Boolean get() = endpointUrl.isNotBlank() && model.isNotBlank()
 
     /** Requests only go to http(s) URLs, so an endpoint typed without a scheme can't be used. */
-    val hasHttpEndpoint: Boolean
-        get() = endpointUrl.startsWith("https://", ignoreCase = true) || endpointUrl.startsWith("http://", ignoreCase = true)
+    val hasHttpEndpoint: Boolean get() = NetworkUtils.hasHttpScheme(endpointUrl)
 }
 
 object LlmRewriteProviders {

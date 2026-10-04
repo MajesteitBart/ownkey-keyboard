@@ -86,6 +86,7 @@ import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteSecretsStore
 import dev.patrickgold.florisboard.ime.text.rewrite.ResolvedRewriteProvider
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.util.launchUrl
 import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -159,7 +160,7 @@ fun VoxtralScreen() = FlorisScreen {
             endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
         ) ?: stringRes(R.string.voice_rewrite__provider_custom)
         val cloudModel = model.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultModel }
-        val cloudEndpointValid = VoxtralRelayTranscriptionClient.hasHttpScheme(
+        val cloudEndpointValid = NetworkUtils.hasHttpScheme(
             endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
         )
         val effectiveRewrite = LlmRewriteProviders.resolve(rewriteProviderId, rewriteEndpointUrl, rewriteModel)

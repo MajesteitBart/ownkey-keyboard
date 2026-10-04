@@ -19,6 +19,7 @@ package dev.patrickgold.florisboard.ime.text.dictation
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyField
 import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyHints
 import dev.patrickgold.florisboard.ime.text.network.withCancellableHttpConnection
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.util.OwnkeyBatteryTraceLabels
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -158,10 +159,6 @@ class VoxtralRelayTranscriptionClient(
     companion object {
         const val DefaultEndpointUrl = "https://api.mistral.ai/v1/audio/transcriptions"
         const val DefaultModel = "voxtral-mini-latest"
-
-        /** Requests only go to http(s) URLs, whatever the letter case. Settings use it to show readiness. */
-        fun hasHttpScheme(endpointUrl: String): Boolean =
-            endpointUrl.startsWith("https://", ignoreCase = true) || endpointUrl.startsWith("http://", ignoreCase = true)
     }
 
     private data class PreparedRequest(
@@ -234,7 +231,7 @@ class VoxtralRelayTranscriptionClient(
         }
 
         val endpointUrl = endpointUrlProvider().trim().ifBlank { DefaultEndpointUrl }
-        if (!hasHttpScheme(endpointUrl)) {
+        if (!NetworkUtils.hasHttpScheme(endpointUrl)) {
             return Result.failure(IllegalStateException("Endpoint URL must start with https:// or http://"))
         }
 

@@ -1,5 +1,6 @@
 package dev.patrickgold.florisboard.ime.text.dictation
 
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 
@@ -50,9 +51,9 @@ class TranscriptionBackendTest : FunSpec({
     }
 
     test("a cloud endpoint must use http or https, in any letter case") {
-        VoxtralRelayTranscriptionClient.hasHttpScheme("https://api.mistral.ai/v1/audio/transcriptions") shouldBe true
-        VoxtralRelayTranscriptionClient.hasHttpScheme("http://localhost:8000/v1/audio/transcriptions") shouldBe true
-        VoxtralRelayTranscriptionClient.hasHttpScheme("HTTPS://api.mistral.ai/v1/audio/transcriptions") shouldBe true
-        VoxtralRelayTranscriptionClient.hasHttpScheme("api.example.com/v1/audio") shouldBe false
+        NetworkUtils.hasHttpScheme("https://api.mistral.ai/v1/audio/transcriptions") shouldBe true
+        NetworkUtils.hasHttpScheme("http://localhost:8000/v1/audio/transcriptions") shouldBe true
+        NetworkUtils.hasHttpScheme("HTTPS://api.mistral.ai/v1/audio/transcriptions") shouldBe true
+        NetworkUtils.hasHttpScheme("api.example.com/v1/audio") shouldBe false
     }
 })

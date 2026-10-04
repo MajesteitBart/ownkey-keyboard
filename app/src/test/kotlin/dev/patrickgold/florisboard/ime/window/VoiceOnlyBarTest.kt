@@ -74,12 +74,12 @@ class VoiceOnlyBarTest : FunSpec({
         }
 
         test("a small screen narrows the status column so every button still fits") {
-            // 12 dp padding, a 44 dp mic, three 40 dp buttons and four 8 dp gaps leave 96 dp of a 304 dp bar.
-            voiceBarLayout(maxBarWidth = 304.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, true, 96.dp)
+            // 12 dp padding, a 44 dp mic, three 48 dp touch areas and four 4 dp gaps leave 88 dp of a 304 dp bar.
+            voiceBarLayout(maxBarWidth = 304.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, true, 88.dp)
         }
 
         test("a narrow window drops the language button before the status gets unreadable") {
-            voiceBarLayout(maxBarWidth = 260.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, false, 100.dp)
+            voiceBarLayout(maxBarWidth = 260.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, false, 96.dp)
         }
 
         test("a very narrow window keeps only the mic and the keyboard button") {

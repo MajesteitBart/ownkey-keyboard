@@ -119,9 +119,11 @@ private val BarHeight = 56.dp
 private val BarBottomMargin = 16.dp
 private val BarEdgeMargin = 8.dp
 private val BarPadding = 6.dp
-private val BarSpacing = 8.dp
+private val BarSpacing = 4.dp
 private val MicSize = 44.dp
-private val ButtonSize = 40.dp
+/** Touch area of a round button: Android's 48 dp minimum, around a [ButtonCircleSize] circle. */
+private val ButtonSize = 48.dp
+private val ButtonCircleSize = 40.dp
 private val MinStatusWidth = 72.dp
 private val MaxStatusWidth = 120.dp
 
@@ -422,14 +424,21 @@ private fun VoiceOnlyButton(
     Box(
         modifier = Modifier
             .size(ButtonSize)
-            .graphicsLayer { alpha = if (enabled) 1f else 0.38f }
             .clip(CircleShape)
-            .background(background)
             .clickable(enabled = enabled, onClickLabel = actionLabel, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-        content = content,
-    )
+    ) {
+        Box(
+            modifier = Modifier
+                .size(ButtonCircleSize)
+                .graphicsLayer { alpha = if (enabled) 1f else 0.38f }
+                .clip(CircleShape)
+                .background(background),
+            contentAlignment = Alignment.Center,
+            content = content,
+        )
+    }
 }
 
 @Composable
