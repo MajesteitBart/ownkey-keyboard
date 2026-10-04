@@ -63,17 +63,6 @@ Ownkey.ai.rewrite.request
 
 The labels identify operation state only. They never include typed/selected text, recognized speech, generated output, endpoint URLs, provider bodies, API keys, audio metadata, or content-derived lengths/fingerprints.
 
-## Wear OS companion
-
-The Wear companion runs on a different device and UID, so phone traces and the phone Macrobenchmark do not include its energy use. Select the watch as the ADB/Profiler target and search its System Trace for:
-
-```text
-Ownkey.wear.voice.recording
-Ownkey.wear.ai.transcription.request
-```
-
-The Wear release manifest is shell-profileable. Leaving the Wear activity or keyboard now cancels an active recording/request, and request cancellation disconnects the blocking HTTP connection rather than waiting for the 90-second read timeout.
-
 ## Longer Batterystats capture
 
 For a longer real-world session, follow Android's current Batterystats workflow:

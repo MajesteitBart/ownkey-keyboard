@@ -21,11 +21,6 @@ on:
           - debug
           - beta
           - release
-      include_wear:
-        description: "Also build Wear artifacts"
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   contents: write
@@ -71,13 +66,10 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             BUILD_TYPE="${{ github.event.inputs.build_type }}"
-            INCLUDE_WEAR="${{ github.event.inputs.include_wear }}"
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             BUILD_TYPE="release"
-            INCLUDE_WEAR="true"
           else
             BUILD_TYPE="debug"
-            INCLUDE_WEAR="true"
           fi
 
           BUILD_TYPE="${BUILD_TYPE,,}"
@@ -85,15 +77,9 @@ jobs:
           APP_APK_TASK=":app:assemble${BUILD_TYPE_CAP}"
 
           if [[ "${BUILD_TYPE}" == "release" ]]; then
-            WEAR_BUILD_TYPE="release"
-            WEAR_APK_TASK=":wear:assembleRelease"
             APP_BUNDLE_TASK=":app:bundleRelease"
-            WEAR_BUNDLE_TASK=":wear:bundleRelease"
           else
-            WEAR_BUILD_TYPE="debug"
-            WEAR_APK_TASK=":wear:assembleDebug"
             APP_BUNDLE_TASK=""
-            WEAR_BUNDLE_TASK=""
           fi
 
           VERSION=$(grep '^projectVersionName=' gradle.properties | cut -d= -f2 | tr -d '\r')
@@ -102,75 +88,42 @@ jobs:
           echo "commit=${COMMIT}" >> "$GITHUB_OUTPUT"
 
           echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
-          echo "wear_build_type=${WEAR_BUILD_TYPE}" >> "$GITHUB_OUTPUT"
           echo "app_apk_task=${APP_APK_TASK}" >> "$GITHUB_OUTPUT"
-          echo "wear_apk_task=${WEAR_APK_TASK}" >> "$GITHUB_OUTPUT"
           echo "app_bundle_task=${APP_BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
-          echo "wear_bundle_task=${WEAR_BUNDLE_TASK}" >> "$GITHUB_OUTPUT"
-          echo "include_wear=${INCLUDE_WEAR}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
           echo "Selected app APK task: ${APP_APK_TASK}"
-          if [[ "${INCLUDE_WEAR}" == "true" ]]; then
-            echo "Selected wear APK task: ${WEAR_APK_TASK}"
-          fi
           if [[ -n "${APP_BUNDLE_TASK}" ]]; then
             echo "Selected app AAB task: ${APP_BUNDLE_TASK}"
-          fi
-          if [[ -n "${WEAR_BUNDLE_TASK}" && "${INCLUDE_WEAR}" == "true" ]]; then
-            echo "Selected wear AAB task: ${WEAR_BUNDLE_TASK}"
           fi
           echo "Version: ${VERSION}"
 
       - name: Build phone APK with Gradle
         run: ./gradlew clean ${{ steps.vars.outputs.app_apk_task }} --stacktrace
 
-      - name: Build wear APK with Gradle
-        if: ${{ steps.vars.outputs.include_wear == 'true' }}
-        run: ./gradlew ${{ steps.vars.outputs.wear_apk_task }} --stacktrace
-
       - name: Build phone release AAB
         if: ${{ steps.vars.outputs.app_bundle_task != '' }}
         run: ./gradlew ${{ steps.vars.outputs.app_bundle_task }} -Pownkey.apkSplits=false --stacktrace
-
-      - name: Build wear release AAB
-        if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
-        run: ./gradlew ${{ steps.vars.outputs.wear_bundle_task }} --stacktrace
 
       - name: Prepare versioned distributables
         id: package
         shell: bash
         run: |
           rm -rf dist
-          mkdir -p dist/phone dist/wear
+          mkdir -p dist/phone
 
           BUILD_TYPE="${{ steps.vars.outputs.build_type }}"
-          WEAR_BUILD_TYPE="${{ steps.vars.outputs.wear_build_type }}"
           VERSION="${{ steps.vars.outputs.version }}"
           SHORT_SHA="${{ steps.vars.outputs.short_sha }}"
 
           python3 .github/scripts/package-phone.py --build-type "$BUILD_TYPE" --version "$VERSION" --sha "$SHORT_SHA" >> "$GITHUB_OUTPUT"
-
-          if [[ "${{ steps.vars.outputs.include_wear }}" == "true" ]]; then
-            WEAR_APK_SRC=$(ls wear/build/outputs/apk/${WEAR_BUILD_TYPE}/*.apk | head -n1)
-            WEAR_APK_NAME="ownkey-wear-${WEAR_BUILD_TYPE}-v${VERSION}-${SHORT_SHA}.apk"
-            cp "$WEAR_APK_SRC" "dist/wear/${WEAR_APK_NAME}"
-            echo "wear_apk=dist/wear/${WEAR_APK_NAME}" >> "$GITHUB_OUTPUT"
-          fi
 
           if [[ -n "${{ steps.vars.outputs.app_bundle_task }}" ]]; then
             APP_AAB_SRC=$(ls app/build/outputs/bundle/release/*.aab | head -n1)
             APP_AAB_NAME="ownkey-phone-release-v${VERSION}-${SHORT_SHA}.aab"
             cp "$APP_AAB_SRC" "dist/phone/${APP_AAB_NAME}"
             echo "app_aab=dist/phone/${APP_AAB_NAME}" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [[ "${{ steps.vars.outputs.include_wear }}" == "true" && -n "${{ steps.vars.outputs.wear_bundle_task }}" ]]; then
-            WEAR_AAB_SRC=$(ls wear/build/outputs/bundle/release/*.aab | head -n1)
-            WEAR_AAB_NAME="ownkey-wear-release-v${VERSION}-${SHORT_SHA}.aab"
-            cp "$WEAR_AAB_SRC" "dist/wear/${WEAR_AAB_NAME}"
-            echo "wear_aab=dist/wear/${WEAR_AAB_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
           python3 - <<'PY'
@@ -192,28 +145,12 @@ jobs:
           path: dist/phone/*.apk
           if-no-files-found: error
 
-      - name: Upload wear APK artifact
-        if: ${{ steps.vars.outputs.include_wear == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ownkey-wear-${{ steps.vars.outputs.wear_build_type }}-v${{ steps.vars.outputs.version }}
-          path: ${{ steps.package.outputs.wear_apk }}
-          if-no-files-found: error
-
       - name: Upload phone release AAB artifact
         if: ${{ steps.vars.outputs.app_bundle_task != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: ownkey-phone-release-aab-v${{ steps.vars.outputs.version }}
           path: ${{ steps.package.outputs.app_aab }}
-          if-no-files-found: error
-
-      - name: Upload wear release AAB artifact
-        if: ${{ steps.vars.outputs.include_wear == 'true' && steps.vars.outputs.wear_bundle_task != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ownkey-wear-release-aab-v${{ steps.vars.outputs.version }}
-          path: ${{ steps.package.outputs.wear_aab }}
           if-no-files-found: error
 
       - name: Update rolling CI debug prerelease after a PR merge
@@ -223,7 +160,6 @@ jobs:
           BUILD_COMMIT: ${{ steps.vars.outputs.commit }}
           VERSION: ${{ steps.vars.outputs.version }}
           PHONE_APK: ${{ steps.package.outputs.app_apk }}
-          WEAR_APK: ${{ steps.package.outputs.wear_apk }}
         run: bash .github/scripts/publish-ci-debug.sh
 
       - name: Publish GitHub release assets (tag builds)
@@ -234,6 +170,4 @@ jobs:
             dist/SHA256SUMS
             dist/phone/*.apk
             dist/phone/*.aab
-            dist/wear/*.apk
-            dist/wear/*.aab
           generate_release_notes: true

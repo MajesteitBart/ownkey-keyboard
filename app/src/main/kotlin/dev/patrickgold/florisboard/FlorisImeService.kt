@@ -39,6 +39,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import dev.patrickgold.florisboard.app.FlorisAppActivity
@@ -350,9 +351,15 @@ class FlorisImeService : LifecycleInputMethodService() {
             windowController.updateVoiceOnlyAllowed(allowed)
         }
 
+        snapshotFlow { keyboardManager.isRewriteOptionsVisible }.collectIn(lifecycleScope) { open ->
+            windowController.updateRewritePanelOpen(open)
+        }
+
         // Android evaluates fullscreen mode only on its own triggers. Entering or leaving the voice-only bar
         // must re-evaluate it at once, or a landscape extract view keeps covering the app, or stays away.
-        windowController.isVoiceOnlyActive.drop(1).collectIn(lifecycleScope) {
+        windowController.isVoiceOnlyActive.drop(1).collectIn(lifecycleScope) { active ->
+            // Panels opened while the rewrite panel held the bar back would otherwise reappear behind the bar.
+            if (active) keyboardManager.closePanelsForVoiceBar()
             updateFullscreenMode()
         }
 

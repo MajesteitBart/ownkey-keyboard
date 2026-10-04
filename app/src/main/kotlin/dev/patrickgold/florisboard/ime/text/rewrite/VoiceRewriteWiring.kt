@@ -119,6 +119,7 @@ fun createVoiceRewriteUiController(
         },
         openAiSettingsRoute = { appContext.openSettingsDeepLink(AI_SETTINGS_DEEPLINK) },
         openIncognitoSettingRoute = { appContext.openSettingsDeepLink(INCOGNITO_SETTINGS_DEEPLINK) },
+        beforeBegin = { rewriteManager.releasePresetTarget() },
     )
 }
 

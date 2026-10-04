@@ -127,6 +127,31 @@ class ImeWindowControllerTest : FunSpec({
         prefs.keyboard.windowConfig.get()[root.formFactor.typeGuess]?.voiceBarOffset shouldBe moved
     }
 
+    test("the rewrite panel holds the voice bar back and the bar returns once it closes") {
+        val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
+        val controller = ImeWindowController(prefs, backgroundScope)
+        controller.actions.toggleVoiceOnly()
+        controller.isVoiceOnlyActive.first { it }
+
+        controller.updateRewritePanelOpen(true)
+        controller.isVoiceOnlyActive.first { !it }
+        // The user's choice stands: the keyboard only shows for as long as the panel needs it.
+        controller.isVoiceOnlyRequested.value shouldBe true
+        prefs.keyboard.voiceOnly.get() shouldBe true
+
+        controller.updateRewritePanelOpen(false)
+        controller.isVoiceOnlyActive.first { it }
+    }
+
+    test("the rewrite panel does not affect the keyboard while voice only is off") {
+        val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
+        val controller = ImeWindowController(prefs, backgroundScope)
+        controller.updateRewritePanelOpen(true)
+        controller.updateRewritePanelOpen(false)
+        controller.isVoiceOnlyRequested.value shouldBe false
+        controller.isVoiceOnlyActive.value shouldBe false
+    }
+
     test("quick repeated voice only toggles each take effect") {
         val prefs by jetprefDataStoreOf(FlorisPreferenceModel::class)
         val controller = ImeWindowController(prefs, backgroundScope)

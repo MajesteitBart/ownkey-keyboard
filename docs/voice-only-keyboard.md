@@ -1,17 +1,31 @@
 # Voice-only keyboard
 
 Open **More > Voice only** to replace the keyboard with a single bar. The bar
-holds the dictation button, the live level meter and status, and a keyboard
-button that brings the full keyboard back. It uses the same dictation pipeline,
-provider, and speech dictionary as the microphone key; nothing else records.
+holds the dictation button, the live level meter and status, a rewrite button,
+a language button, and a keyboard button that brings the full keyboard back.
+It uses the same dictation pipeline, provider, and speech dictionary as the
+microphone key; nothing else records.
 
 Tap the orange microphone to start. While it listens, the button shows a stop
 square inside a white ring; tap it to stop and insert the transcript. While the
 transcript is processed, the button shows only a spinning orange arc, and a tap
-just reports that it is still working. Hold-to-rewrite is not available in the
-bar, because the rewrite panel needs the full keyboard. Pause and cancel are
-also left to the full keyboard: tap the keyboard button, and the recording
-continues in the Smartbar row with its pause, cancel, and stop controls.
+just reports that it is still working. Pause and cancel are left to the full
+keyboard: tap the keyboard button, and the recording continues in the Smartbar
+row with its pause, cancel, and stop controls.
+
+The sparkles button opens the rewrite panel, including "Tell Ownkey what to
+change" for a spoken instruction. The panel needs the room of the full
+keyboard, so the keyboard shows while the panel is open and the bar comes back
+when you close it or insert the result. Voice-only stays on throughout; the
+Voice only action in the full keyboard returns to the bar instead of turning it
+off.
+
+With more than one keyboard language, the language button shows the active one
+as a code such as EN or NL, and a tap switches to the next. Cloud dictation set
+to follow the keyboard language uses it for the next recording; Orukeet detects
+the language itself. With one language the button is left out. Both buttons are
+dimmed while a recording runs. On a narrow screen the status column gets
+narrower so every button still fits.
 
 When dictation fails, the button shows an exclamation mark and the status line
 names the reason, for example "No API key" or "No microphone access". A cloud
@@ -69,3 +83,15 @@ keyboard was active before, docked or floating.
   needs a configured rewrite provider.
 
 ![Signal Graphite keyboard in Messages](screenshots/signal-graphite-keyboard.png)
+
+## Verification on 2026-10-04: rewrite and language buttons
+
+- `:app:testDebugUnitTest` passed, including the tests that the rewrite panel
+  holds the bar back and returns it, and that the status column narrows on small
+  screens. `:app:assembleDebug` passed.
+- Same emulator with the phone set to Dutch, Orukeet for dictation and Mistral
+  for rewrite: the bar showed NL; the language button switched between NL and
+  EN; the rewrite button opened the rewrite panel in the full keyboard; Fix
+  grammar returned a corrected sentence; Insert replaced the text and the bar
+  came back. During a recording both new buttons were dimmed. The keyboard
+  showed "English" on the space bar instead of the Dutch "Engels".

@@ -18,8 +18,12 @@ package dev.patrickgold.florisboard.ime.text.rewrite
 
 import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.FlorisImeService
+import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.appContext
+import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
+import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.keyboardManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -59,15 +63,18 @@ class LlmRewriteManager(
         val resultText: String? = null,
     )
 
+    /** The captured text and where it was, plus the identity checked again right before replacing it. */
     private data class RewriteTarget(
         val text: String,
         val start: Int,
         val end: Int,
+        val snapshot: VoiceRewriteTargetSnapshot,
     )
 
     private val appContext by context.appContext()
     private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
+    private val clipboardManager by context.clipboardManager()
     private val prefs by FlorisPreferenceStore
     private val secretsStore = LlmRewriteSecretsStore(appContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -83,6 +90,30 @@ class LlmRewriteManager(
 
     private var generateJob: Job? = null
     private var activeTarget: RewriteTarget? = null
+    private var activeTargeting = false
+
+    // Created on first use, so the editor is only touched once a preset is tapped.
+    private val targetGateway by lazy { EditorInstanceVoiceRewriteGateway(editorInstance) }
+    private val targeting by lazy {
+        PresetRewriteTargeting(
+            source = VoiceRewriteTargetResolver(targetGateway),
+            editor = object : PresetRewriteEditor {
+                override val sessionId: Long get() = editorInstance.activeInputSessionId
+                override val selection: EditorRange get() = editorInstance.activeContent.selection
+                override val selectionReachesFieldEnd: Boolean
+                    get() {
+                        if (!editorInstance.activeContent.selection.isSelectionMode) return false
+                        // Asks the app: the cached content can't tell the end of the field from text it couldn't
+                        // read. An app that can't answer leaves the end unknown, and the selection is left alone.
+                        val after = FlorisImeService.currentInputConnection()?.getTextAfterCursor(1, 0) ?: return false
+                        return after.isEmpty()
+                    }
+                override fun setSelection(range: EditorRange): Boolean =
+                    editorInstance.setSelection(range.start, range.end)
+            },
+            scope = scope,
+        )
+    }
 
     init {
         scope.launch {
@@ -91,6 +122,7 @@ class LlmRewriteManager(
                     generateJob?.cancel()
                     generateJob = null
                     activeTarget = null
+                    abandonTarget()
                     _uiStateFlow.value = RewriteUiState()
                 }
             }
@@ -109,12 +141,25 @@ class LlmRewriteManager(
             return
         }
 
-        val target = resolveRewriteTarget().getOrElse { error ->
-            appContext.showShortToastSync(error.message ?: "Select or type text before rewriting")
-            return
+        // Like a spoken instruction, a preset rewrites the selection, or the whole field when nothing is
+        // selected. Capturing the field selects it all, so the panel shows progress from the tap onwards.
+        generateJob?.cancel()
+        _uiStateFlow.value = RewriteUiState(step = RewriteStep.GENERATING, activePrompt = prompt)
+        activeTargeting = true
+        generateJob = scope.launch {
+            when (val resolution = targeting.capture()) {
+                is VoiceRewriteTargetResolution.Resolved -> {
+                    val snapshot = resolution.snapshot
+                    val target = RewriteTarget(snapshot.sourceText, snapshot.range.start, snapshot.range.end, snapshot)
+                    activeTarget = target
+                    runGeneration(prompt, target)
+                }
+                is VoiceRewriteTargetResolution.Rejected -> {
+                    _uiStateFlow.value = RewriteUiState()
+                    appContext.showShortToastSync(resolution.reason.message().stringResId())
+                }
+            }
         }
-        activeTarget = target
-        generate(prompt, target)
     }
 
     /** Re-runs the active prompt against the originally captured text. */
@@ -132,11 +177,13 @@ class LlmRewriteManager(
     fun cancelGeneration() {
         generateJob?.cancel()
         generateJob = null
+        abandonTarget()
         _uiStateFlow.value = RewriteUiState()
     }
 
     /** Returns from the result sheet to the options grid, discarding the result. */
     fun backToOptions() {
+        abandonTarget()
         _uiStateFlow.value = RewriteUiState()
     }
 
@@ -146,6 +193,16 @@ class LlmRewriteManager(
         val resultText = state.resultText ?: return
         val target = activeTarget ?: return
         generateJob = scope.launch {
+            // The field may have changed while the result was generated, for example by autofill or the app itself.
+            // Replacing the old range then would overwrite newer text, so the result goes to the clipboard instead.
+            if (target.snapshot.verify(targetGateway.currentFrame()) != null) {
+                clipboardManager.addNewPlaintext(resultText)
+                appContext.showShortToastSync(R.string.rewrite_panel__text_changed_copied)
+                activeTarget = null
+                abandonTarget()
+                _uiStateFlow.value = RewriteUiState()
+                return@launch
+            }
             val selected = editorInstance.setSelection(target.start, target.end)
             val committed = selected && editorInstance.commitText(resultText)
             if (!committed) {
@@ -153,6 +210,7 @@ class LlmRewriteManager(
                 _uiStateFlow.value = state.copy(step = RewriteStep.RESULT)
                 return@launch
             }
+            targeting.committed()
             _uiStateFlow.value = state.copy(step = RewriteStep.DONE)
             delay(DoneConfirmationMillis)
             closeOptions()
@@ -167,7 +225,22 @@ class LlmRewriteManager(
         generateJob?.cancel()
         generateJob = null
         activeTarget = null
+        abandonTarget()
         _uiStateFlow.value = RewriteUiState()
+    }
+
+    /**
+     * Voice rewrite is about to select the field for itself: a preset that was abandoned a moment ago must not
+     * undo that selection when its own Select All arrives late.
+     */
+    fun releasePresetTarget() {
+        if (activeTargeting) targeting.forget()
+    }
+
+    /** Puts the cursor back if a preset selected the whole field and its result was not inserted. */
+    private fun abandonTarget() {
+        // Nothing to undo before the first preset; avoids creating the editor adapter on every dismissal.
+        if (activeTargeting) targeting.restore()
     }
 
     fun closeOptions() {
@@ -184,8 +257,11 @@ class LlmRewriteManager(
     fun isRewriteConfigured(): Boolean = secretsStore.hasApiKey()
 
     /** Configured rewrite provider name without the API variant, never the endpoint URL. */
-    fun rewriteProviderLabel(): String =
-        LlmRewriteProviders.byId(prefs.voxtral.postProcessingProvider.get()).providerName
+    fun rewriteProviderLabel(): String = LlmRewriteProviders.resolve(
+        providerId = prefs.voxtral.postProcessingProvider.get(),
+        endpointUrl = prefs.voxtral.postProcessingEndpointUrl.get(),
+        model = prefs.voxtral.postProcessingModel.get(),
+    ).preset.providerName
 
     private fun generate(prompt: RewritePromptPreset, target: RewriteTarget) {
         if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
@@ -193,73 +269,30 @@ class LlmRewriteManager(
         }
         generateJob?.cancel()
         _uiStateFlow.value = RewriteUiState(step = RewriteStep.GENERATING, activePrompt = prompt)
-        generateJob = scope.launch {
-            if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
-                activeTarget = null
-                _uiStateFlow.value = RewriteUiState()
-                return@launch
-            }
-            val rewritten = withContext(Dispatchers.IO) {
-                rewriteClient.rewrite(target.text, prompt)
-            }.getOrElse { error ->
-                if (error is CancellationException) throw error
-                _uiStateFlow.value = RewriteUiState()
-                appContext.showShortToastSync(error.message ?: "Rewrite failed")
-                return@launch
-            }.trim()
-
-            _uiStateFlow.value = RewriteUiState(
-                step = RewriteStep.RESULT,
-                activePrompt = prompt,
-                resultText = rewritten,
-            )
-        }
+        generateJob = scope.launch { runGeneration(prompt, target) }
     }
 
-    private fun resolveRewriteTarget(): Result<RewriteTarget> {
-        val content = editorInstance.activeContent
-        val selection = content.selection
-        if (selection.isNotValid) {
-            return Result.failure(IllegalStateException("Select or type text before rewriting"))
+    private suspend fun runGeneration(prompt: RewritePromptPreset, target: RewriteTarget) {
+        if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
+            activeTarget = null
+            abandonTarget()
+            _uiStateFlow.value = RewriteUiState()
+            return
         }
+        val rewritten = withContext(Dispatchers.IO) {
+            rewriteClient.rewrite(target.text, prompt)
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            abandonTarget()
+            _uiStateFlow.value = RewriteUiState()
+            appContext.showShortToastSync(error.message ?: "Rewrite failed")
+            return
+        }.trim()
 
-        val selectedText = content.selectedText
-        if (selection.isSelectionMode && selectedText.isNotBlank()) {
-            return Result.success(
-                RewriteTarget(
-                    text = selectedText,
-                    start = selection.start,
-                    end = selection.end,
-                ),
-            )
-        }
-
-        val textBefore = content.textBeforeSelection
-        val trimmedEnd = textBefore.indexOfLast { !it.isWhitespace() } + 1
-        if (trimmedEnd <= 0) {
-            return Result.failure(IllegalStateException("Select or type text before rewriting"))
-        }
-
-        val sentenceEnd = textBefore.substring(0, trimmedEnd)
-        val lastBoundary = sentenceEnd.lastIndexOfAny(charArrayOf('\n', '.', '!', '?'))
-        val roughStart = (lastBoundary + 1).coerceAtLeast(0)
-        val leadingWhitespace = textBefore.substring(roughStart, trimmedEnd).indexOfFirst { !it.isWhitespace() }
-            .let { if (it < 0) 0 else it }
-        val startInBefore = roughStart + leadingWhitespace
-        val targetText = textBefore.substring(startInBefore, trimmedEnd)
-
-        if (targetText.isBlank()) {
-            return Result.failure(IllegalStateException("Select or type text before rewriting"))
-        }
-
-        val absoluteStart = selection.start - (textBefore.length - startInBefore)
-        val absoluteEnd = selection.start - (textBefore.length - trimmedEnd)
-        return Result.success(
-            RewriteTarget(
-                text = targetText,
-                start = absoluteStart,
-                end = absoluteEnd,
-            ),
+        _uiStateFlow.value = RewriteUiState(
+            step = RewriteStep.RESULT,
+            activePrompt = prompt,
+            resultText = rewritten,
         )
     }
 }

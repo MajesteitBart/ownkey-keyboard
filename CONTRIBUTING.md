@@ -24,9 +24,9 @@ Open an issue that describes the problem you want solved and how you type today.
 
 ## Translations
 
-Ownkey's own strings, such as the AI and Orukeet settings, are translated in `app/src/main/res/values-<locale>/ownkey.xml`. Changes to those files can go in a normal pull request.
+Ownkey ships in English only. The app build packages the English resources and nothing else (`localeFilters` in `app/build.gradle.kts`), because a partly translated UI switched between English and the phone's language from one screen to the next. Write new copy in `app/src/main/res/values/strings.xml` and don't add `values-<locale>` files for Ownkey strings. Keyboard layouts, dictionaries and dictation languages are separate from the UI language and are not affected.
 
-The inherited `strings.xml` translations come from FlorisBoard's [Crowdin project](https://crowdin.florisboard.org). A check on pull requests rejects edits to translated `strings.xml` files, so send those translations to Crowdin instead.
+The inherited `strings.xml` translations from FlorisBoard's [Crowdin project](https://crowdin.florisboard.org) stay in the repository so upstream merges stay simple, but they are not packaged. A check on pull requests rejects edits to translated `strings.xml` files.
 
 ## Code contributions
 
@@ -45,7 +45,6 @@ Gradle gets 4 GB of heap (`org.gradle.jvmargs=-Xmx4096m`), so a machine with 16 
 ```bash
 ./gradlew :app:assembleDebug
 ./gradlew :app:testDebugUnitTest
-./gradlew :wear:assembleDebug
 ```
 
 On Windows, use `.\gradlew.bat`. Debug builds install as `nl.bartvandermeeren.ownkey.debug`, next to a release install.
@@ -61,4 +60,4 @@ On Windows, use `.\gradlew.bat`. Debug builds install as `nl.bartvandermeeren.ow
 
 ### Pull requests
 
-Branch from `main` and open the pull request against `main`. CI builds phone and Wear debug APKs for every pull request, and you can download them from the Actions run to test on a device. Describe what changed, why, and how you tested it, including which devices you used.
+Branch from `main` and open the pull request against `main`. CI builds phone debug APKs for every pull request, and you can download them from the Actions run to test on a device. Describe what changed, why, and how you tested it, including which devices you used.

@@ -20,12 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.FormatColorFill
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -35,17 +33,13 @@ import dev.patrickgold.florisboard.app.AppTheme
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
-import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
-import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ColorPickerPreference
 import dev.patrickgold.jetpref.datastore.ui.ListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
 import dev.patrickgold.jetpref.datastore.ui.isMaterialYou
-import dev.patrickgold.jetpref.datastore.ui.listPrefEntries
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.color.ColorMappings
 import org.florisboard.lib.compose.stringRes
@@ -79,70 +73,6 @@ fun OtherScreen() = FlorisScreen {
                     Color.Unspecified
                 } else {
                     it
-                }
-            }
-        )
-        ListPreference(
-            prefs.other.settingsLanguage,
-            icon = Icons.Default.Language,
-            title = stringRes(R.string.pref__other__settings_language__label),
-            entries = listPrefEntries {
-                listOf(
-                    "auto",
-                    "ar",
-                    "bg",
-                    "bs",
-                    "ca",
-                    "ckb",
-                    "cs",
-                    "da",
-                    "de",
-                    "el",
-                    "en",
-                    "eo",
-                    "es",
-                    "fa",
-                    "fi",
-                    "fr",
-                    "hr",
-                    "hu",
-                    "in",
-                    "it",
-                    "iw",
-                    "ja",
-                    "ko-KR",
-                    "ku",
-                    "lv-LV",
-                    "mk",
-                    "nds-DE",
-                    "nl",
-                    "no",
-                    "pl",
-                    "pt",
-                    "pt-BR",
-                    "ru",
-                    "sk",
-                    "sl",
-                    "sr",
-                    "sv",
-                    "tr",
-                    "uk",
-                    "zgh",
-                    "zh-CN",
-                ).map { languageTag ->
-                    if (languageTag == "auto") {
-                        entry(
-                            key = "auto",
-                            label = stringRes(R.string.settings__system_default),
-                        )
-                    } else {
-                        val displayLanguageNamesIn by prefs.localization.displayLanguageNamesIn.collectAsState()
-                        val locale = FlorisLocale.fromTag(languageTag)
-                        entry(locale.languageTag(), when (displayLanguageNamesIn) {
-                            DisplayLanguageNamesIn.SYSTEM_LOCALE -> locale.displayName()
-                            DisplayLanguageNamesIn.NATIVE_LOCALE -> locale.displayName(locale)
-                        })
-                    }
                 }
             }
         )

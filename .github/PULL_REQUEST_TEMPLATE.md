@@ -8,7 +8,7 @@
 
 ## APK testing
 
-CI builds phone and Wear debug APKs for this pull request. Open the Checks tab, go to the Ownkey Android CI run and download the artifact for your processor type. It installs as `nl.bartvandermeeren.ownkey.debug` and leaves your main installation alone.
+CI builds phone debug APKs for this pull request. Open the Checks tab, go to the Ownkey Android CI run and download the artifact for your processor type. It installs as `nl.bartvandermeeren.ownkey.debug` and leaves your main installation alone.
 
 ## Checklist
 

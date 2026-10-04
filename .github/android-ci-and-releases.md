@@ -2,15 +2,15 @@
 
 | Trigger | Build | GitHub release |
 | --- | --- | --- |
-| PR opened, updated, or reopened against `main` | Phone and Wear debug APKs | None; download the Actions artifacts |
-| PR merged into `main` | Phone and Wear debug APKs from the current `main` tip | Refresh the single `ci-debug` prerelease |
+| PR opened, updated, or reopened against `main` | Phone debug APKs | None; download the Actions artifacts |
+| PR merged into `main` | Phone debug APKs from the current `main` tip | Refresh the single `ci-debug` prerelease |
 | PR closed without merging | None | None |
 | Direct push to `main` | None | None |
-| Manual workflow run | Selected variant and optional Wear build | None; download the Actions artifacts |
+| Manual workflow run | Selected variant | None; download the Actions artifacts |
 | Push of a `v*` tag | Release APKs and AABs | Existing versioned tag release workflow |
 
 The rolling release is titled **Ownkey CI debug**. Its `ci-debug` tag advances to the
-published build commit, and its two APK assets keep stable filenames. It is always
+published build commit, and its phone APK keeps a stable filename. It is always
 a prerelease and never becomes the latest stable release. Concurrent merge builds
 are serialized. Each surviving run checks out `main` when it starts, so an old
 rerun that replaces a newer pending run still builds the latest code. Older built
@@ -40,7 +40,7 @@ to backups; backups are deleted only after the tag and published release are upd
 Phone APK builds produce `arm64-v8a`, `armeabi-v7a`, `x86_64` and `x86` files, without a
 universal APK. Actions artifacts and versioned releases contain all four. The stable
 `ownkey-phone-ci-debug.apk` link is the arm64 phone build; emulator users take the
-x86_64 Actions artifact. Wear packaging is unchanged.
+x86_64 Actions artifact.
 
 Build standalone APKs and the Play bundle in separate invocations:
 

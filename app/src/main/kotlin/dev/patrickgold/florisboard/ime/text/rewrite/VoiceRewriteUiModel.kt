@@ -279,7 +279,8 @@ private fun VoiceRewriteSessionState.warningMessage(): VoiceRewriteMessage? = wh
     null -> null
 }
 
-private fun VoiceRewriteTargetFailure?.message(): VoiceRewriteMessage = when (this) {
+/** Why a rewrite target could not be captured; preset rewrites show the same messages as voice rewrite. */
+internal fun VoiceRewriteTargetFailure?.message(): VoiceRewriteMessage = when (this) {
     VoiceRewriteTargetFailure.EMPTY_TARGET -> VoiceRewriteMessage.NOTHING_TO_REWRITE
     VoiceRewriteTargetFailure.TARGET_TOO_LONG -> VoiceRewriteMessage.TARGET_TOO_LONG
     VoiceRewriteTargetFailure.SECURE_FIELD -> VoiceRewriteMessage.SECURE_FIELD

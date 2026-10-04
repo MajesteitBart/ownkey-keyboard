@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.window
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -64,6 +65,53 @@ class VoiceOnlyBarTest : FunSpec({
         test("a rotation to a smaller screen pulls a saved offset back inside") {
             val landscape = IntSize(600, 400)
             clampVoiceBarOffset(Offset(350f, -1500f), landscape, bar, edge, bottom) shouldBe Offset(192f, -320f)
+        }
+    }
+
+    context("the bar fits its window") {
+        test("a typical phone shows every button and the full status column") {
+            voiceBarLayout(maxBarWidth = 395.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, true, 120.dp)
+        }
+
+        test("a small screen narrows the status column so every button still fits") {
+            // 12 dp padding, a 44 dp mic, three 48 dp touch areas and four 4 dp gaps leave 88 dp of a 304 dp bar.
+            voiceBarLayout(maxBarWidth = 304.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, true, 88.dp)
+        }
+
+        test("a narrow window drops the language button before the status gets unreadable") {
+            voiceBarLayout(maxBarWidth = 260.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, false, 96.dp)
+        }
+
+        test("a very narrow window keeps only the mic and the keyboard button") {
+            voiceBarLayout(maxBarWidth = 200.dp, languageAvailable = true) shouldBe VoiceBarLayout(false, false, 88.dp)
+        }
+
+        test("the bar never grows past its window") {
+            val layout = voiceBarLayout(maxBarWidth = 150.dp, languageAvailable = true)
+            layout shouldBe VoiceBarLayout(false, false, 38.dp)
+        }
+    }
+
+    context("the language button switches language, not layout") {
+        val layouts = listOf("en-qwerty", "en-dvorak", "nl-qwerty", "de-qwertz")
+        val language = { layout: String -> layout.substringBefore('-') }
+
+        test("it skips other layouts of the same language") {
+            nextLanguage(layouts, "en-qwerty", language) shouldBe "nl-qwerty"
+            nextLanguage(layouts, "en-dvorak", language) shouldBe "nl-qwerty"
+        }
+
+        test("it wraps around to the first language") {
+            nextLanguage(layouts, "de-qwertz", language) shouldBe "en-qwerty"
+        }
+
+        test("with only one language there is nothing to switch to") {
+            nextLanguage(listOf("en-qwerty", "en-dvorak"), "en-qwerty", language) shouldBe null
+            nextLanguage(listOf("en-qwerty"), "en-qwerty", language) shouldBe null
+        }
+
+        test("an active layout missing from the list offers nothing rather than a guess") {
+            nextLanguage(layouts, "fr-azerty", language) shouldBe null
         }
     }
 })

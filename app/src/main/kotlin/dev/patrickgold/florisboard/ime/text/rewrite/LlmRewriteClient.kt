@@ -113,32 +113,18 @@ class LlmRewriteClient(
             return Result.failure(IllegalStateException("No LLM API key configured."))
         }
 
-        val rawEndpointUrl = endpointUrlProvider().trim()
-        val rawProviderId = providerIdProvider().trim()
-        val providerId = when {
-            rawProviderId.isBlank() && rawEndpointUrl.isBlank() -> LlmRewriteProviders.Default
-            rawProviderId.isBlank() -> LlmRewriteProviders.inferFromEndpoint(rawEndpointUrl)
-            // Older installs may have saved only the endpoint, with no explicit provider.
-            rawProviderId in setOf(LlmRewriteProviders.OpenAiResponses, LlmRewriteProviders.Default) &&
-                rawEndpointUrl.isNotBlank() &&
-                rawEndpointUrl != LlmRewriteProviders.byId(rawProviderId).endpointUrl -> {
-                LlmRewriteProviders.inferFromEndpoint(rawEndpointUrl)
-            }
-
-            else -> rawProviderId
-        }
-        val providerPreset = LlmRewriteProviders.byId(providerId)
-        val rawModel = modelProvider().trim()
-        if (providerPreset.isCustom && (rawEndpointUrl.isBlank() || rawModel.isBlank())) {
+        val resolved = LlmRewriteProviders.resolve(providerIdProvider(), endpointUrlProvider(), modelProvider())
+        val providerPreset = resolved.preset
+        if (!resolved.isComplete) {
             return Result.failure(IllegalStateException("Configure the custom rewrite endpoint and model first."))
         }
 
-        val endpointUrl = rawEndpointUrl.ifBlank { providerPreset.endpointUrl.ifBlank { DefaultEndpointUrl } }
-        if (!endpointUrl.startsWith("https://") && !endpointUrl.startsWith("http://")) {
+        val endpointUrl = resolved.endpointUrl
+        if (!resolved.hasHttpEndpoint) {
             return Result.failure(IllegalStateException("LLM endpoint URL must start with https:// or http://"))
         }
 
-        val model = rawModel.ifBlank { providerPreset.defaultModel.ifBlank { DefaultModel } }
+        val model = resolved.model
         val preparedInput = if (voiceInstruction != null) input else input.trim()
         if (preparedInput.isBlank()) {
             return Result.failure(IllegalStateException("Select or type text before rewriting."))

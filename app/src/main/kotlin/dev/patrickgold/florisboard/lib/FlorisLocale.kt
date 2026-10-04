@@ -58,6 +58,12 @@ class FlorisLocale private constructor(val base: Locale) {
         val ENGLISH = from("en", "", "")
 
         /**
+         * The locale language names are shown in unless a caller asks for another one. The UI ships in English
+         * only, so names follow it instead of the device language, which would show "Engels" on a Dutch phone.
+         */
+        val DISPLAY = ENGLISH
+
+        /**
          * Wraps a [java.util.Locale] and returns the [FlorisLocale].
          *
          * @return The wrapped locale.
@@ -263,7 +269,7 @@ class FlorisLocale private constructor(val base: Locale) {
      *
      * @see java.util.Locale.getDisplayLanguage
      */
-    fun displayLanguage(locale: FlorisLocale = default()): String {
+    fun displayLanguage(locale: FlorisLocale = DISPLAY): String {
         return base.getDisplayLanguage(locale.base).titlecase(locale)
     }
 
@@ -272,7 +278,7 @@ class FlorisLocale private constructor(val base: Locale) {
      *
      * @see java.util.Locale.getDisplayCountry
      */
-    fun displayCountry(locale: FlorisLocale = default()): String = base.getDisplayCountry(locale.base)
+    fun displayCountry(locale: FlorisLocale = DISPLAY): String = base.getDisplayCountry(locale.base)
 
     /**
      * Returns a name for the locale's variant code that is appropriate for
@@ -280,19 +286,19 @@ class FlorisLocale private constructor(val base: Locale) {
      *
      * @see java.util.Locale.getDisplayVariant
      */
-    fun displayVariant(locale: FlorisLocale = default()): String = base.getDisplayVariant(locale.base)
+    fun displayVariant(locale: FlorisLocale = DISPLAY): String = base.getDisplayVariant(locale.base)
 
     /**
      * Returns the display name for this locale, localized to [locale] in
      * the format `Language`, `Language (Country)` or `Language (Country) \[VARIANT]`.
      *
      * @param locale The locale to use for generating the display name for
-     *  this locale, or [default] if otherwise.
+     *  this locale, or [DISPLAY] if otherwise.
      *
      * @return The display name for this locale. May be an empty string if
      *  [language], [country] and [variant] are not specified.
      */
-    fun displayName(locale: FlorisLocale = default()) = buildString {
+    fun displayName(locale: FlorisLocale = DISPLAY) = buildString {
         val languageName = displayLanguage(locale).ifBlank { base.language }
         val countryName = displayCountry(locale).ifBlank { base.country }
         val variantName = displayVariant(locale).ifBlank { base.variant }

@@ -23,8 +23,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -35,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -47,6 +46,7 @@ import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,34 +55,45 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.app.Routes
-import dev.patrickgold.florisboard.subtypeManager
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageMode
+import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionProviderNaming
+import dev.patrickgold.florisboard.ime.text.dictation.VoxtralRelayTranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
-import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviderPreset
+import dev.patrickgold.florisboard.ime.text.dictation.offline.ModelPhase
+import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders.Custom
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteSecretsStore
+import dev.patrickgold.florisboard.ime.text.rewrite.ResolvedRewriteProvider
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.util.launchUrl
+import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.compose.stringRes
+import java.net.URI
 
 @Composable
 fun VoxtralScreen() = FlorisScreen {
@@ -94,6 +105,7 @@ fun VoxtralScreen() = FlorisScreen {
     val subtypeManager by context.subtypeManager()
     val voxtralSecretsStore = remember { VoxtralSecretsStore(context) }
     val llmRewriteSecretsStore = remember { LlmRewriteSecretsStore(context) }
+    val offlineDictation = remember { context.offlineDictation() }
 
     var hasMicPermission by remember {
         mutableStateOf(
@@ -126,8 +138,8 @@ fun VoxtralScreen() = FlorisScreen {
         val rewriteModel by prefsRef.voxtral.postProcessingModel.collectAsState()
         val rewriteProviderId by prefsRef.voxtral.postProcessingProvider.collectAsState()
         val rewritePromptsJson by prefsRef.voxtral.rewritePrompts.collectAsState()
+        val offlineState by offlineDictation.state.collectAsState()
         val coroutineScope = rememberCoroutineScope()
-        var wearSyncStatus by remember { mutableStateOf("") }
         var promptDrafts by remember(rewritePromptsJson) {
             mutableStateOf(RewritePromptPresets.decode(rewritePromptsJson))
         }
@@ -143,6 +155,17 @@ fun VoxtralScreen() = FlorisScreen {
             }
         }
 
+        // Summaries describe what a request would use, so blank fields show the defaults the clients fall back to.
+        val cloudProvider = TranscriptionProviderNaming.knownLabel(
+            endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
+        ) ?: stringRes(R.string.voice_rewrite__provider_custom)
+        val cloudModel = model.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultModel }
+        val cloudEndpointValid = NetworkUtils.hasHttpScheme(
+            endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
+        )
+        val effectiveRewrite = LlmRewriteProviders.resolve(rewriteProviderId, rewriteEndpointUrl, rewriteModel)
+        val rewriteProvider = effectiveRewrite.preset
+
         OwnkeyAiSettingsTheme {
             Column(
                 modifier = Modifier
@@ -151,14 +174,31 @@ fun VoxtralScreen() = FlorisScreen {
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                AiIntroCard()
-                OrukeetSettingsCard(hasCloudKey = hasStoredApiKey)
-                PersonalDictionaryCard(onOpen = { navController.navigate(Routes.Settings.SpeechDictionary()) })
+                AiOverviewCard(
+                    dictation = dictationOverview(
+                        backend = TranscriptionBackend.resolve(selectedBackend, hasStoredApiKey, BuildConfig.DEBUG),
+                        hasCloudKey = hasStoredApiKey,
+                        cloudEndpointValid = cloudEndpointValid,
+                        // Until the start-up check has read the stored model, a missing model is not yet known.
+                        localModelReady = offlineDictation.compatible &&
+                            (offlineState.currentId != null || offlineState.phase == ModelPhase.CHECKING),
+                        cloudProvider = cloudProvider,
+                        cloudModel = cloudModel,
+                    ),
+                    rewrite = rewriteOverview(rewrite = effectiveRewrite, hasKey = hasStoredLlmApiKey),
+                )
+                DictationSettings(
+                    hasCloudKey = hasStoredApiKey,
+                    cloudEndpointValid = cloudEndpointValid,
+                    cloudProvider = cloudProvider,
+                    cloudModel = cloudModel,
+                )
 
                 AiSectionCard(
-                    title = stringRes(R.string.pref__voxtral__group_auth__label),
-                    summary = stringRes(R.string.pref__voxtral__api_key__summary),
+                    title = stringRes(R.string.pref__ai__cloud_group__label),
+                    summary = stringRes(R.string.pref__ai__cloud_group__summary),
                 ) {
+                    SectionLabel(text = stringRes(R.string.pref__ai__api_key__section))
                     StatusText(
                         text = if (hasStoredApiKey) {
                             stringRes(R.string.pref__voxtral__api_key__status_set)
@@ -166,10 +206,13 @@ fun VoxtralScreen() = FlorisScreen {
                             stringRes(R.string.pref__voxtral__api_key__status_missing)
                         },
                     )
-                    OwnkeyButton(
-                        label = stringRes(R.string.pref__voxtral__create_account_action),
-                        onClick = { context.launchUrl(R.string.voxtral__mistral_signup_url) },
-                    )
+                    StatusText(text = stringRes(R.string.pref__voxtral__api_key__summary))
+                    if (!hasStoredApiKey && cloudProvider == MistralProviderName) {
+                        OwnkeyButton(
+                            label = stringRes(R.string.pref__voxtral__create_account_action),
+                            onClick = { context.launchUrl(R.string.voxtral__mistral_signup_url) },
+                        )
+                    }
                     OwnkeyOutlinedTextField(
                         value = apiKeyInput,
                         onValueChange = { apiKeyInput = it },
@@ -185,26 +228,18 @@ fun VoxtralScreen() = FlorisScreen {
                             label = stringRes(R.string.pref__voxtral__api_key__save_action),
                             onClick = {
                                 val normalizedApiKey = apiKeyInput.trim()
-                                voxtralSecretsStore.setApiKey(normalizedApiKey)
-                                apiKeyInput = ""
-                                hasStoredApiKey = voxtralSecretsStore.hasApiKey()
+                                val keep = TranscriptionBackend.choiceToKeepOnKeySave(selectedBackend, hasStoredApiKey)
                                 coroutineScope.launch {
+                                    // The shown choice is stored before the key: a key without it would let an
+                                    // undecided install send its next recording to the cloud.
+                                    if (keep != null && prefsRef.voxtral.dictationBackend.set(keep.preference).isFailure) {
+                                        context.showShortToast(R.string.pref__voxtral__api_key__save_failed)
+                                        return@launch
+                                    }
+                                    voxtralSecretsStore.setApiKey(normalizedApiKey)
+                                    apiKeyInput = ""
+                                    hasStoredApiKey = voxtralSecretsStore.hasApiKey()
                                     prefsRef.voxtral.apiKey.set("")
-                                }
-
-                                WearVoxtralSync.pushConfig(
-                                    context = context,
-                                    config = WearVoxtralConfig(
-                                        apiKey = normalizedApiKey,
-                                        endpointUrl = endpointUrl,
-                                        model = model,
-                                        languageHint = languageHint,
-                                    ),
-                                ) { result ->
-                                    wearSyncStatus = result.fold(
-                                        onSuccess = { count -> "Wear sync gelukt ($count device${if (count == 1) "" else "s"})" },
-                                        onFailure = { error -> "Wear sync mislukt: ${error.message}" },
-                                    )
                                 }
                             },
                             enabled = apiKeyInput.trim().isNotEmpty(),
@@ -219,33 +254,14 @@ fun VoxtralScreen() = FlorisScreen {
                                     coroutineScope.launch {
                                         prefsRef.voxtral.apiKey.set("")
                                     }
-
-                                    WearVoxtralSync.pushConfig(
-                                        context = context,
-                                        config = WearVoxtralConfig(
-                                            apiKey = "",
-                                            endpointUrl = endpointUrl,
-                                            model = model,
-                                            languageHint = languageHint,
-                                        ),
-                                    ) { result ->
-                                        wearSyncStatus = result.fold(
-                                            onSuccess = { count -> "Wear sync gelukt ($count device${if (count == 1) "" else "s"})" },
-                                            onFailure = { error -> "Wear sync mislukt: ${error.message}" },
-                                        )
-                                    }
                                 },
                                 modifier = Modifier.weight(1f),
                                 secondary = true,
                             )
                         }
                     }
-                }
 
-                AiSectionCard(
-                    title = stringRes(R.string.pref__voxtral__group_connection__label),
-                    summary = stringRes(R.string.pref__voxtral__endpoint__summary),
-                ) {
+                    SectionLabel(text = stringRes(R.string.pref__ai__cloud_endpoint__section))
                     OwnkeyOutlinedTextField(
                         value = endpointUrl,
                         onValueChange = { value ->
@@ -254,6 +270,7 @@ fun VoxtralScreen() = FlorisScreen {
                             }
                         },
                         label = stringRes(R.string.pref__voxtral__endpoint__label),
+                        supportingText = stringRes(R.string.pref__voxtral__endpoint__summary),
                     )
                     OwnkeyOutlinedTextField(
                         value = model,
@@ -263,8 +280,12 @@ fun VoxtralScreen() = FlorisScreen {
                             }
                         },
                         label = stringRes(R.string.pref__voxtral__model__label),
+                        supportingText = stringRes(
+                            R.string.pref__voxtral__model__summary,
+                            "model" to VoxtralRelayTranscriptionClient.DefaultModel,
+                        ),
                     )
-                    if (selectedBackend != dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend.ORUKEET.preference) {
+
                     SectionLabel(text = stringRes(R.string.pref__voxtral__language_hint__group))
                     StatusText(text = stringRes(R.string.pref__voxtral__language_hint__summary))
                     DictationLanguageOptions(
@@ -286,40 +307,50 @@ fun VoxtralScreen() = FlorisScreen {
                             }
                         },
                     )
-                    }
-                    OwnkeyButton(
-                        label = stringRes(R.string.pref__voxtral__sync_wear__action),
-                        onClick = {
-                            WearVoxtralSync.pushConfig(
-                                context = context,
-                                config = WearVoxtralConfig(
-                                    apiKey = voxtralSecretsStore.getApiKey(),
-                                    endpointUrl = endpointUrl,
-                                    model = model,
-                                    languageHint = languageHint,
-                                ),
-                            ) { result ->
-                                wearSyncStatus = result.fold(
-                                    onSuccess = { count -> "Wear sync gelukt ($count device${if (count == 1) "" else "s"})" },
-                                    onFailure = { error -> "Wear sync mislukt: ${error.message}" },
-                                )
-                            }
-                        },
-                    )
-                    if (wearSyncStatus.isNotBlank()) {
-                        StatusText(text = wearSyncStatus)
-                    }
                 }
+
+                PersonalDictionaryCard(onOpen = { navController.navigate(Routes.Settings.SpeechDictionary()) })
 
                 AiSectionCard(
                     title = stringRes(R.string.pref__ai__rewrite_group__label),
                     summary = stringRes(R.string.pref__ai__rewrite_group__summary),
                 ) {
+                    SectionLabel(text = stringRes(R.string.pref__ai__rewrite_provider__label))
+                    LlmRewriteProviders.presets.forEach { provider ->
+                        ChoiceOption(
+                            label = provider.label,
+                            summary = provider.summary,
+                            selected = rewriteProvider.id == provider.id,
+                            onClick = {
+                                coroutineScope.launch {
+                                    prefsRef.voxtral.postProcessingProvider.set(provider.id)
+                                    if (provider.isCustom) {
+                                        if (rewriteProvider.id != Custom) {
+                                            prefsRef.voxtral.postProcessingEndpointUrl.set("")
+                                            prefsRef.voxtral.postProcessingModel.set("")
+                                        }
+                                    } else {
+                                        prefsRef.voxtral.postProcessingEndpointUrl.set(provider.endpointUrl)
+                                        prefsRef.voxtral.postProcessingModel.set(provider.defaultModel)
+                                    }
+                                }
+                            },
+                        )
+                    }
+
+                    SectionLabel(text = stringRes(R.string.pref__ai__api_key__section))
                     StatusText(
                         text = if (hasStoredLlmApiKey) {
                             stringRes(R.string.pref__ai__rewrite_key__status_set)
                         } else {
                             stringRes(R.string.pref__ai__rewrite_key__status_missing)
+                        },
+                    )
+                    StatusText(
+                        text = if (rewriteProvider.isCustom) {
+                            stringRes(R.string.pref__ai__rewrite_key__hint_custom)
+                        } else {
+                            stringRes(R.string.pref__ai__rewrite_key__hint, "provider" to rewriteProvider.providerName)
                         },
                     )
                     OwnkeyOutlinedTextField(
@@ -356,38 +387,7 @@ fun VoxtralScreen() = FlorisScreen {
                         }
                     }
 
-                    SectionLabel(text = stringRes(R.string.pref__ai__rewrite_provider__label))
-                    LlmRewriteProviders.presets.forEach { provider ->
-                        ProviderOption(
-                            provider = provider,
-                            selected = rewriteProviderId == provider.id,
-                            onClick = {
-                                coroutineScope.launch {
-                                    prefsRef.voxtral.postProcessingProvider.set(provider.id)
-                                    if (provider.isCustom) {
-                                        if (rewriteProviderId != Custom) {
-                                            prefsRef.voxtral.postProcessingEndpointUrl.set("")
-                                            prefsRef.voxtral.postProcessingModel.set("")
-                                        }
-                                    } else {
-                                        prefsRef.voxtral.postProcessingEndpointUrl.set(provider.endpointUrl)
-                                        prefsRef.voxtral.postProcessingModel.set(provider.defaultModel)
-                                    }
-                                }
-                            },
-                        )
-                    }
-
-                    OwnkeyOutlinedTextField(
-                        value = rewriteEndpointUrl,
-                        onValueChange = { value ->
-                            coroutineScope.launch {
-                                prefsRef.voxtral.postProcessingEndpointUrl.set(value)
-                            }
-                        },
-                        label = stringRes(R.string.pref__ai__rewrite_endpoint__label),
-                        enabled = rewriteProviderId == Custom,
-                    )
+                    SectionLabel(text = stringRes(R.string.pref__ai__rewrite_model__section))
                     OwnkeyOutlinedTextField(
                         value = rewriteModel,
                         onValueChange = { value ->
@@ -396,9 +396,41 @@ fun VoxtralScreen() = FlorisScreen {
                             }
                         },
                         label = stringRes(R.string.pref__ai__rewrite_model__label),
+                        supportingText = if (rewriteProvider.isCustom) {
+                            stringRes(R.string.pref__ai__rewrite_model__summary_custom)
+                        } else {
+                            stringRes(
+                                R.string.pref__ai__rewrite_model__summary,
+                                "provider" to rewriteProvider.label,
+                                "model" to rewriteProvider.defaultModel,
+                            )
+                        },
                     )
+                    if (rewriteProvider.isCustom) {
+                        OwnkeyOutlinedTextField(
+                            value = rewriteEndpointUrl,
+                            onValueChange = { value ->
+                                coroutineScope.launch {
+                                    prefsRef.voxtral.postProcessingEndpointUrl.set(value)
+                                }
+                            },
+                            label = stringRes(R.string.pref__ai__rewrite_endpoint__label),
+                            supportingText = stringRes(R.string.pref__ai__rewrite_endpoint__summary_custom),
+                        )
+                    } else {
+                        StatusText(
+                            text = stringRes(
+                                R.string.pref__ai__rewrite_endpoint__summary,
+                                "host" to (endpointHost(effectiveRewrite.endpointUrl) ?: rewriteProvider.providerName),
+                            ),
+                        )
+                    }
+                }
 
-                    SectionLabel(text = stringRes(R.string.pref__ai__rewrite_voices__label))
+                AiSectionCard(
+                    title = stringRes(R.string.pref__ai__rewrite_voices__label),
+                    summary = stringRes(R.string.pref__ai__rewrite_voices__summary),
+                ) {
                     promptDrafts.forEachIndexed { index, prompt ->
                         PromptCard {
                             OwnkeyOutlinedTextField(
@@ -487,8 +519,76 @@ fun VoxtralScreen() = FlorisScreen {
     }
 }
 
+/** The provider name [TranscriptionProviderNaming] reports for Mistral endpoints, the only one with a signup link. */
+private const val MistralProviderName = "Mistral"
+
+/** One line of the overview: what a feature uses, or what it still needs. */
+private data class OverviewValue(val text: String, val needsSetup: Boolean)
+
 @Composable
-private fun AiIntroCard() {
+private fun dictationOverview(
+    backend: TranscriptionBackend,
+    hasCloudKey: Boolean,
+    cloudEndpointValid: Boolean,
+    localModelReady: Boolean,
+    cloudProvider: String,
+    cloudModel: String,
+): OverviewValue = when (backend) {
+    TranscriptionBackend.ORUKEET -> if (localModelReady) {
+        OverviewValue(stringRes(R.string.orukeet__title), needsSetup = false)
+    } else {
+        OverviewValue(stringRes(R.string.pref__ai__overview_orukeet_missing), needsSetup = true)
+    }
+    TranscriptionBackend.CLOUD -> when {
+        !hasCloudKey -> OverviewValue(
+            stringRes(R.string.pref__ai__overview_key_missing, "provider" to cloudProvider),
+            needsSetup = true,
+        )
+        !cloudEndpointValid -> OverviewValue(
+            stringRes(R.string.pref__ai__overview_endpoint_invalid, "provider" to cloudProvider),
+            needsSetup = true,
+        )
+        else -> OverviewValue(
+            stringRes(R.string.pref__ai__overview_provider_model, "provider" to cloudProvider, "model" to cloudModel),
+            needsSetup = false,
+        )
+    }
+    TranscriptionBackend.EXTERNAL_IME -> OverviewValue(stringRes(R.string.orukeet__external_label), needsSetup = false)
+    TranscriptionBackend.MOCK -> OverviewValue(stringRes(R.string.orukeet__mock_label), needsSetup = false)
+    TranscriptionBackend.UNAVAILABLE -> OverviewValue(stringRes(R.string.pref__ai__overview_not_set_up), needsSetup = true)
+}
+
+@Composable
+private fun rewriteOverview(rewrite: ResolvedRewriteProvider, hasKey: Boolean): OverviewValue = when {
+    !hasKey -> OverviewValue(
+        stringRes(R.string.pref__ai__overview_key_missing, "provider" to rewrite.preset.providerName),
+        needsSetup = true,
+    )
+    !rewrite.isComplete -> OverviewValue(
+        stringRes(R.string.pref__ai__overview_endpoint_missing, "provider" to rewrite.preset.providerName),
+        needsSetup = true,
+    )
+    !rewrite.hasHttpEndpoint -> OverviewValue(
+        stringRes(R.string.pref__ai__overview_endpoint_invalid, "provider" to rewrite.preset.providerName),
+        needsSetup = true,
+    )
+    else -> OverviewValue(
+        stringRes(
+            R.string.pref__ai__overview_provider_model,
+            "provider" to rewrite.preset.providerName,
+            "model" to rewrite.model,
+        ),
+        needsSetup = false,
+    )
+}
+
+/** Host of an endpoint URL, so settings can say where text goes without showing paths or keys. */
+private fun endpointHost(endpointUrl: String): String? =
+    runCatching { URI(endpointUrl.trim()).host }.getOrNull()?.takeIf { it.isNotBlank() }
+
+/** States what dictation and rewrite use right now, so the choices below never have to be inferred. */
+@Composable
+private fun AiOverviewCard(dictation: OverviewValue, rewrite: OverviewValue) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -507,20 +607,34 @@ private fun AiIntroCard() {
                 modifier = Modifier.size(width = 58.dp, height = 44.dp),
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = stringRes(R.string.pref__ai__intro_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringRes(R.string.pref__ai__intro_summary),
-                    color = OwnkeyBrand.Ash,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                OverviewRow(label = stringRes(R.string.pref__ai__overview_dictation), value = dictation)
+                OverviewRow(label = stringRes(R.string.pref__ai__overview_rewrite), value = rewrite)
             }
         }
+    }
+}
+
+@Composable
+private fun OverviewRow(label: String, value: OverviewValue) {
+    Row(modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Text(
+            text = label,
+            modifier = Modifier.width(80.dp),
+            color = OwnkeyBrand.Ash,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            text = value.text,
+            color = if (value.needsSetup) OwnkeyBrand.SignalAmber else OwnkeyBrand.Bone,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -630,23 +744,30 @@ private fun DictationLanguageOptions(
     }
 }
 
+/**
+ * One radio option with a summary. A disabled option stays visible and dimmed, and its [note] says what is missing,
+ * so a choice that cannot work yet is never hidden or silently ignored.
+ */
 @Composable
 internal fun ChoiceOption(
     label: String,
     summary: String,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    note: String? = null,
+    enabled: Boolean = true,
 ) {
     val shape = RoundedCornerShape(18.dp)
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
                 color = if (selected) OwnkeyBrand.SignalOrange else OwnkeyBrand.Line,
                 shape = shape,
             )
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
         color = if (selected) OwnkeyBrand.PanelRaised else OwnkeyBrand.Action.copy(alpha = 0.52f),
         contentColor = OwnkeyBrand.Bone,
         shape = shape,
@@ -659,71 +780,36 @@ internal fun ChoiceOption(
             RadioButton(
                 selected = selected,
                 onClick = null,
+                enabled = enabled,
                 colors = RadioButtonDefaults.colors(
                     selectedColor = OwnkeyBrand.SignalOrange,
                     unselectedColor = OwnkeyBrand.Ash,
+                    disabledSelectedColor = OwnkeyBrand.SignalOrange.copy(alpha = 0.5f),
+                    disabledUnselectedColor = OwnkeyBrand.Ash.copy(alpha = 0.4f),
                 ),
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = summary,
-                    color = OwnkeyBrand.Ash,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProviderOption(
-    provider: LlmRewriteProviderPreset,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(18.dp)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = if (selected) OwnkeyBrand.SignalOrange else OwnkeyBrand.Line,
-                shape = shape,
-            )
-            .clickable(onClick = onClick),
-        color = if (selected) OwnkeyBrand.PanelRaised else OwnkeyBrand.Action.copy(alpha = 0.52f),
-        contentColor = OwnkeyBrand.Bone,
-        shape = shape,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            RadioButton(
-                selected = selected,
-                onClick = onClick,
-                colors = RadioButtonDefaults.colors(
-                    selectedColor = OwnkeyBrand.SignalOrange,
-                    unselectedColor = OwnkeyBrand.Ash,
-                ),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = provider.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = provider.summary,
-                    color = OwnkeyBrand.Ash,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Column(modifier = Modifier.alpha(if (enabled || selected) 1f else 0.55f)) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = summary,
+                        color = OwnkeyBrand.Ash,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (note != null) {
+                    Text(
+                        text = note,
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = OwnkeyBrand.SignalAmber,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
         }
     }
@@ -738,6 +824,7 @@ internal fun OwnkeyOutlinedTextField(
     enabled: Boolean = true,
     singleLine: Boolean = true,
     minLines: Int = 1,
+    supportingText: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
@@ -747,6 +834,7 @@ internal fun OwnkeyOutlinedTextField(
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
         label = { Text(label) },
+        supportingText = supportingText?.let { text -> { Text(text) } },
         singleLine = singleLine,
         minLines = minLines,
         keyboardOptions = keyboardOptions,
@@ -764,6 +852,8 @@ internal fun OwnkeyOutlinedTextField(
             focusedLabelColor = OwnkeyBrand.SignalOrange,
             unfocusedLabelColor = OwnkeyBrand.Ash,
             disabledLabelColor = OwnkeyBrand.Ash,
+            focusedSupportingTextColor = OwnkeyBrand.Ash,
+            unfocusedSupportingTextColor = OwnkeyBrand.Ash,
             cursorColor = OwnkeyBrand.SignalOrange,
         ),
         shape = RoundedCornerShape(14.dp),

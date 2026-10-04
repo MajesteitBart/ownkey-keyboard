@@ -20,7 +20,6 @@ This repository uses the Delano runtime installed under `.agents/` and project c
 ## App Map
 
 - Main Android IME/settings app: `app/`
-- Wear OS companion IME: `wear/`
 - Shared Android, Compose, Kotlin, native, and Snygg UI/theme libraries: `lib/`
 - Brand assets and Play Store metadata: `assets/branding/`, `docs/brandbook/`, `fastlane/metadata/android/`
 - AI settings screen: `app/src/main/kotlin/dev/patrickgold/florisboard/app/settings/voxtral/VoxtralScreen.kt`

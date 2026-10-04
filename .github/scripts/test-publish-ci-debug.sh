@@ -4,10 +4,10 @@ set -euo pipefail
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-export RUNNER_TEMP="$fixture" PHONE_APK="$fixture/phone.apk" WEAR_APK="$fixture/wear.apk"
+export RUNNER_TEMP="$fixture" PHONE_APK="$fixture/phone.apk"
 export BUILD_COMMIT=built VERSION=0.7.0 GITHUB_REPOSITORY=example/ownkey
 export GITHUB_SERVER_URL=https://github.com GITHUB_RUN_ID=42
-touch "$PHONE_APK" "$WEAR_APK"
+touch "$PHONE_APK"
 
 git() {
   printf 'git %s\n' "$*" >> "$fixture/calls"
@@ -37,9 +37,7 @@ gh() {
       *--method*) return 0 ;;
       *startswith*) printf '101\n102\n' ;;
       *ownkey-ci-staging-phone*) printf '201\n' ;;
-      *ownkey-ci-staging-wear*) printf '202\n' ;;
       *ownkey-phone-ci-debug*) printf '101\n' ;;
-      *ownkey-wear-ci-debug*) printf '102\n' ;;
       *) if [[ "$scenario" != create ]]; then printf '123\n'; fi ;;
     esac
   fi
@@ -57,12 +55,16 @@ for scenario in create update draft stale diverged network-error api-error uploa
     create)
       test "$result" = 0
       grep -q 'gh release create ci-debug' "$fixture/calls"
+      if grep -q 'wear' "$fixture/calls"; then exit 1; fi
       grep -q -- '--force-with-lease=refs/tags/ci-debug:$' "$fixture/calls"
       grep -q -- '--prerelease --latest=false' "$fixture/calls"
       ;;
     update | draft)
       test "$result" = 0
-      grep -q 'gh release upload ci-debug.*ownkey-ci-staging-phone.*ownkey-ci-staging-wear' "$fixture/calls"
+      grep -q 'gh release upload ci-debug.*ownkey-ci-staging-phone' "$fixture/calls"
+      if grep -q 'ownkey-ci-staging-wear' "$fixture/calls"; then exit 1; fi
+      # A Wear APK left by older builds is selected for cleanup.
+      grep -q 'ownkey-wear-ci-debug.apk' "$fixture/calls"
       ! grep -q -- '--clobber' "$fixture/calls"
       grep -q 'gh release edit ci-debug' "$fixture/calls"
       grep -q -- '--draft=false --prerelease --latest=false' "$fixture/calls"

@@ -34,6 +34,14 @@ enum class TranscriptionBackend(val preference: String) {
             "" -> if (hasCloudKey) CLOUD else if (debug) MOCK else EXTERNAL_IME
             else -> UNAVAILABLE
         }
+
+        /**
+         * The choice to store when a cloud API key is saved. An install that never chose a provider shows system
+         * voice input (demo dictation in debug builds) until a key exists, and would switch to cloud dictation once
+         * one is saved. System voice input is stored instead, so audio only goes to the cloud after the user picks it.
+         */
+        fun choiceToKeepOnKeySave(preference: String, hasCloudKey: Boolean): TranscriptionBackend? =
+            EXTERNAL_IME.takeIf { preference.isBlank() && !hasCloudKey }
     }
 }
 

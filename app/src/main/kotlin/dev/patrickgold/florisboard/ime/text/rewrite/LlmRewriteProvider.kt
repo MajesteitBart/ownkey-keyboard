@@ -16,6 +16,8 @@
 
 package dev.patrickgold.florisboard.ime.text.rewrite
 
+import dev.patrickgold.florisboard.lib.util.NetworkUtils
+
 data class LlmRewriteProviderPreset(
     val id: String,
     val label: String,
@@ -30,6 +32,19 @@ data class LlmRewriteProviderPreset(
      */
     val providerName: String = label,
 )
+
+/** The provider, endpoint and model a rewrite request actually uses, after legacy inference and defaults. */
+data class ResolvedRewriteProvider(
+    val preset: LlmRewriteProviderPreset,
+    val endpointUrl: String,
+    val model: String,
+) {
+    /** A custom endpoint has no defaults, so it can only send requests once both fields are filled in. */
+    val isComplete: Boolean get() = endpointUrl.isNotBlank() && model.isNotBlank()
+
+    /** Requests only go to http(s) URLs, so an endpoint typed without a scheme can't be used. */
+    val hasHttpEndpoint: Boolean get() = NetworkUtils.hasHttpScheme(endpointUrl)
+}
 
 object LlmRewriteProviders {
     const val OpenAiResponses = "openai_responses"
@@ -93,6 +108,35 @@ object LlmRewriteProviders {
 
     fun byId(id: String): LlmRewriteProviderPreset {
         return presets.firstOrNull { it.id == id } ?: presets.first()
+    }
+
+    /**
+     * Resolves the stored rewrite settings the way a request uses them, so settings can show what is actually
+     * used. Blank fields of a built-in provider fall back to its defaults; a custom endpoint gets none.
+     */
+    fun resolve(providerId: String, endpointUrl: String, model: String): ResolvedRewriteProvider {
+        val rawEndpointUrl = endpointUrl.trim()
+        val rawProviderId = providerId.trim()
+        val resolvedId = when {
+            rawProviderId.isBlank() && rawEndpointUrl.isBlank() -> Default
+            rawProviderId.isBlank() -> inferFromEndpoint(rawEndpointUrl)
+            // Older installs may have saved only the endpoint, with no explicit provider.
+            rawProviderId in setOf(OpenAiResponses, Default) &&
+                rawEndpointUrl.isNotBlank() &&
+                rawEndpointUrl != byId(rawProviderId).endpointUrl -> {
+                inferFromEndpoint(rawEndpointUrl)
+            }
+
+            else -> rawProviderId
+        }
+        val preset = byId(resolvedId)
+        val rawModel = model.trim()
+        if (preset.isCustom) return ResolvedRewriteProvider(preset, rawEndpointUrl, rawModel)
+        return ResolvedRewriteProvider(
+            preset = preset,
+            endpointUrl = rawEndpointUrl.ifBlank { preset.endpointUrl.ifBlank { DefaultEndpointUrl } },
+            model = rawModel.ifBlank { preset.defaultModel.ifBlank { DefaultModel } },
+        )
     }
 
     fun inferFromEndpoint(endpointUrl: String): String {

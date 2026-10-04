@@ -119,6 +119,9 @@
     <string name="voice_only__error_ai_unavailable">AI is off in this field</string>
     <string name="voice_only__inserted">Inserted</string>
     <string name="voice_only__show_keyboard">Show keyboard</string>
+    <string name="voice_only__rewrite" comment="Voice bar button that opens the rewrite panel">Rewrite text</string>
+    <string name="voice_only__keyboard_language" comment="Voice bar language button description; {language} is a language name such as Dutch">Keyboard language: {language}</string>
+    <string name="voice_only__switch_language" comment="Accessibility action of the voice bar language button">Switch language</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">One-handed</string>
     <string name="quick_action__one_handed_mode__tooltip">Toggle one-handed mode</string>
     <string name="quick_action__resize_mode" comment="Please mind the limited available space for the quick action strings">Resize</string>
@@ -633,46 +636,74 @@
     <string name="settings__other__title" comment="Title of Other settings">Other</string>
     <string name="settings__voxtral__title" comment="Title of AI settings screen">AI</string>
     <string name="settings__voxtral__summary" comment="Summary shown on Settings home item for AI">Configure dictation and rewrite</string>
-    <string name="pref__voxtral__group_auth__label" comment="Title of the dictation authentication preference group">Dictation key</string>
-    <string name="pref__voxtral__api_key__label" comment="Label of the Voxtral API key text field">API key</string>
-    <string name="pref__voxtral__api_key__summary" comment="Summary text for Voxtral API key preference">Stored encrypted on this device. After saving, the key is hidden and cannot be shown again in settings.</string>
+    <string name="pref__voxtral__api_key__label" comment="Label of the cloud dictation API key text field">Dictation API key</string>
+    <string name="pref__voxtral__api_key__summary" comment="How the cloud dictation API key is stored">Stored encrypted on this device. Once saved, the key is hidden and can\'t be shown again.</string>
     <string name="pref__voxtral__create_account_action" comment="Button label to create Mistral account for API key">Create Mistral account</string>
-    <string name="pref__voxtral__api_key__status_set" comment="Status text shown when Voxtral API key is configured">API key is saved securely.</string>
-    <string name="pref__voxtral__api_key__status_missing" comment="Status text shown when Voxtral API key is missing">No API key configured yet.</string>
-    <string name="pref__voxtral__api_key__save_action" comment="Button label to save Voxtral API key">Save API key</string>
-    <string name="pref__voxtral__api_key__clear_action" comment="Button label to remove Voxtral API key">Remove API key</string>
-    <string name="pref__voxtral__group_connection__label" comment="Title of the Voxtral connection preference group">Connection</string>
-    <string name="pref__voxtral__endpoint__label" comment="Label of the Voxtral endpoint URL text field">Endpoint URL</string>
-    <string name="pref__voxtral__endpoint__summary" comment="Summary text for Voxtral endpoint URL preference">Default is Mistral. You can point this to a self-hosted OpenAI-compatible transcription endpoint.</string>
-    <string name="pref__voxtral__model__label" comment="Label of the Voxtral model text field">Model</string>
+    <string name="pref__voxtral__api_key__status_set" comment="Status text shown when the cloud dictation API key is configured">Dictation API key saved.</string>
+    <string name="pref__voxtral__api_key__status_missing" comment="Status text shown when the cloud dictation API key is missing">No dictation API key yet.</string>
+    <string name="pref__voxtral__api_key__save_action" comment="Button label to save the cloud dictation API key">Save API key</string>
+    <string name="pref__voxtral__api_key__save_failed" comment="Toast when the dictation settings could not be stored, so the API key was not saved">Couldn\'t save the API key. Try again.</string>
+    <string name="pref__voxtral__api_key__clear_action" comment="Button label to remove the cloud dictation API key">Remove API key</string>
+    <string name="pref__voxtral__endpoint__label" comment="Label of the cloud dictation endpoint URL text field">Endpoint URL</string>
+    <string name="pref__voxtral__endpoint__summary" comment="Supporting text under the cloud dictation endpoint field">Mistral by default. Any OpenAI-compatible transcription endpoint works, including a self-hosted one.</string>
+    <string name="pref__voxtral__model__label" comment="Label of the cloud dictation model text field">Model</string>
+    <string name="pref__voxtral__model__summary" comment="Supporting text under the cloud dictation model field; {model} is the default model name">Mistral\'s default is {model}.</string>
     <string name="pref__voxtral__language_hint__label" comment="Label of the explicit dictation language code text field">Language code</string>
     <string name="pref__voxtral__language_hint__group" comment="Section label for the dictation language choice">Dictation language</string>
-    <string name="pref__voxtral__language_hint__summary" comment="Summary text for the dictation language preference">This affects dictation recognition only. It is not used for rewrite instructions, which are auto-detected, and it does not decide the language a rewrite is returned in — a rewrite keeps the language of the text you selected unless you ask for another one.</string>
+    <string name="pref__voxtral__language_hint__summary" comment="Summary text for the dictation language preference">Applies to cloud dictation only; Orukeet detects the language itself. Spoken rewrite instructions are always auto-detected, and a rewrite keeps the language of your text unless you ask for another one.</string>
     <string name="pref__voxtral__language_hint__mode_follow" comment="Dictation language option label">Follow keyboard language</string>
     <string name="pref__voxtral__language_hint__mode_follow_summary" comment="Dictation language option description">Recommended. Dictation is recognised in the language of the active keyboard layout.</string>
     <string name="pref__voxtral__language_hint__mode_auto" comment="Dictation language option label">Auto</string>
     <string name="pref__voxtral__language_hint__mode_auto_summary" comment="Dictation language option description">Send no language, and let the configured provider detect it.</string>
     <string name="pref__voxtral__language_hint__mode_explicit" comment="Dictation language option label">Specific language</string>
-    <string name="pref__voxtral__language_hint__mode_explicit_summary" comment="Dictation language option description">Always recognise dictation in one language, set as an ISO code such as "nl" or "en".</string>
+    <string name="pref__voxtral__language_hint__mode_explicit_summary" comment="Dictation language option description">Always recognise dictation in one language, set as an ISO code such as \"nl\" or \"en\".</string>
     <string name="pref__voxtral__group_permissions__label" comment="Title of the Voxtral permissions preference group">Microphone access</string>
     <string name="pref__voxtral__permission__summary" comment="Summary text for Voxtral microphone permission">Required to capture voice for dictation.</string>
     <string name="pref__voxtral__permission__granted" comment="Status text shown when microphone permission is granted">Microphone permission granted.</string>
     <string name="pref__voxtral__permission__missing" comment="Status text shown when microphone permission is missing">Microphone permission not granted yet.</string>
     <string name="pref__voxtral__permission__grant_action" comment="Button label to request microphone permission">Grant microphone permission</string>
-    <string name="pref__voxtral__sync_wear__action" comment="Button label to sync Voxtral settings to watch">Sync to Wear</string>
-    <string name="pref__ai__intro_title" comment="Title of AI settings intro">Ownkey AI</string>
-    <string name="pref__ai__intro_summary" comment="Summary on AI settings intro">Configure voice dictation and LLM rewrite providers from one place.</string>
-    <string name="pref__ai__rewrite_group__label" comment="Title of the LLM rewrite preference group">LLM rewrite</string>
-    <string name="pref__ai__rewrite_group__summary" comment="Summary of the LLM rewrite preference group">Rewrite uses its own provider API key. ChatGPT or Claude app subscriptions do not replace API access.</string>
+    <string name="pref__ai__intro_title" comment="Title of the AI settings overview">Ownkey AI</string>
+    <string name="pref__ai__overview_dictation" comment="Row label in the AI overview">Dictation</string>
+    <string name="pref__ai__overview_rewrite" comment="Row label in the AI overview">Rewrite</string>
+    <string name="pref__ai__overview_orukeet_missing" comment="AI overview value when Orukeet is chosen but can't dictate: its model is missing or the device can't run it">Orukeet (on device) · not ready</string>
+    <string name="pref__ai__overview_provider_model" comment="AI overview value; {provider} is a provider name, {model} a model name">{provider} · {model}</string>
+    <string name="pref__ai__overview_key_missing" comment="AI overview value; {provider} is a provider name">{provider} · API key missing</string>
+    <string name="pref__ai__overview_endpoint_missing" comment="AI overview value; {provider} is a provider name">{provider} · endpoint or model missing</string>
+    <string name="pref__ai__overview_endpoint_invalid" comment="AI overview value when the rewrite endpoint has no http(s) scheme; {provider} is a provider name">{provider} · endpoint must start with http:// or https://</string>
+    <string name="pref__ai__overview_not_set_up" comment="AI overview value when no dictation provider is usable">Not set up</string>
+    <string name="pref__ai__api_key__section" comment="Section label above an API key field">API key</string>
+    <string name="pref__ai__dictation_group__label" comment="Title of the dictation provider choice">Dictation</string>
+    <string name="pref__ai__dictation_group__summary" comment="Summary of the dictation provider choice">Choose what turns your speech into text.</string>
+    <string name="pref__ai__dictation_group__footnote" comment="Footnote under the dictation provider choice">Spoken rewrite instructions are transcribed the same way. The text you rewrite always goes to your rewrite provider, set further down.</string>
+    <string name="pref__ai__dictation_option_orukeet_summary" comment="Description of the on-device dictation option">Works offline, without an API key. Types while you talk and recognises Dutch and English automatically.</string>
+    <string name="pref__ai__dictation_option_orukeet_needs_model" comment="Why the on-device dictation option can't be chosen yet">Download the model below to choose this.</string>
+    <string name="pref__ai__dictation_option_cloud" comment="Cloud dictation option label; %1$s is a provider name such as Mistral">Cloud: %1$s</string>
+    <string name="pref__ai__dictation_option_cloud_summary" comment="Cloud dictation option description; %1$s is a provider name, %2$s a model name">Sends your audio to %1$s, transcribed by %2$s. Needs an API key.</string>
+    <string name="pref__ai__dictation_option_cloud_needs_endpoint" comment="Why the cloud dictation option can not be chosen: its endpoint has no http(s) scheme">Fix the endpoint URL under Cloud dictation to choose this. It must start with http:// or https://.</string>
+    <string name="pref__ai__dictation_option_cloud_needs_key" comment="Why the cloud dictation option can't be chosen yet">Add an API key under Cloud dictation to choose this.</string>
+    <string name="pref__ai__dictation_option_external_summary" comment="Description of the system voice input option">Hands dictation to your phone\'s own voice typing. Your personal dictionary isn\'t applied, and spoken rewrite instructions aren\'t available.</string>
+    <string name="pref__ai__cloud_group__label" comment="Title of the cloud dictation settings">Cloud dictation</string>
+    <string name="pref__ai__cloud_group__summary" comment="Summary of the cloud dictation settings">Used when you choose Cloud under Dictation. Your audio goes straight to this endpoint, sent with this API key.</string>
+    <string name="pref__ai__cloud_endpoint__section" comment="Section label above the cloud dictation endpoint and model fields">Endpoint and model</string>
+    <string name="pref__ai__rewrite_group__label" comment="Title of the rewrite settings">Rewrite</string>
+    <string name="pref__ai__rewrite_group__summary" comment="Summary of the rewrite settings">Choose the provider and model that rewrite your text. Rewrite needs its own API key: a ChatGPT or Claude app subscription doesn\'t include API access.</string>
     <string name="pref__ai__rewrite_key__label" comment="Label of the LLM rewrite API key text field">Rewrite API key</string>
-    <string name="pref__ai__rewrite_key__status_set" comment="Status text when rewrite API key is configured">Rewrite API key is saved securely.</string>
-    <string name="pref__ai__rewrite_key__status_missing" comment="Status text when rewrite API key is missing">No rewrite API key configured yet.</string>
+    <string name="pref__ai__rewrite_key__status_set" comment="Status text when rewrite API key is configured">Rewrite API key saved.</string>
+    <string name="pref__ai__rewrite_key__status_missing" comment="Status text when rewrite API key is missing">No rewrite API key yet.</string>
+    <string name="pref__ai__rewrite_key__hint" comment="Which key to paste; {provider} is a provider name">Use an API key from {provider}. Ownkey keeps one rewrite key, so replace it when you switch provider.</string>
+    <string name="pref__ai__rewrite_key__hint_custom" comment="Which key to paste for a custom endpoint">Use the key your endpoint expects. Ownkey keeps one rewrite key, so replace it when you switch provider.</string>
     <string name="pref__ai__rewrite_key__save_action" comment="Button label to save rewrite API key">Save rewrite key</string>
     <string name="pref__ai__rewrite_key__clear_action" comment="Button label to remove rewrite API key">Remove rewrite key</string>
     <string name="pref__ai__rewrite_provider__label" comment="Label for rewrite provider presets">Provider</string>
-    <string name="pref__ai__rewrite_endpoint__label" comment="Label for rewrite endpoint URL">Rewrite endpoint</string>
+    <string name="pref__ai__rewrite_model__section" comment="Section label above the rewrite model field">Model</string>
     <string name="pref__ai__rewrite_model__label" comment="Label for rewrite model">Rewrite model</string>
+    <string name="pref__ai__rewrite_model__summary" comment="Supporting text under the rewrite model field; {provider} is a provider name, {model} its default model">Default for {provider}: {model}</string>
+    <string name="pref__ai__rewrite_model__summary_custom" comment="Supporting text under the rewrite model field for a custom endpoint">The model name your endpoint expects.</string>
+    <string name="pref__ai__rewrite_endpoint__label" comment="Label for rewrite endpoint URL">Rewrite endpoint</string>
+    <string name="pref__ai__rewrite_endpoint__summary_custom" comment="Supporting text under the custom rewrite endpoint field">An OpenAI-compatible chat completions URL.</string>
+    <string name="pref__ai__rewrite_endpoint__summary" comment="Where rewrite text goes; {host} is a host name such as api.openai.com">Text you rewrite is sent to {host}.</string>
     <string name="pref__ai__rewrite_voices__label" comment="Label for rewrite prompt presets">Rewrite voices</string>
+    <string name="pref__ai__rewrite_voices__summary" comment="Summary of the rewrite voices editor">The presets in the rewrite panel. Each voice is a name and the instruction sent along with your text.</string>
     <string name="pref__ai__rewrite_voice_name__label" comment="Label for rewrite voice name">Voice name</string>
     <string name="pref__ai__rewrite_instruction__label" comment="Label for rewrite prompt instruction">Prompt instruction</string>
     <string name="pref__ai__rewrite_voice__remove_action" comment="Button label to remove a rewrite voice">Remove</string>
@@ -783,6 +814,7 @@
     <string name="rewrite_panel__action_insert">Insert</string>
     <string name="rewrite_panel__action_back_to_options">Back to options</string>
     <string name="rewrite_panel__state_inserted">Inserted</string>
+    <string name="rewrite_panel__text_changed_copied" comment="Toast when the text changed while a rewrite was generated, so the result was copied instead of inserted">Your text changed, so the rewrite was copied instead. Paste it where you want it.</string>
     <string name="rewrite_panel__state_rewriting" comment="Generic generating label with no named voice">Rewriting…</string>
     <string name="rewrite_panel__state_rewriting_with_voice" comment="Generating label naming the chosen rewrite voice">Rewriting — {voice}…</string>
     <string name="rewrite_panel__smartbar_title" comment="Quiet smartbar title while the AI rewrite panel replaces the keyboard">AI rewrite</string>
@@ -1206,8 +1238,8 @@
     <string name="enum__display_kbd_after_dialogs__remember" comment="Enum value label">Remember last state</string>
     <string name="enum__display_kbd_after_dialogs__remember__description" comment="Enum value description">Only show the keyboard after closing any editor dialog if it was previously visible</string>
 
-    <string name="enum__display_language_names_in__system_locale" comment="Enum value label">System locale</string>
-    <string name="enum__display_language_names_in__system_locale__description" comment="Enum value description">Language names across the app and keyboard UI are displayed in the locale which is set for the whole device</string>
+    <string name="enum__display_language_names_in__system_locale" comment="Enum value label">English</string>
+    <string name="enum__display_language_names_in__system_locale__description" comment="Enum value description">Language names across the app and keyboard UI are shown in English, the language of the app</string>
     <string name="enum__display_language_names_in__native_locale" comment="Enum value label">Native locale</string>
     <string name="enum__display_language_names_in__native_locale__description" comment="Enum value description">Language names across the app and keyboard UI are displayed in the locale referred by itself</string>
 
@@ -1405,6 +1437,7 @@
     </plurals>
 
     <string name="orukeet__title">Orukeet (on device)</string>
+    <string name="orukeet__model_title" comment="Title of the card that downloads and manages the Orukeet model">Orukeet model</string>
     <string name="orukeet__download_channel">Model downloads</string>
     <string name="orukeet__downloading">Downloading model…</string>
     <string name="orukeet__verifying">Verifying model…</string>
@@ -1424,29 +1457,23 @@
     <string name="orukeet__removing">Deleting model…</string>
     <string name="orukeet__waiting">Waiting for Android to start the download. You can retry now.</string>
     <string name="orukeet__progress">%1$d / %2$d MB</string>
-    <string name="orukeet__active">Active · Audio is processed on this device</string>
-    <string name="orukeet__downloaded">Downloaded · Ready to activate</string>
+    <string name="orukeet__active">In use · Audio is processed on this device</string>
+    <string name="orukeet__downloaded">Downloaded · Ready to use</string>
     <string name="orukeet__not_downloaded">Not downloaded</string>
     <string name="orukeet__download">Download model</string>
     <string name="orukeet__download_update">Download model update</string>
     <string name="orukeet__cancel_download">Cancel download</string>
-    <string name="orukeet__activate">Activate Orukeet</string>
+    <string name="orukeet__activate">Use Orukeet for dictation</string>
     <string name="orukeet__apply_update">Apply downloaded update</string>
-    <string name="orukeet__deactivate">Deactivate Orukeet</string>
-    <string name="orukeet__deactivate_destination">Deactivating restores: %1$s</string>
     <string name="orukeet__delete">Delete model</string>
     <string name="orukeet__delete_active">Cancel local voice work, delete the model and restore %1$s? You will need to download the model again to use Orukeet.</string>
     <string name="orukeet__delete_inactive">Delete the downloaded model and any partial download? Your selected dictation provider stays the same.</string>
     <string name="orukeet__notices">Model licence and notices</string>
     <string name="orukeet__close">Close</string>
-    <string name="orukeet__use_cloud">Use configured cloud dictation</string>
-    <string name="orukeet__use_external">Use system voice input</string>
     <string name="orukeet__cloud_label">Configured cloud provider</string>
     <string name="orukeet__external_label">System voice input</string>
     <string name="orukeet__mock_label">Demo dictation</string>
     <string name="orukeet__unavailable_label">Unavailable provider</string>
-    <string name="orukeet__cloud_key_needed">Configure a cloud API key below to use cloud dictation. Orukeet does not need one.</string>
-    <string name="orukeet__cloud_settings_retained">Cloud settings are kept. Voice rewrite still sends text to your configured rewrite provider.</string>
     <string name="orukeet__download_consent">The download contains Orukeet model data and its licence and notices. Downloading does not change your dictation provider.</string>
     <string name="orukeet__wifi_only">Wi-Fi or Ethernet only</string>
     <string name="orukeet__mobile_data">Allow any connection, including mobile data</string>
