@@ -158,6 +158,10 @@ class VoxtralRelayTranscriptionClient(
     companion object {
         const val DefaultEndpointUrl = "https://api.mistral.ai/v1/audio/transcriptions"
         const val DefaultModel = "voxtral-mini-latest"
+
+        /** Requests only go to http(s) URLs, whatever the letter case. Settings use it to show readiness. */
+        fun hasHttpScheme(endpointUrl: String): Boolean =
+            endpointUrl.startsWith("https://", ignoreCase = true) || endpointUrl.startsWith("http://", ignoreCase = true)
     }
 
     private data class PreparedRequest(
@@ -230,7 +234,7 @@ class VoxtralRelayTranscriptionClient(
         }
 
         val endpointUrl = endpointUrlProvider().trim().ifBlank { DefaultEndpointUrl }
-        if (!endpointUrl.startsWith("https://") && !endpointUrl.startsWith("http://")) {
+        if (!hasHttpScheme(endpointUrl)) {
             return Result.failure(IllegalStateException("Endpoint URL must start with https:// or http://"))
         }
 

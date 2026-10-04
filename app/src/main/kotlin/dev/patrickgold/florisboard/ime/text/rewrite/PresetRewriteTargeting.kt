@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 internal interface PresetRewriteEditor {
     val sessionId: Long
     val selection: EditorRange
-    /** If [selection] runs to the end of the field, as a Select All does. */
+    /** If [selection] is known to run to the end of the field, as a Select All does; false when that is unknown. */
     val selectionReachesFieldEnd: Boolean
     fun setSelection(range: EditorRange): Boolean
 }

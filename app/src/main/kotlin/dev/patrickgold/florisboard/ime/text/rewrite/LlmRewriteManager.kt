@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.text.rewrite
 
 import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.clipboardManager
@@ -100,8 +101,12 @@ class LlmRewriteManager(
                 override val sessionId: Long get() = editorInstance.activeInputSessionId
                 override val selection: EditorRange get() = editorInstance.activeContent.selection
                 override val selectionReachesFieldEnd: Boolean
-                    get() = editorInstance.activeContent.let {
-                        it.selection.isSelectionMode && it.textAfterSelection.isEmpty()
+                    get() {
+                        if (!editorInstance.activeContent.selection.isSelectionMode) return false
+                        // Asks the app: the cached content can't tell the end of the field from text it couldn't
+                        // read. An app that can't answer leaves the end unknown, and the selection is left alone.
+                        val after = FlorisImeService.currentInputConnection()?.getTextAfterCursor(1, 0) ?: return false
+                        return after.isEmpty()
                     }
                 override fun setSelection(range: EditorRange): Boolean =
                     editorInstance.setSelection(range.start, range.end)

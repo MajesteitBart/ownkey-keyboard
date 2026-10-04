@@ -27,7 +27,7 @@ import org.ownkey.offline.*
  * providers; an option that cannot dictate yet stays visible but disabled, with what is missing.
  */
 @Composable
-internal fun DictationSettings(hasCloudKey: Boolean, cloudProvider: String, cloudModel: String) {
+internal fun DictationSettings(hasCloudKey: Boolean, cloudEndpointValid: Boolean, cloudProvider: String, cloudModel: String) {
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
     val selected by prefs.voxtral.dictationBackend.collectAsState()
@@ -109,9 +109,13 @@ internal fun DictationSettings(hasCloudKey: Boolean, cloudProvider: String, clou
         ChoiceOption(
             label = stringResource(R.string.pref__ai__dictation_option_cloud, cloudProvider),
             summary = stringResource(R.string.pref__ai__dictation_option_cloud_summary, cloudProvider, cloudModel),
-            note = if (hasCloudKey) null else stringResource(R.string.pref__ai__dictation_option_cloud_needs_key),
+            note = when {
+                !hasCloudKey -> stringResource(R.string.pref__ai__dictation_option_cloud_needs_key)
+                !cloudEndpointValid -> stringResource(R.string.pref__ai__dictation_option_cloud_needs_endpoint)
+                else -> null
+            },
             selected = backend == TranscriptionBackend.CLOUD,
-            enabled = hasCloudKey && !working,
+            enabled = hasCloudKey && cloudEndpointValid && !working,
             onClick = {
                 if (backend != TranscriptionBackend.CLOUD) perform { controller.selectBackend(TranscriptionBackend.CLOUD) }
             },

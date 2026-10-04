@@ -35,14 +35,24 @@ class TranscriptionBackendTest : FunSpec({
         backend.speechDictionaryUse(hasCloudKey = false, localModelReady = false) shouldBe SpeechDictionaryUse.SYSTEM_VOICE_INPUT
     }
 
-    test("saving a cloud key keeps an undecided install on system voice input") {
-        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = false, debug = false) shouldBe TranscriptionBackend.EXTERNAL_IME
+    test("saving a cloud key stores a non-cloud choice for an undecided install, in every build") {
+        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = false) shouldBe TranscriptionBackend.EXTERNAL_IME
+        // Without it, a blank preference would resolve to cloud dictation once the key exists.
+        TranscriptionBackend.resolve("", hasCloudKey = true, debug = true) shouldBe TranscriptionBackend.CLOUD
+        TranscriptionBackend.resolve("", hasCloudKey = true, debug = false) shouldBe TranscriptionBackend.CLOUD
     }
 
-    test("saving a cloud key leaves an explicit choice, an existing key and debug demo dictation alone") {
-        TranscriptionBackend.choiceToKeepOnKeySave("orukeet", hasCloudKey = false, debug = false) shouldBe null
-        TranscriptionBackend.choiceToKeepOnKeySave("external", hasCloudKey = false, debug = false) shouldBe null
-        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = true, debug = false) shouldBe null
-        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = false, debug = true) shouldBe null
+    test("saving a cloud key leaves an explicit choice and an existing key alone") {
+        TranscriptionBackend.choiceToKeepOnKeySave("orukeet", hasCloudKey = false) shouldBe null
+        TranscriptionBackend.choiceToKeepOnKeySave("external", hasCloudKey = false) shouldBe null
+        TranscriptionBackend.choiceToKeepOnKeySave("cloud", hasCloudKey = false) shouldBe null
+        TranscriptionBackend.choiceToKeepOnKeySave("", hasCloudKey = true) shouldBe null
+    }
+
+    test("a cloud endpoint must use http or https, in any letter case") {
+        VoxtralRelayTranscriptionClient.hasHttpScheme("https://api.mistral.ai/v1/audio/transcriptions") shouldBe true
+        VoxtralRelayTranscriptionClient.hasHttpScheme("http://localhost:8000/v1/audio/transcriptions") shouldBe true
+        VoxtralRelayTranscriptionClient.hasHttpScheme("HTTPS://api.mistral.ai/v1/audio/transcriptions") shouldBe true
+        VoxtralRelayTranscriptionClient.hasHttpScheme("api.example.com/v1/audio") shouldBe false
     }
 })

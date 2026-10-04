@@ -159,6 +159,9 @@ fun VoxtralScreen() = FlorisScreen {
             endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
         ) ?: stringRes(R.string.voice_rewrite__provider_custom)
         val cloudModel = model.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultModel }
+        val cloudEndpointValid = VoxtralRelayTranscriptionClient.hasHttpScheme(
+            endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
+        )
         val effectiveRewrite = LlmRewriteProviders.resolve(rewriteProviderId, rewriteEndpointUrl, rewriteModel)
         val rewriteProvider = effectiveRewrite.preset
 
@@ -174,6 +177,7 @@ fun VoxtralScreen() = FlorisScreen {
                     dictation = dictationOverview(
                         backend = TranscriptionBackend.resolve(selectedBackend, hasStoredApiKey, BuildConfig.DEBUG),
                         hasCloudKey = hasStoredApiKey,
+                        cloudEndpointValid = cloudEndpointValid,
                         // Until the start-up check has read the stored model, a missing model is not yet known.
                         localModelReady = offlineDictation.compatible &&
                             (offlineState.currentId != null || offlineState.phase == ModelPhase.CHECKING),
@@ -182,7 +186,12 @@ fun VoxtralScreen() = FlorisScreen {
                     ),
                     rewrite = rewriteOverview(rewrite = effectiveRewrite, hasKey = hasStoredLlmApiKey),
                 )
-                DictationSettings(hasCloudKey = hasStoredApiKey, cloudProvider = cloudProvider, cloudModel = cloudModel)
+                DictationSettings(
+                    hasCloudKey = hasStoredApiKey,
+                    cloudEndpointValid = cloudEndpointValid,
+                    cloudProvider = cloudProvider,
+                    cloudModel = cloudModel,
+                )
 
                 AiSectionCard(
                     title = stringRes(R.string.pref__ai__cloud_group__label),
@@ -218,11 +227,7 @@ fun VoxtralScreen() = FlorisScreen {
                             label = stringRes(R.string.pref__voxtral__api_key__save_action),
                             onClick = {
                                 val normalizedApiKey = apiKeyInput.trim()
-                                val keep = TranscriptionBackend.choiceToKeepOnKeySave(
-                                    selectedBackend,
-                                    hasStoredApiKey,
-                                    BuildConfig.DEBUG,
-                                )
+                                val keep = TranscriptionBackend.choiceToKeepOnKeySave(selectedBackend, hasStoredApiKey)
                                 coroutineScope.launch {
                                     // The shown choice is stored before the key: a key without it would let an
                                     // undecided install send its next recording to the cloud.
@@ -523,6 +528,7 @@ private data class OverviewValue(val text: String, val needsSetup: Boolean)
 private fun dictationOverview(
     backend: TranscriptionBackend,
     hasCloudKey: Boolean,
+    cloudEndpointValid: Boolean,
     localModelReady: Boolean,
     cloudProvider: String,
     cloudModel: String,
@@ -532,13 +538,19 @@ private fun dictationOverview(
     } else {
         OverviewValue(stringRes(R.string.pref__ai__overview_orukeet_missing), needsSetup = true)
     }
-    TranscriptionBackend.CLOUD -> if (hasCloudKey) {
-        OverviewValue(
+    TranscriptionBackend.CLOUD -> when {
+        !hasCloudKey -> OverviewValue(
+            stringRes(R.string.pref__ai__overview_key_missing, "provider" to cloudProvider),
+            needsSetup = true,
+        )
+        !cloudEndpointValid -> OverviewValue(
+            stringRes(R.string.pref__ai__overview_endpoint_invalid, "provider" to cloudProvider),
+            needsSetup = true,
+        )
+        else -> OverviewValue(
             stringRes(R.string.pref__ai__overview_provider_model, "provider" to cloudProvider, "model" to cloudModel),
             needsSetup = false,
         )
-    } else {
-        OverviewValue(stringRes(R.string.pref__ai__overview_key_missing, "provider" to cloudProvider), needsSetup = true)
     }
     TranscriptionBackend.EXTERNAL_IME -> OverviewValue(stringRes(R.string.orukeet__external_label), needsSetup = false)
     TranscriptionBackend.MOCK -> OverviewValue(stringRes(R.string.orukeet__mock_label), needsSetup = false)

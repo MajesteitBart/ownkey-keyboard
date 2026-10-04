@@ -679,6 +679,7 @@
     <string name="pref__ai__dictation_option_orukeet_needs_model" comment="Why the on-device dictation option can't be chosen yet">Download the model below to choose this.</string>
     <string name="pref__ai__dictation_option_cloud" comment="Cloud dictation option label; %1$s is a provider name such as Mistral">Cloud: %1$s</string>
     <string name="pref__ai__dictation_option_cloud_summary" comment="Cloud dictation option description; %1$s is a provider name, %2$s a model name">Sends your audio to %1$s, transcribed by %2$s. Needs an API key.</string>
+    <string name="pref__ai__dictation_option_cloud_needs_endpoint" comment="Why the cloud dictation option can not be chosen: its endpoint has no http(s) scheme">Fix the endpoint URL under Cloud dictation to choose this. It must start with http:// or https://.</string>
     <string name="pref__ai__dictation_option_cloud_needs_key" comment="Why the cloud dictation option can't be chosen yet">Add an API key under Cloud dictation to choose this.</string>
     <string name="pref__ai__dictation_option_external_summary" comment="Description of the system voice input option">Hands dictation to your phone\'s own voice typing. Your personal dictionary isn\'t applied, and spoken rewrite instructions aren\'t available.</string>
     <string name="pref__ai__cloud_group__label" comment="Title of the cloud dictation settings">Cloud dictation</string>
