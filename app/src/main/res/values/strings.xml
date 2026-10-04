@@ -664,10 +664,11 @@
     <string name="pref__ai__intro_title" comment="Title of the AI settings overview">Ownkey AI</string>
     <string name="pref__ai__overview_dictation" comment="Row label in the AI overview">Dictation</string>
     <string name="pref__ai__overview_rewrite" comment="Row label in the AI overview">Rewrite</string>
-    <string name="pref__ai__overview_orukeet_missing" comment="AI overview value when Orukeet is chosen but its model is missing">Orukeet (on device) · model missing</string>
+    <string name="pref__ai__overview_orukeet_missing" comment="AI overview value when Orukeet is chosen but can't dictate: its model is missing or the device can't run it">Orukeet (on device) · not ready</string>
     <string name="pref__ai__overview_provider_model" comment="AI overview value; {provider} is a provider name, {model} a model name">{provider} · {model}</string>
     <string name="pref__ai__overview_key_missing" comment="AI overview value; {provider} is a provider name">{provider} · API key missing</string>
     <string name="pref__ai__overview_endpoint_missing" comment="AI overview value; {provider} is a provider name">{provider} · endpoint or model missing</string>
+    <string name="pref__ai__overview_endpoint_invalid" comment="AI overview value when the rewrite endpoint has no http(s) scheme; {provider} is a provider name">{provider} · endpoint must start with https://</string>
     <string name="pref__ai__overview_not_set_up" comment="AI overview value when no dictation provider is usable">Not set up</string>
     <string name="pref__ai__api_key__section" comment="Section label above an API key field">API key</string>
     <string name="pref__ai__dictation_group__label" comment="Title of the dictation provider choice">Dictation</string>

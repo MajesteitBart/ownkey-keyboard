@@ -120,7 +120,7 @@ class LlmRewriteClient(
         }
 
         val endpointUrl = resolved.endpointUrl
-        if (!endpointUrl.startsWith("https://") && !endpointUrl.startsWith("http://")) {
+        if (!resolved.hasHttpEndpoint) {
             return Result.failure(IllegalStateException("LLM endpoint URL must start with https:// or http://"))
         }
 

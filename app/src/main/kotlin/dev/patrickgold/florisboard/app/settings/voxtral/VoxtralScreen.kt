@@ -174,7 +174,8 @@ fun VoxtralScreen() = FlorisScreen {
                         backend = TranscriptionBackend.resolve(selectedBackend, hasStoredApiKey, BuildConfig.DEBUG),
                         hasCloudKey = hasStoredApiKey,
                         // Until the start-up check has read the stored model, a missing model is not yet known.
-                        localModelReady = offlineState.currentId != null || offlineState.phase == ModelPhase.CHECKING,
+                        localModelReady = offlineDictation.compatible &&
+                            (offlineState.currentId != null || offlineState.phase == ModelPhase.CHECKING),
                         cloudProvider = cloudProvider,
                         cloudModel = cloudModel,
                     ),
@@ -540,6 +541,10 @@ private fun rewriteOverview(rewrite: ResolvedRewriteProvider, hasKey: Boolean): 
     )
     !rewrite.isComplete -> OverviewValue(
         stringRes(R.string.pref__ai__overview_endpoint_missing, "provider" to rewrite.preset.providerName),
+        needsSetup = true,
+    )
+    !rewrite.hasHttpEndpoint -> OverviewValue(
+        stringRes(R.string.pref__ai__overview_endpoint_invalid, "provider" to rewrite.preset.providerName),
         needsSetup = true,
     )
     else -> OverviewValue(

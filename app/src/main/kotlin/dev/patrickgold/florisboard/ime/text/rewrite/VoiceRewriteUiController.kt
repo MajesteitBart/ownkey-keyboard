@@ -62,6 +62,8 @@ class VoiceRewriteUiController(
     private val setPanelVisible: (Boolean) -> Unit,
     private val openAiSettingsRoute: () -> Unit,
     private val openIncognitoSettingRoute: () -> Unit,
+    /** Runs before a voice rewrite takes over the editor's selection, so nothing else undoes it afterwards. */
+    private val beforeBegin: () -> Unit = {},
 ) {
     val availability: StateFlow<AiAvailability> = availabilityPolicy.state
 
@@ -116,6 +118,7 @@ class VoiceRewriteUiController(
      * targeting, disclosure, and recovery states have a container regardless of entry origin.
      */
     fun begin(origin: VoiceRewriteEntryOrigin) {
+        beforeBegin()
         _origin.value = origin
         setPanelVisible(true)
         sessionManager.begin()

@@ -125,13 +125,41 @@ private val ButtonSize = 40.dp
 private val MinStatusWidth = 72.dp
 private val MaxStatusWidth = 120.dp
 
+/** Which optional buttons the bar shows, and how wide its status column is. */
+internal data class VoiceBarLayout(val showRewrite: Boolean, val showLanguage: Boolean, val statusWidth: Dp)
+
 /**
- * Width of the status column: [MaxStatusWidth] when the screen allows it, narrower on small screens so the
- * buttons always fit. It never follows the status text, so the buttons stay put while the text changes.
+ * Fits the bar into [maxBarWidth]. The status column gets [MaxStatusWidth] when there is room and narrows on small
+ * screens; below [MinStatusWidth] the language button gives way first, then rewrite, so the mic and the keyboard
+ * button always stay usable. The width never follows the status text, so buttons stay put while the text changes.
  */
-internal fun voiceBarStatusWidth(maxBarWidth: Dp, buttonCount: Int): Dp {
-    val fixed = BarPadding * 2 + MicSize + ButtonSize * buttonCount + BarSpacing * (buttonCount + 1)
-    return (maxBarWidth - fixed).coerceIn(MinStatusWidth, MaxStatusWidth)
+internal fun voiceBarLayout(maxBarWidth: Dp, languageAvailable: Boolean): VoiceBarLayout {
+    fun freeWidth(buttons: Int) = maxBarWidth - (BarPadding * 2 + MicSize + ButtonSize * buttons + BarSpacing * (buttons + 1))
+    var showLanguage = languageAvailable
+    var showRewrite = true
+    fun buttons() = 1 + (if (showRewrite) 1 else 0) + (if (showLanguage) 1 else 0)
+    if (freeWidth(buttons()) < MinStatusWidth) showLanguage = false
+    if (freeWidth(buttons()) < MinStatusWidth) showRewrite = false
+    return VoiceBarLayout(
+        showRewrite = showRewrite,
+        showLanguage = showLanguage,
+        statusWidth = freeWidth(buttons()).coerceIn(0.dp, MaxStatusWidth),
+    )
+}
+
+/**
+ * The next item after [active] whose [language] differs, wrapping around, or null if every item shares it. Layouts
+ * of one language, such as English QWERTY and English Dvorak, are skipped: switching between them would not change
+ * the language the bar shows or cloud dictation uses.
+ */
+internal fun <T> nextLanguage(items: List<T>, active: T, language: (T) -> String): T? {
+    val start = items.indexOf(active)
+    val activeLanguage = language(active)
+    for (step in 1 until items.size) {
+        val candidate = items[(start + step).mod(items.size)]
+        if (language(candidate) != activeLanguage) return candidate
+    }
+    return null
 }
 
 /**
@@ -270,8 +298,10 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
         else -> stringRes(R.string.voice_only__tap_to_speak)
     }
     // With one keyboard language there is nothing to switch to, so the bar leaves the button out.
-    val showLanguage = subtypes.size > 1
-    val buttonCount = if (showLanguage) 3 else 2
+    val nextLanguageSubtype = remember(subtypes, activeSubtype) {
+        nextLanguage(subtypes, activeSubtype) { it.primaryLocale.language }
+    }
+    val layout = voiceBarLayout(maxBarWidth, languageAvailable = nextLanguageSubtype != null)
 
     Row(
         modifier = Modifier
@@ -294,7 +324,7 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
         )
         // A fixed width keeps the buttons in place while the status text changes under the finger.
         Column(
-            modifier = Modifier.width(voiceBarStatusWidth(maxBarWidth, buttonCount)),
+            modifier = Modifier.width(layout.statusWidth),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             MeasuredLevelWaveform(
@@ -317,23 +347,25 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        VoiceOnlyButton(
-            label = stringRes(R.string.voice_only__rewrite),
-            background = keyBackground,
-            enabled = !sessionBusy,
-            onClick = {
-                inputFeedbackController.keyPress()
-                keyboardManager.openRewriteFromVoiceBar()
-            },
-        ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_sparkles),
-                contentDescription = null,
-                tint = keyForeground.copy(alpha = 0.86f),
-                modifier = Modifier.size(20.dp),
-            )
+        if (layout.showRewrite) {
+            VoiceOnlyButton(
+                label = stringRes(R.string.voice_only__rewrite),
+                background = keyBackground,
+                enabled = !sessionBusy,
+                onClick = {
+                    inputFeedbackController.keyPress()
+                    keyboardManager.openRewriteFromVoiceBar()
+                },
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_sparkles),
+                    contentDescription = null,
+                    tint = keyForeground.copy(alpha = 0.86f),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
-        if (showLanguage) {
+        if (layout.showLanguage && nextLanguageSubtype != null) {
             val locale = activeSubtype.primaryLocale
             VoiceOnlyButton(
                 label = stringRes(
@@ -345,7 +377,7 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
                 enabled = !sessionBusy,
                 onClick = {
                     inputFeedbackController.keyPress()
-                    subtypeManager.switchToNextSubtype()
+                    subtypeManager.switchToSubtypeById(nextLanguageSubtype.id)
                 },
             ) {
                 Text(

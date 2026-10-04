@@ -68,18 +68,46 @@ class VoiceOnlyBarTest : FunSpec({
         }
     }
 
-    context("the status column makes room for the buttons") {
-        test("it keeps its full width on a typical phone") {
-            voiceBarStatusWidth(maxBarWidth = 395.dp, buttonCount = 3) shouldBe 120.dp
+    context("the bar fits its window") {
+        test("a typical phone shows every button and the full status column") {
+            voiceBarLayout(maxBarWidth = 395.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, true, 120.dp)
         }
 
-        test("it narrows on a small screen so every button still fits") {
+        test("a small screen narrows the status column so every button still fits") {
             // 12 dp padding, a 44 dp mic, three 40 dp buttons and four 8 dp gaps leave 96 dp of a 304 dp bar.
-            voiceBarStatusWidth(maxBarWidth = 304.dp, buttonCount = 3) shouldBe 96.dp
+            voiceBarLayout(maxBarWidth = 304.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, true, 96.dp)
         }
 
-        test("it never shrinks below a readable width") {
-            voiceBarStatusWidth(maxBarWidth = 200.dp, buttonCount = 3) shouldBe 72.dp
+        test("a narrow window drops the language button before the status gets unreadable") {
+            voiceBarLayout(maxBarWidth = 260.dp, languageAvailable = true) shouldBe VoiceBarLayout(true, false, 100.dp)
+        }
+
+        test("a very narrow window keeps only the mic and the keyboard button") {
+            voiceBarLayout(maxBarWidth = 200.dp, languageAvailable = true) shouldBe VoiceBarLayout(false, false, 88.dp)
+        }
+
+        test("the bar never grows past its window") {
+            val layout = voiceBarLayout(maxBarWidth = 150.dp, languageAvailable = true)
+            layout shouldBe VoiceBarLayout(false, false, 38.dp)
+        }
+    }
+
+    context("the language button switches language, not layout") {
+        val layouts = listOf("en-qwerty", "en-dvorak", "nl-qwerty", "de-qwertz")
+        val language = { layout: String -> layout.substringBefore('-') }
+
+        test("it skips other layouts of the same language") {
+            nextLanguage(layouts, "en-qwerty", language) shouldBe "nl-qwerty"
+            nextLanguage(layouts, "en-dvorak", language) shouldBe "nl-qwerty"
+        }
+
+        test("it wraps around to the first language") {
+            nextLanguage(layouts, "de-qwertz", language) shouldBe "en-qwerty"
+        }
+
+        test("with only one language there is nothing to switch to") {
+            nextLanguage(listOf("en-qwerty", "en-dvorak"), "en-qwerty", language) shouldBe null
+            nextLanguage(listOf("en-qwerty"), "en-qwerty", language) shouldBe null
         }
     }
 })

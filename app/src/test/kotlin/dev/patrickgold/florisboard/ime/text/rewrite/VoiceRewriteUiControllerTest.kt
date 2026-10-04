@@ -73,6 +73,7 @@ private fun controllerFixture(
     acknowledgedDisclosureVersion: Int = 1,
     targetResolution: VoiceRewriteTargetResolution =
         VoiceRewriteTargetResolution.Rejected(VoiceRewriteTargetFailure.EMPTY_TARGET),
+    beforeBegin: () -> Unit = {},
 ): ControllerFixture {
     val sessions = MutableStateFlow(session)
     val policy = AiAvailabilityPolicy(scope, sessions)
@@ -127,6 +128,7 @@ private fun controllerFixture(
         setPanelVisible = { visible -> panelVisibility += visible },
         openAiSettingsRoute = { settingsOpened += "ai" },
         openIncognitoSettingRoute = { settingsOpened += "incognito" },
+        beforeBegin = beforeBegin,
     )
     return ControllerFixture(
         controller,
@@ -261,6 +263,20 @@ class VoiceRewriteUiControllerTest : FunSpec({
 
             fixture.panelVisibility shouldBe listOf(true)
             fixture.controller.uiState.value.origin shouldBe VoiceRewriteEntryOrigin.REWRITE_HUB
+        }
+    }
+
+    test("starting a voice rewrite first releases a preset's pending selection undo") {
+        runTest {
+            val events = mutableListOf<String>()
+            val fixture = controllerFixture(backgroundScope, beforeBegin = { events += "release" })
+            runCurrent()
+
+            fixture.controller.begin(VoiceRewriteEntryOrigin.REWRITE_HUB)
+            runCurrent()
+
+            events shouldBe listOf("release")
+            fixture.panelVisibility shouldBe listOf(true)
         }
     }
 

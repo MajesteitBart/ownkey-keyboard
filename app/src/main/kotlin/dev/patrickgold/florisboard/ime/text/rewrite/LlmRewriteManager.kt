@@ -20,6 +20,7 @@ import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.editorInstance
+import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.keyboardManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -83,10 +84,20 @@ class LlmRewriteManager(
 
     private var generateJob: Job? = null
     private var activeTarget: RewriteTarget? = null
+    private var activeTargeting = false
 
     // Created on first use, so the editor is only touched once a preset is tapped.
-    private val targetResolver by lazy {
-        VoiceRewriteTargetResolver(EditorInstanceVoiceRewriteGateway(editorInstance))
+    private val targeting by lazy {
+        PresetRewriteTargeting(
+            source = VoiceRewriteTargetResolver(EditorInstanceVoiceRewriteGateway(editorInstance)),
+            editor = object : PresetRewriteEditor {
+                override val sessionId: Long get() = editorInstance.activeInputSessionId
+                override val selection: EditorRange get() = editorInstance.activeContent.selection
+                override fun setSelection(range: EditorRange): Boolean =
+                    editorInstance.setSelection(range.start, range.end)
+            },
+            scope = scope,
+        )
     }
 
     init {
@@ -96,6 +107,7 @@ class LlmRewriteManager(
                     generateJob?.cancel()
                     generateJob = null
                     activeTarget = null
+                    abandonTarget()
                     _uiStateFlow.value = RewriteUiState()
                 }
             }
@@ -118,8 +130,9 @@ class LlmRewriteManager(
         // selected. Capturing the field selects it all, so the panel shows progress from the tap onwards.
         generateJob?.cancel()
         _uiStateFlow.value = RewriteUiState(step = RewriteStep.GENERATING, activePrompt = prompt)
+        activeTargeting = true
         generateJob = scope.launch {
-            when (val resolution = targetResolver.resolve()) {
+            when (val resolution = targeting.capture()) {
                 is VoiceRewriteTargetResolution.Resolved -> {
                     val snapshot = resolution.snapshot
                     val target = RewriteTarget(snapshot.sourceText, snapshot.range.start, snapshot.range.end)
@@ -149,11 +162,13 @@ class LlmRewriteManager(
     fun cancelGeneration() {
         generateJob?.cancel()
         generateJob = null
+        abandonTarget()
         _uiStateFlow.value = RewriteUiState()
     }
 
     /** Returns from the result sheet to the options grid, discarding the result. */
     fun backToOptions() {
+        abandonTarget()
         _uiStateFlow.value = RewriteUiState()
     }
 
@@ -170,6 +185,7 @@ class LlmRewriteManager(
                 _uiStateFlow.value = state.copy(step = RewriteStep.RESULT)
                 return@launch
             }
+            targeting.committed()
             _uiStateFlow.value = state.copy(step = RewriteStep.DONE)
             delay(DoneConfirmationMillis)
             closeOptions()
@@ -184,7 +200,22 @@ class LlmRewriteManager(
         generateJob?.cancel()
         generateJob = null
         activeTarget = null
+        abandonTarget()
         _uiStateFlow.value = RewriteUiState()
+    }
+
+    /**
+     * Voice rewrite is about to select the field for itself: a preset that was abandoned a moment ago must not
+     * undo that selection when its own Select All arrives late.
+     */
+    fun releasePresetTarget() {
+        if (activeTargeting) targeting.forget()
+    }
+
+    /** Puts the cursor back if a preset selected the whole field and its result was not inserted. */
+    private fun abandonTarget() {
+        // Nothing to undo before the first preset; avoids creating the editor adapter on every dismissal.
+        if (activeTargeting) targeting.restore()
     }
 
     fun closeOptions() {
@@ -219,6 +250,7 @@ class LlmRewriteManager(
     private suspend fun runGeneration(prompt: RewritePromptPreset, target: RewriteTarget) {
         if (aiAvailabilityPolicy.current() !is AiAvailability.Available) {
             activeTarget = null
+            abandonTarget()
             _uiStateFlow.value = RewriteUiState()
             return
         }
@@ -226,6 +258,7 @@ class LlmRewriteManager(
             rewriteClient.rewrite(target.text, prompt)
         }.getOrElse { error ->
             if (error is CancellationException) throw error
+            abandonTarget()
             _uiStateFlow.value = RewriteUiState()
             appContext.showShortToastSync(error.message ?: "Rewrite failed")
             return

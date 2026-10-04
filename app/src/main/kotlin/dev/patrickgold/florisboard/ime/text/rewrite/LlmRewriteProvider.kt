@@ -39,6 +39,9 @@ data class ResolvedRewriteProvider(
 ) {
     /** A custom endpoint has no defaults, so it can only send requests once both fields are filled in. */
     val isComplete: Boolean get() = endpointUrl.isNotBlank() && model.isNotBlank()
+
+    /** Requests only go to http(s) URLs, so an endpoint typed without a scheme can't be used. */
+    val hasHttpEndpoint: Boolean get() = endpointUrl.startsWith("https://") || endpointUrl.startsWith("http://")
 }
 
 object LlmRewriteProviders {

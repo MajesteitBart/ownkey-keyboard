@@ -33,7 +33,7 @@ Ownkey is a fork of [FlorisBoard](https://github.com/florisboard/florisboard), s
 
 Download the APK for your phone from the [latest release](https://github.com/MajesteitBart/ownkey-keyboard/releases/latest). Almost every current phone needs `arm64-v8a`. Older 32-bit phones need `armeabi-v7a`, and the `x86_64` and `x86` builds are for emulators. Each release lists the checksums in `SHA256SUMS`.
 
-Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. The app itself is in English; your keyboard languages, autocorrect and dictation work in other languages regardless. Rewrite uses a cloud provider and needs an API key. Dictation can use a cloud provider as well, or [Orukeet on the phone](#on-device-dictation) on 64-bit ARM phones. [Set up AI](#set-up-ai) walks through it.
+Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. The app itself is in English. That doesn't change which languages you can type or dictate in. Rewrite uses a cloud provider and needs an API key. Dictation can use a cloud provider as well, or [Orukeet on the phone](#on-device-dictation) on 64-bit ARM phones. [Set up AI](#set-up-ai) walks through it.
 
 ## What it does
 

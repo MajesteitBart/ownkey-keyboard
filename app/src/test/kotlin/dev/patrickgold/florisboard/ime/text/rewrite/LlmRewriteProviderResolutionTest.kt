@@ -45,6 +45,13 @@ class LlmRewriteProviderResolutionTest : FunSpec({
         complete.endpointUrl shouldBe "https://custom.invalid/rewrite"
     }
 
+    test("an endpoint without http or https is complete but can't be used") {
+        val resolved = LlmRewriteProviders.resolve(LlmRewriteProviders.Custom, "api.example.com/v1/chat", "custom-model")
+        resolved.isComplete shouldBe true
+        resolved.hasHttpEndpoint shouldBe false
+        LlmRewriteProviders.resolve(LlmRewriteProviders.Custom, "https://api.example.com/v1/chat", "m").hasHttpEndpoint shouldBe true
+    }
+
     test("nothing saved resolves to the default provider and model") {
         val resolved = LlmRewriteProviders.resolve(providerId = "", endpointUrl = "", model = "")
         resolved.preset.id shouldBe LlmRewriteProviders.Default
