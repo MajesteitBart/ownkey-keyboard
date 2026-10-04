@@ -57,7 +57,7 @@ The personal dictionary under **Settings → AI** helps with names and jargon. W
 
 ### Rewrite
 
-Select text, open AI rewrite and pick a voice: Improve writing, Fix grammar, Make shorter, Rewrite in Dutch, Plainspoken or one you write yourself. You see the result first, and your text only changes when you tap Insert. To give the instruction by voice, hold the microphone key instead.
+Select text, or select nothing to rewrite the whole field, then open AI rewrite and pick a voice: Improve writing, Fix grammar, Make shorter, Rewrite in Dutch, Plainspoken or one you write yourself. You see the result first, and your text only changes when you tap Insert. To give the instruction by voice, hold the microphone key instead.
 
 Rewrite has presets for OpenAI (Responses and Chat Completions), Anthropic, Mistral and OpenRouter, and it accepts any OpenAI-compatible endpoint. OpenRouter is the default.
 
