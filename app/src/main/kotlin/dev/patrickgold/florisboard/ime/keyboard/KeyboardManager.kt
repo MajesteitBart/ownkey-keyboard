@@ -372,6 +372,31 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
+    /** The voice-only bar has no room for panels or sheets, so none may stay open behind or over it. */
+    fun closePanelsForVoiceBar() {
+        isRewriteOptionsVisible = false
+        activeState.batchEdit {
+            it.isActionsOverflowVisible = false
+            it.isActionsEditorVisible = false
+            it.isSubtypeSelectionVisible = false
+        }
+        dictationFixController.interrupt()
+    }
+
+    /**
+     * Opens the rewrite panel from the voice-only bar. The full keyboard window shows the panel, and the bar
+     * returns when the panel closes (see `ImeWindowController.isRewritePanelOpen`).
+     */
+    fun openRewriteFromVoiceBar() {
+        activeState.batchEdit {
+            // The panel lives in the text layout, so emoji or clipboard must not hide it.
+            it.imeUiMode = ImeUiMode.TEXT
+            it.isActionsOverflowVisible = false
+        }
+        dictationFixController.interrupt()
+        isRewriteOptionsVisible = true
+    }
+
     /**
      * Opens emoji search: the letter keyboard comes back, but typed characters go to the search query instead of the
      * app until [closeEmojiSearch].
@@ -1006,13 +1031,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.COMPACT_LAYOUT_TO_RIGHT -> windowController.actions.compactLayoutToRight()
             KeyCode.TOGGLE_RESIZE_MODE -> windowController.editor.toggleEnabled()
             KeyCode.TOGGLE_VOICE_ONLY -> {
-                // The bar has no room for panels or sheets, so none may stay open behind or over it.
-                isRewriteOptionsVisible = false
-                activeState.isActionsOverflowVisible = false
-                activeState.isActionsEditorVisible = false
-                activeState.isSubtypeSelectionVisible = false
-                dictationFixController.interrupt()
-                windowController.actions.toggleVoiceOnly()
+                // While the rewrite panel holds the bar back, voice-only is still on: the toggle returns to the
+                // bar instead of turning voice-only off behind the user's back.
+                val panelHoldsBar = isRewriteOptionsVisible && windowController.isVoiceOnlyRequested.value
+                closePanelsForVoiceBar()
+                if (!panelHoldsBar) windowController.actions.toggleVoiceOnly()
             }
             KeyCode.DELETE -> handleBackwardDelete(OperationUnit.CHARACTERS)
             KeyCode.DELETE_WORD -> handleBackwardDelete(OperationUnit.WORDS)

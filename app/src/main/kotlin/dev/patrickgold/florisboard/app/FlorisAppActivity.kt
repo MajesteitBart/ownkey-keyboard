@@ -52,7 +52,6 @@ import dev.patrickgold.florisboard.app.setup.MicrophonePermissionState
 import dev.patrickgold.florisboard.app.setup.NotificationPermissionState
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.cacheManager
-import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.compose.LocalPreviewFieldController
 import dev.patrickgold.florisboard.lib.compose.PreviewKeyboardField
 import dev.patrickgold.florisboard.lib.compose.rememberPreviewFieldController
@@ -99,12 +98,6 @@ class FlorisAppActivity : ComponentActivity() {
 
         prefs.other.settingsTheme.asFlow().collectIn(lifecycleScope) {
             appTheme = it
-        }
-        prefs.other.settingsLanguage.asFlow().collectIn(lifecycleScope) {
-            val config = Configuration(resources.configuration)
-            val locale = if (it == "auto") FlorisLocale.default() else FlorisLocale.fromTag(it)
-            config.setLocale(locale.base)
-            resourcesContext = createConfigurationContext(config)
         }
         if (AndroidVersion.ATMOST_API28_P) {
             prefs.other.showAppIcon.asFlow().collectIn(lifecycleScope) {

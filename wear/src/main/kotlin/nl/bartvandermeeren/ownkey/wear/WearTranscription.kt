@@ -136,7 +136,7 @@ fun stopRecording(session: RecordingSession): Result<AudioRecording> {
 
         if (bytes.isEmpty()) {
             session.appContext.contentResolver.delete(session.outputUri, null, null)
-            throw IllegalStateException("Geen audio opgenomen")
+            throw IllegalStateException("No audio recorded")
         }
 
         AudioRecording(
@@ -201,10 +201,10 @@ class VoxtralWearClient(
         recording: AudioRecording,
     ): Result<String> {
         if (apiKey.isBlank()) {
-            return Result.failure(IllegalStateException("API key ontbreekt"))
+            return Result.failure(IllegalStateException("API key missing"))
         }
         if (recording.bytes.isEmpty()) {
-            return Result.failure(IllegalStateException("Geen audio opgenomen"))
+            return Result.failure(IllegalStateException("No audio recorded"))
         }
 
         var attempt = 0
@@ -230,7 +230,7 @@ class VoxtralWearClient(
                 return result
             }
 
-            val error = result.exceptionOrNull() ?: IllegalStateException("Onbekende transcriptiefout")
+            val error = result.exceptionOrNull() ?: IllegalStateException("Unknown transcription error")
             lastError = error
             if (!shouldRetry(error) || attempt >= maxRetries) {
                 return Result.failure(error)
@@ -239,7 +239,7 @@ class VoxtralWearClient(
             delay(600L * attempt)
         }
 
-        return Result.failure(lastError ?: IllegalStateException("Transcriptie mislukt"))
+        return Result.failure(lastError ?: IllegalStateException("Transcription failed"))
     }
 
     private suspend fun performRequest(
@@ -290,13 +290,13 @@ class VoxtralWearClient(
                 val details = responseBody.trim().take(300)
                 throw VoxtralHttpException(
                     statusCode = statusCode,
-                    message = "HTTP $statusCode. ${if (details.isNotBlank()) details else "Geen foutdetails"}",
+                    message = "HTTP $statusCode. ${if (details.isNotBlank()) details else "No error details"}",
                 )
             }
 
             val transcript = extractTranscript(responseBody)
             if (transcript.isBlank()) {
-                throw IllegalStateException("Transcript is leeg")
+                throw IllegalStateException("Transcript is empty")
             }
             transcript
         }

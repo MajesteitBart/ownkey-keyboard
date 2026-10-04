@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -59,10 +60,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -86,6 +90,8 @@ import dev.patrickgold.florisboard.ime.smartbar.voiceRecordingRowState
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionErrorReason
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.florisboard.voxtralDictationManager
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -94,6 +100,7 @@ import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /**
  * If the voice-only bar may replace the keyboard for an editor. Secure and incognito fields never take
@@ -111,9 +118,21 @@ private val VoiceOnlyKeypadTypes = setOf(
 private val BarHeight = 56.dp
 private val BarBottomMargin = 16.dp
 private val BarEdgeMargin = 8.dp
+private val BarPadding = 6.dp
+private val BarSpacing = 8.dp
 private val MicSize = 44.dp
-private val KeyboardButtonSize = 40.dp
-private val StatusWidth = 136.dp
+private val ButtonSize = 40.dp
+private val MinStatusWidth = 72.dp
+private val MaxStatusWidth = 120.dp
+
+/**
+ * Width of the status column: [MaxStatusWidth] when the screen allows it, narrower on small screens so the
+ * buttons always fit. It never follows the status text, so the buttons stay put while the text changes.
+ */
+internal fun voiceBarStatusWidth(maxBarWidth: Dp, buttonCount: Int): Dp {
+    val fixed = BarPadding * 2 + MicSize + ButtonSize * buttonCount + BarSpacing * (buttonCount + 1)
+    return (maxBarWidth - fixed).coerceIn(MinStatusWidth, MaxStatusWidth)
+}
 
 /**
  * Keeps a drag offset inside the area: the bar may move anywhere above its default bottom-center spot,
@@ -170,6 +189,7 @@ fun BoxScope.VoiceOnlyWindow() {
         val offset = clamp.value(dragOffset ?: Offset(stored.x * density.density, stored.y * density.density))
         val currentOffset = rememberUpdatedState(offset)
 
+        val maxBarWidth = maxWidth - BarEdgeMargin * 2
         Box(
             modifier = Modifier
                 .offset {
@@ -204,19 +224,21 @@ fun BoxScope.VoiceOnlyWindow() {
                     )
                 },
         ) {
-            VoiceOnlyBar()
+            VoiceOnlyBar(maxBarWidth = maxBarWidth)
         }
     }
 }
 
 @Composable
-private fun VoiceOnlyBar() {
+private fun VoiceOnlyBar(maxBarWidth: Dp) {
     val context = LocalContext.current
     val inputFeedbackController = LocalInputFeedbackController.current
     val windowController = LocalWindowController.current
     val audioSessionCoordinator by context.audioSessionCoordinator()
     val audioLevelHistorySampler by context.audioLevelHistorySampler()
     val dictationManager by context.voxtralDictationManager()
+    val keyboardManager by context.keyboardManager()
+    val subtypeManager by context.subtypeManager()
 
     // The session publishes every level sample; the bar shows no timer, so it only follows phase changes.
     val recordingState by remember(audioSessionCoordinator) {
@@ -227,6 +249,11 @@ private fun VoiceOnlyBar() {
     // Read only in the waveform's draw pass, so level samples never recompose the bar.
     val levels = audioLevelHistorySampler.state.collectAsState()
     val phase = recording?.phase
+    val subtypes by subtypeManager.subtypesFlow.collectAsState()
+    val activeSubtype by subtypeManager.activeSubtypeFlow.collectAsState()
+    // Rewrite needs the microphone and the editor to itself, and a language switch only applies to the next
+    // recording, so both wait until dictation has finished.
+    val sessionBusy = recording != null
 
     val windowTheme = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName)
     val keyTheme = rememberSnyggThemeQuery(FlorisImeUi.Key.elementName)
@@ -242,6 +269,9 @@ private fun VoiceOnlyBar() {
         feedback.phase == VoiceActionFeedbackPhase.ERROR -> stringRes(feedback.errorReason.voiceOnlyLabel())
         else -> stringRes(R.string.voice_only__tap_to_speak)
     }
+    // With one keyboard language there is nothing to switch to, so the bar leaves the button out.
+    val showLanguage = subtypes.size > 1
+    val buttonCount = if (showLanguage) 3 else 2
 
     Row(
         modifier = Modifier
@@ -249,9 +279,9 @@ private fun VoiceOnlyBar() {
             .shadow(elevation = 8.dp, shape = barShape)
             .background(background, barShape)
             .border(1.dp, foreground.copy(alpha = 0.08f), barShape)
-            .padding(horizontal = 6.dp),
+            .padding(horizontal = BarPadding),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(BarSpacing),
     ) {
         VoiceOnlyMicButton(
             feedbackPhase = feedback.phase,
@@ -262,9 +292,9 @@ private fun VoiceOnlyBar() {
                 FlorisImeService.handleVoiceInputAction()
             },
         )
-        // A fixed width keeps both buttons in place while the status text changes under the finger.
+        // A fixed width keeps the buttons in place while the status text changes under the finger.
         Column(
-            modifier = Modifier.width(StatusWidth),
+            modifier = Modifier.width(voiceBarStatusWidth(maxBarWidth, buttonCount)),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             MeasuredLevelWaveform(
@@ -287,19 +317,54 @@ private fun VoiceOnlyBar() {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        val showKeyboard = stringRes(R.string.voice_only__show_keyboard)
-        Box(
-            modifier = Modifier
-                .size(KeyboardButtonSize)
-                .clip(CircleShape)
-                .background(keyBackground)
-                .clickable(onClickLabel = showKeyboard) {
+        VoiceOnlyButton(
+            label = stringRes(R.string.voice_only__rewrite),
+            background = keyBackground,
+            enabled = !sessionBusy,
+            onClick = {
+                inputFeedbackController.keyPress()
+                keyboardManager.openRewriteFromVoiceBar()
+            },
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_sparkles),
+                contentDescription = null,
+                tint = keyForeground.copy(alpha = 0.86f),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        if (showLanguage) {
+            val locale = activeSubtype.primaryLocale
+            VoiceOnlyButton(
+                label = stringRes(
+                    R.string.voice_only__keyboard_language,
+                    "language" to locale.displayLanguage().ifBlank { locale.language },
+                ),
+                actionLabel = stringRes(R.string.voice_only__switch_language),
+                background = keyBackground,
+                enabled = !sessionBusy,
+                onClick = {
                     inputFeedbackController.keyPress()
-                    // A running recording keeps going; the full keyboard's row offers pause and cancel.
-                    windowController.actions.toggleVoiceOnly()
-                }
-                .semantics { contentDescription = showKeyboard },
-            contentAlignment = Alignment.Center,
+                    subtypeManager.switchToNextSubtype()
+                },
+            ) {
+                Text(
+                    text = locale.language.uppercase(Locale.ROOT),
+                    color = keyForeground.copy(alpha = 0.86f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+        }
+        VoiceOnlyButton(
+            label = stringRes(R.string.voice_only__show_keyboard),
+            background = keyBackground,
+            onClick = {
+                inputFeedbackController.keyPress()
+                // A running recording keeps going; the full keyboard's row offers pause and cancel.
+                windowController.actions.toggleVoiceOnly()
+            },
         ) {
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_keyboard),
@@ -309,6 +374,29 @@ private fun VoiceOnlyBar() {
             )
         }
     }
+}
+
+/** A round secondary button of the bar. A disabled button stays in place, dimmed, so the bar keeps its shape. */
+@Composable
+private fun VoiceOnlyButton(
+    label: String,
+    background: Color,
+    onClick: () -> Unit,
+    actionLabel: String = label,
+    enabled: Boolean = true,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(ButtonSize)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.38f }
+            .clip(CircleShape)
+            .background(background)
+            .clickable(enabled = enabled, onClickLabel = actionLabel, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+        content = content,
+    )
 }
 
 @Composable

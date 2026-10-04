@@ -678,6 +678,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             default = Color.Unspecified,
             serializer = ColorPreferenceSerializer,
         )
+        // No longer offered or applied: the UI ships in English only. Kept so stored values still load.
         val settingsLanguage = string(
             key = "other__settings_language",
             default = "auto",

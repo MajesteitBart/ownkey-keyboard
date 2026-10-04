@@ -22,15 +22,16 @@ import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.*
 import org.ownkey.offline.*
 
+/**
+ * The dictation provider choice and, below it, the Orukeet model card. The choice is the only place that switches
+ * providers; an option that cannot dictate yet stays visible but disabled, with what is missing.
+ */
 @Composable
-internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
+internal fun DictationSettings(hasCloudKey: Boolean, cloudProvider: String, cloudModel: String) {
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
     val selected by prefs.voxtral.dictationBackend.collectAsState()
     val controller = remember { context.offlineDictation() }
-    // Public builds don't offer a download the device can't run. A restored local selection still
-    // gets the card, so there is a way back to cloud. Internal builds show it to report the reason.
-    if (!BuildConfig.ORUKEET_INTERNAL && !controller.compatible && selected != TranscriptionBackend.ORUKEET.preference) return
     val previous by prefs.voxtral.previousDictationBackend.collectAsState()
     val state by controller.state.collectAsState()
     val runtime by controller.runtime.state.collectAsState()
@@ -50,6 +51,11 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
     val working = action?.isActive == true || state.phase in setOf(ModelPhase.CHECKING, ModelPhase.ACTIVATING, ModelPhase.REMOVING)
     val transferring = state.transferPhase != null
     val candidateInstalled = ModelCatalog.current.id in state.installed
+    // An older verified model still dictates while its update downloads, so either one makes Orukeet usable.
+    val usableModelId = if (candidateInstalled) ModelCatalog.current.id else state.currentId
+    // Public builds don't offer a download the device can't run. A restored local selection still
+    // shows Orukeet, so there is a way back to another provider. Internal builds show it to report the reason.
+    val showOrukeet = BuildConfig.ORUKEET_INTERNAL || controller.compatible || selected == TranscriptionBackend.ORUKEET.preference
     LaunchedEffect(state.transferPhase, state.allowMobileData) {
         while (state.transferPhase == ModelPhase.WAITING_FOR_NETWORK) {
             waitReason = ModelDownloadNetwork.waitReason(context, state.allowMobileData)
@@ -71,8 +77,63 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
             finally { action = null }
         }
     }
-    AiSectionCard(stringResource(R.string.orukeet__title), stringResource(R.string.orukeet__summary)) {
-        Text(stringResource(R.string.orukeet__selected, backendLabel(backend)), style = MaterialTheme.typography.titleSmall)
+    fun useOrukeet() {
+        val id = usableModelId ?: return
+        perform { controller.activate(id) }
+    }
+
+    AiSectionCard(stringResource(R.string.pref__ai__dictation_group__label), stringResource(R.string.pref__ai__dictation_group__summary)) {
+        // Debug builds without a key fall back to demo dictation, which has no option of its own.
+        if (backend == TranscriptionBackend.MOCK || backend == TranscriptionBackend.UNAVAILABLE) {
+            StatusText(stringResource(R.string.orukeet__selected, backendLabel(backend)))
+        }
+        if (showOrukeet) {
+            ChoiceOption(
+                label = stringResource(R.string.orukeet__title),
+                summary = stringResource(R.string.pref__ai__dictation_option_orukeet_summary),
+                note = when {
+                    !controller.compatible -> stringResource(R.string.orukeet__unsupported)
+                    // The first check after start-up hasn't read the stored model yet, so it can't be missing.
+                    state.phase == ModelPhase.CHECKING -> stringResource(R.string.orukeet__checking)
+                    state.phase == ModelPhase.ACTIVATING -> stringResource(R.string.orukeet__activating)
+                    transferring -> stringResource(R.string.orukeet__downloading)
+                    usableModelId == null -> stringResource(R.string.pref__ai__dictation_option_orukeet_needs_model)
+                    else -> null
+                },
+                selected = active,
+                enabled = controller.compatible && usableModelId != null && !working && !transferring,
+                onClick = { if (!active) useOrukeet() },
+                modifier = Modifier.testTag("dictation-option-orukeet"),
+            )
+        }
+        ChoiceOption(
+            label = stringResource(R.string.pref__ai__dictation_option_cloud, cloudProvider),
+            summary = stringResource(R.string.pref__ai__dictation_option_cloud_summary, cloudProvider, cloudModel),
+            note = if (hasCloudKey) null else stringResource(R.string.pref__ai__dictation_option_cloud_needs_key),
+            selected = backend == TranscriptionBackend.CLOUD,
+            enabled = hasCloudKey && !working,
+            onClick = {
+                if (backend != TranscriptionBackend.CLOUD) perform { controller.selectBackend(TranscriptionBackend.CLOUD) }
+            },
+            modifier = Modifier.testTag("dictation-option-cloud"),
+        )
+        ChoiceOption(
+            label = stringResource(R.string.orukeet__external_label),
+            summary = stringResource(R.string.pref__ai__dictation_option_external_summary),
+            selected = backend == TranscriptionBackend.EXTERNAL_IME,
+            enabled = !working,
+            onClick = {
+                if (backend != TranscriptionBackend.EXTERNAL_IME) {
+                    perform { controller.selectBackend(TranscriptionBackend.EXTERNAL_IME) }
+                }
+            },
+            modifier = Modifier.testTag("dictation-option-external"),
+        )
+        StatusText(stringResource(R.string.pref__ai__dictation_group__footnote))
+    }
+
+    if (!showOrukeet) return
+    AiSectionCard(stringResource(R.string.orukeet__model_title), stringResource(R.string.orukeet__summary)) {
         StatusText(stringResource(R.string.orukeet__size))
         StatusText(stringResource(R.string.orukeet__languages_cap))
         if (!controller.compatible) StatusText(stringResource(R.string.orukeet__unsupported))
@@ -134,6 +195,7 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
                 { downloadDialog = true }, enabled = !working && controller.compatible,
                 modifier = Modifier.testTag("orukeet-download").heightIn(min = 48.dp))
         } else if (!active || state.currentId != ModelCatalog.current.id) {
+            // Same action as choosing Orukeet above, offered here because this is where the download finishes.
             OwnkeyButton(stringResource(if (active) R.string.orukeet__apply_update else R.string.orukeet__activate),
                 { perform { controller.activate() } }, enabled = !working && controller.compatible,
                 modifier = Modifier.testTag("orukeet-activate").heightIn(min = 48.dp))
@@ -141,25 +203,11 @@ internal fun OrukeetSettingsCard(hasCloudKey: Boolean) {
         if (state.phase == ModelPhase.ACTIVATING) {
             OwnkeyButton(stringResource(R.string.action__cancel), { action?.cancel() }, secondary = true)
         }
-        if (active) {
-            StatusText(stringResource(R.string.orukeet__deactivate_destination, backendLabel(previousBackend)))
-            OwnkeyButton(stringResource(R.string.orukeet__deactivate), { perform { controller.deactivate() } },
-                enabled = !working, secondary = true, modifier = Modifier.heightIn(min = 48.dp))
-        }
         if (state.hasStoredData || active) {
             OwnkeyButton(stringResource(R.string.orukeet__delete), { deleteDialog = true }, enabled = !working && !transferring,
                 secondary = true, modifier = Modifier.testTag("orukeet-delete").heightIn(min = 48.dp))
         }
         OwnkeyButton(stringResource(R.string.orukeet__notices), { noticesDialog = true }, secondary = true)
-        HorizontalDivider()
-        OwnkeyButton(stringResource(R.string.orukeet__use_cloud), {
-            perform { controller.selectBackend(TranscriptionBackend.CLOUD) }
-        }, enabled = !working && hasCloudKey && backend != TranscriptionBackend.CLOUD, secondary = true)
-        if (!hasCloudKey) StatusText(stringResource(R.string.orukeet__cloud_key_needed))
-        OwnkeyButton(stringResource(R.string.orukeet__use_external), {
-            perform { controller.selectBackend(TranscriptionBackend.EXTERNAL_IME) }
-        }, enabled = !working && backend != TranscriptionBackend.EXTERNAL_IME, secondary = true)
-        StatusText(stringResource(R.string.orukeet__cloud_settings_retained))
     }
     if (downloadDialog) AlertDialog(
         onDismissRequest = { downloadDialog = false },

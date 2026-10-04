@@ -127,6 +127,24 @@ class ImeWindowController(
     }
 
     /**
+     * If the rewrite panel is open. The panel needs the full keyboard window, so it holds the voice-only bar back
+     * while it is open, and the bar returns once it closes. Reported by the IME service.
+     */
+    val isRewritePanelOpen: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
+    fun updateRewritePanelOpen(open: Boolean) {
+        isRewritePanelOpen.value = open
+    }
+
+    /**
+     * If voice-only is selected and allowed in the current editor. Unlike [isVoiceOnlyActive] it stays true while
+     * the rewrite panel holds the bar back.
+     */
+    val isVoiceOnlyRequested: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
+    /**
      * If the voice-only bar currently replaces the keyboard window. While true, the window insets describe
      * the bar, and the app behind it is not resized.
      */
@@ -144,9 +162,11 @@ class ImeWindowController(
             activeWindowConfig.value = windowConfig
         }
 
-        combine(prefs.keyboard.voiceOnly.asFlow(), voiceOnlyAllowed) { voiceOnly, allowed ->
-            voiceOnly && allowed
-        }.collectIn(scope) { active ->
+        combine(prefs.keyboard.voiceOnly.asFlow(), voiceOnlyAllowed, isRewritePanelOpen) { voiceOnly, allowed, panelOpen ->
+            val requested = voiceOnly && allowed
+            requested to (requested && !panelOpen)
+        }.collectIn(scope) { (requested, active) ->
+            isVoiceOnlyRequested.value = requested
             isVoiceOnlyActive.value = active
         }
 

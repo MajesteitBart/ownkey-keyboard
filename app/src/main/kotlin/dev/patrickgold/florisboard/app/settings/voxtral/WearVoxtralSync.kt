@@ -2,6 +2,7 @@ package dev.patrickgold.florisboard.app.settings.voxtral
 
 import android.content.Context
 import com.google.android.gms.wearable.Wearable
+import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionPurpose
 import kotlinx.serialization.Serializable
@@ -39,7 +40,7 @@ object WearVoxtralSync {
         nodeClient.connectedNodes
             .addOnSuccessListener { nodes ->
                 if (nodes.isEmpty()) {
-                    onResult(Result.failure(IllegalStateException("Geen gekoppeld Wear OS device gevonden")))
+                    onResult(Result.failure(IllegalStateException(context.getString(R.string.pref__voxtral__sync_wear__no_watch))))
                     return@addOnSuccessListener
                 }
 
@@ -56,7 +57,7 @@ object WearVoxtralSync {
                                 if (sent > 0) {
                                     onResult(Result.success(sent))
                                 } else {
-                                    onResult(Result.failure(lastError ?: IllegalStateException("Sync mislukt")))
+                                    onResult(Result.failure(lastError ?: IllegalStateException(context.getString(R.string.pref__voxtral__sync_wear__generic_failure))))
                                 }
                             }
                         }

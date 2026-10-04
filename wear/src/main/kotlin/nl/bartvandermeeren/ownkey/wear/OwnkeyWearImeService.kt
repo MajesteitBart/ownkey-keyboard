@@ -117,29 +117,29 @@ class OwnkeyWearImeService : InputMethodService() {
 
         if (session == null) {
             if (!hasMicPermission()) {
-                setStatus("Geef microfoon-permissie in Ownkey Wear app")
+                setStatus("Grant microphone permission in the Ownkey Wear app")
                 return
             }
             val apiKey = settingsStore.getApiKey().trim()
             if (apiKey.isBlank()) {
-                setStatus("Geen API key. Gebruik Sync vanaf telefoon.")
+                setStatus("No API key. Use Sync from phone.")
                 return
             }
 
             val started = startRecording(this)
             if (started == null) {
-                setStatus("Opname starten mislukt")
+                setStatus("Could not start recording")
                 return
             }
             session = started
-            setStatus("Luistert...")
+            setStatus("Listening...")
             renderUi()
             return
         }
 
         val currentSession = session ?: return
         isTranscribing = true
-        setStatus("Transcriberen...")
+        setStatus("Transcribing...")
         renderUi()
 
         val job = scope.launch {
@@ -147,7 +147,7 @@ class OwnkeyWearImeService : InputMethodService() {
             try {
                 val recording = stopRecording(currentSession).getOrElse { error ->
                     session = null
-                    setStatus(error.message ?: "Opname stoppen mislukt")
+                    setStatus(error.message ?: "Could not stop recording")
                     return@launch
                 }
                 publishedRecording = recording
@@ -165,13 +165,13 @@ class OwnkeyWearImeService : InputMethodService() {
                     .onSuccess { transcript ->
                         val committed = currentInputConnection?.commitText(transcript, 1) == true
                         if (committed) {
-                            setStatus("Ingevoegd")
+                            setStatus("Inserted")
                         } else {
-                            setStatus("Kon tekst niet invoegen")
+                            setStatus("Could not insert text")
                         }
                     }
                     .onFailure { error ->
-                        setStatus(error.message ?: "Transcriptie mislukt")
+                        setStatus(error.message ?: "Transcription failed")
                     }
             } catch (error: CancellationException) {
                 publishedRecording?.recordingUri?.let { recordingUri ->
@@ -194,7 +194,7 @@ class OwnkeyWearImeService : InputMethodService() {
     private fun onSubmitButtonTapped() {
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
-            setStatus("Geen actief invoerveld")
+            setStatus("No active text field")
             return
         }
 
@@ -204,7 +204,7 @@ class OwnkeyWearImeService : InputMethodService() {
             inputConnection.performEditorAction(EditorInfo.IME_ACTION_NEXT)
 
         if (actionSucceeded) {
-            setStatus("Verstuurd")
+            setStatus("Sent")
             return
         }
 
@@ -212,15 +212,15 @@ class OwnkeyWearImeService : InputMethodService() {
             inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
 
         if (keyEventSent) {
-            setStatus("Enter verstuurd")
+            setStatus("Enter sent")
             return
         }
 
         val newlineCommitted = inputConnection.commitText("\n", 1)
         if (newlineCommitted) {
-            setStatus("Nieuwe regel toegevoegd")
+            setStatus("New line added")
         } else {
-            setStatus("Kon niet verzenden")
+            setStatus("Could not send")
         }
     }
 
@@ -259,7 +259,7 @@ class OwnkeyWearImeService : InputMethodService() {
     private fun performBackspace() {
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
-            setStatus("Geen actief invoerveld")
+            setStatus("No active text field")
             return
         }
 
@@ -275,7 +275,7 @@ class OwnkeyWearImeService : InputMethodService() {
         if (deleted) {
             setStatus("Backspace")
         } else {
-            setStatus("Kon niet verwijderen")
+            setStatus("Could not delete")
         }
     }
 

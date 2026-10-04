@@ -97,6 +97,12 @@ configure<ApplicationExtension> {
         isUniversalApk = false
     }
 
+    androidResources {
+        // Ownkey's own copy exists only in English. Packaging the inherited FlorisBoard translations
+        // made the UI switch between English and the device language from one screen to the next.
+        localeFilters += "en"
+    }
+
     bundle {
         language {
             // We disable language split because FlorisBoard does not use

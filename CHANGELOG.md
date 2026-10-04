@@ -2,6 +2,16 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
+## Unreleased
+
+### Added
+- The voice-only bar has a rewrite button and, with more than one keyboard language, a language button. Rewrite opens the rewrite panel in the full keyboard, and the bar returns when you close the panel or insert the result. The language button shows the active keyboard language and switches to the next one.
+
+### Changed
+- The app is English only. It used to show a partial Dutch translation on Dutch phones, so screens switched between Dutch and English. Language names, such as the one on the space bar, are now in English too. Keyboard layouts, autocorrect and dictation languages are unaffected. The settings language option is gone.
+- **Settings → AI** starts with what dictation and rewrite use, for example "Orukeet (on device)" and "OpenRouter · meta/muse-spark-1.1". Dictation has one choice between Orukeet, cloud dictation and system voice input. An option that can't work yet says what is missing. The Orukeet card now only manages the model, and the rewrite section asks for the provider first, then its API key, then the model.
+- The Wear OS app is in English.
+
 ## 0.10.0 (2026-10-03)
 
 Version code 125.

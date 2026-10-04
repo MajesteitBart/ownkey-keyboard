@@ -133,7 +133,7 @@ private fun WearApp(
     var languageHint by rememberSaveable { mutableStateOf(settingsStore.getLanguageHint()) }
 
     var sessions by remember { mutableStateOf(settingsStore.getSavedSessions()) }
-    var statusText by rememberSaveable { mutableStateOf("Klaar") }
+    var statusText by rememberSaveable { mutableStateOf("Ready") }
 
     var route by rememberSaveable {
         mutableStateOf(
@@ -165,7 +165,7 @@ private fun WearApp(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         hasMicPermission = granted
-        statusText = if (granted) "Microfoon-permissie geactiveerd" else "Microfoon-permissie ontbreekt"
+        statusText = if (granted) "Microphone permission granted" else "Microphone permission missing"
     }
 
     val elapsedRecordingMs by produceState(
@@ -204,7 +204,7 @@ private fun WearApp(
             return
         }
         if (apiKey.isBlank()) {
-            statusText = "Vul eerst je API key in"
+            statusText = "Enter your API key first"
             route = WearRoute.Onboarding
             return
         }
@@ -212,12 +212,12 @@ private fun WearApp(
         resetRecordingState()
         val started = startRecording(context)
         if (started == null) {
-            statusText = "Opname starten mislukt"
+            statusText = "Could not start recording"
             return
         }
 
         activeSession = started
-        statusText = "Luistert"
+        statusText = "Listening"
     }
 
     fun stopActiveRecording() {
@@ -227,11 +227,11 @@ private fun WearApp(
                 preparedRecording = recording
                 activeSession = null
                 reviewDurationMs = recording.durationMs
-                statusText = "Opname klaar, controleer en verstuur"
+                statusText = "Recording ready, check and send"
             }
             .onFailure { error ->
                 activeSession = null
-                statusText = error.message ?: "Opname stoppen mislukt"
+                statusText = error.message ?: "Could not stop recording"
             }
     }
 
@@ -248,13 +248,13 @@ private fun WearApp(
             }
         }
         preparedRecording = null
-        statusText = "Opname verwijderd"
+        statusText = "Recording deleted"
     }
 
     fun saveCurrentReview() {
         val transcript = transcriptSegments.joinToString("\n") { "${it.speaker}: ${it.text}" }
         if (transcript.isBlank()) {
-            statusText = "Er is nog geen transcript om op te slaan"
+            statusText = "No transcript to save yet"
             return
         }
 
@@ -271,13 +271,13 @@ private fun WearApp(
         )
         activeReviewSessionId = sessionId
         sessions = settingsStore.getSavedSessions()
-        statusText = "Sessie opgeslagen"
+        statusText = "Session saved"
     }
 
     fun exportCurrentReview() {
         val transcript = transcriptSegments.joinToString("\n") { "${it.speaker}: ${it.text}" }
         if (transcript.isBlank()) {
-            statusText = "Geen transcript om te exporteren"
+            statusText = "No transcript to export"
             return
         }
 
@@ -289,13 +289,13 @@ private fun WearApp(
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, transcript)
             }
-            context.startActivity(Intent.createChooser(shareIntent, "Exporteer transcript"))
+            context.startActivity(Intent.createChooser(shareIntent, "Export transcript"))
         }.onFailure {
-            statusText = "Exporteren mislukt"
+            statusText = "Export failed"
             return
         }
 
-        statusText = "Transcript gekopieerd en gedeeld"
+        statusText = "Transcript copied and shared"
     }
 
     val isProcessing = route == WearRoute.Processing
@@ -319,21 +319,21 @@ private fun WearApp(
                         TextButton(
                             onClick = {
                                 route = WearRoute.Home
-                                statusText = "Terug naar dashboard"
+                                statusText = "Back to dashboard"
                             },
                             contentPadding = PaddingValues(horizontal = spacing.xs, vertical = spacing.xs),
                         ) {
-                            Text("Terug")
+                            Text("Back")
                         }
                     }
                     Text(
                         text = when (route) {
-                            WearRoute.Onboarding -> "Welkom"
+                            WearRoute.Onboarding -> "Welcome"
                             WearRoute.Home -> "Ownkey Voice"
-                            WearRoute.Recording -> "Nieuwe opname"
-                            WearRoute.Processing -> "Verwerken"
+                            WearRoute.Recording -> "New recording"
+                            WearRoute.Processing -> "Processing"
                             WearRoute.Review -> "Transcript review"
-                            WearRoute.Sessions -> "Sessies"
+                            WearRoute.Sessions -> "Sessions"
                         },
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f),
@@ -365,7 +365,7 @@ private fun WearApp(
                     onContinue = {
                         persistProviderSettings()
                         route = WearRoute.Home
-                        statusText = "Provider instellingen opgeslagen"
+                        statusText = "Provider settings saved"
                     },
                 )
             }
@@ -381,7 +381,7 @@ private fun WearApp(
                     averageDurationLabel = formatDurationLabel(
                         if (sessions.isEmpty()) 0L else sessions.sumOf { it.durationMs } / sessions.size,
                     ),
-                    lastSessionLabel = sessions.firstOrNull()?.createdAtEpochMs?.let(::formatShortDateTime) ?: "Nog geen sessies",
+                    lastSessionLabel = sessions.firstOrNull()?.createdAtEpochMs?.let(::formatShortDateTime) ?: "No sessions yet",
                     onPrimaryAction = {
                         route = WearRoute.Recording
                         startNewRecording()
@@ -408,7 +408,7 @@ private fun WearApp(
                         val recording = preparedRecording
                         if (recording != null) {
                             route = WearRoute.Processing
-                            statusText = "Transcriptie bezig"
+                            statusText = "Transcribing"
                             scope.launch {
                                 val result = client.transcribe(
                                     apiKey = apiKey.trim(),
@@ -425,7 +425,7 @@ private fun WearApp(
                                             transcriptSegments = listOf(
                                                 EditableTranscriptSegment(
                                                     id = 0,
-                                                    speaker = "Spreker A",
+                                                    speaker = "Speaker A",
                                                     timestampLabel = "00:00",
                                                     text = transcript,
                                                 ),
@@ -433,16 +433,16 @@ private fun WearApp(
                                         }
                                         reviewDurationMs = recording.durationMs
                                         activeReviewSessionId = null
-                                        statusText = "Transcript klaar voor review"
+                                        statusText = "Transcript ready for review"
                                         route = WearRoute.Review
                                     }
                                     .onFailure { error ->
-                                        statusText = error.message ?: "Transcriptie mislukt"
+                                        statusText = error.message ?: "Transcription failed"
                                         route = WearRoute.Recording
                                     }
                             }
                         } else {
-                            statusText = "Stop eerst de opname"
+                            statusText = "Stop the recording first"
                         }
                     },
                     onRetake = {
@@ -495,12 +495,12 @@ private fun WearApp(
                         preparedRecording = null
                         reviewDurationMs = session.durationMs
                         route = WearRoute.Review
-                        statusText = "Sessie geladen"
+                        statusText = "Session loaded"
                     },
                     onSessionDelete = { session ->
                         settingsStore.removeSession(session.id)
                         sessions = settingsStore.getSavedSessions()
-                        statusText = "Sessie verwijderd"
+                        statusText = "Session deleted"
                     },
                 )
             }
@@ -538,12 +538,12 @@ private fun OnboardingScreen(
                 verticalArrangement = Arrangement.spacedBy(spacing.xs),
             ) {
                 Text(
-                    text = "Rustige start",
+                    text = "Get started",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Verbind je provider en ga daarna direct naar het dashboard.",
+                    text = "Connect your provider, then go straight to the dashboard.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -590,7 +590,7 @@ private fun OnboardingScreen(
             enabled = apiKey.isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = AppPrimary),
         ) {
-            Text("Opslaan en doorgaan")
+            Text("Save and continue")
         }
     }
 }
@@ -642,7 +642,7 @@ private fun HomeScreen(
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AppPrimary),
                 ) {
-                    Text("Start nieuwe opname")
+                    Text("Start new recording")
                 }
 
                 OutlinedButton(
@@ -651,7 +651,7 @@ private fun HomeScreen(
                         .fillMaxWidth()
                         .height(50.dp),
                 ) {
-                    Text("Open sessies")
+                    Text("Open sessions")
                 }
             }
         }
@@ -662,13 +662,13 @@ private fun HomeScreen(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
-            MetricChip(label = "Sessies", value = sessionCount.toString())
-            MetricChip(label = "Gem. duur", value = averageDurationLabel)
-            MetricChip(label = "Laatste", value = lastSessionLabel)
+            MetricChip(label = "Sessions", value = sessionCount.toString())
+            MetricChip(label = "Avg. length", value = averageDurationLabel)
+            MetricChip(label = "Last", value = lastSessionLabel)
         }
 
         TextButton(onClick = onProviderAction, modifier = Modifier.fillMaxWidth()) {
-            Text("Provider instellingen aanpassen")
+            Text("Edit provider settings")
         }
     }
 }
@@ -706,7 +706,7 @@ private fun RecordingScreen(
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
                 Text(
-                    text = if (isRecording) "Microfoon actief" else if (hasPreparedRecording) "Klaar om te versturen" else "Microfoon klaar",
+                    text = if (isRecording) "Microphone active" else if (hasPreparedRecording) "Ready to send" else "Microphone ready",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
@@ -752,7 +752,7 @@ private fun RecordingScreen(
                         .weight(1f)
                         .height(50.dp),
                 ) {
-                    Text("Annuleer")
+                    Text("Cancel")
                 }
                 Button(
                     onClick = onStop,
@@ -771,7 +771,7 @@ private fun RecordingScreen(
                         .weight(1f)
                         .height(50.dp),
                 ) {
-                    Text("Opnieuw")
+                    Text("Retake")
                 }
                 Button(
                     onClick = onSend,
@@ -780,11 +780,11 @@ private fun RecordingScreen(
                         .height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AppPrimary),
                 ) {
-                    Text("Verstuur")
+                    Text("Send")
                 }
             }
             TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
-                Text("Verwijder opname")
+                Text("Delete recording")
             }
         } else {
             Button(
@@ -794,7 +794,7 @@ private fun RecordingScreen(
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AppPrimary),
             ) {
-                Text("Start opname")
+                Text("Start recording")
             }
         }
     }
@@ -830,7 +830,7 @@ private fun ProcessingScreen(
                     )
                 }
                 Text(
-                    text = "Transcript wordt verwerkt",
+                    text = "Processing transcript",
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                 )
@@ -868,7 +868,7 @@ private fun ReviewScreen(
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AppPrimary),
             ) {
-                Text("Opslaan")
+                Text("Save")
             }
             OutlinedButton(
                 onClick = onExport,
@@ -886,7 +886,7 @@ private fun ReviewScreen(
                 shape = RoundedCornerShape(20.dp),
             ) {
                 Text(
-                    text = "Nog geen transcript beschikbaar.",
+                    text = "No transcript yet.",
                     modifier = Modifier.padding(spacing.lg),
                 )
             }
@@ -926,7 +926,7 @@ private fun ReviewScreen(
                                         onClick = { onEditToggle(segment.id) },
                                         contentPadding = PaddingValues(horizontal = spacing.xs),
                                     ) {
-                                        Text(if (segment.isEditing) "Klaar" else "Bewerk")
+                                        Text(if (segment.isEditing) "Done" else "Edit")
                                     }
                                 }
 
@@ -970,7 +970,7 @@ private fun SessionsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Nog geen sessies opgeslagen.",
+                text = "No saved sessions yet.",
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
             )
@@ -1011,12 +1011,12 @@ private fun SessionsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "Duur ${formatDurationLabel(session.durationMs)}",
+                            text = "Length ${formatDurationLabel(session.durationMs)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         TextButton(onClick = { onSessionDelete(session) }) {
-                            Text("Verwijder")
+                            Text("Delete")
                         }
                     }
                 }
@@ -1038,7 +1038,7 @@ private fun ProviderStatusChip(
         shape = RoundedCornerShape(999.dp),
     ) {
         Text(
-            text = if (isConnected) "Provider actief · $providerLabel" else "Provider niet ingesteld",
+            text = if (isConnected) "Provider active · $providerLabel" else "Provider not set up",
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = textColor,
@@ -1124,7 +1124,7 @@ private fun createEditableSegments(transcript: String): List<EditableTranscriptS
     return rawParts.mapIndexed { index, part ->
         val parsedSpeaker = part.substringBefore(':', missingDelimiterValue = "")
         val hasSpeaker = parsedSpeaker.isNotBlank() && part.contains(':') && parsedSpeaker.length < 18
-        val speaker = if (hasSpeaker) parsedSpeaker else if (index % 2 == 0) "Spreker A" else "Spreker B"
+        val speaker = if (hasSpeaker) parsedSpeaker else if (index % 2 == 0) "Speaker A" else "Speaker B"
         val text = if (hasSpeaker) part.substringAfter(':').trim() else part
 
         EditableTranscriptSegment(

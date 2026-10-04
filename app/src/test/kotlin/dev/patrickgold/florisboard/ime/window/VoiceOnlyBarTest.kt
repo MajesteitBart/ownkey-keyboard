@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.window
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -64,6 +65,21 @@ class VoiceOnlyBarTest : FunSpec({
         test("a rotation to a smaller screen pulls a saved offset back inside") {
             val landscape = IntSize(600, 400)
             clampVoiceBarOffset(Offset(350f, -1500f), landscape, bar, edge, bottom) shouldBe Offset(192f, -320f)
+        }
+    }
+
+    context("the status column makes room for the buttons") {
+        test("it keeps its full width on a typical phone") {
+            voiceBarStatusWidth(maxBarWidth = 395.dp, buttonCount = 3) shouldBe 120.dp
+        }
+
+        test("it narrows on a small screen so every button still fits") {
+            // 12 dp padding, a 44 dp mic, three 40 dp buttons and four 8 dp gaps leave 96 dp of a 304 dp bar.
+            voiceBarStatusWidth(maxBarWidth = 304.dp, buttonCount = 3) shouldBe 96.dp
+        }
+
+        test("it never shrinks below a readable width") {
+            voiceBarStatusWidth(maxBarWidth = 200.dp, buttonCount = 3) shouldBe 72.dp
         }
     }
 })

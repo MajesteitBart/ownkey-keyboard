@@ -33,7 +33,7 @@ Ownkey is a fork of [FlorisBoard](https://github.com/florisboard/florisboard), s
 
 Download the APK for your phone from the [latest release](https://github.com/MajesteitBart/ownkey-keyboard/releases/latest). Almost every current phone needs `arm64-v8a`. Older 32-bit phones need `armeabi-v7a`, and the `x86_64` and `x86` builds are for emulators. Each release lists the checksums in `SHA256SUMS`.
 
-Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. Rewrite uses a cloud provider and needs an API key. Dictation can use a cloud provider as well, or [Orukeet on the phone](#on-device-dictation) on 64-bit ARM phones. [Set up AI](#set-up-ai) walks through it.
+Ownkey needs Android 8.0 (API 26) or newer. After installing, open Ownkey and follow the setup to enable it as your keyboard. Typing works right away. The app itself is in English; your keyboard languages, autocorrect and dictation work in other languages regardless. Rewrite uses a cloud provider and needs an API key. Dictation can use a cloud provider as well, or [Orukeet on the phone](#on-device-dictation) on 64-bit ARM phones. [Set up AI](#set-up-ai) walks through it.
 
 ## What it does
 
@@ -53,7 +53,7 @@ Tap the microphone, speak and tap stop. Ownkey inserts the transcript at the cur
 
 The personal dictionary under **Settings → AI** helps with names and jargon. With Mistral and OpenAI, saved words go along as recognition hints. Saved corrections are applied to every transcript, and filler words can be removed. When dictation mishears a word, "Fix a word" on the keyboard turns it into a saved correction.
 
-**More → Voice only** replaces the keyboard with a small bar that holds the microphone. You can drag it anywhere on screen. Password, incognito and number fields still get the full keyboard. See [docs/voice-only-keyboard.md](docs/voice-only-keyboard.md).
+**More → Voice only** replaces the keyboard with a small bar that holds the microphone, a rewrite button and, with more than one keyboard language, a language button. You can drag it anywhere on screen. Password, incognito and number fields still get the full keyboard. See [docs/voice-only-keyboard.md](docs/voice-only-keyboard.md).
 
 ### Rewrite
 
@@ -72,9 +72,9 @@ On a wide screen the keyboard can split in two, with a space bar on each half. *
 ## Set up AI
 
 1. Create an API key with the provider you want. A ChatGPT or Claude app subscription doesn't include API access.
-2. Open **Settings → AI**.
-3. For dictation, keep the Mistral defaults or enter another endpoint and model, then paste your key.
-4. For rewrite, pick a provider, check the model, then paste its key.
+2. Open **Settings → AI**. The top of the screen shows what dictation and rewrite use right now.
+3. Under **Dictation**, choose Orukeet on the phone, cloud dictation, or your phone's own voice typing. For cloud dictation, paste your key under **Cloud dictation** and keep the Mistral defaults or enter another endpoint and model.
+4. Under **Rewrite**, pick a provider, paste a key from that provider and check the model.
 
 | | Provider | Endpoint | Model |
 | --- | --- | --- | --- |
@@ -98,7 +98,7 @@ Ownkey doesn't operate a relay of its own and doesn't add monitoring of what you
 
 ### On-device dictation
 
-Orukeet is a speech model that transcribes Dutch and English on the phone, without an API key or internet connection. The audio stays on the phone. Open **Settings → AI**, download the model under **Orukeet (on device)** and activate it. The download is 672 MB, and the first installation needs about 940 MB of free storage. You can delete the model or switch back to cloud dictation from the same card.
+Orukeet is a speech model that transcribes Dutch and English on the phone, without an API key or internet connection. The audio stays on the phone. Open **Settings → AI**, download the model on the **Orukeet model** card and tap **Use Orukeet for dictation**. The download is 672 MB, and the first installation needs about 940 MB of free storage. To switch back, pick another option under **Dictation**. You can delete the model from the Orukeet model card.
 
 Orukeet runs on 64-bit ARM phones, which means the `arm64-v8a` APK. The card doesn't appear on other devices. Testing on physical phones is still limited, so speed and memory use on older or low-memory phones are not measured yet.
 
