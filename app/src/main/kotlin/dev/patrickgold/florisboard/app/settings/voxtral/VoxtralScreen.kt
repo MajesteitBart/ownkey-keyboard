@@ -138,7 +138,6 @@ fun VoxtralScreen() = FlorisScreen {
         val rewritePromptsJson by prefsRef.voxtral.rewritePrompts.collectAsState()
         val offlineState by offlineDictation.state.collectAsState()
         val coroutineScope = rememberCoroutineScope()
-        var wearSyncStatus by remember { mutableStateOf("") }
         var promptDrafts by remember(rewritePromptsJson) {
             mutableStateOf(RewritePromptPresets.decode(rewritePromptsJson))
         }
@@ -151,30 +150,6 @@ fun VoxtralScreen() = FlorisScreen {
                 }
                 prefsRef.voxtral.apiKey.set("")
                 hasStoredApiKey = voxtralSecretsStore.hasApiKey()
-            }
-        }
-
-        fun syncToWear(apiKey: String) {
-            WearVoxtralSync.pushConfig(
-                context = context,
-                config = WearVoxtralConfig(
-                    apiKey = apiKey,
-                    endpointUrl = endpointUrl,
-                    model = model,
-                    languageHint = languageHint,
-                ),
-            ) { result ->
-                wearSyncStatus = result.fold(
-                    onSuccess = { count ->
-                        context.resources.getQuantityString(R.plurals.pref__voxtral__sync_wear__done, count, count)
-                    },
-                    onFailure = { error ->
-                        context.getString(
-                            R.string.pref__voxtral__sync_wear__failed,
-                            error.message ?: context.getString(R.string.pref__voxtral__sync_wear__generic_failure),
-                        )
-                    },
-                )
             }
         }
 
@@ -247,7 +222,6 @@ fun VoxtralScreen() = FlorisScreen {
                                 coroutineScope.launch {
                                     prefsRef.voxtral.apiKey.set("")
                                 }
-                                syncToWear(apiKey = normalizedApiKey)
                             },
                             enabled = apiKeyInput.trim().isNotEmpty(),
                             modifier = Modifier.weight(1f),
@@ -261,7 +235,6 @@ fun VoxtralScreen() = FlorisScreen {
                                     coroutineScope.launch {
                                         prefsRef.voxtral.apiKey.set("")
                                     }
-                                    syncToWear(apiKey = "")
                                 },
                                 modifier = Modifier.weight(1f),
                                 secondary = true,
@@ -315,17 +288,6 @@ fun VoxtralScreen() = FlorisScreen {
                             }
                         },
                     )
-
-                    SectionLabel(text = stringRes(R.string.pref__voxtral__sync_wear__label))
-                    StatusText(text = stringRes(R.string.pref__voxtral__sync_wear__summary))
-                    OwnkeyButton(
-                        label = stringRes(R.string.pref__voxtral__sync_wear__action),
-                        onClick = { syncToWear(apiKey = voxtralSecretsStore.getApiKey()) },
-                        secondary = true,
-                    )
-                    if (wearSyncStatus.isNotBlank()) {
-                        StatusText(text = wearSyncStatus)
-                    }
                 }
 
                 PersonalDictionaryCard(onOpen = { navController.navigate(Routes.Settings.SpeechDictionary()) })

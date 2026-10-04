@@ -3,7 +3,6 @@
 Document major repository boundaries and ownership.
 
 - `app/`: Main Android IME application, including keyboard UI, settings, setup/onboarding, dictation, rewrite, prediction, and autocorrect behavior.
-- `wear/`: Wear OS companion IME and dictation entry points.
 - `lib/compose/`: Shared Compose/UI support components.
 - `lib/android/`: Shared Android helpers, including Ownkey toast routing.
 - `assets/branding/`: Ownkey source brand assets and generated store graphics.

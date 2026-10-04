@@ -65,10 +65,6 @@ Rewrite has presets for OpenAI (Responses and Chat Completions), Anthropic, Mist
 
 On a wide screen the keyboard can split in two, with a space bar on each half. **More → Floating** turns the halves into two panels you can drag and resize, with rewrite, clipboard and dictation above the keys. See [docs/floating-split-tablet.md](docs/floating-split-tablet.md).
 
-### Wear OS
-
-[`wear/`](wear/) contains a dictation-first keyboard for Wear OS 3 and newer. The stable releases don't include it yet. The rolling [Ownkey CI debug](https://github.com/MajesteitBart/ownkey-keyboard/releases/tag/ci-debug) prerelease has a debug build, `ownkey-wear-ci-debug.apk`, or you can build it from source.
-
 ## Set up AI
 
 1. Create an API key with the provider you want. A ChatGPT or Claude app subscription doesn't include API access.
@@ -109,7 +105,6 @@ You need JDK 17, [Rust](https://www.rust-lang.org/tools/install) through `rustup
 ```bash
 ./gradlew :app:assembleDebug        # phone app
 ./gradlew :app:testDebugUnitTest    # unit tests, including the autocorrect benchmark
-./gradlew :wear:assembleDebug       # Wear OS keyboard
 ```
 
 On Windows, use `.\gradlew.bat` instead of `./gradlew`.
@@ -120,14 +115,13 @@ On Windows, use `.\gradlew.bat` instead of `./gradlew`.
 | `beta` | `nl.bartvandermeeren.ownkey.beta` | Minified and signed with the debug key. Shows Orukeet failure details. |
 | `release` | `nl.bartvandermeeren.ownkey` | Signed with the key in `keystore.properties` if present, otherwise with the debug key. |
 
-APKs are split per processor type. Pass `-Pownkey.apkSplits=false` to build a single APK. The [Android CI workflow](.github/workflows/android.yml) builds the phone and Wear apps for every pull request to `main`.
+APKs are split per processor type. Pass `-Pownkey.apkSplits=false` to build a single APK. The [Android CI workflow](.github/workflows/android.yml) builds the phone app for every pull request to `main`.
 
 ## Repository map
 
 | Path | Contents |
 | --- | --- |
 | [`app/`](app/) | The phone keyboard: typing, autocorrect, dictation, rewrite and settings |
-| [`wear/`](wear/) | Wear OS keyboard |
 | [`lib/`](lib/) | Shared Android, Compose, Kotlin, native and theme libraries |
 | [`tools/`](tools/) | Dictionary build scripts, autocorrect test data and the Orukeet runtime |
 | [`docs/`](docs/) | Feature notes, screenshots and the brand book |

@@ -83,3 +83,15 @@ keyboard was active before, docked or floating.
   needs a configured rewrite provider.
 
 ![Signal Graphite keyboard in Messages](screenshots/signal-graphite-keyboard.png)
+
+## Verification on 2026-10-04: rewrite and language buttons
+
+- `:app:testDebugUnitTest` passed, including the tests that the rewrite panel
+  holds the bar back and returns it, and that the status column narrows on small
+  screens. `:app:assembleDebug` passed.
+- Same emulator with the phone set to Dutch, Orukeet for dictation and Mistral
+  for rewrite: the bar showed NL; the language button switched between NL and
+  EN; the rewrite button opened the rewrite panel in the full keyboard; Fix
+  grammar returned a corrected sentence; Insert replaced the text and the bar
+  came back. During a recording both new buttons were dimmed. The keyboard
+  showed "English" on the space bar instead of the Dutch "Engels".

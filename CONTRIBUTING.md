@@ -45,7 +45,6 @@ Gradle gets 4 GB of heap (`org.gradle.jvmargs=-Xmx4096m`), so a machine with 16 
 ```bash
 ./gradlew :app:assembleDebug
 ./gradlew :app:testDebugUnitTest
-./gradlew :wear:assembleDebug
 ```
 
 On Windows, use `.\gradlew.bat`. Debug builds install as `nl.bartvandermeeren.ownkey.debug`, next to a release install.
@@ -61,4 +60,4 @@ On Windows, use `.\gradlew.bat`. Debug builds install as `nl.bartvandermeeren.ow
 
 ### Pull requests
 
-Branch from `main` and open the pull request against `main`. CI builds phone and Wear debug APKs for every pull request, and you can download them from the Actions run to test on a device. Describe what changed, why, and how you tested it, including which devices you used.
+Branch from `main` and open the pull request against `main`. CI builds phone debug APKs for every pull request, and you can download them from the Actions run to test on a device. Describe what changed, why, and how you tested it, including which devices you used.

@@ -10,7 +10,9 @@ This file lists notable changes to Ownkey Keyboard. Version numbers match the [G
 ### Changed
 - The app is English only. It used to show a partial Dutch translation on Dutch phones, so screens switched between Dutch and English. Language names, such as the one on the space bar, are now in English too. Keyboard layouts, autocorrect and dictation languages are unaffected. The settings language option is gone.
 - **Settings → AI** starts with what dictation and rewrite use, for example "Orukeet (on device)" and "OpenRouter · meta/muse-spark-1.1". Dictation has one choice between Orukeet, cloud dictation and system voice input. An option that can't work yet says what is missing. The Orukeet card now only manages the model, and the rewrite section asks for the provider first, then its API key, then the model.
-- The Wear OS app is in English.
+
+### Removed
+- The Wear OS keyboard and **Sync to Wear** in Settings → AI. The phone app no longer depends on Google Play services for Wear.
 
 ## 0.10.0 (2026-10-03)
 

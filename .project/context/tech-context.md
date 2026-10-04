@@ -1,7 +1,7 @@
 # Tech Context
 
 ## Stack
-- Android app modules (`app`, `wear`) with Kotlin + Gradle.
+- Android app module (`app`) with Kotlin + Gradle.
 - FlorisBoard-derived IME architecture.
 - Jetpack Compose settings/setup surfaces in the app module.
 - Local dictionaries, suggestion ranking, and autocorrect pipeline in the keyboard engine.

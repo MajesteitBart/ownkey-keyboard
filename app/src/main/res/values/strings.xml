@@ -661,16 +661,6 @@
     <string name="pref__voxtral__permission__granted" comment="Status text shown when microphone permission is granted">Microphone permission granted.</string>
     <string name="pref__voxtral__permission__missing" comment="Status text shown when microphone permission is missing">Microphone permission not granted yet.</string>
     <string name="pref__voxtral__permission__grant_action" comment="Button label to request microphone permission">Grant microphone permission</string>
-    <string name="pref__voxtral__sync_wear__label" comment="Section label for syncing cloud dictation to a watch">Wear OS watch</string>
-    <string name="pref__voxtral__sync_wear__summary" comment="What syncing to a watch sends">Copies this cloud dictation setup, including the API key, to the Ownkey app on your paired watch.</string>
-    <string name="pref__voxtral__sync_wear__action" comment="Button label to sync cloud dictation settings to a watch">Sync to Wear</string>
-    <plurals name="pref__voxtral__sync_wear__done" comment="Status after a successful watch sync">
-        <item quantity="one">Synced to %d watch.</item>
-        <item quantity="other">Synced to %d watches.</item>
-    </plurals>
-    <string name="pref__voxtral__sync_wear__failed" comment="Status after a failed watch sync; %1$s is the reason">Wear sync failed: %1$s</string>
-    <string name="pref__voxtral__sync_wear__no_watch" comment="Watch sync failure reason">no paired Wear OS watch found</string>
-    <string name="pref__voxtral__sync_wear__generic_failure" comment="Watch sync failure reason when no detail is available">the watch didn\'t accept the setup</string>
     <string name="pref__ai__intro_title" comment="Title of the AI settings overview">Ownkey AI</string>
     <string name="pref__ai__overview_dictation" comment="Row label in the AI overview">Dictation</string>
     <string name="pref__ai__overview_rewrite" comment="Row label in the AI overview">Rewrite</string>
