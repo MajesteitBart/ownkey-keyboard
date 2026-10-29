@@ -1,0 +1,197 @@
+# Keyboard: number row on/off with persistence, the key next to space sheet, Sound & vibration,
+# and a pick in the Gestures sheet. Every change is put back.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 03 Keyboard settings
+tags: [settings, keyboard]
+---
+- runFlow: helpers/open-home.yaml
+- tapOn:
+    id: home-keyboard
+- extendedWaitUntil:
+    visible:
+      id: keyboard-space-neighbor
+    timeout: 10000
+
+# Start from the default: number row off.
+- runFlow:
+    when:
+      visible:
+        containsChild: "Number row"
+        checked: true
+    commands:
+      - tapOn: "Number row"
+
+# Number row on; Number hints is disabled while it's on.
+- tapOn: "Number row"
+- assertVisible:
+    containsChild: "Number row"
+    checked: true
+- assertVisible:
+    containsChild: "Number hints"
+    enabled: false
+- takeScreenshot: 03-keyboard-number-row-on
+- back
+- tapOn:
+    id: home-keyboard
+- extendedWaitUntil:
+    visible:
+      containsChild: "Number row"
+    timeout: 10000
+- assertVisible:
+    containsChild: "Number row"
+    checked: true
+
+# And off again, also persisted.
+- tapOn: "Number row"
+- assertNotVisible:
+    containsChild: "Number row"
+    checked: true
+- back
+- tapOn:
+    id: home-keyboard
+- extendedWaitUntil:
+    visible:
+      containsChild: "Number row"
+    timeout: 10000
+- assertNotVisible:
+    containsChild: "Number row"
+    checked: true
+- assertNotVisible:
+    containsChild: "Number hints"
+    enabled: false
+
+# Key next to space: one sheet, picking applies and closes.
+- tapOn:
+    id: keyboard-space-neighbor
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-0
+    timeout: 5000
+- assertVisible: "None"
+- assertVisible: "Switch keyboard"
+- assertVisible: "Language if you have more than one, otherwise emoji"
+- takeScreenshot: 03-keyboard-space-sheet
+- tapOn:
+    id: sheet-option-1
+- assertNotVisible:
+    id: sheet-option-0
+- assertVisible:
+    id: keyboard-space-neighbor
+    containsChild: "Emoji"
+- back
+- tapOn:
+    id: home-keyboard
+- extendedWaitUntil:
+    visible:
+      id: keyboard-space-neighbor
+    timeout: 10000
+- assertVisible:
+    id: keyboard-space-neighbor
+    containsChild: "Emoji"
+- tapOn:
+    id: keyboard-space-neighbor
+- tapOn:
+    id: sheet-option-3
+- assertVisible:
+    id: keyboard-space-neighbor
+    containsChild: "Automatic"
+
+# Sound & vibration.
+- tapOn:
+    id: keyboard-sound-vibration
+- extendedWaitUntil:
+    visible:
+      id: feedback-key-sounds
+    timeout: 10000
+- assertVisible: "Sound & vibration"
+- assertVisible:
+    id: feedback-vibration
+- tapOn:
+    id: feedback-key-sounds
+- extendedWaitUntil:
+    visible: "Uses your phone's touch sound setting"
+    timeout: 5000
+- assertVisible: "Off"
+- assertVisible: "Always"
+- takeScreenshot: 03-keyboard-key-sounds-sheet
+- back
+- assertNotVisible: "Uses your phone's touch sound setting"
+- back
+- extendedWaitUntil:
+    visible:
+      id: keyboard-gestures
+    timeout: 5000
+
+# Gestures: change what a long press on Delete does, check it stuck, then put it back.
+# The delete key's "Long press" row is the second one on the screen. Rows and choices are found
+# by position and the sheet's checked state, not by the action labels. (Compose reports a selected
+# choice row as checked; only tabs report selected.)
+- tapOn:
+    id: keyboard-gestures
+- extendedWaitUntil:
+    visible: "Swipe on letters"
+    timeout: 10000
+- assertVisible: "Space bar"
+- scrollUntilVisible:
+    element: "Delete key"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      text: "Long press"
+      index: 1
+    direction: DOWN
+- tapOn:
+    text: "Long press"
+    index: 1
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-1
+    timeout: 5000
+- tapOn:
+    id: sheet-option-1
+- assertNotVisible:
+    id: sheet-option-1
+- tapOn:
+    text: "Long press"
+    index: 1
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-1
+      checked: true
+    timeout: 5000
+- assertVisible:
+    id: sheet-option-0
+    checked: false
+- takeScreenshot: 03-gestures-sheet
+- tapOn:
+    id: sheet-option-0
+- assertNotVisible:
+    id: sheet-option-0
+- back
+- tapOn:
+    id: keyboard-gestures
+- extendedWaitUntil:
+    visible: "Swipe on letters"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: "Long press"
+      index: 1
+    direction: DOWN
+- tapOn:
+    text: "Long press"
+    index: 1
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-0
+      checked: true
+    timeout: 5000
+- back
+- assertNotVisible:
+    id: sheet-option-0
+- back
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-keyboard
+    timeout: 5000

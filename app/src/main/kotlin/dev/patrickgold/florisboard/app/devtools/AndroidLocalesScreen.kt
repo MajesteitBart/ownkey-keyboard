@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontFamily
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.compose.LocalOwnkeyContentPadding
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import java.util.*
 import org.florisboard.lib.android.showLongToastSync
@@ -75,6 +76,7 @@ fun AndroidLocalesScreen() = FlorisScreen {
                 }
             },
             icon = Icons.Default.Save,
+            contentDescription = stringRes(R.string.action__export),
         )
     }
 
@@ -82,7 +84,7 @@ fun AndroidLocalesScreen() = FlorisScreen {
         val displayLanguageNamesIn by prefs.localization.displayLanguageNamesIn.collectAsState()
 
         SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-            LazyColumn {
+            LazyColumn(contentPadding = LocalOwnkeyContentPadding.current) {
                 items(availableLocales) { locale ->
                     Row {
                         Text(

@@ -1,0 +1,15 @@
+# Taps the letter keys for WORD (lowercase a-z) one by one. Keys are matched by label and must be
+# below the toolbar row (the mic, or the emoji search bar), so suggestion chips never match.
+appId: nl.bartvandermeeren.ownkey.debug
+---
+- evalScript: ${output.typeIndex = 0}
+- repeat:
+    times: ${WORD.length}
+    commands:
+      - tapOn:
+          text: ${WORD.charAt(output.typeIndex)}
+          below:
+            text: "Start dictation|Back to emojis"
+          retryTapIfNoChange: false
+          waitToSettleTimeoutMs: 500
+      - evalScript: ${output.typeIndex = output.typeIndex + 1}

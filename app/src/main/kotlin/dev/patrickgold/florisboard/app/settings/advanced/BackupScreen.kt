@@ -20,12 +20,6 @@ import android.content.ContentUris
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
@@ -37,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.unit.dp
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
 import dev.patrickgold.florisboard.BuildConfig
@@ -59,7 +52,6 @@ import dev.patrickgold.florisboard.lib.io.FileRegistry
 import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
 import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
-import dev.patrickgold.jetpref.material.ui.JetPrefListItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
@@ -68,13 +60,14 @@ import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.android.writeFromFile
 import org.florisboard.lib.compose.FlorisButtonBar
-import org.florisboard.lib.compose.FlorisOutlinedBox
-import org.florisboard.lib.compose.defaultFlorisOutlinedBox
-import org.florisboard.lib.compose.rippleClickable
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.kotlin.io.subDir
 import org.florisboard.lib.kotlin.io.subFile
 import org.florisboard.lib.kotlin.io.writeJson
+import dev.patrickgold.florisboard.app.ui.OwnkeyChoiceRow
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
+import dev.patrickgold.florisboard.app.ui.OwnkeySwitchRow
+import dev.patrickgold.florisboard.app.ui.PreferenceGroup
 
 object Backup {
     const val FILE_PROVIDER_AUTHORITY = "${BuildConfig.APPLICATION_ID}.provider.file"
@@ -319,10 +312,7 @@ fun BackupScreen() = FlorisScreen {
     }
 
     content {
-        FlorisOutlinedBox(
-            modifier = Modifier.defaultFlorisOutlinedBox(),
-            title = stringRes(R.string.backup_and_restore__back_up__destination),
-        ) {
+        PreferenceGroup(title = stringRes(R.string.backup_and_restore__back_up__destination)) {
             RadioListItem(
                 onClick = {
                     backupDestination = Backup.Destination.FILE_SYS
@@ -341,6 +331,7 @@ fun BackupScreen() = FlorisScreen {
         BackupFilesSelector(
             filesSelector = backupFilesSelector,
             title = stringRes(R.string.backup_and_restore__back_up__files),
+            footer = stringRes(R.string.settings__privacy__backup_footer),
         )
     }
 }
@@ -350,10 +341,12 @@ internal fun BackupFilesSelector(
     modifier: Modifier = Modifier,
     filesSelector: Backup.FilesSelector,
     title: String,
+    footer: String? = null,
 ) {
-    FlorisOutlinedBox(
-        modifier = modifier.defaultFlorisOutlinedBox(),
+    OwnkeyGroup(
+        modifier = modifier,
         title = title,
+        footer = footer,
     ) {
         CheckboxListItem(
             onClick = { filesSelector.jetprefDatastore = !filesSelector.jetprefDatastore },
@@ -373,61 +366,57 @@ internal fun BackupFilesSelector(
         CheckboxListItem(
             onClick = { filesSelector.speechDictionary = !filesSelector.speechDictionary },
             checked = filesSelector.speechDictionary,
-            text = stringRes(R.string.speech_dictionary__backup_label),
+            text = stringRes(R.string.settings__typing__personal_dictionary),
         )
-
-        TriStateCheckboxListItem(
+        // One switch for the whole clipboard history; the item types show up while it's on.
+        CheckboxListItem(
             onClick = {
-                if (
-                    filesSelector.clipboardData.value == ToggleableState.Off ||
-                    filesSelector.clipboardData.value == ToggleableState.Indeterminate
-                ) {
-                    filesSelector.clipboardImageItems = true
-                    filesSelector.clipboardVideoItems = true
-                    filesSelector.clipboardTextItems = true
-                } else {
-                    filesSelector.clipboardImageItems = false
-                    filesSelector.clipboardVideoItems = false
-                    filesSelector.clipboardTextItems = false
-                }
+                val turnOn = filesSelector.clipboardData.value == ToggleableState.Off
+                filesSelector.clipboardImageItems = turnOn
+                filesSelector.clipboardVideoItems = turnOn
+                filesSelector.clipboardTextItems = turnOn
                 filesSelector.updateCheckboxState()
             },
-            state = filesSelector.clipboardData.value,
+            checked = filesSelector.clipboardData.value != ToggleableState.Off,
             text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history),
         )
-
-
-        CheckboxListItem(
-            onClick = {
-                filesSelector.clipboardTextItems = !filesSelector.clipboardTextItems
-                filesSelector.updateCheckboxState()
-            },
-            checked = filesSelector.clipboardTextItems,
-            text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history__clipboard_text_items),
-            isSecondaryListItem = true,
-        )
-        CheckboxListItem(
-            onClick = {
-                filesSelector.clipboardImageItems = !filesSelector.clipboardImageItems
-                filesSelector.updateCheckboxState()
-            },
-            checked = filesSelector.clipboardImageItems,
-            text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history__clipboard_image_items),
-            isSecondaryListItem = true,
-        )
-        CheckboxListItem(
-            onClick = {
-                filesSelector.clipboardVideoItems = !filesSelector.clipboardVideoItems
-                filesSelector.updateCheckboxState()
-            },
-            checked = filesSelector.clipboardVideoItems,
-            text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history__clipboard_video_items),
-            isSecondaryListItem = true,
-        )
-
+        if (filesSelector.clipboardData.value != ToggleableState.Off) {
+            CheckboxListItem(
+                onClick = {
+                    filesSelector.clipboardTextItems = !filesSelector.clipboardTextItems
+                    filesSelector.updateCheckboxState()
+                },
+                checked = filesSelector.clipboardTextItems,
+                text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history__clipboard_text_items),
+                isSecondaryListItem = true,
+            )
+            CheckboxListItem(
+                onClick = {
+                    filesSelector.clipboardImageItems = !filesSelector.clipboardImageItems
+                    filesSelector.updateCheckboxState()
+                },
+                checked = filesSelector.clipboardImageItems,
+                text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history__clipboard_image_items),
+                isSecondaryListItem = true,
+            )
+            CheckboxListItem(
+                onClick = {
+                    filesSelector.clipboardVideoItems = !filesSelector.clipboardVideoItems
+                    filesSelector.updateCheckboxState()
+                },
+                checked = filesSelector.clipboardVideoItems,
+                text = stringRes(R.string.backup_and_restore__back_up__files_clipboard_history__clipboard_video_items),
+                isSecondaryListItem = true,
+            )
+        }
     }
 }
 
+/**
+ * A switch row for one part of a backup. Item types sit right under their parent switch, which only shows
+ * them while it's on, so [isSecondaryListItem] needs no indent.
+ */
+@Suppress("UNUSED_PARAMETER")
 @Composable
 internal fun CheckboxListItem(
     onClick: () -> Unit,
@@ -435,47 +424,14 @@ internal fun CheckboxListItem(
     text: String,
     isSecondaryListItem: Boolean = false
 ) {
-    JetPrefListItem(
-        modifier = Modifier.rippleClickable(onClick = onClick),
-        icon = {
-            Row {
-                if (isSecondaryListItem) {
-                    Spacer(modifier = Modifier.width(40.dp))
-                }
-                Checkbox(
-                    checked = checked,
-                    onCheckedChange = null,
-                )
-            }
-        },
-        text = text,
+    OwnkeySwitchRow(
+        title = text,
+        checked = checked,
+        onCheckedChange = { onClick() },
     )
 }
 
-@Composable
-internal fun TriStateCheckboxListItem(
-    onClick: () -> Unit,
-    state: ToggleableState,
-    text: String,
-    isSecondaryListItem: Boolean = false,
-) {
-    JetPrefListItem(
-        modifier = Modifier.rippleClickable(onClick = onClick),
-        icon = {
-            Row {
-                if (isSecondaryListItem) {
-                    Spacer(modifier = Modifier.width(40.dp))
-                }
-                TriStateCheckbox(
-                    state = state,
-                    onClick = null,
-                )
-            }
-        },
-        text = text,
-    )
-}
-
+/** One option of a single choice, drawn as an Ownkey choice row with a checkmark. */
 @Composable
 internal fun RadioListItem(
     onClick: () -> Unit,
@@ -483,15 +439,10 @@ internal fun RadioListItem(
     text: String,
     secondaryText: String? = null,
 ) {
-    JetPrefListItem(
-        modifier = Modifier.rippleClickable(onClick = onClick),
-        icon = {
-            RadioButton(
-                selected = selected,
-                onClick = null,
-            )
-        },
-        text = text,
-        secondaryText = secondaryText,
+    OwnkeyChoiceRow(
+        label = text,
+        summary = secondaryText,
+        selected = selected,
+        onClick = onClick,
     )
 }

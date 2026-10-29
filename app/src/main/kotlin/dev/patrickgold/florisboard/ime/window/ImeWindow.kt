@@ -42,6 +42,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -55,6 +56,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
@@ -98,6 +101,7 @@ import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
  * @see DevtoolsOverlay
  */
 @Composable
+@OptIn(ExperimentalComposeUiApi::class)
 fun ImeRootWindow() {
     val density = LocalDensity.current
     val windowController = LocalWindowController.current
@@ -117,6 +121,8 @@ fun ImeRootWindow() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // Test tags in the keyboard become resource ids, so UI tests can find keyboard controls.
+            .semantics { testTagsAsResourceId = true }
             .conditional(isEditorEnabled) {
                 Modifier.pointerInput(isEditorEnabled) {
                     detectTapGestures {

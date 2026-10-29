@@ -17,7 +17,6 @@
 package dev.patrickgold.florisboard.ime.smartbar
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -43,8 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import org.florisboard.lib.compose.stringRes
 
@@ -58,6 +57,7 @@ import org.florisboard.lib.compose.stringRes
 fun RewritePanelSmartbarTitle(
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberKeyboardPalette()
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -66,7 +66,7 @@ fun RewritePanelSmartbarTitle(
     ) {
         Text(
             text = stringRes(R.string.rewrite_panel__smartbar_title),
-            color = OwnkeyBrand.Bone.copy(alpha = 0.6f),
+            color = palette.inkSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -85,6 +85,7 @@ fun RewritePanelCloseAction(
     modifier: Modifier = Modifier,
 ) {
     val label = stringRes(R.string.rewrite_panel__action_close)
+    val palette = rememberKeyboardPalette()
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
@@ -97,8 +98,7 @@ fun RewritePanelCloseAction(
                 .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                 .size(buttonSize)
                 .clip(CircleShape)
-                .background(OwnkeyBrand.Glass.Key)
-                .border(1.dp, OwnkeyBrand.Bone.copy(alpha = 0.12f), CircleShape)
+                .background(palette.key)
                 .clickable(onClickLabel = label, onClick = onClose)
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
@@ -106,7 +106,7 @@ fun RewritePanelCloseAction(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = null,
-                tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
+                tint = palette.keyInk,
                 modifier = Modifier.size(20.dp),
             )
         }

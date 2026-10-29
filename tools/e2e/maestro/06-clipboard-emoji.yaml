@@ -1,0 +1,83 @@
+# Clipboard & emoji: a switch that reveals its slider, the skin tone sheet, and the
+# Clear emoji history confirm (cancelled).
+appId: nl.bartvandermeeren.ownkey.debug
+name: 06 Clipboard and emoji
+tags: [settings, clipboard]
+---
+- runFlow: helpers/open-home.yaml
+- scrollUntilVisible:
+    element:
+      id: home-clipboard
+    direction: DOWN
+- tapOn:
+    id: home-clipboard
+- extendedWaitUntil:
+    visible:
+      id: clipboard-history
+    timeout: 10000
+- assertVisible: "Clipboard"
+- assertVisible: "Emoji"
+- assertVisible:
+    containsChild: "Use internal clipboard"
+- takeScreenshot: 06-clipboard-emoji
+
+# Start from the default: Delete old items off.
+- runFlow:
+    when:
+      visible:
+        id: clipboard-delete-old
+        checked: true
+    commands:
+      - tapOn:
+          id: clipboard-delete-old
+- assertNotVisible: "After"
+- tapOn:
+    id: clipboard-delete-old
+- assertVisible:
+    id: clipboard-delete-old
+    checked: true
+- assertVisible: "After"
+- back
+- tapOn:
+    id: home-clipboard
+- extendedWaitUntil:
+    visible:
+      id: clipboard-delete-old
+      checked: true
+    timeout: 10000
+- tapOn:
+    id: clipboard-delete-old
+- assertVisible:
+    id: clipboard-delete-old
+    checked: false
+- assertNotVisible: "After"
+
+# Skin tone sheet opens and closes without a change.
+- tapOn:
+    id: emoji-skin-tone
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-0
+    timeout: 5000
+- takeScreenshot: 06-skin-tone-sheet
+- back
+- assertNotVisible:
+    id: sheet-option-0
+
+# Clear emoji history asks first; cancel.
+- tapOn:
+    id: emoji-clear-history
+- extendedWaitUntil:
+    visible: "Clear emoji history\\?"
+    timeout: 5000
+- assertVisible: "Removes your recent and pinned emoji. You can't undo this."
+- takeScreenshot: 06-clear-emoji-confirm
+- tapOn:
+    id: dialog-dismiss
+- assertNotVisible: "Clear emoji history\\?"
+- assertNotVisible: "Emoji history cleared"
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-clipboard
+    timeout: 5000

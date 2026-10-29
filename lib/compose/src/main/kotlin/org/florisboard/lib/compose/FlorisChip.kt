@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+/** Pill chip on Raised with no border. Selected chips are white with black text. */
 @Composable
 fun FlorisChip(
     text: String,
@@ -37,23 +39,41 @@ fun FlorisChip(
     onClick: () -> Unit = { },
     selected: Boolean = false,
     enabled: Boolean = true,
-    shape: Shape = MaterialTheme.shapes.small,
+    shape: Shape = OwnkeyTokens.PillShape,
     leadingIcons: List<ImageVector> = listOf(),
     trailingIcons: List<ImageVector> = listOf(),
 ) {
+    val disabledAlpha = OwnkeyTokens.DisabledAlpha
     InputChip(
         selected = selected,
         onClick = onClick,
         enabled = enabled,
         shape = shape,
+        border = null,
+        colors = InputChipDefaults.inputChipColors(
+            containerColor = OwnkeyTokens.Raised,
+            labelColor = OwnkeyTokens.Label,
+            leadingIconColor = OwnkeyTokens.Label,
+            trailingIconColor = OwnkeyTokens.Label,
+            disabledContainerColor = OwnkeyTokens.Raised.copy(alpha = disabledAlpha),
+            disabledLabelColor = OwnkeyTokens.Label.copy(alpha = disabledAlpha),
+            disabledLeadingIconColor = OwnkeyTokens.Label.copy(alpha = disabledAlpha),
+            disabledTrailingIconColor = OwnkeyTokens.Label.copy(alpha = disabledAlpha),
+            selectedContainerColor = OwnkeyTokens.Label,
+            selectedLabelColor = OwnkeyTokens.Black,
+            selectedLeadingIconColor = OwnkeyTokens.Black,
+            selectedTrailingIconColor = OwnkeyTokens.Black,
+            disabledSelectedContainerColor = OwnkeyTokens.Label.copy(alpha = disabledAlpha),
+        ),
         label = {
             Text(
                 text = text,
+                style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         },
-        modifier = modifier,
+        modifier = modifier.ownkeyFocusRing(shape),
         leadingIcon = {
             Row {
                 for (leadingIcon in leadingIcons) {

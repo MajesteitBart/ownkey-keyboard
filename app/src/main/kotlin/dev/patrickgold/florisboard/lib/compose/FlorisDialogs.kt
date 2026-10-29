@@ -16,11 +16,10 @@
 
 package dev.patrickgold.florisboard.lib.compose
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
 import org.florisboard.lib.compose.stringRes
 
 @Composable
@@ -30,16 +29,16 @@ fun FlorisConfirmDeleteDialog(
     onDismiss: () -> Unit,
     what: String,
 ) {
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         modifier = modifier,
         title = stringRes(R.string.action__delete_confirm_title),
+        text = stringRes(R.string.action__delete_confirm_message, "name" to what),
         confirmLabel = stringRes(R.string.action__delete),
         onConfirm = onConfirm,
+        destructive = true,
         dismissLabel = stringRes(R.string.action__cancel),
         onDismiss = onDismiss,
-    ) {
-        Text(text = stringRes(R.string.action__delete_confirm_message, "name" to what))
-    }
+    )
 }
 
 @Composable
@@ -49,9 +48,10 @@ fun FlorisUnsavedChangesDialog(
     onDiscard: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         modifier = modifier,
         title = stringRes(R.string.action__discard_confirm_title),
+        text = stringRes(R.string.action__discard_confirm_message),
         confirmLabel = stringRes(R.string.action__save),
         onConfirm = onSave,
         dismissLabel = stringRes(R.string.action__discard),
@@ -59,7 +59,5 @@ fun FlorisUnsavedChangesDialog(
         onOutsideDismissal = onDismiss,
         neutralLabel = stringRes(R.string.action__cancel),
         onNeutral = onDismiss,
-    ) {
-        Text(text = stringRes(R.string.action__discard_confirm_message))
-    }
+    )
 }

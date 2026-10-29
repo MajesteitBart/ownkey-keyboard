@@ -97,7 +97,7 @@ fun MediaInputLayout(
             ) {
                 Text(
                     text = "ABC",
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                 )
             }
             EmojiSearchField(

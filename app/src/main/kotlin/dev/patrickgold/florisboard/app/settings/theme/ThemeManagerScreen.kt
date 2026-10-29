@@ -16,14 +16,6 @@
 
 package dev.patrickgold.florisboard.app.settings.theme
 
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -33,19 +25,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.app.ui.OwnkeyChoiceRow
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
 import dev.patrickgold.florisboard.extensionManager
-import dev.patrickgold.florisboard.ime.theme.ThemeExtensionComponent
+import dev.patrickgold.florisboard.ime.theme.ThemeExtension
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.themeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
-import dev.patrickgold.jetpref.material.ui.JetPrefListItem
 import kotlinx.coroutines.launch
-import org.florisboard.lib.compose.FlorisOutlinedBox
-import org.florisboard.lib.compose.defaultFlorisOutlinedBox
-import org.florisboard.lib.compose.rippleClickable
 import org.florisboard.lib.compose.stringRes
 
 enum class ThemeManagerScreenAction(val id: String) {
@@ -69,12 +60,11 @@ fun ThemeManagerScreen(action: ThemeManagerScreenAction?) = FlorisScreen {
     val scope = rememberCoroutineScope()
 
     val indexedThemeExtensions by extensionManager.themes.collectAsState()
-    val extGroupedThemes = remember(indexedThemeExtensions) {
-        buildMap<String, List<ThemeExtensionComponent>> {
-            for (ext in indexedThemeExtensions) {
-                put(ext.meta.id, ext.themes)
-            }
-        }.mapValues { (_, configs) -> configs.sortedBy { it.label } }
+    // Ownkey's own themes first, then the rest by title.
+    val sortedThemeExtensions = remember(indexedThemeExtensions) {
+        indexedThemeExtensions.sortedWith(
+            compareBy<ThemeExtension> { it.meta.id != SignalThemes.Bone.extensionId }.thenBy { it.meta.title }
+        )
     }
 
     fun getThemeIdPref() = when (action) {
@@ -84,19 +74,12 @@ fun ThemeManagerScreen(action: ThemeManagerScreenAction?) = FlorisScreen {
 
     fun setTheme(extId: String, componentId: String) {
         val extComponentName = ExtensionComponentName(extId, componentId)
-        when (action) {
-            ThemeManagerScreenAction.SELECT_DAY,
-            ThemeManagerScreenAction.SELECT_NIGHT -> scope.launch {
-                getThemeIdPref().set(extComponentName)
-            }
+        scope.launch {
+            getThemeIdPref().set(extComponentName)
         }
     }
 
-    val activeThemeId by when (action) {
-        ThemeManagerScreenAction.SELECT_DAY,
-        ThemeManagerScreenAction.SELECT_NIGHT
-            -> getThemeIdPref().collectAsState()
-    }
+    val activeThemeId by getThemeIdPref().collectAsState()
 
     content {
         DisposableEffect(activeThemeId) {
@@ -105,39 +88,17 @@ fun ThemeManagerScreen(action: ThemeManagerScreenAction?) = FlorisScreen {
                 themeManager.previewThemeId.value = null
             }
         }
-        val grayColor = LocalContentColor.current.copy(alpha = 0.56f)
-        for ((extensionId, configs) in extGroupedThemes) key(extensionId) {
-            val ext = extensionManager.getExtensionById(extensionId)!!
-            FlorisOutlinedBox(
-                modifier = Modifier.defaultFlorisOutlinedBox(),
-                title = ext.meta.title,
-                subtitle = extensionId,
-            ) {
-                for (config in configs) key(extensionId, config.id) {
-                    JetPrefListItem(
-                        modifier = Modifier.rippleClickable {
-                            setTheme(extensionId, config.id)
-                        },
-                        icon = {
-                            RadioButton(
-                                selected = activeThemeId.extensionId == extensionId &&
-                                    activeThemeId.componentId == config.id,
-                                onClick = null,
-                            )
-                        },
-                        text = config.label,
-                        trailing = {
-                            Icon(
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                                imageVector = if (config.isNightTheme) {
-                                    Icons.Default.DarkMode
-                                } else {
-                                    Icons.Default.LightMode
-                                },
-                                contentDescription = null,
-                                tint = grayColor,
-                            )
-                        },
+        val dark = stringRes(R.string.settings__appearance__theme_dark)
+        val light = stringRes(R.string.settings__appearance__theme_light)
+        for (ext in sortedThemeExtensions) key(ext.meta.id) {
+            OwnkeyGroup(title = ext.meta.title, selectableGroup = true) {
+                for (config in ext.themes.sortedBy { it.label }) key(ext.meta.id, config.id) {
+                    OwnkeyChoiceRow(
+                        modifier = Modifier.testTag("theme-${config.id}"),
+                        label = config.label,
+                        summary = if (config.isNightTheme) dark else light,
+                        selected = activeThemeId.extensionId == ext.meta.id && activeThemeId.componentId == config.id,
+                        onClick = { setTheme(ext.meta.id, config.id) },
                     )
                 }
             }

@@ -93,7 +93,7 @@ object RewritePromptPresets {
     fun newCustom(index: Int): RewritePromptPreset {
         return RewritePromptPreset(
             id = "custom_${System.currentTimeMillis()}",
-            name = "Custom ${index + 1}",
+            name = "Style ${index + 1}",
             instruction = "Rewrite the text in my preferred voice.",
         )
     }

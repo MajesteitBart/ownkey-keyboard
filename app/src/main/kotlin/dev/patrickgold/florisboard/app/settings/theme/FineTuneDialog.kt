@@ -22,17 +22,17 @@ import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.app.ui.ListPreference
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
 import dev.patrickgold.jetpref.datastore.ui.PreferenceLayout
 import dev.patrickgold.jetpref.material.ui.ColorRepresentation
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import org.florisboard.lib.compose.stringRes
 
 private val FineTuneContentPadding = PaddingValues(horizontal = 8.dp)
 
 @Composable
 fun FineTuneDialog(onDismiss: () -> Unit) {
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         title = stringRes(R.string.settings__theme_editor__fine_tune__title),
         onDismiss = onDismiss,
         contentPadding = FineTuneContentPadding,

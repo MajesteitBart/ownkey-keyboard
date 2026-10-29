@@ -17,36 +17,37 @@
 package dev.patrickgold.florisboard.app.settings.typing
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.ui.OwnkeyNotice
+import dev.patrickgold.florisboard.app.ui.OwnkeyTone
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
 import dev.patrickgold.florisboard.lib.util.launchActivity
 import org.florisboard.lib.android.AndroidSettings
-import org.florisboard.lib.compose.FlorisCanvasIcon
-import org.florisboard.lib.compose.FlorisErrorCard
-import org.florisboard.lib.compose.FlorisSimpleCard
-import org.florisboard.lib.compose.FlorisWarningCard
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.observeAsState
 import org.florisboard.lib.compose.stringRes
 
-@Composable
-fun SpellCheckerServiceSelector(florisSpellCheckerEnabled: MutableState<Boolean>) {
-    val context = LocalContext.current
+/** What Android reports about the system spell checker. */
+class SpellCheckerState(
+    val isEnabled: Boolean,
+    /** Label of the selected spell checker app, or null when none is selected. */
+    val label: String?,
+    /** True when Ownkey itself is the selected spell checker. */
+    val isOwnkey: Boolean,
+)
 
+@Composable
+fun rememberSpellCheckerState(): SpellCheckerState {
+    val context = LocalContext.current
     val systemSpellCheckerId by AndroidSettings.Secure.observeAsState(
         key = "selected_spell_checker",
         foregroundOnly = true,
@@ -55,73 +56,64 @@ fun SpellCheckerServiceSelector(florisSpellCheckerEnabled: MutableState<Boolean>
         key = "spell_checker_enabled",
         foregroundOnly = true,
     )
-    val systemSpellCheckerPkgName = remember(systemSpellCheckerId) {
-        runCatching {
-            ComponentName.unflattenFromString(systemSpellCheckerId!!)!!.packageName
-        }.getOrDefault("null")
+    val packageName = remember(systemSpellCheckerId) {
+        systemSpellCheckerId?.let { ComponentName.unflattenFromString(it)?.packageName }
     }
-    val openSystemSpellCheckerSettings = {
-        val componentToLaunch = ComponentName(
-            "com.android.settings",
-            "com.android.settings.Settings\$SpellCheckersSettingsActivity",
-        )
-        context.launchActivity {
-            it.addCategory(Intent.CATEGORY_DEFAULT)
-            it.component = componentToLaunch
+    val label = remember(packageName) {
+        packageName?.let { name ->
+            runCatching {
+                val pm = context.packageManager
+                pm.getApplicationLabel(pm.getApplicationInfo(name, 0)).toString()
+            }.getOrDefault(name)
         }
     }
-    florisSpellCheckerEnabled.value =
-        systemSpellCheckerEnabled == "1" &&
-        systemSpellCheckerPkgName == context.packageName
+    val isEnabled = isSystemSpellCheckerEnabled(systemSpellCheckerEnabled)
+    return SpellCheckerState(
+        isEnabled = isEnabled,
+        label = label,
+        isOwnkey = isEnabled && packageName == context.packageName,
+    )
+}
 
-    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-        if (systemSpellCheckerEnabled == "1") {
-            if (systemSpellCheckerId == null) {
-                FlorisWarningCard(
-                    text = stringRes(R.string.pref__spelling__active_spellchecker__summary_none),
-                    onClick = openSystemSpellCheckerSettings,
-                )
-            } else {
-                var spellCheckerIcon: Drawable?
-                var spellCheckerLabel = "Unknown"
-                try {
-                    val pm = context.packageManager
-                    val remoteAppInfo = pm.getApplicationInfo(systemSpellCheckerPkgName, 0)
-                    spellCheckerIcon = pm.getApplicationIcon(remoteAppInfo)
-                    spellCheckerLabel = pm.getApplicationLabel(remoteAppInfo).toString()
-                } catch (e: Exception) {
-                    spellCheckerIcon = null
-                }
-                FlorisSimpleCard(
-                    icon = {
-                        if (spellCheckerIcon != null) {
-                            FlorisCanvasIcon(
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .requiredSize(32.dp),
-                                drawable = spellCheckerIcon,
-                            )
-                        } else {
-                            Icon(
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .requiredSize(32.dp),
-                                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                    text = spellCheckerLabel,
-                    secondaryText = systemSpellCheckerPkgName,
-                    contentPadding = PaddingValues(all = 8.dp),
-                    onClick = openSystemSpellCheckerSettings,
-                )
-            }
-        } else {
-            FlorisErrorCard(
-                text = stringRes(R.string.pref__spelling__active_spellchecker__summary_disabled),
-                onClick = openSystemSpellCheckerSettings,
-            )
-        }
+/** Android treats a missing `spell_checker_enabled` as on; only an explicit "0" turns the spell checker off. */
+internal fun isSystemSpellCheckerEnabled(rawValue: String?): Boolean = rawValue?.trim() != "0"
+
+/**
+ * The "Spell checker" row: shows the active spell checker or "Off" and opens Android's spell checker
+ * settings. A missing selection shows as a notice under the row.
+ */
+@Composable
+fun SpellCheckerRow(state: SpellCheckerState) {
+    val context = LocalContext.current
+    val needsChoice = state.isEnabled && state.label == null
+    OwnkeyRow(
+        modifier = Modifier.testTag("typing-spell-checker"),
+        title = stringRes(R.string.settings__typing__spell_checker),
+        value = when {
+            !state.isEnabled -> stringRes(R.string.settings__typing__spell_checker_off)
+            state.label == null -> stringRes(R.string.settings__typing__spell_checker_not_set)
+            else -> state.label
+        },
+        valueColor = if (needsChoice) OwnkeyTokens.Warning else Color.Unspecified,
+        onClick = { openSystemSpellCheckerSettings(context) },
+    )
+    if (needsChoice) {
+        OwnkeyNotice(
+            text = stringRes(R.string.settings__typing__spell_checker_none_notice),
+            tone = OwnkeyTone.Warning,
+            actionLabel = stringRes(R.string.settings__typing__spell_checker_choose),
+            onAction = { openSystemSpellCheckerSettings(context) },
+        )
+    }
+}
+
+private fun openSystemSpellCheckerSettings(context: Context) {
+    val componentToLaunch = ComponentName(
+        "com.android.settings",
+        "com.android.settings.Settings\$SpellCheckersSettingsActivity",
+    )
+    context.launchActivity {
+        it.addCategory(Intent.CATEGORY_DEFAULT)
+        it.component = componentToLaunch
     }
 }

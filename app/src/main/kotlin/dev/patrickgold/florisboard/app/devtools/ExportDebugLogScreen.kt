@@ -16,10 +16,7 @@
 
 package dev.patrickgold.florisboard.app.devtools
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -42,9 +39,10 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.compose.LocalOwnkeyContentPadding
+import org.florisboard.lib.compose.FlorisButtonBar
 import dev.patrickgold.florisboard.lib.devtools.Devtools
 import org.florisboard.lib.android.showShortToastSync
-import org.florisboard.lib.compose.FlorisButton
 import org.florisboard.lib.compose.florisHorizontalScroll
 import org.florisboard.lib.compose.florisScrollbar
 import org.florisboard.lib.compose.stringRes
@@ -69,20 +67,17 @@ fun ExportDebugLogScreen() = FlorisScreen {
     }
 
     bottomBar {
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            FlorisButton(
+        FlorisButtonBar {
+            ButtonBarTextButton(
                 onClick = {
                     clipboardManager.addNewPlaintext(debugLog!!.joinToString("\n"))
                     context.showShortToastSync(resources.getString(R.string.devtools__debuglog__copied_to_clipboard))
                 },
-                modifier = Modifier,
                 text = stringRes(R.string.devtools__debuglog__copy_log),
                 enabled = debugLog != null,
             )
-            FlorisButton(
+            ButtonBarSpacer()
+            ButtonBarButton(
                 onClick = {
                     clipboardManager.addNewPlaintext(formattedDebugLog!!.joinToString("\n"))
                     context.showShortToastSync(resources.getString(R.string.devtools__debuglog__copied_to_clipboard))
@@ -103,6 +98,7 @@ fun ExportDebugLogScreen() = FlorisScreen {
                     .florisScrollbar(lazyListState, isVertical = true)
                     .florisHorizontalScroll(),
                 state = lazyListState,
+                contentPadding = LocalOwnkeyContentPadding.current,
             ) {
                 val log = debugLog
                 if (log == null) {

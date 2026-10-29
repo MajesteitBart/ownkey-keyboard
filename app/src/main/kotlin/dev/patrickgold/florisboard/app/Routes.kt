@@ -54,7 +54,6 @@ import dev.patrickgold.florisboard.app.settings.about.AboutScreen
 import dev.patrickgold.florisboard.app.settings.about.ProjectLicenseScreen
 import dev.patrickgold.florisboard.app.settings.about.ThirdPartyLicensesScreen
 import dev.patrickgold.florisboard.app.settings.advanced.BackupScreen
-import dev.patrickgold.florisboard.app.settings.advanced.OtherScreen
 import dev.patrickgold.florisboard.app.settings.advanced.PhysicalKeyboardScreen
 import dev.patrickgold.florisboard.app.settings.advanced.RestoreScreen
 import dev.patrickgold.florisboard.app.settings.clipboard.ClipboardScreen
@@ -67,14 +66,15 @@ import dev.patrickgold.florisboard.app.settings.keyboard.KeyboardScreen
 import dev.patrickgold.florisboard.app.settings.localization.LanguagePackManagerScreen
 import dev.patrickgold.florisboard.app.settings.localization.LanguagePackManagerScreenAction
 import dev.patrickgold.florisboard.app.settings.localization.LocalizationScreen
+import dev.patrickgold.florisboard.app.settings.localization.NewLanguageScreen
 import dev.patrickgold.florisboard.app.settings.localization.SelectLocaleScreen
 import dev.patrickgold.florisboard.app.settings.localization.SubtypeEditorScreen
-import dev.patrickgold.florisboard.app.settings.media.MediaScreen
-import dev.patrickgold.florisboard.app.settings.smartbar.SmartbarScreen
+import dev.patrickgold.florisboard.app.settings.privacy.PrivacyScreen
 import dev.patrickgold.florisboard.app.settings.theme.ThemeManagerScreen
 import dev.patrickgold.florisboard.app.settings.theme.ThemeManagerScreenAction
 import dev.patrickgold.florisboard.app.settings.theme.ThemeScreen
 import dev.patrickgold.florisboard.app.settings.typing.TypingScreen
+import dev.patrickgold.florisboard.app.settings.voxtral.RewriteStylesScreen
 import dev.patrickgold.florisboard.app.settings.voxtral.SpeechDictionaryScreen
 import dev.patrickgold.florisboard.app.settings.voxtral.VoxtralScreen
 import dev.patrickgold.florisboard.app.setup.SetupScreen
@@ -131,6 +131,10 @@ object Routes {
         data class SubtypeEdit(val id: Long)
 
         @Serializable
+        @Deeplink("settings/localization/subtype/new")
+        object SubtypeNew
+
+        @Serializable
         @Deeplink("settings/theme")
         object Theme
 
@@ -182,6 +186,14 @@ object Routes {
         @Serializable
         @Deeplink("settings/voxtral/dictionary")
         data class SpeechDictionary(val heard: String? = null)
+
+        @Serializable
+        @Deeplink("settings/voxtral/rewrite-styles")
+        object RewriteStyles
+
+        @Serializable
+        @Deeplink("settings/privacy")
+        object Privacy
 
         @Serializable
         @Deeplink("settings/other")
@@ -299,6 +311,7 @@ object Routes {
                 val payload = navBackStack.toRoute<Settings.SubtypeEdit>()
                 SubtypeEditorScreen(payload.id)
             }
+            composableWithDeepLink(Settings.SubtypeNew::class) { NewLanguageScreen() }
 
             composableWithDeepLink(Settings.Theme::class) { ThemeScreen() }
             composableWithDeepLink(Settings.ThemeManager::class) { navBackStack ->
@@ -309,7 +322,8 @@ object Routes {
             composableWithDeepLink(Settings.Keyboard::class) { KeyboardScreen() }
             composableWithDeepLink(Settings.InputFeedback::class) { InputFeedbackScreen() }
 
-            composableWithDeepLink(Settings.Smartbar::class) { SmartbarScreen() }
+            // The toolbar settings live on the Keyboard screen now; the route stays for old links.
+            composableWithDeepLink(Settings.Smartbar::class) { KeyboardScreen() }
 
             composableWithDeepLink(Settings.Typing::class) { TypingScreen() }
 
@@ -323,15 +337,19 @@ object Routes {
 
             composableWithDeepLink(Settings.Clipboard::class) { ClipboardScreen() }
 
-            composableWithDeepLink(Settings.Media::class) { MediaScreen() }
+            // Emoji settings moved to Clipboard & emoji; the route stays for old links.
+            composableWithDeepLink(Settings.Media::class) { ClipboardScreen() }
 
             composableWithDeepLink(Settings.Voxtral::class) { VoxtralScreen() }
             composableWithDeepLink(Settings.SpeechDictionary::class) { navBackStack ->
                 val payload = navBackStack.toRoute<Settings.SpeechDictionary>()
                 SpeechDictionaryScreen(payload.heard)
             }
+            composableWithDeepLink(Settings.RewriteStyles::class) { RewriteStylesScreen() }
 
-            composableWithDeepLink(Settings.Other::class) { OtherScreen() }
+            composableWithDeepLink(Settings.Privacy::class) { PrivacyScreen() }
+            // What was left under Other moved to Privacy & backup; the route stays for old links.
+            composableWithDeepLink(Settings.Other::class) { PrivacyScreen() }
             composableWithDeepLink(Settings.PhysicalKeyboard::class) { PhysicalKeyboardScreen() }
             composableWithDeepLink(Settings.Backup::class) { BackupScreen() }
             composableWithDeepLink(Settings.Restore::class) { RestoreScreen() }

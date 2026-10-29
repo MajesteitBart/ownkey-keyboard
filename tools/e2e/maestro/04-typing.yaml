@@ -1,0 +1,99 @@
+# Typing: the autocorrect level sheet, a switch that persists, and Saved words. Restores Normal.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 04 Typing settings
+tags: [settings, typing]
+---
+- runFlow: helpers/open-home.yaml
+- tapOn:
+    id: home-typing
+- extendedWaitUntil:
+    visible:
+      id: typing-autocorrect
+    timeout: 10000
+- assertVisible: "Suggestions"
+- assertVisible: "Formatting"
+
+# Autocorrect level: Off / Gentle / Normal / Strong in one sheet.
+- tapOn:
+    id: typing-autocorrect
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-3
+    timeout: 5000
+- assertVisible: "Never changes what you type"
+- assertVisible: "Gentle"
+- assertVisible: "Strong"
+- takeScreenshot: 04-typing-autocorrect-sheet
+- tapOn:
+    id: sheet-option-3
+- assertNotVisible:
+    id: sheet-option-0
+- assertVisible:
+    id: typing-autocorrect
+    containsChild: "Strong"
+- back
+- tapOn:
+    id: home-typing
+- extendedWaitUntil:
+    visible:
+      id: typing-autocorrect
+    timeout: 10000
+- assertVisible:
+    id: typing-autocorrect
+    containsChild: "Strong"
+- tapOn:
+    id: typing-autocorrect
+- tapOn:
+    id: sheet-option-2
+- assertVisible:
+    id: typing-autocorrect
+    containsChild: "Normal"
+
+# Double-space for period: off, persisted, then on again (its default).
+- runFlow:
+    when:
+      notVisible:
+        containsChild: "Double-space for period"
+        checked: true
+    commands:
+      - tapOn: "Double-space for period"
+- tapOn: "Double-space for period"
+- assertNotVisible:
+    containsChild: "Double-space for period"
+    checked: true
+- back
+- tapOn:
+    id: home-typing
+- extendedWaitUntil:
+    visible:
+      containsChild: "Double-space for period"
+    timeout: 10000
+- assertNotVisible:
+    containsChild: "Double-space for period"
+    checked: true
+- tapOn: "Double-space for period"
+- assertVisible:
+    containsChild: "Double-space for period"
+    checked: true
+
+# Saved words opens its screen.
+- scrollUntilVisible:
+    element: "Saved words"
+    direction: DOWN
+- assertVisible:
+    id: typing-spell-checker
+- tapOn: "Saved words"
+- extendedWaitUntil:
+    visible:
+      id: saved-words-yours
+    timeout: 10000
+- assertVisible:
+    id: saved-words-system
+- assertVisible:
+    id: saved-words-personal
+- takeScreenshot: 04-saved-words
+- back
+- extendedWaitUntil:
+    visible:
+      id: typing-spell-checker
+    timeout: 5000

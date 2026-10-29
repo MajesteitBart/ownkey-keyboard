@@ -18,12 +18,12 @@ package dev.patrickgold.florisboard.ime.smartbar
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -58,8 +58,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionButtonAspectRatio
 import dev.patrickgold.florisboard.ime.text.dictation.AudioLevelHistoryState
 import dev.patrickgold.florisboard.ime.text.dictation.StationaryLevelBars
@@ -88,6 +89,7 @@ fun VoiceRecordingRowContent(
     actions: VoiceRecordingRowActions,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberKeyboardPalette()
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val availableWidth = maxWidth
         val layout = RecordingRowLayoutPolicy.resolve(availableWidth.value.toInt())
@@ -134,7 +136,7 @@ fun VoiceRecordingRowContent(
                         .weight(1f, fill = false)
                         .widthIn(max = 220.dp)
                         .clearAndSetSemantics { },
-                    color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
+                    color = palette.ink,
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -172,7 +174,7 @@ fun VoiceRecordingRowContent(
                         ImageVector.vectorResource(id = R.drawable.ic_hero_pause)
                     },
                     contentDescription = null,
-                    tint = OwnkeyBrand.Bone,
+                    tint = palette.ink,
                 )
             }
             RecordingIconButton(
@@ -184,7 +186,7 @@ fun VoiceRecordingRowContent(
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
                     contentDescription = null,
-                    tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
+                    tint = palette.ink,
                 )
             }
         }
@@ -192,7 +194,7 @@ fun VoiceRecordingRowContent(
 }
 
 /**
- * Trailing action in the dictation-key slot. While recording or paused it is the orange
+ * Trailing action in the dictation-key slot. While recording or paused it is the accent
  * `Stop and transcribe` button with a solid square. While transcribing the slot holds the neutral
  * cancel action: the row already carries the one processing spinner, so the slot must not add a
  * second one.
@@ -214,18 +216,18 @@ fun VoiceRecordingStickyAction(
             56.dp,
         )
         if (state.phase == VoiceRecordingPhase.PROCESSING) {
+            val palette = rememberKeyboardPalette()
             CircleControlButton(
                 size = buttonSize,
                 iconSize = 20.dp,
-                background = OwnkeyBrand.Coal,
-                border = OwnkeyBrand.Bone.copy(alpha = 0.12f),
+                background = palette.key,
                 onClick = actions::onCancel,
                 contentDescription = stringRes(R.string.voice_recording__cancel_dictation),
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_x_mark),
                     contentDescription = null,
-                    tint = OwnkeyBrand.Bone.copy(alpha = 0.9f),
+                    tint = palette.keyInk,
                 )
             }
         } else {
@@ -250,6 +252,8 @@ private fun RecordingElapsed(
     modifier: Modifier = Modifier,
 ) {
     val paused = state.phase == VoiceRecordingPhase.PAUSED
+    val palette = rememberKeyboardPalette()
+    val accent = rememberKeyboardAccent()
     val elapsedText = formatRecordingElapsed(state.elapsedMs)
     val elapsedDescription = stringRes(R.string.voice_recording__elapsed_label, "time" to elapsedText)
     Row(
@@ -263,13 +267,13 @@ private fun RecordingElapsed(
             modifier = Modifier
                 .size(5.dp)
                 .background(
-                    color = if (paused) OwnkeyBrand.WarningYellow else OwnkeyBrand.Ember,
+                    color = if (paused) palette.inkSecondary else accent.color,
                     shape = CircleShape,
                 ),
         )
         Text(
             text = elapsedText,
-            color = OwnkeyBrand.Ash,
+            color = palette.inkSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -283,6 +287,8 @@ private fun ProcessingStatus(
     state: VoiceRecordingRowState,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberKeyboardPalette()
+    val accent = rememberKeyboardAccent()
     Row(
         modifier = modifier.padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -291,15 +297,15 @@ private fun ProcessingStatus(
         CircularProgressIndicator(
             modifier = Modifier.size(18.dp),
             strokeWidth = 2.5.dp,
-            color = OwnkeyBrand.Ember,
-            trackColor = OwnkeyBrand.Bone.copy(alpha = 0.08f),
+            color = accent.color,
+            trackColor = palette.ink.copy(alpha = 0.1f),
         )
         Text(
             text = state.label(),
             modifier = Modifier
                 .weight(1f)
                 .semantics { liveRegion = LiveRegionMode.Polite },
-            color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
+            color = palette.ink,
             fontSize = 14.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -373,7 +379,6 @@ private fun CircleControlButton(
     size: Dp,
     iconSize: Dp,
     background: Color,
-    border: Color,
     onClick: () -> Unit,
     contentDescription: String,
     content: @Composable () -> Unit,
@@ -384,7 +389,6 @@ private fun CircleControlButton(
             .size(size)
             .clip(CircleShape)
             .background(background)
-            .border(1.dp, border, CircleShape)
             .clickable(
                 onClickLabel = contentDescription,
                 onClick = onClick,
@@ -424,7 +428,7 @@ fun MeasuredLevelWaveform(
     barCount: Int,
     paused: Boolean,
     modifier: Modifier = Modifier,
-    color: Color = OwnkeyBrand.Ember,
+    color: Color = rememberKeyboardAccent().color,
     barWidth: Dp = RecordingRowLayoutPolicy.BarWidthDp.dp,
     barPitch: Dp = RecordingRowLayoutPolicy.BarPitchDp.dp,
 ) {
@@ -458,14 +462,10 @@ fun MeasuredLevelWaveform(
     }
 }
 
+/** Keeps the old divider rhythm without drawing a line; groups are separated by space alone. */
 @Composable
 private fun SmartbarDivider() {
-    Box(
-        modifier = Modifier
-            .width(1.dp)
-            .fillMaxHeight(0.52f)
-            .background(OwnkeyBrand.Bone.copy(alpha = 0.06f)),
-    )
+    Spacer(modifier = Modifier.width(1.dp))
 }
 
 /** `mm:ss` for a recording timer; shared by the dictation row and the rewrite panel. */

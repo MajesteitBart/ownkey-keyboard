@@ -33,8 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
@@ -47,13 +45,15 @@ import org.florisboard.lib.compose.FlorisIconButton
 import org.florisboard.lib.compose.FlorisOutlinedBox
 import org.florisboard.lib.compose.FlorisTextButton
 import org.florisboard.lib.compose.stringRes
+import org.florisboard.lib.compose.OwnkeyTokens
 
 @Composable
 fun ExtensionComponentNoneFoundView() {
     Text(
         modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
         text = stringRes(R.string.ext__meta__components_none_found),
-        fontStyle = FontStyle.Italic,
+        style = MaterialTheme.typography.bodyMedium,
+        color = OwnkeyTokens.Secondary,
     )
 }
 
@@ -74,6 +74,7 @@ fun ExtensionComponentView(
         Column(
             modifier = Modifier.padding(
                 start = 16.dp,
+                top = 14.dp,
                 end = 16.dp,
                 bottom = if (onDeleteBtnClick == null && onEditBtnClick == null) 8.dp else 0.dp,
             ),
@@ -126,7 +127,7 @@ fun ExtensionComponentView(
                         icon = Icons.Default.Delete,
                         text = stringRes(R.string.action__delete),
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
+                            contentColor = OwnkeyTokens.Danger,
                         ),
                     )
                 }
@@ -149,14 +150,15 @@ fun <T : ExtensionComponent> ExtensionComponentListView(
     title: String,
     components: List<T>,
     onCreateBtnClick: (() -> Unit)? = null,
+    createBtnLabel: String? = null,
     componentGenerator: @Composable (T) -> Unit,
 ) {
     Column(modifier = modifier) {
         ListItem(
             headlineContent = { Text(
                 text = title,
-                color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                color = OwnkeyTokens.Secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             ) },
@@ -165,7 +167,8 @@ fun <T : ExtensionComponent> ExtensionComponentListView(
                     FlorisIconButton(
                         onClick = onCreateBtnClick,
                         icon = Icons.Default.Add,
-                        iconColor = MaterialTheme.colorScheme.secondary,
+                        iconColor = OwnkeyTokens.Label,
+                        contentDescription = createBtnLabel ?: stringRes(R.string.action__add),
                     )
                 }
             } else { null },

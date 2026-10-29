@@ -1,0 +1,46 @@
+# Emoji: open the panel, search "smile" with the keyboard's own keys, go back to letters.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 24 Emoji panel and search
+tags: [keyboard]
+---
+- runFlow: helpers/open-home.yaml
+- runFlow: helpers/open-keyboard.yaml
+- runFlow: helpers/expand-toolbar.yaml
+- tapOn:
+    text: "Emoji"
+    below:
+      id: preview-field
+- extendedWaitUntil:
+    visible: "Search emoji"
+    timeout: 5000
+- assertVisible: "ABC"
+- takeScreenshot: 24-emoji-panel
+
+- tapOn: "Search emoji"
+- extendedWaitUntil:
+    visible: "Type a word to find an emoji"
+    timeout: 5000
+- assertVisible: "Back to emojis"
+- runFlow:
+    file: helpers/type-word.yaml
+    env:
+      WORD: "smile"
+- extendedWaitUntil:
+    visible: "smile"
+    timeout: 5000
+- assertVisible: "Clear search"
+- assertVisible: "😊"
+- takeScreenshot: 24-emoji-search-smile
+
+- tapOn: "Back to emojis"
+- extendedWaitUntil:
+    visible: "Search emoji"
+    timeout: 5000
+- tapOn: "ABC"
+- extendedWaitUntil:
+    visible: "q"
+    timeout: 5000
+- assertVisible: "Start dictation"
+- takeScreenshot: 24-back-to-letters
+- runFlow: helpers/collapse-toolbar.yaml
+- hideKeyboard

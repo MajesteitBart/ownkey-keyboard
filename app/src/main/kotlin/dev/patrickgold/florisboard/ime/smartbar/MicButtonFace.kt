@@ -16,6 +16,7 @@
 
 package dev.patrickgold.florisboard.ime.smartbar
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -42,7 +43,11 @@ import androidx.compose.ui.unit.Dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
+import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
+import org.florisboard.lib.compose.onAccentFor
+import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 
 /** What the dictation button shows. Tapping it always does what the face suggests. */
 enum class MicFaceState {
@@ -56,8 +61,8 @@ enum class MicFaceState {
 }
 
 /**
- * The idle look. The voice-only bar leads with a solid orange button, because dictation is all it does; the
- * keyboard's mic key stays quiet next to the other toolbar actions.
+ * The idle look. The keyboard's mic key and the voice-only bar lead with a solid accent button; the quiet style
+ * (a key-coloured well with an accent glyph) is for secondary spots such as the floating split controls.
  */
 enum class MicIdleStyle {
     SOLID,
@@ -77,6 +82,22 @@ fun micFaceState(phase: VoiceActionFeedbackPhase, aiUnavailable: Boolean): MicFa
     }
 }
 
+/** What the dictation button does when activated, for its accessibility name and click label. */
+@StringRes
+fun micActionLabelRes(state: MicFaceState): Int = when (state) {
+    MicFaceState.LISTENING, MicFaceState.PAUSED -> R.string.ime__mic__stop_dictation
+    MicFaceState.TRANSCRIBING -> R.string.voice_recording__processing
+    else -> R.string.voice_rewrite__action_start_dictation
+}
+
+/** The state TalkBack reads after the name, or null when the name says it all. */
+@StringRes
+fun micStateLabelRes(state: MicFaceState): Int? = when (state) {
+    MicFaceState.LISTENING -> R.string.ime__mic__recording
+    MicFaceState.PAUSED -> R.string.ime__mic__paused
+    else -> null
+}
+
 // Proportions of the Ownkey mic state sheet, relative to the button diameter. Glyph sizes cover the
 // drawable's 24 unit box, whose 20 unit Heroicons glyph sits 2 units in from each edge.
 private const val MicGlyph = 0.552f
@@ -87,9 +108,16 @@ private const val ListeningRingStroke = 0.06f
 private const val TrackRadius = 0.41f
 private const val TrackStroke = 0.05f
 
+/** The check on the green success face, picked like any glyph on a coloured fill. */
+private val SuccessGlyph = onAccentFor(OwnkeyBrand.Glass.Success)
+
 /**
  * The face of the dictation button, shared by the keyboard's mic key and the voice-only bar so both always
  * show the same state the same way. It draws no touch handling; the caller owns input and semantics.
+ *
+ * Colours come from the keyboard theme: the effective accent ([rememberKeyboardAccent]) for the solid face,
+ * the key fill for the quiet well, and the key label and toolbar icon colours for the error and unavailable
+ * glyphs, so every face stays legible on Signal Bone too.
  */
 @Composable
 fun MicButtonFace(
@@ -98,15 +126,21 @@ fun MicButtonFace(
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val accent = rememberKeyboardAccent()
+    val keyStyle = rememberSnyggThemeQuery(FlorisImeUi.Key.elementName)
+    val well = keyStyle.background(default = OwnkeyBrand.Coal)
+    val label = keyStyle.foreground(default = OwnkeyBrand.Bone)
+    val quietIcon = rememberSnyggThemeQuery(FlorisImeUi.SmartbarActionKey.elementName)
+        .foreground(default = OwnkeyBrand.Stone)
     val background = when (state) {
-        MicFaceState.IDLE -> if (idleStyle == MicIdleStyle.SOLID) OwnkeyBrand.Ember else OwnkeyBrand.Coal
-        MicFaceState.LISTENING -> OwnkeyBrand.Ember
-        MicFaceState.PAUSED -> OwnkeyBrand.Ember.copy(alpha = 0.55f)
+        MicFaceState.IDLE -> if (idleStyle == MicIdleStyle.SOLID) accent.color else well
+        MicFaceState.LISTENING -> accent.color
+        MicFaceState.PAUSED -> accent.color.copy(alpha = 0.55f)
         MicFaceState.SUCCESS -> OwnkeyBrand.Glass.Success
         MicFaceState.TRANSCRIBING,
         MicFaceState.ERROR,
         MicFaceState.UNAVAILABLE,
-        -> OwnkeyBrand.Coal
+        -> well
     }
     Box(
         modifier = modifier
@@ -118,24 +152,24 @@ fun MicButtonFace(
         when (state) {
             MicFaceState.LISTENING -> Canvas(Modifier.size(size)) {
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.45f),
+                    color = accent.onColor.copy(alpha = 0.45f),
                     radius = this.size.minDimension * ListeningRingRadius,
                     style = Stroke(width = this.size.minDimension * ListeningRingStroke),
                 )
             }
-            MicFaceState.TRANSCRIBING -> TranscribingRing(size)
+            MicFaceState.TRANSCRIBING -> TranscribingRing(size, track = label, arc = accent.color)
             else -> Unit
         }
         val (glyph, tint, glyphSize) = when (state) {
             MicFaceState.IDLE -> Triple(
                 R.drawable.ic_hero_microphone,
-                if (idleStyle == MicIdleStyle.SOLID) Color.White else OwnkeyBrand.Ember,
+                if (idleStyle == MicIdleStyle.SOLID) accent.onColor else accent.color,
                 MicGlyph,
             )
-            MicFaceState.LISTENING, MicFaceState.PAUSED -> Triple(R.drawable.ic_hero_stop, Color.White, StopGlyph)
-            MicFaceState.SUCCESS -> Triple(R.drawable.ic_hero_check, Color.White, StatusGlyph)
-            MicFaceState.ERROR -> Triple(R.drawable.ic_hero_exclamation_circle, OwnkeyBrand.Bone, StatusGlyph)
-            MicFaceState.UNAVAILABLE -> Triple(R.drawable.ic_hero_no_symbol, OwnkeyBrand.Stone, StatusGlyph)
+            MicFaceState.LISTENING, MicFaceState.PAUSED -> Triple(R.drawable.ic_hero_stop, accent.onColor, StopGlyph)
+            MicFaceState.SUCCESS -> Triple(R.drawable.ic_hero_check, SuccessGlyph, StatusGlyph)
+            MicFaceState.ERROR -> Triple(R.drawable.ic_hero_exclamation_circle, label, StatusGlyph)
+            MicFaceState.UNAVAILABLE -> Triple(R.drawable.ic_hero_no_symbol, quietIcon, StatusGlyph)
             // The ring is the whole face while the transcript is on its way.
             MicFaceState.TRANSCRIBING -> return@Box
         }
@@ -149,7 +183,7 @@ fun MicButtonFace(
 }
 
 @Composable
-private fun TranscribingRing(size: Dp) {
+private fun TranscribingRing(size: Dp, track: Color, arc: Color) {
     // Under reduced motion the arc still marks transcribing, but it stays put.
     val angle = if (rememberReducedMotion()) {
         -90f
@@ -165,9 +199,9 @@ private fun TranscribingRing(size: Dp) {
         val diameter = this.size.minDimension
         val radius = diameter * TrackRadius
         val stroke = diameter * TrackStroke
-        drawCircle(color = Color.White.copy(alpha = 0.1f), radius = radius, style = Stroke(width = stroke))
+        drawCircle(color = track.copy(alpha = 0.1f), radius = radius, style = Stroke(width = stroke))
         drawArc(
-            color = OwnkeyBrand.Ember,
+            color = arc,
             startAngle = angle,
             sweepAngle = 90f,
             useCenter = false,

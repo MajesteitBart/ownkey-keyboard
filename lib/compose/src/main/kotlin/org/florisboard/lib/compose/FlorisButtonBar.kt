@@ -16,49 +16,32 @@
 
 package org.florisboard.lib.compose
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
+/** Bottom action bar: Black, no top line or elevation, pill buttons. */
 @Composable
 fun FlorisButtonBar(content: @Composable FlorisButtonBarScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.background,
-        tonalElevation = 8.dp,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(OwnkeyTokens.Black)
+            .padding(horizontal = OwnkeyTokens.ScreenInset, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp),
-                color = MaterialTheme.colorScheme.surface,
-            ) {}
-            Row(
-                modifier = Modifier
-                    .padding(top = 4.dp, bottom = 4.dp, start = 0.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val scope = FlorisButtonBarScope(this)
-                content(scope)
-            }
-        }
+        val scope = FlorisButtonBarScope(this)
+        content(scope)
     }
 }
 
@@ -71,24 +54,14 @@ class FlorisButtonBarScope(rowScope: RowScope) : RowScope by rowScope {
         icon: ImageVector? = null,
         onClick: () -> Unit,
     ) {
-        Button(
-            modifier = modifier.padding(start = 16.dp),
-            enabled = enabled,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
+        OwnkeyPillButton(
+            label = text,
             onClick = onClick,
-        ) {
-            if (icon != null) {
-                Icon(
-                    modifier = Modifier.padding(end = 8.dp),
-                    imageVector = icon,
-                    contentDescription = null,
-                )
-            }
-            Text(text = text)
-        }
+            modifier = modifier,
+            style = OwnkeyPillStyle.Primary,
+            enabled = enabled,
+            icon = icon,
+        )
     }
 
     @Composable
@@ -99,23 +72,14 @@ class FlorisButtonBarScope(rowScope: RowScope) : RowScope by rowScope {
         icon: ImageVector? = null,
         onClick: () -> Unit,
     ) {
-        TextButton(
-            modifier = modifier.padding(start = 16.dp),
-            enabled = enabled,
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-            ),
+        OwnkeyPillButton(
+            label = text,
             onClick = onClick,
-        ) {
-            if (icon != null) {
-                Icon(
-                    modifier = Modifier.padding(end = 8.dp),
-                    imageVector = icon,
-                    contentDescription = null,
-                )
-            }
-            Text(text = text)
-        }
+            modifier = modifier,
+            style = OwnkeyPillStyle.Plain,
+            enabled = enabled,
+            icon = icon,
+        )
     }
 
     @Composable

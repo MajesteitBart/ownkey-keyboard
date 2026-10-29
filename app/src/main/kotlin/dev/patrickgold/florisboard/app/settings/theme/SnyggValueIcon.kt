@@ -84,6 +84,7 @@ import org.florisboard.lib.snygg.value.SnyggTextOverflowValue
 import org.florisboard.lib.snygg.value.SnyggUriValue
 import org.florisboard.lib.snygg.value.SnyggValue
 import org.florisboard.lib.snygg.value.SnyggYesValue
+import org.florisboard.lib.compose.OwnkeyTokens
 
 object SnyggValueIcon {
     interface Spec {
@@ -172,7 +173,7 @@ internal fun SnyggValueIcon(
             Box(
                 modifier = modifier
                     .requiredSize(spec.iconSizeMinusBorder)
-                    .border(spec.borderWith, MaterialTheme.colorScheme.onBackground, value.alwaysPercentShape())
+                    .border(spec.borderWith, OwnkeyTokens.Outline, value.alwaysPercentShape())
             )
         }
 

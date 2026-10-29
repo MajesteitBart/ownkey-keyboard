@@ -325,7 +325,8 @@ private fun SearchFieldFrame(
 private fun SearchFieldPlaceholder() {
     Text(
         text = stringRes(R.string.emoji__search__hint),
-        color = LocalContentColor.current.copy(alpha = 0.6f),
+        // 72% keeps the hint at 4.5:1 on the darkest popup fill (Signal Graphite).
+        color = LocalContentColor.current.copy(alpha = 0.72f),
         fontSize = searchFieldFontSize(),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

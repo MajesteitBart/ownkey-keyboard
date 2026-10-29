@@ -17,83 +17,81 @@
 package dev.patrickgold.florisboard.app.settings.voxtral
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisPreferenceModel
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.LocalNavController
-import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.ui.OwnkeyButton
+import dev.patrickgold.florisboard.app.ui.OwnkeyButtonStyle
+import dev.patrickgold.florisboard.app.ui.OwnkeyChoiceRow
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
+import dev.patrickgold.florisboard.app.ui.OwnkeyNotice
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
+import dev.patrickgold.florisboard.app.ui.OwnkeySheet
+import dev.patrickgold.florisboard.app.ui.OwnkeyTextField
+import dev.patrickgold.florisboard.app.ui.OwnkeyTone
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionBackend
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageHints
 import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionLanguageMode
-import dev.patrickgold.florisboard.ime.text.dictation.TranscriptionProviderNaming
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralRelayTranscriptionClient
 import dev.patrickgold.florisboard.ime.text.dictation.VoxtralSecretsStore
-import dev.patrickgold.florisboard.ime.text.dictation.offline.ModelPhase
-import dev.patrickgold.florisboard.ime.text.dictation.offline.offlineDictation
+import dev.patrickgold.florisboard.ime.text.dictation.dictionary.CloudVocabularyMode
+import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviderPreset
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteProviders.Custom
 import dev.patrickgold.florisboard.ime.text.rewrite.LlmRewriteSecretsStore
-import dev.patrickgold.florisboard.ime.text.rewrite.ResolvedRewriteProvider
 import dev.patrickgold.florisboard.ime.text.rewrite.RewritePromptPresets
+import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.util.launchUrl
+import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.florisboard.lib.android.showShortToast
+import kotlinx.coroutines.withContext
+import org.florisboard.lib.compose.DisposableLifecycleEffect
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.stringRes
-import java.net.URI
+
+/** Dialogs and sheets of the AI screen; at most one is open. */
+private enum class AiPanel { CloudKey, CloudProvider, Language, RewriteProvider, RewriteKey, RewriteModel, RewriteServer }
 
 @Composable
 fun VoxtralScreen() = FlorisScreen {
@@ -105,802 +103,603 @@ fun VoxtralScreen() = FlorisScreen {
     val subtypeManager by context.subtypeManager()
     val voxtralSecretsStore = remember { VoxtralSecretsStore(context) }
     val llmRewriteSecretsStore = remember { LlmRewriteSecretsStore(context) }
-    val offlineDictation = remember { context.offlineDictation() }
+    val speechDictionary = remember { context.speechDictionary().value }
 
-    var hasMicPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                PackageManager.PERMISSION_GRANTED,
-        )
-    }
-    var hasStoredApiKey by remember {
-        mutableStateOf(voxtralSecretsStore.hasApiKey())
-    }
-    var apiKeyInput by remember { mutableStateOf("") }
-    var hasStoredLlmApiKey by remember {
-        mutableStateOf(llmRewriteSecretsStore.hasApiKey())
-    }
-    var llmApiKeyInput by remember { mutableStateOf("") }
-
+    var hasMicPermission by remember { mutableStateOf(context.hasMicPermission()) }
+    // After a second denial Android stops showing the prompt, so Allow opens the app's system settings instead.
+    var micPromptBlocked by rememberSaveable { mutableStateOf(false) }
     val requestRecordAudioPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         hasMicPermission = isGranted
+        micPromptBlocked = !isGranted && !context.canShowMicPrompt()
     }
+    val appPrefs by FlorisPreferenceStore
+    val micPermissionRequested by appPrefs.internal.microphonePermissionRequested.collectAsState()
+    val micPermissionScope = rememberCoroutineScope()
+    // Decided at tap time: once Ownkey has asked and Android no longer offers a rationale, the prompt is blocked
+    // and a request would fail without showing anything.
+    val onAllowMicrophone = {
+        if (micPromptBlocked || (micPermissionRequested && !context.canShowMicPrompt())) {
+            context.openAppSettings()
+        } else {
+            micPermissionScope.launch { appPrefs.internal.microphonePermissionRequested.set(true) }
+            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+    // Permission can change in system settings while the screen is in the background.
+    DisposableLifecycleEffect(onResume = { hasMicPermission = context.hasMicPermission() }, onPause = { })
 
     content {
         val prefsRef = prefs
+        val scope = rememberCoroutineScope()
         val endpointUrl by prefsRef.voxtral.endpointUrl.collectAsState()
-        val model by prefsRef.voxtral.model.collectAsState()
+        val cloudModel by prefsRef.voxtral.model.collectAsState()
         val selectedBackend by prefsRef.voxtral.dictationBackend.collectAsState()
         val languageHint by prefsRef.voxtral.languageHint.collectAsState()
+        val cloudVocabularyMode by prefsRef.voxtral.cloudVocabularyMode.collectAsState()
         val rewriteEndpointUrl by prefsRef.voxtral.postProcessingEndpointUrl.collectAsState()
         val rewriteModel by prefsRef.voxtral.postProcessingModel.collectAsState()
         val rewriteProviderId by prefsRef.voxtral.postProcessingProvider.collectAsState()
         val rewritePromptsJson by prefsRef.voxtral.rewritePrompts.collectAsState()
-        val offlineState by offlineDictation.state.collectAsState()
-        val coroutineScope = rememberCoroutineScope()
-        var promptDrafts by remember(rewritePromptsJson) {
-            mutableStateOf(RewritePromptPresets.decode(rewritePromptsJson))
-        }
+        val dictionaryState by speechDictionary.state.collectAsState()
+        var panel by rememberSaveable { mutableStateOf<AiPanel?>(null) }
 
+        // Key checks open the Keystore-backed stores and decrypt them, so they run off the main thread. The screen
+        // waits for both: every route and status below depends on them. They are saveable so that coming back to
+        // this screen restores the content at once and the saved scroll position isn't clamped to the top.
+        var hasCloudKey by rememberSaveable { mutableStateOf<Boolean?>(null) }
+        var hasRewriteKey by rememberSaveable { mutableStateOf<Boolean?>(null) }
         LaunchedEffect(Unit) {
-            val legacyApiKey = prefsRef.voxtral.apiKey.get().trim()
-            if (legacyApiKey.isNotBlank()) {
-                if (!voxtralSecretsStore.hasApiKey()) {
-                    voxtralSecretsStore.setApiKey(legacyApiKey)
+            val (cloud, rewrite) = withContext(Dispatchers.IO) {
+                val legacyApiKey = prefsRef.voxtral.apiKey.get().trim()
+                if (legacyApiKey.isNotBlank()) {
+                    // The plain-text key is only cleared once the encrypted store holds a key; dictation reads
+                    // the legacy one until then.
+                    val moved = runCatching {
+                        if (!voxtralSecretsStore.hasApiKey()) voxtralSecretsStore.setApiKey(legacyApiKey)
+                    }.isSuccess
+                    if (moved) prefsRef.voxtral.apiKey.set("")
                 }
-                prefsRef.voxtral.apiKey.set("")
-                hasStoredApiKey = voxtralSecretsStore.hasApiKey()
+                readKey { voxtralSecretsStore.hasApiKey() } to readKey { llmRewriteSecretsStore.hasApiKey() }
             }
+            hasCloudKey = cloud
+            hasRewriteKey = rewrite
         }
+        val cloudKey = hasCloudKey
+        val rewriteKey = hasRewriteKey
 
-        // Summaries describe what a request would use, so blank fields show the defaults the clients fall back to.
-        val cloudProvider = TranscriptionProviderNaming.knownLabel(
-            endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
-        ) ?: stringRes(R.string.voice_rewrite__provider_custom)
-        val cloudModel = model.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultModel }
-        val cloudEndpointValid = NetworkUtils.hasHttpScheme(
-            endpointUrl.trim().ifEmpty { VoxtralRelayTranscriptionClient.DefaultEndpointUrl },
-        )
-        val effectiveRewrite = LlmRewriteProviders.resolve(rewriteProviderId, rewriteEndpointUrl, rewriteModel)
-        val rewriteProvider = effectiveRewrite.preset
+        if (cloudKey != null && rewriteKey != null) {
+            val backend = TranscriptionBackend.resolve(selectedBackend, cloudKey, BuildConfig.DEBUG)
+            val effectiveRewrite = LlmRewriteProviders.resolve(rewriteProviderId, rewriteEndpointUrl, rewriteModel)
+            val rewritePreset = effectiveRewrite.preset
+            val cloudProvider = cloudProviderName(endpointUrl)
+            val yourServer = stringRes(R.string.settings__ai__your_server)
 
-        OwnkeyAiSettingsTheme {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(OwnkeyBrand.Key)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            val recordsAudio = backend == TranscriptionBackend.ORUKEET || backend == TranscriptionBackend.CLOUD ||
+                backend == TranscriptionBackend.MOCK
+            if (!hasMicPermission && recordsAudio) {
+                OwnkeyNotice(
+                    text = stringRes(R.string.settings__ai__mic__notice),
+                    tone = OwnkeyTone.Warning,
+                    actionLabel = stringRes(R.string.settings__ai__mic__allow),
+                    onAction = onAllowMicrophone,
+                    modifier = Modifier.testTag("ai-mic-notice"),
+                )
+            }
+
+            DictationSettings(
+                hasCloudKey = cloudKey,
+                cloudEndpointUrl = endpointUrl,
+                onAddCloudKey = { panel = AiPanel.CloudKey },
+                onFixCloudAddress = { panel = AiPanel.CloudProvider },
+                dictionaryRow = {
+                    val document = dictionaryState.document
+                    val entries = document.words.size + document.corrections.size
+                    OwnkeyRow(
+                        title = stringRes(R.string.speech_dictionary__title),
+                        value = if (entries == 0) {
+                            stringRes(R.string.settings__ai__dictionary__empty)
+                        } else {
+                            pluralsRes(R.plurals.settings__ai__dictionary__count, entries, "count" to entries)
+                        },
+                        chevron = true,
+                        onClick = { navController.navigate(Routes.Settings.SpeechDictionary()) },
+                        modifier = Modifier.testTag("ai-dictionary"),
+                    )
+                },
+            )
+
+            val cloudFooter = AiSettings.cloudFooter(
+                storedEndpointUrl = endpointUrl,
+                mode = CloudVocabularyMode.fromPreference(cloudVocabularyMode),
+                dictionaryWords = dictionaryState.document.words.size,
+            )
+            OwnkeyGroup(
+                title = stringRes(R.string.settings__ai__cloud__title),
+                footer = stringRes(
+                    if (cloudFooter.sendsDictionaryWords) R.string.settings__ai__cloud__footer_words else R.string.settings__ai__cloud__footer,
+                    "host" to (cloudFooter.host ?: yourServer),
+                ),
             ) {
-                AiOverviewCard(
-                    dictation = dictationOverview(
-                        backend = TranscriptionBackend.resolve(selectedBackend, hasStoredApiKey, BuildConfig.DEBUG),
-                        hasCloudKey = hasStoredApiKey,
-                        cloudEndpointValid = cloudEndpointValid,
-                        // Until the start-up check has read the stored model, a missing model is not yet known.
-                        localModelReady = offlineDictation.compatible &&
-                            (offlineState.currentId != null || offlineState.phase == ModelPhase.CHECKING),
-                        cloudProvider = cloudProvider,
-                        cloudModel = cloudModel,
-                    ),
-                    rewrite = rewriteOverview(rewrite = effectiveRewrite, hasKey = hasStoredLlmApiKey),
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__key__row),
+                    value = keyValue(cloudKey),
+                    valueColor = warningIf(!cloudKey && backend == TranscriptionBackend.CLOUD),
+                    onClick = { panel = AiPanel.CloudKey },
+                    modifier = Modifier.testTag("ai-cloud-key"),
                 )
-                DictationSettings(
-                    hasCloudKey = hasStoredApiKey,
-                    cloudEndpointValid = cloudEndpointValid,
-                    cloudProvider = cloudProvider,
-                    cloudModel = cloudModel,
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__language__row),
+                    value = languageLabel(languageHint),
+                    onClick = { panel = AiPanel.Language },
+                    modifier = Modifier.testTag("ai-cloud-language"),
                 )
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__provider__row),
+                    value = cloudProvider ?: stringRes(R.string.settings__ai__status__custom_server),
+                    valueColor = warningIf(!isUsableCloudEndpoint(endpointUrl)),
+                    onClick = { panel = AiPanel.CloudProvider },
+                    modifier = Modifier.testTag("ai-cloud-provider"),
+                )
+            }
 
-                AiSectionCard(
-                    title = stringRes(R.string.pref__ai__cloud_group__label),
-                    summary = stringRes(R.string.pref__ai__cloud_group__summary),
-                ) {
-                    SectionLabel(text = stringRes(R.string.pref__ai__api_key__section))
-                    StatusText(
-                        text = if (hasStoredApiKey) {
-                            stringRes(R.string.pref__voxtral__api_key__status_set)
-                        } else {
-                            stringRes(R.string.pref__voxtral__api_key__status_missing)
+            OwnkeyGroup(
+                title = stringRes(R.string.settings__ai__rewrite__title),
+                footer = stringRes(
+                    R.string.settings__ai__rewrite__footer,
+                    "host" to (AiSettings.rewriteHost(effectiveRewrite) ?: yourServer),
+                ),
+            ) {
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__provider__row),
+                    value = stringRes(rewritePreset.labelRes),
+                    onClick = { panel = AiPanel.RewriteProvider },
+                    modifier = Modifier.testTag("ai-rewrite-provider"),
+                )
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__key__row),
+                    value = keyValue(rewriteKey),
+                    valueColor = warningIf(!rewriteKey),
+                    onClick = { panel = AiPanel.RewriteKey },
+                    modifier = Modifier.testTag("ai-rewrite-key"),
+                )
+                val modelValue = AiSettings.rewriteModelValue(rewritePreset, rewriteModel)
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__rewrite_model__row),
+                    value = when (modelValue) {
+                        RewriteModelValue.Default -> stringRes(R.string.settings__ai__rewrite_model__default)
+                        RewriteModelValue.NotSet -> stringRes(R.string.settings__ai__not_set)
+                        is RewriteModelValue.Named -> modelValue.model
+                    },
+                    valueColor = warningIf(modelValue == RewriteModelValue.NotSet),
+                    onClick = { panel = AiPanel.RewriteModel },
+                    modifier = Modifier.testTag("ai-rewrite-model"),
+                )
+                if (rewritePreset.isCustom) {
+                    val address = rewriteEndpointUrl.trim()
+                    OwnkeyRow(
+                        title = stringRes(R.string.settings__ai__rewrite_server__row),
+                        value = when {
+                            address.isEmpty() -> stringRes(R.string.settings__ai__not_set)
+                            effectiveRewrite.hasHttpEndpoint -> endpointHost(address) ?: address
+                            else -> address
                         },
+                        valueColor = warningIf(!effectiveRewrite.hasHttpEndpoint),
+                        onClick = { panel = AiPanel.RewriteServer },
+                        modifier = Modifier.testTag("ai-rewrite-server"),
                     )
-                    StatusText(text = stringRes(R.string.pref__voxtral__api_key__summary))
-                    if (!hasStoredApiKey && cloudProvider == MistralProviderName) {
+                }
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__ai__rewrite_styles__row),
+                    value = RewritePromptPresets.decode(rewritePromptsJson).size.toString(),
+                    chevron = true,
+                    onClick = { navController.navigate(Routes.Settings.RewriteStyles) },
+                    modifier = Modifier.testTag("ai-rewrite-styles"),
+                )
+            }
+
+            // The failure of the last Save or Remove in the open key dialog; a new panel starts without one.
+            var keyError by remember(panel) { mutableStateOf<String?>(null) }
+            val saveFailed = stringRes(R.string.pref__voxtral__api_key__save_failed)
+            val removeFailed = stringRes(R.string.settings__ai__key__remove_failed)
+            val closePanel = { panel = null }
+            when (panel) {
+                AiPanel.CloudKey -> ApiKeyDialog(
+                    title = stringRes(R.string.settings__ai__cloud_key__title),
+                    text = null,
+                    hasKey = cloudKey,
+                    onSave = { key ->
+                        val keep = TranscriptionBackend.choiceToKeepOnKeySave(selectedBackend, cloudKey)
+                        scope.launch {
+                            keyError = null
+                            // The shown choice is stored before the key: a key without it would let an
+                            // undecided install send its next recording to the cloud.
+                            if (keep != null && prefsRef.voxtral.dictationBackend.set(keep.preference).isFailure) {
+                                keyError = saveFailed
+                                return@launch
+                            }
+                            val change = withContext(Dispatchers.IO) {
+                                val stored = runCatching { voxtralSecretsStore.setApiKey(key) }.isSuccess
+                                AiSettings.apiKeySaved(stored, readKey { voxtralSecretsStore.hasApiKey() })
+                            }
+                            hasCloudKey = change.hasKey
+                            if (!change.succeeded) {
+                                keyError = saveFailed
+                                return@launch
+                            }
+                            prefsRef.voxtral.apiKey.set("")
+                            closePanel()
+                        }
+                    },
+                    onRemove = {
+                        scope.launch {
+                            keyError = null
+                            val change = withContext(Dispatchers.IO) {
+                                runCatching { voxtralSecretsStore.clearApiKey() }
+                                AiSettings.apiKeyRemoved(readKey { voxtralSecretsStore.hasApiKey() })
+                            }
+                            hasCloudKey = change.hasKey
+                            if (!change.succeeded) {
+                                keyError = removeFailed
+                                return@launch
+                            }
+                            prefsRef.voxtral.apiKey.set("")
+                            closePanel()
+                        }
+                    },
+                    onDismiss = closePanel,
+                    errorText = keyError,
+                ) {
+                    if (!cloudKey && cloudProvider == MistralProviderName) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         OwnkeyButton(
-                            label = stringRes(R.string.pref__voxtral__create_account_action),
+                            label = stringRes(R.string.settings__ai__cloud_key__signup),
                             onClick = { context.launchUrl(R.string.voxtral__mistral_signup_url) },
+                            style = OwnkeyButtonStyle.Plain,
+                            modifier = Modifier.testTag("ai-mistral-signup"),
                         )
                     }
-                    OwnkeyOutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = { apiKeyInput = it },
-                        label = stringRes(R.string.pref__voxtral__api_key__label),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        visualTransformation = PasswordVisualTransformation(),
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        OwnkeyButton(
-                            label = stringRes(R.string.pref__voxtral__api_key__save_action),
-                            onClick = {
-                                val normalizedApiKey = apiKeyInput.trim()
-                                val keep = TranscriptionBackend.choiceToKeepOnKeySave(selectedBackend, hasStoredApiKey)
-                                coroutineScope.launch {
-                                    // The shown choice is stored before the key: a key without it would let an
-                                    // undecided install send its next recording to the cloud.
-                                    if (keep != null && prefsRef.voxtral.dictationBackend.set(keep.preference).isFailure) {
-                                        context.showShortToast(R.string.pref__voxtral__api_key__save_failed)
-                                        return@launch
-                                    }
-                                    voxtralSecretsStore.setApiKey(normalizedApiKey)
-                                    apiKeyInput = ""
-                                    hasStoredApiKey = voxtralSecretsStore.hasApiKey()
-                                    prefsRef.voxtral.apiKey.set("")
-                                }
-                            },
-                            enabled = apiKeyInput.trim().isNotEmpty(),
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (hasStoredApiKey) {
-                            OwnkeyButton(
-                                label = stringRes(R.string.pref__voxtral__api_key__clear_action),
-                                onClick = {
-                                    voxtralSecretsStore.clearApiKey()
-                                    hasStoredApiKey = false
-                                    coroutineScope.launch {
-                                        prefsRef.voxtral.apiKey.set("")
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                secondary = true,
-                            )
-                        }
-                    }
-
-                    SectionLabel(text = stringRes(R.string.pref__ai__cloud_endpoint__section))
-                    OwnkeyOutlinedTextField(
-                        value = endpointUrl,
-                        onValueChange = { value ->
-                            coroutineScope.launch {
-                                prefsRef.voxtral.endpointUrl.set(value)
-                            }
-                        },
-                        label = stringRes(R.string.pref__voxtral__endpoint__label),
-                        supportingText = stringRes(R.string.pref__voxtral__endpoint__summary),
-                    )
-                    OwnkeyOutlinedTextField(
-                        value = model,
-                        onValueChange = { value ->
-                            coroutineScope.launch {
-                                prefsRef.voxtral.model.set(value)
-                            }
-                        },
-                        label = stringRes(R.string.pref__voxtral__model__label),
-                        supportingText = stringRes(
-                            R.string.pref__voxtral__model__summary,
-                            "model" to VoxtralRelayTranscriptionClient.DefaultModel,
-                        ),
-                    )
-
-                    SectionLabel(text = stringRes(R.string.pref__voxtral__language_hint__group))
-                    StatusText(text = stringRes(R.string.pref__voxtral__language_hint__summary))
-                    DictationLanguageOptions(
-                        storedLanguageHint = languageHint,
-                        onModeChange = { mode ->
-                            coroutineScope.launch {
-                                prefsRef.voxtral.languageHint.set(
-                                    TranscriptionLanguageHints.storedValueForSelection(
-                                        mode = mode,
-                                        currentStoredLanguageHint = languageHint,
-                                        activeSubtypeLanguageTag = subtypeManager.activeSubtype.primaryLocale.languageTag(),
-                                    ),
-                                )
-                            }
-                        },
-                        onExplicitLanguageChange = { value ->
-                            coroutineScope.launch {
-                                prefsRef.voxtral.languageHint.set(value)
-                            }
-                        },
-                    )
                 }
-
-                PersonalDictionaryCard(onOpen = { navController.navigate(Routes.Settings.SpeechDictionary()) })
-
-                AiSectionCard(
-                    title = stringRes(R.string.pref__ai__rewrite_group__label),
-                    summary = stringRes(R.string.pref__ai__rewrite_group__summary),
-                ) {
-                    SectionLabel(text = stringRes(R.string.pref__ai__rewrite_provider__label))
-                    LlmRewriteProviders.presets.forEach { provider ->
-                        ChoiceOption(
-                            label = provider.label,
-                            summary = provider.summary,
-                            selected = rewriteProvider.id == provider.id,
-                            onClick = {
-                                coroutineScope.launch {
-                                    prefsRef.voxtral.postProcessingProvider.set(provider.id)
-                                    if (provider.isCustom) {
-                                        if (rewriteProvider.id != Custom) {
-                                            prefsRef.voxtral.postProcessingEndpointUrl.set("")
-                                            prefsRef.voxtral.postProcessingModel.set("")
-                                        }
-                                    } else {
-                                        prefsRef.voxtral.postProcessingEndpointUrl.set(provider.endpointUrl)
-                                        prefsRef.voxtral.postProcessingModel.set(provider.defaultModel)
-                                    }
-                                }
-                            },
-                        )
-                    }
-
-                    SectionLabel(text = stringRes(R.string.pref__ai__api_key__section))
-                    StatusText(
-                        text = if (hasStoredLlmApiKey) {
-                            stringRes(R.string.pref__ai__rewrite_key__status_set)
-                        } else {
-                            stringRes(R.string.pref__ai__rewrite_key__status_missing)
-                        },
-                    )
-                    StatusText(
-                        text = if (rewriteProvider.isCustom) {
-                            stringRes(R.string.pref__ai__rewrite_key__hint_custom)
-                        } else {
-                            stringRes(R.string.pref__ai__rewrite_key__hint, "provider" to rewriteProvider.providerName)
-                        },
-                    )
-                    OwnkeyOutlinedTextField(
-                        value = llmApiKeyInput,
-                        onValueChange = { llmApiKeyInput = it },
-                        label = stringRes(R.string.pref__ai__rewrite_key__label),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        visualTransformation = PasswordVisualTransformation(),
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        OwnkeyButton(
-                            label = stringRes(R.string.pref__ai__rewrite_key__save_action),
-                            onClick = {
-                                llmRewriteSecretsStore.setApiKey(llmApiKeyInput.trim())
-                                llmApiKeyInput = ""
-                                hasStoredLlmApiKey = llmRewriteSecretsStore.hasApiKey()
-                            },
-                            enabled = llmApiKeyInput.trim().isNotEmpty(),
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (hasStoredLlmApiKey) {
-                            OwnkeyButton(
-                                label = stringRes(R.string.pref__ai__rewrite_key__clear_action),
-                                onClick = {
-                                    llmRewriteSecretsStore.clearApiKey()
-                                    hasStoredLlmApiKey = false
-                                },
-                                modifier = Modifier.weight(1f),
-                                secondary = true,
-                            )
+                AiPanel.CloudProvider -> CloudProviderDialog(
+                    storedEndpointUrl = endpointUrl,
+                    storedModel = cloudModel,
+                    onSave = { address, model ->
+                        scope.launch {
+                            prefsRef.voxtral.endpointUrl.set(address)
+                            prefsRef.voxtral.model.set(model)
                         }
-                    }
-
-                    SectionLabel(text = stringRes(R.string.pref__ai__rewrite_model__section))
-                    OwnkeyOutlinedTextField(
-                        value = rewriteModel,
-                        onValueChange = { value ->
-                            coroutineScope.launch {
-                                prefsRef.voxtral.postProcessingModel.set(value)
-                            }
-                        },
-                        label = stringRes(R.string.pref__ai__rewrite_model__label),
-                        supportingText = if (rewriteProvider.isCustom) {
-                            stringRes(R.string.pref__ai__rewrite_model__summary_custom)
-                        } else {
-                            stringRes(
-                                R.string.pref__ai__rewrite_model__summary,
-                                "provider" to rewriteProvider.label,
-                                "model" to rewriteProvider.defaultModel,
-                            )
-                        },
-                    )
-                    if (rewriteProvider.isCustom) {
-                        OwnkeyOutlinedTextField(
-                            value = rewriteEndpointUrl,
-                            onValueChange = { value ->
-                                coroutineScope.launch {
-                                    prefsRef.voxtral.postProcessingEndpointUrl.set(value)
-                                }
-                            },
-                            label = stringRes(R.string.pref__ai__rewrite_endpoint__label),
-                            supportingText = stringRes(R.string.pref__ai__rewrite_endpoint__summary_custom),
+                        closePanel()
+                    },
+                    onDismiss = closePanel,
+                )
+                AiPanel.Language -> LanguageSheet(
+                    storedLanguageHint = languageHint,
+                    onModeChange = { mode ->
+                        val value = TranscriptionLanguageHints.storedValueForSelection(
+                            mode = mode,
+                            currentStoredLanguageHint = languageHint,
+                            activeSubtypeLanguageTag = subtypeManager.activeSubtype.primaryLocale.languageTag(),
                         )
+                        scope.launch { prefsRef.voxtral.languageHint.set(value) }
+                    },
+                    onExplicitLanguageChange = { code -> scope.launch { prefsRef.voxtral.languageHint.set(code) } },
+                    onDismiss = closePanel,
+                )
+                AiPanel.RewriteProvider -> OwnkeySheet(
+                    onDismiss = closePanel,
+                    title = stringRes(R.string.settings__ai__rewrite_provider__title),
+                    initialScrollIndex = LlmRewriteProviders.presets.indexOfFirst { it.id == rewritePreset.id }.coerceAtLeast(0),
+                ) { hide ->
+                    itemsIndexed(LlmRewriteProviders.presets) { index, provider ->
+                        OwnkeyChoiceRow(
+                            label = stringRes(provider.labelRes),
+                            summary = stringRes(provider.summaryRes),
+                            selected = rewritePreset.id == provider.id,
+                            onClick = {
+                                scope.launch { selectRewriteProvider(prefsRef, provider, rewritePreset) }
+                                hide()
+                            },
+                            modifier = Modifier.testTag("sheet-option-$index"),
+                        )
+                    }
+                }
+                AiPanel.RewriteKey -> ApiKeyDialog(
+                    title = stringRes(R.string.settings__ai__rewrite_key__title),
+                    text = if (rewritePreset.isCustom) {
+                        stringRes(R.string.settings__ai__rewrite_key__help_custom)
                     } else {
-                        StatusText(
-                            text = stringRes(
-                                R.string.pref__ai__rewrite_endpoint__summary,
-                                "host" to (endpointHost(effectiveRewrite.endpointUrl) ?: rewriteProvider.providerName),
-                            ),
-                        )
-                    }
-                }
-
-                AiSectionCard(
-                    title = stringRes(R.string.pref__ai__rewrite_voices__label),
-                    summary = stringRes(R.string.pref__ai__rewrite_voices__summary),
-                ) {
-                    promptDrafts.forEachIndexed { index, prompt ->
-                        PromptCard {
-                            OwnkeyOutlinedTextField(
-                                value = prompt.name,
-                                onValueChange = { value ->
-                                    promptDrafts = promptDrafts.toMutableList().also { prompts ->
-                                        prompts[index] = prompt.copy(name = value)
-                                    }
-                                },
-                                label = stringRes(R.string.pref__ai__rewrite_voice_name__label),
-                            )
-                            OwnkeyOutlinedTextField(
-                                value = prompt.instruction,
-                                onValueChange = { value ->
-                                    promptDrafts = promptDrafts.toMutableList().also { prompts ->
-                                        prompts[index] = prompt.copy(instruction = value)
-                                    }
-                                },
-                                label = stringRes(R.string.pref__ai__rewrite_instruction__label),
-                                singleLine = false,
-                                minLines = 2,
-                            )
-                            OwnkeyButton(
-                                label = stringRes(R.string.pref__ai__rewrite_voice__remove_action),
-                                onClick = {
-                                    promptDrafts = promptDrafts.toMutableList().also { prompts ->
-                                        prompts.removeAt(index)
-                                    }
-                                },
-                                enabled = promptDrafts.size > 1,
-                                secondary = true,
-                            )
-                        }
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        OwnkeyButton(
-                            label = stringRes(R.string.pref__ai__rewrite_voice__add_action),
-                            onClick = {
-                                promptDrafts = promptDrafts.plus(RewritePromptPresets.newCustom(promptDrafts.size))
-                            },
-                            modifier = Modifier.weight(1f),
-                        )
-                        OwnkeyButton(
-                            label = stringRes(R.string.pref__ai__rewrite_voice__reset_action),
-                            onClick = {
-                                promptDrafts = RewritePromptPresets.defaults
-                                coroutineScope.launch {
-                                    prefsRef.voxtral.rewritePrompts.set(RewritePromptPresets.defaultJson)
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            secondary = true,
-                        )
-                    }
-                    OwnkeyButton(
-                        label = stringRes(R.string.pref__ai__rewrite_voice__save_action),
-                        onClick = {
-                            coroutineScope.launch {
-                                prefsRef.voxtral.rewritePrompts.set(RewritePromptPresets.encode(promptDrafts))
+                        stringRes(R.string.settings__ai__rewrite_key__help, "provider" to rewritePreset.providerName)
+                    },
+                    hasKey = rewriteKey,
+                    onSave = { key ->
+                        scope.launch {
+                            keyError = null
+                            val change = withContext(Dispatchers.IO) {
+                                val stored = runCatching { llmRewriteSecretsStore.setApiKey(key) }.isSuccess
+                                AiSettings.apiKeySaved(stored, readKey { llmRewriteSecretsStore.hasApiKey() })
                             }
+                            hasRewriteKey = change.hasKey
+                            if (!change.succeeded) {
+                                keyError = saveFailed
+                                return@launch
+                            }
+                            closePanel()
+                        }
+                    },
+                    onRemove = {
+                        scope.launch {
+                            keyError = null
+                            val change = withContext(Dispatchers.IO) {
+                                runCatching { llmRewriteSecretsStore.clearApiKey() }
+                                AiSettings.apiKeyRemoved(readKey { llmRewriteSecretsStore.hasApiKey() })
+                            }
+                            hasRewriteKey = change.hasKey
+                            if (!change.succeeded) {
+                                keyError = removeFailed
+                                return@launch
+                            }
+                            closePanel()
+                        }
+                    },
+                    onDismiss = closePanel,
+                    errorText = keyError,
+                )
+                AiPanel.RewriteModel -> TextFieldDialog(
+                    title = stringRes(R.string.settings__ai__rewrite_model__title),
+                    label = stringRes(R.string.settings__ai__rewrite_model__row),
+                    initialValue = AiSettings.rewriteModelDraft(rewritePreset, rewriteModel),
+                    placeholder = rewritePreset.defaultModel.ifEmpty { null },
+                    supportingText = if (rewritePreset.isCustom) {
+                        stringRes(R.string.settings__ai__rewrite_model__hint_custom)
+                    } else {
+                        stringRes(R.string.settings__ai__rewrite_model__hint)
+                    },
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                    fieldTag = "ai-rewrite-model-field",
+                    onSave = { input ->
+                        val model = AiSettings.rewriteModelToStore(rewritePreset, input)
+                        scope.launch { prefsRef.voxtral.postProcessingModel.set(model) }
+                        closePanel()
+                    },
+                    onDismiss = closePanel,
+                )
+                AiPanel.RewriteServer -> {
+                    val addressError = stringRes(R.string.settings__ai__address_error)
+                    TextFieldDialog(
+                        title = stringRes(R.string.settings__ai__rewrite_server__title),
+                        label = stringRes(R.string.settings__ai__rewrite_server__row),
+                        initialValue = rewriteEndpointUrl.trim(),
+                        placeholder = "https://",
+                        supportingText = stringRes(R.string.settings__ai__rewrite_server__hint),
+                        errorFor = { input ->
+                            addressError.takeIf { AiSettings.showsServerAddressError(input, emptyAllowed = true) }
                         },
+                        canSave = { input -> AiSettings.isAcceptableServerAddress(input, emptyAllowed = true) },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            autoCorrectEnabled = false,
+                            imeAction = ImeAction.Done,
+                        ),
+                        fieldTag = "ai-rewrite-server-field",
+                        onSave = { input ->
+                            scope.launch { prefsRef.voxtral.postProcessingEndpointUrl.set(input.trim()) }
+                            closePanel()
+                        },
+                        onDismiss = closePanel,
                     )
                 }
-
-                AiSectionCard(title = stringRes(R.string.pref__voxtral__group_permissions__label)) {
-                    StatusText(text = stringRes(R.string.pref__voxtral__permission__summary))
-                    StatusText(
-                        text = if (hasMicPermission) {
-                            stringRes(R.string.pref__voxtral__permission__granted)
-                        } else {
-                            stringRes(R.string.pref__voxtral__permission__missing)
-                        },
-                    )
-                    if (!hasMicPermission) {
-                        OwnkeyButton(
-                            label = stringRes(R.string.pref__voxtral__permission__grant_action),
-                            onClick = { requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO) },
-                        )
-                    }
-                }
+                null -> Unit
             }
         }
     }
 }
 
-/** The provider name [TranscriptionProviderNaming] reports for Mistral endpoints, the only one with a signup link. */
+/** The provider name [cloudProviderName] reports for Mistral endpoints, the only one with a signup link. */
 private const val MistralProviderName = "Mistral"
 
-/** One line of the overview: what a feature uses, or what it still needs. */
-private data class OverviewValue(val text: String, val needsSetup: Boolean)
+private fun Context.hasMicPermission(): Boolean =
+    ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-@Composable
-private fun dictationOverview(
-    backend: TranscriptionBackend,
-    hasCloudKey: Boolean,
-    cloudEndpointValid: Boolean,
-    localModelReady: Boolean,
-    cloudProvider: String,
-    cloudModel: String,
-): OverviewValue = when (backend) {
-    TranscriptionBackend.ORUKEET -> if (localModelReady) {
-        OverviewValue(stringRes(R.string.orukeet__title), needsSetup = false)
-    } else {
-        OverviewValue(stringRes(R.string.pref__ai__overview_orukeet_missing), needsSetup = true)
-    }
-    TranscriptionBackend.CLOUD -> when {
-        !hasCloudKey -> OverviewValue(
-            stringRes(R.string.pref__ai__overview_key_missing, "provider" to cloudProvider),
-            needsSetup = true,
-        )
-        !cloudEndpointValid -> OverviewValue(
-            stringRes(R.string.pref__ai__overview_endpoint_invalid, "provider" to cloudProvider),
-            needsSetup = true,
-        )
-        else -> OverviewValue(
-            stringRes(R.string.pref__ai__overview_provider_model, "provider" to cloudProvider, "model" to cloudModel),
-            needsSetup = false,
-        )
-    }
-    TranscriptionBackend.EXTERNAL_IME -> OverviewValue(stringRes(R.string.orukeet__external_label), needsSetup = false)
-    TranscriptionBackend.MOCK -> OverviewValue(stringRes(R.string.orukeet__mock_label), needsSetup = false)
-    TranscriptionBackend.UNAVAILABLE -> OverviewValue(stringRes(R.string.pref__ai__overview_not_set_up), needsSetup = true)
+/** Whether Android would still show the microphone prompt after a denial (it offers a rationale). */
+private fun Context.canShowMicPrompt(): Boolean {
+    val activity = this as? Activity ?: return true
+    return ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
 }
 
-@Composable
-private fun rewriteOverview(rewrite: ResolvedRewriteProvider, hasKey: Boolean): OverviewValue = when {
-    !hasKey -> OverviewValue(
-        stringRes(R.string.pref__ai__overview_key_missing, "provider" to rewrite.preset.providerName),
-        needsSetup = true,
-    )
-    !rewrite.isComplete -> OverviewValue(
-        stringRes(R.string.pref__ai__overview_endpoint_missing, "provider" to rewrite.preset.providerName),
-        needsSetup = true,
-    )
-    !rewrite.hasHttpEndpoint -> OverviewValue(
-        stringRes(R.string.pref__ai__overview_endpoint_invalid, "provider" to rewrite.preset.providerName),
-        needsSetup = true,
-    )
-    else -> OverviewValue(
-        stringRes(
-            R.string.pref__ai__overview_provider_model,
-            "provider" to rewrite.preset.providerName,
-            "model" to rewrite.model,
-        ),
-        needsSetup = false,
-    )
+private fun Context.openAppSettings() {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { startActivity(intent) }
 }
 
-/** Host of an endpoint URL, so settings can say where text goes without showing paths or keys. */
-private fun endpointHost(endpointUrl: String): String? =
-    runCatching { URI(endpointUrl.trim()).host }.getOrNull()?.takeIf { it.isNotBlank() }
+/** A key store that can't be opened counts as having no key; saving a key again is the fix. */
+private inline fun readKey(read: () -> Boolean): Boolean = runCatching { read() }.getOrDefault(false)
 
-/** States what dictation and rewrite use right now, so the choices below never have to be inferred. */
+private fun warningIf(condition: Boolean): Color = if (condition) OwnkeyTokens.Warning else Color.Unspecified
+
 @Composable
-private fun AiOverviewCard(dictation: OverviewValue, rewrite: OverviewValue) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, OwnkeyBrand.Line, RoundedCornerShape(22.dp)),
-        color = OwnkeyBrand.Panel,
-        contentColor = OwnkeyBrand.Bone,
-        shape = RoundedCornerShape(22.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_ownkey_mark),
-                contentDescription = stringRes(R.string.floris_app_name),
-                modifier = Modifier.size(width = 58.dp, height = 44.dp),
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = stringRes(R.string.pref__ai__intro_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                OverviewRow(label = stringRes(R.string.pref__ai__overview_dictation), value = dictation)
-                OverviewRow(label = stringRes(R.string.pref__ai__overview_rewrite), value = rewrite)
-            }
-        }
+private fun keyValue(hasKey: Boolean): String =
+    stringRes(if (hasKey) R.string.settings__ai__key__saved else R.string.settings__ai__not_set)
+
+@Composable
+private fun languageLabel(storedLanguageHint: String): String = when (val value = AiSettings.languageValue(storedLanguageHint)) {
+    DictationLanguageValue.KeyboardLanguage -> stringRes(R.string.settings__ai__language__keyboard)
+    DictationLanguageValue.Automatic -> stringRes(R.string.settings__ai__language__auto)
+    is DictationLanguageValue.Specific -> remember(value.code) {
+        runCatching { FlorisLocale.fromTag(value.code).displayName() }.getOrNull()?.takeIf { it.isNotBlank() } ?: value.code
     }
 }
 
-@Composable
-private fun OverviewRow(label: String, value: OverviewValue) {
-    Row(modifier = Modifier.semantics(mergeDescendants = true) {}) {
-        Text(
-            text = label,
-            modifier = Modifier.width(80.dp),
-            color = OwnkeyBrand.Ash,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            text = value.text,
-            color = if (value.needsSetup) OwnkeyBrand.SignalAmber else OwnkeyBrand.Bone,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-@Composable
-internal fun AiSectionCard(
-    title: String,
-    summary: String? = null,
-    content: @Composable ColumnScope.() -> Unit,
+/**
+ * Picking a built-in provider fills in its address and default model. Picking Other keeps a custom
+ * address and model that are already set, and clears a built-in's, so they never leak into a custom setup.
+ */
+private suspend fun selectRewriteProvider(
+    prefs: FlorisPreferenceModel,
+    provider: LlmRewriteProviderPreset,
+    current: LlmRewriteProviderPreset,
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, OwnkeyBrand.Line, RoundedCornerShape(22.dp)),
-        color = OwnkeyBrand.Panel,
-        contentColor = OwnkeyBrand.Bone,
-        shape = RoundedCornerShape(22.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (!summary.isNullOrBlank()) {
-                Text(
-                    text = summary,
-                    color = OwnkeyBrand.Ash,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            content()
+    prefs.voxtral.postProcessingProvider.set(provider.id)
+    if (provider.isCustom) {
+        if (current.id != Custom) {
+            prefs.voxtral.postProcessingEndpointUrl.set("")
+            prefs.voxtral.postProcessingModel.set("")
         }
+    } else {
+        prefs.voxtral.postProcessingEndpointUrl.set(provider.endpointUrl)
+        prefs.voxtral.postProcessingModel.set(provider.defaultModel)
     }
 }
 
+/** Server address and model of cloud dictation. Empty fields mean Mistral's defaults, shown as hints. */
 @Composable
-private fun PromptCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, OwnkeyBrand.Line, RoundedCornerShape(18.dp)),
-        color = OwnkeyBrand.Action.copy(alpha = 0.62f),
-        contentColor = OwnkeyBrand.Bone,
-        shape = RoundedCornerShape(18.dp),
+private fun CloudProviderDialog(
+    storedEndpointUrl: String,
+    storedModel: String,
+    onSave: (address: String, model: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val defaultAddress = VoxtralRelayTranscriptionClient.DefaultEndpointUrl
+    val defaultModel = VoxtralRelayTranscriptionClient.DefaultModel
+    var address by rememberSaveable { mutableStateOf(AiSettings.draftOf(storedEndpointUrl, defaultAddress)) }
+    var model by rememberSaveable { mutableStateOf(AiSettings.draftOf(storedModel, defaultModel)) }
+    val canSave = AiSettings.isAcceptableServerAddress(address, emptyAllowed = true)
+    OwnkeyDialog(
+        title = stringRes(R.string.settings__ai__cloud_provider__title),
+        onDismiss = onDismiss,
+        text = stringRes(R.string.settings__ai__cloud_provider__text),
+        confirmLabel = stringRes(R.string.settings__ai__save),
+        onConfirm = {
+            if (canSave) {
+                onSave(AiSettings.storedValueOf(address, defaultAddress), AiSettings.storedValueOf(model, defaultModel))
+            }
+        },
+        confirmEnabled = canSave,
+        dismissLabel = stringRes(R.string.action__cancel),
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            content = content,
+        Spacer(modifier = Modifier.height(16.dp))
+        OwnkeyTextField(
+            value = address,
+            onValueChange = { address = it },
+            modifier = Modifier.testTag("ai-cloud-address-field"),
+            label = stringRes(R.string.settings__ai__cloud_provider__address),
+            placeholder = defaultAddress,
+            isError = AiSettings.showsServerAddressError(address, emptyAllowed = true),
+            errorText = stringRes(R.string.settings__ai__address_error),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Uri,
+                autoCorrectEnabled = false,
+                imeAction = ImeAction.Next,
+            ),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        OwnkeyTextField(
+            value = model,
+            onValueChange = { model = it },
+            modifier = Modifier.testTag("ai-cloud-model-field"),
+            label = stringRes(R.string.settings__ai__cloud_provider__model),
+            placeholder = defaultModel,
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Done),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        // Empty fields mean Mistral's defaults, so resetting clears them; Save stores the reset.
+        OwnkeyButton(
+            label = stringRes(R.string.settings__ai__cloud_provider__reset),
+            onClick = {
+                address = ""
+                model = ""
+            },
+            enabled = address.isNotEmpty() || model.isNotEmpty(),
+            style = OwnkeyButtonStyle.Plain,
+            modifier = Modifier.testTag("ai-cloud-reset"),
         )
     }
 }
 
 /**
- * The three reachable dictation-language states.
- *
- * `Auto` is an explicit choice rather than an empty value, so provider-side detection stays
- * available now that following the keyboard language is the default.
+ * The three dictation language choices. Keyboard language and Detect automatically apply and close;
+ * Specific language stays open with a code field. The field only stores non-empty codes and falls back to
+ * the last one when left empty, so the stored value never drops back to another mode by accident.
  */
 @Composable
-private fun DictationLanguageOptions(
+private fun LanguageSheet(
     storedLanguageHint: String,
     onModeChange: (TranscriptionLanguageMode) -> Unit,
     onExplicitLanguageChange: (String) -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val mode = TranscriptionLanguageHints.modeOf(storedLanguageHint)
-    ChoiceOption(
-        label = stringRes(R.string.pref__voxtral__language_hint__mode_follow),
-        summary = stringRes(R.string.pref__voxtral__language_hint__mode_follow_summary),
-        selected = mode == TranscriptionLanguageMode.FOLLOW_KEYBOARD,
-        onClick = { onModeChange(TranscriptionLanguageMode.FOLLOW_KEYBOARD) },
-    )
-    ChoiceOption(
-        label = stringRes(R.string.pref__voxtral__language_hint__mode_auto),
-        summary = stringRes(R.string.pref__voxtral__language_hint__mode_auto_summary),
-        selected = mode == TranscriptionLanguageMode.AUTO,
-        onClick = { onModeChange(TranscriptionLanguageMode.AUTO) },
-    )
-    ChoiceOption(
-        label = stringRes(R.string.pref__voxtral__language_hint__mode_explicit),
-        summary = stringRes(R.string.pref__voxtral__language_hint__mode_explicit_summary),
-        selected = mode == TranscriptionLanguageMode.EXPLICIT,
-        onClick = { onModeChange(TranscriptionLanguageMode.EXPLICIT) },
-    )
-    if (mode == TranscriptionLanguageMode.EXPLICIT) {
-        var explicitDraft by remember { mutableStateOf(storedLanguageHint) }
-        var lastValidDraft by remember { mutableStateOf(storedLanguageHint) }
-        OwnkeyOutlinedTextField(
-            value = explicitDraft,
-            onValueChange = { value ->
-                explicitDraft = value
-                if (value.isNotBlank()) {
-                    lastValidDraft = value
-                    onExplicitLanguageChange(value)
-                }
-            },
-            modifier = Modifier.onFocusChanged { focusState ->
-                if (!focusState.isFocused && explicitDraft.isBlank()) {
-                    explicitDraft = lastValidDraft
-                }
-            },
-            label = stringRes(R.string.pref__voxtral__language_hint__label),
-        )
-    }
-}
-
-/**
- * One radio option with a summary. A disabled option stays visible and dimmed, and its [note] says what is missing,
- * so a choice that cannot work yet is never hidden or silently ignored.
- */
-@Composable
-internal fun ChoiceOption(
-    label: String,
-    summary: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    note: String? = null,
-    enabled: Boolean = true,
-) {
-    val shape = RoundedCornerShape(18.dp)
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = if (selected) OwnkeyBrand.SignalOrange else OwnkeyBrand.Line,
-                shape = shape,
+    OwnkeySheet(
+        onDismiss = onDismiss,
+        title = stringRes(R.string.settings__ai__language__title),
+        initialScrollIndex = mode.ordinal,
+    ) { hide ->
+        item {
+            OwnkeyChoiceRow(
+                label = stringRes(R.string.settings__ai__language__keyboard),
+                summary = stringRes(R.string.settings__ai__language__keyboard_summary),
+                selected = mode == TranscriptionLanguageMode.FOLLOW_KEYBOARD,
+                onClick = {
+                    onModeChange(TranscriptionLanguageMode.FOLLOW_KEYBOARD)
+                    hide()
+                },
+                modifier = Modifier.testTag("sheet-option-0"),
             )
-            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
-        color = if (selected) OwnkeyBrand.PanelRaised else OwnkeyBrand.Action.copy(alpha = 0.52f),
-        contentColor = OwnkeyBrand.Bone,
-        shape = shape,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            RadioButton(
-                selected = selected,
-                onClick = null,
-                enabled = enabled,
-                colors = RadioButtonDefaults.colors(
-                    selectedColor = OwnkeyBrand.SignalOrange,
-                    unselectedColor = OwnkeyBrand.Ash,
-                    disabledSelectedColor = OwnkeyBrand.SignalOrange.copy(alpha = 0.5f),
-                    disabledUnselectedColor = OwnkeyBrand.Ash.copy(alpha = 0.4f),
-                ),
+        }
+        item {
+            OwnkeyChoiceRow(
+                label = stringRes(R.string.settings__ai__language__auto),
+                summary = stringRes(R.string.settings__ai__language__auto_summary),
+                selected = mode == TranscriptionLanguageMode.AUTO,
+                onClick = {
+                    onModeChange(TranscriptionLanguageMode.AUTO)
+                    hide()
+                },
+                modifier = Modifier.testTag("sheet-option-1"),
             )
-            Column(modifier = Modifier.weight(1f)) {
-                Column(modifier = Modifier.alpha(if (enabled || selected) 1f else 0.55f)) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
+        }
+        item {
+            OwnkeyChoiceRow(
+                label = stringRes(R.string.settings__ai__language__specific),
+                summary = stringRes(R.string.settings__ai__language__specific_summary),
+                selected = mode == TranscriptionLanguageMode.EXPLICIT,
+                onClick = { onModeChange(TranscriptionLanguageMode.EXPLICIT) },
+                modifier = Modifier.testTag("sheet-option-2"),
+            )
+        }
+        if (mode == TranscriptionLanguageMode.EXPLICIT) {
+            item(key = "language-code") {
+                var draft by remember { mutableStateOf(storedLanguageHint.trim()) }
+                var lastValid by remember { mutableStateOf(storedLanguageHint.trim()) }
+                CardBlock {
+                    OwnkeyTextField(
+                        value = draft,
+                        onValueChange = { value ->
+                            draft = value
+                            if (value.isNotBlank()) {
+                                lastValid = value.trim()
+                                onExplicitLanguageChange(value.trim())
+                            }
+                        },
+                        modifier = Modifier
+                            .testTag("ai-language-code-field")
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused && draft.isBlank()) draft = lastValid
+                            },
+                        label = stringRes(R.string.settings__ai__language__code),
+                        supportingText = stringRes(R.string.settings__ai__language__code_hint),
+                        keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Done),
                     )
-                    Text(
-                        text = summary,
-                        color = OwnkeyBrand.Ash,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-                if (note != null) {
-                    Text(
-                        text = note,
-                        modifier = Modifier.padding(top = 4.dp),
-                        color = OwnkeyBrand.SignalAmber,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
+                    OwnkeyButton(
+                        label = stringRes(R.string.settings__ai__done),
+                        onClick = hide,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("ai-language-done"),
                     )
                 }
             }
         }
     }
-}
-
-@Composable
-internal fun OwnkeyOutlinedTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    supportingText: String? = null,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
-        enabled = enabled,
-        label = { Text(label) },
-        supportingText = supportingText?.let { text -> { Text(text) } },
-        singleLine = singleLine,
-        minLines = minLines,
-        keyboardOptions = keyboardOptions,
-        visualTransformation = visualTransformation,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = OwnkeyBrand.Bone,
-            unfocusedTextColor = OwnkeyBrand.Bone,
-            disabledTextColor = OwnkeyBrand.Ash,
-            focusedContainerColor = OwnkeyBrand.Graphite,
-            unfocusedContainerColor = OwnkeyBrand.Graphite,
-            disabledContainerColor = OwnkeyBrand.Action.copy(alpha = 0.5f),
-            focusedBorderColor = OwnkeyBrand.SignalOrange,
-            unfocusedBorderColor = OwnkeyBrand.Line,
-            disabledBorderColor = OwnkeyBrand.Line.copy(alpha = 0.7f),
-            focusedLabelColor = OwnkeyBrand.SignalOrange,
-            unfocusedLabelColor = OwnkeyBrand.Ash,
-            disabledLabelColor = OwnkeyBrand.Ash,
-            focusedSupportingTextColor = OwnkeyBrand.Ash,
-            unfocusedSupportingTextColor = OwnkeyBrand.Ash,
-            cursorColor = OwnkeyBrand.SignalOrange,
-        ),
-        shape = RoundedCornerShape(14.dp),
-    )
-}
-
-@Composable
-internal fun OwnkeyButton(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    secondary: Boolean = false,
-) {
-    Button(
-        modifier = modifier,
-        enabled = enabled,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (secondary) OwnkeyBrand.Action else OwnkeyBrand.TrustBlue,
-            contentColor = OwnkeyBrand.Bone,
-            disabledContainerColor = OwnkeyBrand.Action.copy(alpha = 0.38f),
-            disabledContentColor = OwnkeyBrand.Ash.copy(alpha = 0.6f),
-        ),
-        shape = RoundedCornerShape(16.dp),
-        onClick = onClick,
-    ) {
-        Text(text = label, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-internal fun StatusText(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        modifier = modifier,
-        color = OwnkeyBrand.Ash,
-        style = MaterialTheme.typography.bodyMedium,
-    )
-}
-
-@Composable
-internal fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        color = OwnkeyBrand.Bone,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 4.dp),
-    )
 }

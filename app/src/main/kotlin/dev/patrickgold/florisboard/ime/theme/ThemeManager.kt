@@ -29,6 +29,7 @@ import androidx.autofill.inline.common.TextViewStyle
 import androidx.autofill.inline.common.ViewStyle
 import androidx.autofill.inline.v1.InlineSuggestionUi
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import dev.patrickgold.florisboard.R
@@ -49,7 +50,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.jsonObject
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.io.FsDir
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
@@ -81,6 +82,8 @@ class ThemeManager(context: Context) {
     val configurationChangeCounter = MutableStateFlow(0)
 
     private val cachedThemeInfos = mutableListOf<ThemeInfo>()
+    private val evictedLoadedDirs = mutableListOf<FsDir>()
+    private var staleLoadedDirsCleared = false
     private val activeThemeGuard = Mutex(locked = false)
     private val _activeThemeInfo = MutableStateFlow(ThemeInfo.DEFAULT)
     val activeThemeInfo get() = _activeThemeInfo.asStateFlow()
@@ -97,11 +100,11 @@ class ThemeManager(context: Context) {
             } to version
         }
         indexedThemeConfigs.collectIn(scope) {
-            updateActiveTheme { cachedThemeInfos.clear() }
+            updateActiveTheme { evictCachedThemeInfos() }
         }
         prefs.theme.accentColor.asFlow().collectIn(scope) {
-            // The accent is baked into glass stylesheets at load time, so cached parses are stale.
-            updateActiveTheme { cachedThemeInfos.clear() }
+            // The accent is baked into Glass and Signal stylesheets at load time, so cached parses are stale.
+            updateActiveTheme { evictCachedThemeInfos() }
         }
         combine(
             prefs.theme.mode.asFlow(),
@@ -120,6 +123,11 @@ class ThemeManager(context: Context) {
      * callback receivers about the new theme.
      */
     suspend fun updateActiveTheme(action: () -> Unit = { }) = activeThemeGuard.withLock {
+        if (!staleLoadedDirsCleared) {
+            // Extractions left behind by an earlier process; nothing has loaded from them in this one yet.
+            staleLoadedDirsCleared = true
+            runCatching { appContext.cacheDir.subDir("loaded").deleteContentsRecursively() }
+        }
         action()
         previewThemeInfo.value?.let { previewThemeInfo ->
             _activeThemeInfo.value = previewThemeInfo
@@ -140,8 +148,7 @@ class ThemeManager(context: Context) {
         if (themeConfig == null) {
             return@withLock
         }
-        // TODO: loaded dir is implemented already...
-        // TODO: this leaks the loaded dir, but at least the state is not kaput from compose viewpoint
+        // Each load extracts into a fresh dir; evictCachedThemeInfos() deletes it once it is no longer used.
         val loadedDir = appContext.cacheDir.subDir("loaded").subDir(UUID.randomUUID().toString())
         runCatching {
             loadedDir.mkdirs()
@@ -166,40 +173,32 @@ class ThemeManager(context: Context) {
     }
 
     /**
-     * Injects the user's accent color into the primary/secondary defines of Ownkey Glass
-     * stylesheets before parsing. The glass stylesheets are static generated assets, so this is
-     * what makes the accent color preference apply to them. Themes outside the glass style system
-     * (custom or third-party) keep their own colors untouched.
+     * Injects the user's accent into the Ownkey Glass and Signal stylesheets before parsing (see
+     * [injectAccent]). An unspecified accent (Material You) leaves Glass on its own colour and gives Signal
+     * the default Ember. Themes outside these two keep their own colours.
      */
     private fun applyUserAccent(stylesheetJson: String, themeName: ExtensionComponentName): String {
-        val isGlassTheme = themeName.componentId.startsWith("ownkey_glass") ||
-            themeName.componentId == "ownkey_liquid_glass"
-        if (!isGlassTheme) return stylesheetJson
         val accent = prefs.theme.accentColor.get()
-        if (accent == Color.Unspecified) return stylesheetJson
+        val isSignal = themeName.extensionId == SignalThemesExtensionId
+        if (accent == Color.Unspecified && !isSignal) return stylesheetJson
+        val accentArgb = accent.takeOrElse { OwnkeyTokens.DefaultAccent }.toArgb()
+        return injectAccent(stylesheetJson, themeName, accentArgb)
+    }
 
-        val accentArgb = accent.toArgb()
-        val accentHex = String.format("#%06x", accentArgb and 0xFFFFFF)
-        val pressedArgb = ColorUtils.blendARGB(accentArgb, android.graphics.Color.BLACK, 0.12f)
-        val pressedHex = String.format("#%06x", pressedArgb and 0xFFFFFF)
-
-        return try {
-            val json = kotlinx.serialization.json.Json.parseToJsonElement(stylesheetJson).jsonObject
-            val defines = json["@defines"]?.jsonObject ?: return stylesheetJson
-            val newDefines = kotlinx.serialization.json.JsonObject(
-                defines.toMutableMap().apply {
-                    put("--primary", kotlinx.serialization.json.JsonPrimitive(accentHex))
-                    put("--primary-variant", kotlinx.serialization.json.JsonPrimitive(pressedHex))
-                    put("--secondary", kotlinx.serialization.json.JsonPrimitive(accentHex))
-                    put("--secondary-variant", kotlinx.serialization.json.JsonPrimitive(pressedHex))
-                }
-            )
-            val newJson = kotlinx.serialization.json.JsonObject(
-                json.toMutableMap().apply { put("@defines", newDefines) }
-            )
-            newJson.toString()
-        } catch (_: Exception) {
-            stylesheetJson
+    /**
+     * Drops the cached parses and deletes the extraction dirs they used. The dir of the theme on screen
+     * stays until the next eviction, because the keyboard may still resolve assets from it.
+     */
+    private fun evictCachedThemeInfos() {
+        cachedThemeInfos.mapNotNullTo(evictedLoadedDirs) { it.loadedDir }
+        cachedThemeInfos.clear()
+        val activeDir = _activeThemeInfo.value.loadedDir
+        val iterator = evictedLoadedDirs.iterator()
+        while (iterator.hasNext()) {
+            val dir = iterator.next()
+            if (dir == activeDir) continue
+            runCatching { dir.deleteRecursively() }
+            iterator.remove()
         }
     }
 

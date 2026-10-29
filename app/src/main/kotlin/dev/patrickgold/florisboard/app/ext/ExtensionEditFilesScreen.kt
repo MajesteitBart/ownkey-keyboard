@@ -47,10 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
+import dev.patrickgold.florisboard.app.ui.Preference
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import dev.patrickgold.jetpref.material.ui.JetPrefTextField
 import java.io.File
 import java.util.*
@@ -66,6 +66,8 @@ import org.florisboard.lib.kotlin.io.parentDir
 import org.florisboard.lib.kotlin.io.subDir
 import org.florisboard.lib.kotlin.io.subFile
 import org.florisboard.lib.kotlin.mimeTypeFilterOf
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.OwnkeyTextFieldDefaults
 
 const val FONTS = "fonts"
 const val IMAGES = "images"
@@ -95,6 +97,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
         FlorisIconButton(
             onClick = { handleBackPress() },
             icon = Icons.Default.Close,
+            contentDescription = stringRes(R.string.about__ext__close),
         )
     }
 
@@ -151,7 +154,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                 headlineContent = {
                     Text(
                         text = title,
-                        color = MaterialTheme.colorScheme.secondary,
+                        color = OwnkeyTokens.Secondary,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -180,7 +183,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
 
             dialogFile?.let { file ->
                 var fileNameInput by rememberSaveable { mutableStateOf(file.name) }
-                JetPrefAlertDialog(
+                OwnkeyDialog(
                     title = stringRes(R.string.general__properties),
                     confirmLabel = stringRes(R.string.action__apply),
                     dismissLabel = stringRes(R.string.action__cancel),
@@ -199,11 +202,11 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                         val newFile = file.parentFile!!.subFile(fileNameInput).canonicalFile
                         if (newFile.parentFile != file.canonicalFile.parentFile) {
                             context.showLongToastSync("Invalid file name!")
-                            return@JetPrefAlertDialog
+                            return@OwnkeyDialog
                         }
                         if (newFile.exists()) {
                             context.showShortToastSync("Filename already exists.")
-                            return@JetPrefAlertDialog
+                            return@OwnkeyDialog
                         }
                         val success = file.renameTo(newFile)
                         if (success) {
@@ -219,6 +222,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                     },
                 ) {
                     JetPrefTextField(
+                        appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                         labelText = stringRes(R.string.general__file_name),
                         value = fileNameInput,
                         onValueChange = { fileNameInput = it },
@@ -250,7 +254,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
         val result = currentImportResult?.getOrNull()
         if (dest != null && result != null) {
             var fileNameInput by rememberSaveable { mutableStateOf(result.second) }
-            JetPrefAlertDialog(
+            OwnkeyDialog(
                 title = stringRes(R.string.action__import_file),
                 confirmLabel = stringRes(R.string.action__add),
                 onConfirm = {
@@ -282,6 +286,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                 },
             ) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = fileNameInput,
                     onValueChange = { fileNameInput = it },
                     singleLine = true,

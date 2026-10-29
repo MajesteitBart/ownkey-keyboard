@@ -1,0 +1,62 @@
+# Languages: the list shows English; Add language opens, finds Dutch, offers to set up another language,
+# and Back adds nothing.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 05 Languages
+tags: [settings, languages]
+---
+- runFlow: helpers/open-home.yaml
+- assertVisible:
+    id: home-languages
+    containsChild: ".*English.*"
+- tapOn:
+    id: home-languages
+- extendedWaitUntil:
+    visible:
+      id: language-0
+    timeout: 10000
+- assertVisible: "English.*"
+- assertVisible:
+    id: languages-packs
+- takeScreenshot: 05-languages
+
+- tapOn:
+    id: languages-add
+- extendedWaitUntil:
+    visible:
+      id: add-language-search
+    timeout: 10000
+- assertVisible: "On this phone"
+- takeScreenshot: 05-add-language
+- tapOn:
+    id: add-language-search
+- inputText: "Dutch"
+- extendedWaitUntil:
+    visible:
+      id: add-language-other-0
+      containsChild: "Dutch.*"
+    timeout: 5000
+- assertNotVisible:
+    id: add-language-other-1
+- assertVisible:
+    id: add-language-manual
+    containsChild: "Set up another language"
+- takeScreenshot: 05-add-language-dutch
+- hideKeyboard
+- back
+- runFlow:
+    # Back may first close the keyboard if the search field took focus.
+    when:
+      visible:
+        id: add-language-search
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: languages-add
+    timeout: 5000
+- assertVisible: "English.*"
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-languages
+    timeout: 5000

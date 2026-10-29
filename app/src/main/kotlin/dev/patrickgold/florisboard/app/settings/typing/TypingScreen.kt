@@ -16,44 +16,32 @@
 
 package dev.patrickgold.florisboard.app.settings.typing
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.LibraryBooks
-import androidx.compose.material.icons.filled.Contacts
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.SpaceBar
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
-import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
-import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectStrength
+import dev.patrickgold.florisboard.app.ui.ChoiceOption
+import dev.patrickgold.florisboard.app.ui.DialogSliderPreference
+import dev.patrickgold.florisboard.app.ui.ListPreference
+import dev.patrickgold.florisboard.app.ui.OwnkeyChoiceListRow
+import dev.patrickgold.florisboard.app.ui.Preference
+import dev.patrickgold.florisboard.app.ui.PreferenceGroup
+import dev.patrickgold.florisboard.app.ui.SwitchPreference
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.florisboard.nlpManager
+import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
-import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
+import dev.patrickgold.jetpref.datastore.ui.PreferenceUiScope
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
-import org.florisboard.lib.android.showShortToast
-import org.florisboard.lib.compose.FlorisErrorCard
+import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.stringRes
 
 @OptIn(ExperimentalJetPrefDatastoreUi::class)
@@ -65,148 +53,170 @@ fun TypingScreen() = FlorisScreen {
     val navController = LocalNavController.current
 
     content {
-        FlorisErrorCard(
-            modifier = Modifier.padding(8.dp),
-            text = """
-                Suggestions and spell checking are available in this build, but still experimental and language-dependent.
-                If behavior looks off for your language, please report feedback.
-            """.trimIndent().replace('\n', ' '),
-        )
-
-        PreferenceGroup(title = stringRes(R.string.pref__suggestion__title)) {
+        PreferenceGroup(title = stringRes(R.string.settings__typing__group_suggestions)) {
             SwitchPreference(
                 prefs.suggestion.enabled,
-                title = stringRes(R.string.pref__suggestion__enabled__label),
-                summary = stringRes(R.string.pref__suggestion__enabled__summary),
+                title = stringRes(R.string.settings__typing__show_suggestions),
             )
-            SwitchPreference(
-                prefs.suggestion.blockPossiblyOffensive,
-                title = stringRes(R.string.pref__suggestion__block_possibly_offensive__label),
-                summary = stringRes(R.string.pref__suggestion__block_possibly_offensive__summary),
-                enabledIf = { prefs.suggestion.enabled isEqualTo true },
-            )
-            SwitchPreference(
-                prefs.suggestion.api30InlineSuggestionsEnabled,
-                title = stringRes(R.string.pref__suggestion__api30_inline_suggestions_enabled__label),
-                summary = stringRes(R.string.pref__suggestion__api30_inline_suggestions_enabled__summary),
-                visibleIf = { AndroidVersion.ATLEAST_API30_R },
-            )
-            ListPreference(
-                prefs.suggestion.incognitoMode,
-                icon = ImageVector.vectorResource(id = R.drawable.ic_incognito),
-                title = stringRes(R.string.pref__suggestion__incognito_mode__label),
-                entries = enumDisplayEntriesOf(IncognitoMode::class),
-            )
-            SwitchPreference(
-                prefs.suggestion.personalizedLearningEnabled,
-                title = stringRes(R.string.pref__suggestion__personalized_learning__label),
-                summary = stringRes(R.string.pref__suggestion__personalized_learning__summary),
-                enabledIf = { prefs.suggestion.enabled isEqualTo true },
-            )
-            val scope = rememberCoroutineScope()
-            val context = LocalContext.current
-            val nlpManager by context.nlpManager()
-            var showClearLearnedDataDialog by remember { mutableStateOf(false) }
-            Preference(
-                icon = Icons.Default.DeleteSweep,
-                title = stringRes(R.string.pref__suggestion__clear_personalized_data__label),
-                summary = stringRes(R.string.pref__suggestion__clear_personalized_data__summary),
-                onClick = { showClearLearnedDataDialog = true },
-            )
-            if (showClearLearnedDataDialog) {
-                JetPrefAlertDialog(
-                    title = stringRes(R.string.pref__suggestion__clear_personalized_data__label),
-                    confirmLabel = stringRes(R.string.action__yes),
-                    onConfirm = {
-                        scope.launch {
-                            nlpManager.clearPersonalizedData()
-                            context.showShortToast(R.string.pref__suggestion__clear_personalized_data__done)
-                        }
-                        showClearLearnedDataDialog = false
-                    },
-                    dismissLabel = stringRes(R.string.action__no),
-                    onDismiss = { showClearLearnedDataDialog = false },
-                ) {
-                    Text(text = stringRes(R.string.pref__suggestion__clear_personalized_data__confirm_message))
-                }
-            }
-        }
-
-        PreferenceGroup(title = stringRes(R.string.pref__correction__title)) {
-            SwitchPreference(
-                prefs.correction.highCertaintyAutocorrectEnabled,
-                title = stringRes(R.string.pref__correction__autocorrect__label),
-                summary = stringRes(R.string.pref__correction__autocorrect__summary),
-            )
-            ListPreference(
-                prefs.correction.autocorrectStrength,
-                title = stringRes(R.string.pref__correction__autocorrect_strength__label),
-                entries = enumDisplayEntriesOf(AutocorrectStrength::class),
-                enabledIf = { prefs.correction.highCertaintyAutocorrectEnabled isEqualTo true },
-            )
-            SwitchPreference(
-                prefs.correction.autoCapitalization,
-                title = stringRes(R.string.pref__correction__auto_capitalization__label),
-                summary = stringRes(R.string.pref__correction__auto_capitalization__summary),
-            )
+            AutocorrectRow()
+            // Hidden (shown only while it differs from the default, so it can be reset).
             SwitchPreference(
                 prefs.correction.appSpecificAutocorrectProfilesEnabled,
                 title = stringRes(R.string.pref__correction__app_specific_autocorrect_profiles_enabled__label),
                 summary = stringRes(R.string.pref__correction__app_specific_autocorrect_profiles_enabled__summary),
-                enabledIf = { prefs.correction.highCertaintyAutocorrectEnabled isEqualTo true },
+                visibleIf = {
+                    prefs.correction.appSpecificAutocorrectProfilesEnabled isNotEqualTo
+                        prefs.correction.appSpecificAutocorrectProfilesEnabled.default
+                },
+            )
+            SwitchPreference(
+                prefs.emoji.suggestionEnabled,
+                title = stringRes(R.string.settings__typing__emoji_suggestions),
+                summary = stringRes(R.string.settings__typing__emoji_suggestions_summary),
+            )
+            HiddenEmojiSuggestionRows()
+            SwitchPreference(
+                prefs.suggestion.blockPossiblyOffensive,
+                title = stringRes(R.string.settings__typing__block_offensive),
+                enabledIf = { prefs.suggestion.enabled isEqualTo true },
+            )
+            SwitchPreference(
+                prefs.suggestion.api30InlineSuggestionsEnabled,
+                title = stringRes(R.string.settings__typing__autofill),
+                summary = stringRes(R.string.settings__typing__autofill_summary),
+                visibleIf = { AndroidVersion.ATLEAST_API30_R },
+            )
+        }
+
+        PreferenceGroup(title = stringRes(R.string.settings__typing__group_formatting)) {
+            SwitchPreference(
+                prefs.correction.autoCapitalization,
+                title = stringRes(R.string.settings__typing__auto_capitalize),
+                summary = stringRes(R.string.settings__typing__auto_capitalize_summary),
             )
             SwitchPreference(
                 prefs.correction.autoSpacePunctuation,
-                icon = Icons.Default.SpaceBar,
-                title = stringRes(R.string.pref__correction__auto_space_punctuation__label),
-                summary = stringRes(R.string.pref__correction__auto_space_punctuation__summary),
+                title = stringRes(R.string.settings__typing__space_after_punctuation),
+                summary = stringRes(R.string.settings__typing__space_after_punctuation_summary),
+            )
+            SwitchPreference(
+                prefs.correction.doubleSpacePeriod,
+                title = stringRes(R.string.settings__typing__double_space_period),
+                summary = stringRes(R.string.settings__typing__double_space_period_summary),
             )
             SwitchPreference(
                 prefs.correction.rememberCapsLockState,
                 title = stringRes(R.string.pref__correction__remember_caps_lock_state__label),
                 summary = stringRes(R.string.pref__correction__remember_caps_lock_state__summary),
-            )
-            SwitchPreference(
-                prefs.correction.doubleSpacePeriod,
-                title = stringRes(R.string.pref__correction__double_space_period__label),
-                summary = stringRes(R.string.pref__correction__double_space_period__summary),
+                visibleIf = {
+                    prefs.correction.rememberCapsLockState isNotEqualTo prefs.correction.rememberCapsLockState.default
+                },
             )
         }
 
-        PreferenceGroup(title = stringRes(R.string.pref__spelling__title)) {
-            val florisSpellCheckerEnabled = remember { mutableStateOf(false) }
-            SpellCheckerServiceSelector(florisSpellCheckerEnabled)
-            ListPreference(
-                prefs.spelling.languageMode,
-                icon = Icons.Default.Language,
-                title = stringRes(R.string.pref__spelling__language_mode__label),
-                entries = enumDisplayEntriesOf(SpellingLanguageMode::class),
-                enabledIf = { florisSpellCheckerEnabled.value },
-            )
-            SwitchPreference(
-                prefs.spelling.useContacts,
-                icon = Icons.Default.Contacts,
-                title = stringRes(R.string.pref__spelling__use_contacts__label),
-                summary = stringRes(R.string.pref__spelling__use_contacts__summary),
-                enabledIf = { florisSpellCheckerEnabled.value },
-                visibleIf = { false }, // For now
-            )
-            SwitchPreference(
-                prefs.spelling.useUdmEntries,
-                icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                title = stringRes(R.string.pref__spelling__use_udm_entries__label),
-                summary = stringRes(R.string.pref__spelling__use_udm_entries__summary),
-                enabledIf = { florisSpellCheckerEnabled.value },
-                visibleIf = { false }, // For now
-            )
-        }
-
-        PreferenceGroup(title = stringRes(R.string.settings__dictionary__title)) {
+        PreferenceGroup(title = stringRes(R.string.settings__typing__group_words)) {
             Preference(
-                icon = Icons.AutoMirrored.Filled.LibraryBooks,
                 title = stringRes(R.string.settings__dictionary__title),
                 onClick = { navController.navigate(Routes.Settings.Dictionary) },
+                chevron = true,
+            )
+            val spellChecker = rememberSpellCheckerState()
+            SpellCheckerRow(spellChecker)
+            ListPreference(
+                prefs.spelling.languageMode,
+                title = stringRes(R.string.settings__typing__spell_checker_languages),
+                entries = enumDisplayEntriesOf(SpellingLanguageMode::class),
+                enabledIf = { spellChecker.isOwnkey },
+                visibleIf = { prefs.spelling.languageMode isNotEqualTo prefs.spelling.languageMode.default },
             )
         }
     }
+}
+
+/** Off / Gentle / Normal / Strong, written to the enable switch and the strength through [AutocorrectLevel]. */
+@Composable
+private fun PreferenceUiScope<FlorisPreferenceModel>.AutocorrectRow() {
+    val scope = rememberCoroutineScope()
+    val enabled by prefs.correction.highCertaintyAutocorrectEnabled.collectAsState()
+    val strength by prefs.correction.autocorrectStrength.collectAsState()
+    OwnkeyChoiceListRow(
+        modifier = Modifier.testTag("typing-autocorrect"),
+        title = stringRes(R.string.pref__correction__autocorrect__label),
+        options = listOf(
+            ChoiceOption(
+                AutocorrectLevel.OFF,
+                stringRes(R.string.settings__typing__autocorrect_off),
+                stringRes(R.string.settings__typing__autocorrect_off_summary),
+            ),
+            ChoiceOption(
+                AutocorrectLevel.GENTLE,
+                stringRes(R.string.enum__autocorrect_strength__gentle),
+                stringRes(R.string.enum__autocorrect_strength__gentle__description),
+            ),
+            ChoiceOption(
+                AutocorrectLevel.NORMAL,
+                stringRes(R.string.enum__autocorrect_strength__normal),
+                stringRes(R.string.enum__autocorrect_strength__normal__description),
+            ),
+            ChoiceOption(
+                AutocorrectLevel.STRONG,
+                stringRes(R.string.enum__autocorrect_strength__strong),
+                stringRes(R.string.enum__autocorrect_strength__strong__description),
+            ),
+        ),
+        selected = AutocorrectLevel.of(AutocorrectPrefs(enabled, strength)),
+        onSelect = { level ->
+            val next = level.toPrefs(currentStrength = strength)
+            scope.launch {
+                prefs.correction.autocorrectStrength.set(next.strength)
+                prefs.correction.highCertaintyAutocorrectEnabled.set(next.enabled)
+            }
+        },
+    )
+}
+
+/** Emoji suggestion details that left the UI; each shows up only while it holds a non-default value. */
+@Composable
+private fun PreferenceUiScope<FlorisPreferenceModel>.HiddenEmojiSuggestionRows() {
+    val emoji = prefs.emoji
+    ListPreference(
+        emoji.suggestionType,
+        title = stringRes(R.string.prefs__media__emoji_suggestion_type),
+        entries = enumDisplayEntriesOf(EmojiSuggestionType::class),
+        enabledIf = { emoji.suggestionEnabled isEqualTo true },
+        visibleIf = { emoji.suggestionType isNotEqualTo emoji.suggestionType.default },
+    )
+    SwitchPreference(
+        emoji.suggestionUpdateHistory,
+        title = stringRes(R.string.prefs__media__emoji_suggestion_update_history),
+        summary = stringRes(R.string.prefs__media__emoji_suggestion_update_history__summary),
+        enabledIf = { emoji.suggestionEnabled isEqualTo true },
+        visibleIf = { emoji.suggestionUpdateHistory isNotEqualTo emoji.suggestionUpdateHistory.default },
+    )
+    SwitchPreference(
+        emoji.suggestionCandidateShowName,
+        title = stringRes(R.string.prefs__media__emoji_suggestion_candidate_show_name),
+        enabledIf = { emoji.suggestionEnabled isEqualTo true },
+        visibleIf = { emoji.suggestionCandidateShowName isNotEqualTo emoji.suggestionCandidateShowName.default },
+    )
+    DialogSliderPreference(
+        emoji.suggestionQueryMinLength,
+        title = stringRes(R.string.prefs__media__emoji_suggestion_query_min_length),
+        valueLabel = { length -> pluralsRes(R.plurals.unit__characters__written, length, "v" to length) },
+        min = 1,
+        max = 5,
+        stepIncrement = 1,
+        enabledIf = { emoji.suggestionEnabled isEqualTo true },
+        visibleIf = { emoji.suggestionQueryMinLength isNotEqualTo emoji.suggestionQueryMinLength.default },
+    )
+    DialogSliderPreference(
+        emoji.suggestionCandidateMaxCount,
+        title = stringRes(R.string.prefs__media__emoji_suggestion_candidate_max_count),
+        valueLabel = { count -> pluralsRes(R.plurals.unit__candidates__written, count, "v" to count) },
+        min = 1,
+        max = 10,
+        stepIncrement = 1,
+        enabledIf = { emoji.suggestionEnabled isEqualTo true },
+        visibleIf = { emoji.suggestionCandidateMaxCount isNotEqualTo emoji.suggestionCandidateMaxCount.default },
+    )
 }

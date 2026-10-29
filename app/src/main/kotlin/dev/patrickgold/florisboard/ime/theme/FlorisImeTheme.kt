@@ -18,12 +18,15 @@ package dev.patrickgold.florisboard.ime.theme
 
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -70,9 +73,51 @@ fun FlorisImeTheme(content: @Composable () -> Unit) {
                 fontSizeMultiplier = fontScale,
                 assetResolver = assetResolver,
                 rootAttributes = attributes,
-                content = content,
+                content = { ProvideKeyboardColorScheme(content) },
                 materialYouFlags = activeThemeInfo.config.materialYouFlags
             )
         }
+    }
+}
+
+/**
+ * Gives Material components inside the keyboard a colour scheme built from the keyboard theme, so library
+ * defaults (scrollbars, unset component colours) follow the active stylesheet instead of the baseline
+ * Material palette. Keyboard code still passes explicit colours; this is the safety net.
+ */
+@Composable
+private fun ProvideKeyboardColorScheme(content: @Composable () -> Unit) {
+    val palette = rememberKeyboardPalette()
+    val accent = rememberKeyboardAccent()
+    val colorScheme = remember(palette, accent) {
+        val base = if (palette.isLight) lightColorScheme() else darkColorScheme()
+        base.copy(
+            primary = accent.color,
+            onPrimary = accent.onColor,
+            secondary = accent.color,
+            onSecondary = accent.onColor,
+            tertiary = accent.color,
+            onTertiary = accent.onColor,
+            background = palette.background,
+            onBackground = palette.ink,
+            surface = palette.background,
+            onSurface = palette.ink,
+            surfaceVariant = palette.key,
+            onSurfaceVariant = palette.inkSecondary,
+            surfaceTint = Color.Transparent,
+            surfaceContainerLowest = palette.background,
+            surfaceContainerLow = palette.key,
+            surfaceContainer = palette.key,
+            surfaceContainerHigh = palette.popup,
+            surfaceContainerHighest = palette.keyPressed,
+            inverseSurface = palette.ink,
+            inverseOnSurface = palette.background,
+            outline = palette.inkSecondary,
+            outlineVariant = palette.key,
+        )
+    }
+    MaterialTheme(colorScheme = colorScheme) {
+        // MaterialTheme resets the text style; the keyboard keeps the platform default, without Inter.
+        CompositionLocalProvider(LocalTextStyle provides TextStyle.Default, content = content)
     }
 }

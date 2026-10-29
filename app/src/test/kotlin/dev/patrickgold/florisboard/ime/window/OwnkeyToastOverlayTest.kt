@@ -38,4 +38,11 @@ class OwnkeyToastOverlayTest : FunSpec({
         toastPlacementAroundBar(DpRect(0.dp, 95.dp, 256.dp, 151.dp), root).belowBar shouldBe true
         toastPlacementAroundBar(DpRect(0.dp, 96.dp, 256.dp, 152.dp), root).belowBar shouldBe false
     }
+
+    test("the toast dot follows the message's tone, and plain notices get none") {
+        ownkeyToastTone("Copied to clipboard") shouldBe OwnkeyToastTone.SUCCESS
+        ownkeyToastTone("Microphone permission needed") shouldBe OwnkeyToastTone.WARNING
+        ownkeyToastTone("Rewrite failed") shouldBe OwnkeyToastTone.ERROR
+        ownkeyToastTone("Incognito is off. Dictation and rewrite are available again.") shouldBe OwnkeyToastTone.NEUTRAL
+    }
 })

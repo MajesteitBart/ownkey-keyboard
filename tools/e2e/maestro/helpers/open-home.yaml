@@ -1,0 +1,25 @@
+# Brings the settings app to Home. Setup must be done (run.sh takes care of that).
+# Never uses `stopApp: true`: force-stopping the package also stops Ownkey's keyboard service, and
+# Android then switches the phone to another keyboard. run.sh force-stops and re-selects Ownkey
+# before every flow instead, so the app normally starts fresh on Home here.
+appId: nl.bartvandermeeren.ownkey.debug
+---
+- launchApp:
+    stopApp: false
+- repeat:
+    times: 6
+    while:
+      notVisible:
+        id: home-ai
+    commands:
+      - back
+      - runFlow:
+          when:
+            notVisible: "Ownkey"
+          commands:
+            - launchApp:
+                stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 20000

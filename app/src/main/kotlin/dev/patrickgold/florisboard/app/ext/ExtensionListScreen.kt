@@ -18,24 +18,17 @@ package dev.patrickgold.florisboard.app.ext
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,18 +39,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.ui.LazyCardRow
+import dev.patrickgold.florisboard.app.ui.OwnkeyButton
+import dev.patrickgold.florisboard.app.ui.OwnkeyNotice
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
 import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.theme.ThemeExtension
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.compose.LocalOwnkeyContentPadding
 import dev.patrickgold.florisboard.lib.ext.ExtensionManager
-import org.florisboard.lib.compose.FlorisOutlinedBox
-import org.florisboard.lib.compose.FlorisTextButton
-import org.florisboard.lib.compose.defaultFlorisOutlinedBox
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.florisScrollbar
 import org.florisboard.lib.compose.stringRes
 
@@ -101,16 +99,22 @@ fun ExtensionListScreen(type: ExtensionListScreenType, showUpdate: Boolean) = Fl
     var fabHeight by remember {
         mutableStateOf(0)
     }
-    val fabHeightDp = with(LocalDensity.current) { fabHeight.toDp()+16.dp }
+    val fabHeightDp = with(LocalDensity.current) { fabHeight.toDp() + 16.dp }
     val listState = rememberLazyListState()
 
     content {
+        val contentPadding = LocalOwnkeyContentPadding.current
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .florisScrollbar(state = listState, isVertical = true),
             state = listState,
-            contentPadding = PaddingValues(bottom = fabHeightDp),
+            contentPadding = PaddingValues(
+                start = contentPadding.calculateStartPadding(LayoutDirection.Ltr),
+                top = contentPadding.calculateTopPadding(),
+                end = contentPadding.calculateEndPadding(LayoutDirection.Ltr),
+                bottom = contentPadding.calculateBottomPadding() + fabHeightDp,
+            ),
         ) {
             if (showUpdate) {
                 item {
@@ -120,40 +124,36 @@ fun ExtensionListScreen(type: ExtensionListScreenType, showUpdate: Boolean) = Fl
                     UpdateBox(extensionIndex = extensionIndex)
                 }
             }
-            items(extensionIndex) { ext ->
-                FlorisOutlinedBox(
-                    modifier = Modifier.defaultFlorisOutlinedBox(),
-                    title = ext.meta.title,
-                    subtitle = ext.meta.id,
-                ) {
-                    Text(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        text = ext.meta.description ?: "",
-                        style = MaterialTheme.typography.bodySmall,
+            if (extensionIndex.isEmpty()) {
+                item {
+                    OwnkeyNotice(text = stringRes(R.string.about__ext__list_empty))
+                }
+            }
+            itemsIndexed(extensionIndex) { index, ext ->
+                LazyCardRow(index = index, count = extensionIndex.size) {
+                    OwnkeyRow(
+                        modifier = Modifier.testTag("ext-list-item-$index"),
+                        title = ext.meta.title,
+                        summary = ext.meta.description?.takeIf { it.isNotBlank() } ?: ext.meta.id,
+                        onClick = { navController.navigate(Routes.Ext.View(ext.meta.id)) },
+                        trailing = if (extensionManager.canDelete(ext)) {
+                            {
+                                IconButton(
+                                    modifier = Modifier.testTag("ext-list-edit-$index"),
+                                    onClick = { navController.navigate(Routes.Ext.Edit(ext.meta.id)) },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = stringRes(R.string.action__edit),
+                                        tint = OwnkeyTokens.Label,
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
+                        chevron = !extensionManager.canDelete(ext),
                     )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 6.dp),
-                    ) {
-                        FlorisTextButton(
-                            onClick = {
-                                navController.navigate(Routes.Ext.View(ext.meta.id))
-                            },
-                            icon = Icons.Outlined.Info,
-                            text = stringRes(id = R.string.ext__list__view_details),//stringRes(R.string.action__add),
-                            colors = ButtonDefaults.textButtonColors(),
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        FlorisTextButton(
-                            onClick = {
-                                navController.navigate(Routes.Ext.Edit(ext.meta.id))
-                            },
-                            icon = Icons.Default.Edit,
-                            text = stringRes(R.string.action__edit),
-                            enabled = extensionManager.canDelete(ext),
-                        )
-                    }
                 }
             }
         }
@@ -161,22 +161,20 @@ fun ExtensionListScreen(type: ExtensionListScreenType, showUpdate: Boolean) = Fl
 
     if (type.launchExtensionCreate != null) {
         floatingActionButton {
-            ExtendedFloatingActionButton(
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = stringRes(id = R.string.ext__editor__title_create_any),
-                    )
-                },
-                text = {
-                    Text(
-                        text = stringRes(id = R.string.ext__editor__title_create_any),
-                    )
-                },
-                modifier = Modifier.onGloballyPositioned {
-                    fabHeight = it.size.height
-                },
-                shape = FloatingActionButtonDefaults.extendedFabShape,
+            OwnkeyButton(
+                modifier = Modifier
+                    .testTag("ext-list-create")
+                    .onGloballyPositioned {
+                        fabHeight = it.size.height
+                    },
+                label = stringRes(
+                    if (type == ExtensionListScreenType.EXT_THEME) {
+                        R.string.about__ext__new_theme
+                    } else {
+                        R.string.ext__editor__title_create_any
+                    }
+                ),
+                icon = Icons.Default.Add,
                 onClick = { type.launchExtensionCreate.invoke(navController) },
             )
         }

@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.horizontalTween
 import org.florisboard.lib.compose.verticalTween
+import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggColumn
 import org.florisboard.lib.snygg.ui.SnyggIcon
@@ -263,6 +264,9 @@ private fun SmartbarMainRow(
             SnyggIcon(
                 modifier = Modifier.rotate(if (incognitoDisplayMode.value == IncognitoDisplayMode.DISPLAY_BEHIND_KEYBOARD) rotation else 0f),
                 imageVector = icon,
+                contentDescription = stringRes(
+                    if (sharedActionsExpanded) R.string.ime__toolbar__hide_actions else R.string.ime__toolbar__show_actions
+                ),
             )
         }
     }
@@ -358,6 +362,9 @@ private fun SmartbarMainRow(
                 } else {
                     ImageVector.vectorResource(id = R.drawable.ic_hero_chevron_up)
                 },
+                contentDescription = stringRes(
+                    if (extendedActionsExpanded) R.string.ime__toolbar__hide_actions else R.string.ime__toolbar__show_actions
+                ),
             )
         }
     }

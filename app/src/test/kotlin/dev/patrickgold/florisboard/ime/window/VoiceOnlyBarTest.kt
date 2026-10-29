@@ -17,11 +17,16 @@
 package dev.patrickgold.florisboard.ime.window
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
+import dev.patrickgold.florisboard.ime.theme.KeyboardPalette
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import org.florisboard.lib.compose.contrastRatio
 
 class VoiceOnlyBarTest : FunSpec({
     context("voice only is allowed") {
@@ -112,6 +117,52 @@ class VoiceOnlyBarTest : FunSpec({
 
         test("an active layout missing from the list offers nothing rather than a guess") {
             nextLanguage(layouts, "fr-azerty", language) shouldBe null
+        }
+    }
+
+    context("bar colours") {
+        // Fills of the three Signal stylesheets, as the keyboard palette reads them.
+        fun signal(background: Long, key: Long, pressed: Long, ink: Long, secondary: Long) = KeyboardPalette(
+            background = Color(background),
+            ink = Color(ink),
+            inkSecondary = Color(secondary),
+            key = Color(key),
+            keyPressed = Color(pressed),
+            keyInk = Color(ink),
+            popup = Color(pressed),
+            popupInk = Color(ink),
+            pill = Color(ink),
+            onPill = Color(background),
+        )
+        val black = signal(0xFF000000, 0xFF272729, 0xFF3A3A3C, 0xFFFFFFFF, 0xFF98989D)
+        val graphite = signal(0xFF1C1C1E, 0xFF3A3A3C, 0xFF545456, 0xFFFFFFFF, 0xFFAEAEB2)
+        val bone = signal(0xFFE8E6E1, 0xFFFFFFFF, 0xFFC9C5BC, 0xFF111111, 0xFF5F5C56)
+
+        test("Graphite lifts the bar to the key fill, with pressed-fill buttons") {
+            voiceBarColors(graphite) shouldBe VoiceBarColors(
+                bar = graphite.key,
+                button = graphite.keyPressed,
+                status = graphite.inkSecondary,
+            )
+        }
+
+        test("Black keys are too close to black, so the bar takes the pressed fill and the buttons the key fill") {
+            val colors = voiceBarColors(black)
+            colors.bar shouldBe black.keyPressed
+            colors.button shouldBe black.key
+        }
+
+        test("Bone keeps its own fill with white buttons") {
+            voiceBarColors(bone) shouldBe VoiceBarColors(bar = bone.background, button = bone.key, status = bone.inkSecondary)
+        }
+
+        listOf("Black" to black, "Graphite" to graphite).forEach { (name, palette) ->
+            test("on $name the bar has an edge over black and the status line stays readable") {
+                val colors = voiceBarColors(palette)
+                contrastRatio(colors.bar, Color.Black) shouldBeGreaterThanOrEqual 1.8
+                contrastRatio(colors.status, colors.bar) shouldBeGreaterThanOrEqual 4.5
+                colors.button shouldNotBe colors.bar
+            }
         }
     }
 })

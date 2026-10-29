@@ -19,9 +19,7 @@ package dev.patrickgold.florisboard.ime.text.rewrite
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +53,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,14 +63,17 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -84,8 +86,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
-import dev.patrickgold.florisboard.app.OwnkeyBrand
-import dev.patrickgold.florisboard.app.ownkeyAccentColor
 import dev.patrickgold.florisboard.audioLevelHistorySampler
 import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.editorInstance
@@ -95,6 +95,9 @@ import dev.patrickgold.florisboard.ime.smartbar.formatRecordingElapsed
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionInvalidation
 import dev.patrickgold.florisboard.ime.text.dictation.AudioSessionPhase
 import dev.patrickgold.florisboard.ime.text.dictation.StationaryLevelBars
+import dev.patrickgold.florisboard.ime.theme.KeyboardPalette
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.florisboard.voiceRewriteUiController
@@ -104,13 +107,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.stringRes
-import java.util.Locale
 
 private val PanelEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
 private const val BodyFadeMillis = 160
 private val PanelGap = 8.dp
-private val CardShape = RoundedCornerShape(10.dp)
+private val CardShape = RoundedCornerShape(16.dp)
+private val PillShape = RoundedCornerShape(50)
 private val PresetRowHeight = 50.dp
+/** Above this font scale the hub drops to two columns so style names keep whole words on two lines. */
+private const val HubTwoColumnFontScale = 1.15f
 private val MinTouchTarget = 48.dp
 private val ActionRailHeight = 52.dp
 private val HeaderControlSize = MinTouchTarget
@@ -118,6 +123,15 @@ private val HeaderControlSize = MinTouchTarget
 /** Expanded layouts centre the content instead of stretching it to the screen edges. */
 private val HubMaxWidth = 1_200.dp
 private val SheetMaxWidth = 840.dp
+
+/**
+ * The keyboard theme's colours for the panel, provided once at the panel root so every card, sheet and
+ * button follows the active stylesheet (Signal Bone included) instead of a fixed dark palette.
+ */
+private val LocalPanelPalette = staticCompositionLocalOf<KeyboardPalette?> { null }
+
+@Composable
+private fun panelPalette(): KeyboardPalette = LocalPanelPalette.current ?: rememberKeyboardPalette()
 
 /** Dwell time of the `Text replaced` confirmation before the voice flow closes itself. */
 private const val VoiceReplacedConfirmationMillis = 1_200L
@@ -179,64 +193,67 @@ fun RewriteOptionsPanel(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(FlorisImeSizing.keyboardUiHeight())
-            .padding(PanelGap),
-    ) {
-        PanelBodyTransition(body = body) { visibleBody ->
-            when (visibleBody) {
-                RewritePanelBody.HUB -> HubBody(
-                    prompts = prompts,
-                    hubCard = liveHubCard,
-                    onVoice = { voiceController.begin(VoiceRewriteEntryOrigin.REWRITE_HUB) },
-                    onPreset = { prompt -> rewriteManager.rewriteWith(prompt) },
-                )
-                RewritePanelBody.PRESET_GENERATING -> PresetGeneratingBody(
-                    promptName = uiState.activePrompt?.name.orEmpty(),
-                    onCancel = { rewriteManager.cancelGeneration() },
-                )
-                RewritePanelBody.PRESET_RESULT -> PresetResultBody(
-                    promptName = uiState.activePrompt?.name.orEmpty(),
-                    resultText = uiState.resultText.orEmpty(),
-                    onClose = { rewriteManager.backToOptions() },
-                    onRetry = { rewriteManager.tryAgain() },
-                    onInsert = { rewriteManager.insertResult() },
-                )
-                RewritePanelBody.PRESET_DONE -> ReplacedConfirmation(
-                    text = stringRes(R.string.rewrite_panel__state_inserted),
-                )
-                RewritePanelBody.VOICE_TARGETING -> VoiceTargetingBody(
-                    model = voiceModel,
-                    onCancel = { voiceController.cancel() },
-                )
-                RewritePanelBody.VOICE_DISCLOSURE -> VoiceDisclosureBody(
-                    model = voiceModel,
-                    onContinue = { voiceController.acknowledgeDisclosure() },
-                    onOpenSettings = { voiceController.openAiSettings() },
-                    onBack = { voiceController.back() },
-                )
-                RewritePanelBody.VOICE_CAPTURE -> VoiceCaptureBody(
-                    model = voiceModel,
-                    controller = voiceController,
-                )
-                RewritePanelBody.VOICE_PROCESSING -> VoiceProcessingBody(
-                    model = voiceModel,
-                    onCancel = { voiceController.cancel() },
-                )
-                RewritePanelBody.VOICE_RESULT -> VoiceResultBody(
-                    model = voiceModel,
-                    controller = voiceController,
-                )
-                RewritePanelBody.VOICE_RECOVERY -> VoiceRecoveryBody(
-                    model = voiceModel,
-                    controller = voiceController,
-                )
-                RewritePanelBody.VOICE_SUCCESS -> VoiceSuccessBody(
-                    model = voiceModel,
-                    controller = voiceController,
-                )
+    val palette = rememberKeyboardPalette()
+    CompositionLocalProvider(LocalPanelPalette provides palette) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(FlorisImeSizing.keyboardUiHeight())
+                .padding(PanelGap),
+        ) {
+            PanelBodyTransition(body = body) { visibleBody ->
+                when (visibleBody) {
+                    RewritePanelBody.HUB -> HubBody(
+                        prompts = prompts,
+                        hubCard = liveHubCard,
+                        onVoice = { voiceController.begin(VoiceRewriteEntryOrigin.REWRITE_HUB) },
+                        onPreset = { prompt -> rewriteManager.rewriteWith(prompt) },
+                    )
+                    RewritePanelBody.PRESET_GENERATING -> PresetGeneratingBody(
+                        promptName = uiState.activePrompt?.name.orEmpty(),
+                        onCancel = { rewriteManager.cancelGeneration() },
+                    )
+                    RewritePanelBody.PRESET_RESULT -> PresetResultBody(
+                        promptName = uiState.activePrompt?.name.orEmpty(),
+                        resultText = uiState.resultText.orEmpty(),
+                        onClose = { rewriteManager.backToOptions() },
+                        onRetry = { rewriteManager.tryAgain() },
+                        onInsert = { rewriteManager.insertResult() },
+                    )
+                    RewritePanelBody.PRESET_DONE -> ReplacedConfirmation(
+                        text = stringRes(R.string.rewrite_panel__state_inserted),
+                    )
+                    RewritePanelBody.VOICE_TARGETING -> VoiceTargetingBody(
+                        model = voiceModel,
+                        onCancel = { voiceController.cancel() },
+                    )
+                    RewritePanelBody.VOICE_DISCLOSURE -> VoiceDisclosureBody(
+                        model = voiceModel,
+                        onContinue = { voiceController.acknowledgeDisclosure() },
+                        onOpenSettings = { voiceController.openAiSettings() },
+                        onBack = { voiceController.back() },
+                    )
+                    RewritePanelBody.VOICE_CAPTURE -> VoiceCaptureBody(
+                        model = voiceModel,
+                        controller = voiceController,
+                    )
+                    RewritePanelBody.VOICE_PROCESSING -> VoiceProcessingBody(
+                        model = voiceModel,
+                        onCancel = { voiceController.cancel() },
+                    )
+                    RewritePanelBody.VOICE_RESULT -> VoiceResultBody(
+                        model = voiceModel,
+                        controller = voiceController,
+                    )
+                    RewritePanelBody.VOICE_RECOVERY -> VoiceRecoveryBody(
+                        model = voiceModel,
+                        controller = voiceController,
+                    )
+                    RewritePanelBody.VOICE_SUCCESS -> VoiceSuccessBody(
+                        model = voiceModel,
+                        controller = voiceController,
+                    )
+                }
             }
         }
     }
@@ -287,7 +304,11 @@ private fun BoxScope.HubBody(
     onVoice: () -> Unit,
     onPreset: (RewritePromptPreset) -> Unit,
 ) {
-    val rows = remember(prompts) { RewritePromptPresets.hubRows(prompts) }
+    val fontScale = LocalDensity.current.fontScale
+    val columns = if (fontScale > HubTwoColumnFontScale) 2 else RewritePromptPresets.HubColumns
+    val rows = remember(prompts, columns) { RewritePromptPresets.hubRows(prompts, columns) }
+    // Test tags number the cards in display order, because style names are user-editable.
+    val displayOrder = remember(rows) { rows.flatMap { it.prompts } }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -311,9 +332,11 @@ private fun BoxScope.HubBody(
                     PresetGroupCaption(group = row.group)
                     previousGroup = row.group
                 }
+                // Rows grow with large text; the cards in a row share the tallest card's height.
                 Row(
                     modifier = Modifier
-                        .height(PresetRowHeight)
+                        .heightIn(min = PresetRowHeight)
+                        .height(IntrinsicSize.Min)
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(PanelGap),
                 ) {
@@ -323,12 +346,13 @@ private fun BoxScope.HubBody(
                             enabled = hubCard.isAvailable,
                             unavailableReason = hubCard.unavailableReason,
                             modifier = Modifier
+                                .testTag("rewrite-panel-style-${displayOrder.indexOfFirst { it === prompt }}")
                                 .weight(1f)
                                 .fillMaxHeight(),
                             onClick = { onPreset(prompt) },
                         )
                     }
-                    repeat(RewritePromptPresets.HubColumns - row.prompts.size) {
+                    repeat(columns - row.prompts.size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
@@ -346,11 +370,10 @@ private fun PresetGroupCaption(group: RewritePresetGroup) {
                 RewritePresetGroup.TONE -> R.string.rewrite_panel__group_tone
                 RewritePresetGroup.CUSTOM -> R.string.rewrite_panel__group_custom
             },
-        ).uppercase(Locale.getDefault()),
-        modifier = Modifier.padding(start = 4.dp, top = 2.dp),
-        color = OwnkeyBrand.Glass.Hint,
-        fontSize = 10.sp,
-        letterSpacing = 0.8.sp,
+        ),
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+        color = panelPalette().inkSecondary,
+        fontSize = 13.sp,
         fontWeight = FontWeight.Medium,
         maxLines = 1,
     )
@@ -361,15 +384,16 @@ private fun PresetGroupCaption(group: RewritePresetGroup) {
  *
  * It states the resolved scope, names the two configured providers so the data path is visible
  * before first use, and — while an incognito or secure session blocks cloud AI — renders visibly
- * disabled with the reason instead of disappearing or failing silently on tap. It keeps the only
- * icon ring in the hub, so the voice entry is distinct from the text-only preset cards.
+ * disabled with the reason instead of disappearing or failing silently on tap. Its accent mic is
+ * the only icon in the hub, so the voice entry is distinct from the text-only preset cards.
  */
 @Composable
 private fun VoiceInstructionCard(
     state: VoiceRewriteHubCardState,
     onClick: () -> Unit,
 ) {
-    val accentColor = ownkeyAccentColor()
+    val palette = panelPalette()
+    val accent = rememberKeyboardAccent()
     val unavailableText = state.unavailableReason?.text()
     val title = stringRes(R.string.voice_rewrite__card_title)
     val supportingText = when {
@@ -396,15 +420,15 @@ private fun VoiceInstructionCard(
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             .alpha(if (state.isAvailable) 1f else 0.45f)
+            .clip(CardShape)
             .clickable(enabled = state.isAvailable, onClickLabel = title, onClick = onClick)
             .semantics {
                 contentDescription = listOfNotNull(title, supportingText, providerText)
                     .joinToString(separator = ". ")
             },
-        color = OwnkeyBrand.Glass.Key,
-        contentColor = OwnkeyBrand.Glass.Ink,
+        color = palette.key,
+        contentColor = palette.keyInk,
         shape = CardShape,
-        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f)),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -413,29 +437,29 @@ private fun VoiceInstructionCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(MinTouchTarget)
-                    .border(width = 1.dp, color = accentColor.copy(alpha = 0.5f), shape = CircleShape),
+                    .size(40.dp)
+                    .background(color = accent.color, shape = CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                     contentDescription = null,
-                    tint = accentColor,
+                    tint = accent.onColor,
                     modifier = Modifier.size(22.dp),
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = OwnkeyBrand.Glass.Ink,
+                    color = palette.keyInk,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = supportingText,
-                    color = OwnkeyBrand.Glass.InkSoft,
+                    color = palette.inkSecondary,
                     fontSize = 12.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -443,7 +467,7 @@ private fun VoiceInstructionCard(
                 if (providerText != null) {
                     Text(
                         text = providerText,
-                        color = OwnkeyBrand.Glass.InkSoft.copy(alpha = 0.8f),
+                        color = palette.inkSecondary,
                         fontSize = 11.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -454,7 +478,7 @@ private fun VoiceInstructionCard(
     }
 }
 
-/** Text-only preset card. No icon ring, so the voice entry above is the one ringed control. */
+/** Text-only preset card. No icon, so the voice entry above is the one control with a glyph. */
 @Composable
 private fun RewriteOptionCard(
     prompt: RewritePromptPreset,
@@ -464,18 +488,19 @@ private fun RewriteOptionCard(
     onClick: () -> Unit,
 ) {
     val reasonText = unavailableReason?.text()
+    val palette = panelPalette()
     Surface(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.4f)
+            .clip(CardShape)
             .clickable(enabled = enabled, onClickLabel = prompt.name, onClick = onClick)
             .semantics {
                 // Unavailability is announced, not only rendered as a dimmed card.
                 contentDescription = if (reasonText == null) prompt.name else "${prompt.name}. $reasonText"
             },
-        color = OwnkeyBrand.Glass.Key,
-        contentColor = OwnkeyBrand.Glass.Ink,
+        color = palette.key,
+        contentColor = palette.keyInk,
         shape = CardShape,
-        border = BorderStroke(1.dp, OwnkeyBrand.Glass.Ink.copy(alpha = 0.08f)),
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -483,7 +508,7 @@ private fun RewriteOptionCard(
         ) {
             Text(
                 text = prompt.name,
-                color = OwnkeyBrand.Glass.Ink,
+                color = palette.keyInk,
                 fontSize = 14.sp,
                 lineHeight = 17.sp,
                 textAlign = TextAlign.Center,
@@ -542,11 +567,11 @@ private fun BoxScope.VoiceDisclosureBody(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             model.scopeLabel?.let { scope ->
-                Text(text = scope.text(), color = OwnkeyBrand.Glass.InkSoft, fontSize = 12.sp)
+                Text(text = scope.text(), color = panelPalette().inkSecondary, fontSize = 12.sp)
             }
             Text(
                 text = stringRes(if (disclosure?.audioIsLocal == true) R.string.orukeet__rewrite_disclosure else R.string.voice_rewrite__disclosure_body),
-                color = OwnkeyBrand.Glass.InkSoft,
+                color = panelPalette().inkSecondary,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
             )
@@ -624,7 +649,7 @@ private fun BoxScope.VoiceCaptureBody(
                 model.scopeLabel?.let { scope ->
                     Text(
                         text = scope.text(),
-                        color = OwnkeyBrand.Glass.InkSoft,
+                        color = panelPalette().inkSecondary,
                         fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -642,7 +667,7 @@ private fun BoxScope.VoiceCaptureBody(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-            color = ownkeyAccentColor(),
+            color = rememberKeyboardAccent().color,
             barWidth = 5.dp,
             barPitch = 9.dp,
         )
@@ -687,6 +712,8 @@ private fun RecordingTimer(
     val remaining = clock.remainingSeconds
     val timeText = if (remaining != null) "-${remaining}s" else formatRecordingElapsed(clock.elapsedMs)
     val description = stringRes(R.string.voice_recording__elapsed_label, "time" to timeText)
+    val palette = panelPalette()
+    val accent = rememberKeyboardAccent()
     Row(
         modifier = Modifier.semantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
@@ -696,13 +723,14 @@ private fun RecordingTimer(
             modifier = Modifier
                 .size(6.dp)
                 .background(
-                    color = if (paused) OwnkeyBrand.WarningYellow else OwnkeyBrand.SignalOrange,
+                    color = if (paused) palette.inkSecondary else accent.color,
                     shape = CircleShape,
                 ),
         )
+        // Close to the cap the countdown moves from the secondary to the label colour.
         Text(
             text = timeText,
-            color = if (remaining != null) OwnkeyBrand.WarningYellow else OwnkeyBrand.Glass.InkSoft,
+            color = if (remaining != null) palette.keyInk else palette.inkSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -768,7 +796,6 @@ private fun BoxScope.VoiceResultBody(
                     text = VoiceRewriteMessage.EMPTY_RESULT.text(),
                     spinner = false,
                     icon = Icons.Outlined.ErrorOutline,
-                    color = OwnkeyBrand.WarningYellow,
                 )
             }
             ActionRail(RailAction(VoiceRewriteAction.CLOSE, { controller.close() }))
@@ -789,7 +816,6 @@ private fun BoxScope.VoiceResultBody(
                     text = statusMessage.text(),
                     spinner = false,
                     icon = Icons.Outlined.ErrorOutline,
-                    color = OwnkeyBrand.WarningYellow,
                     modifier = Modifier.weight(1f),
                 )
                 instruction != null -> HeardInstruction(
@@ -803,7 +829,7 @@ private fun BoxScope.VoiceResultBody(
             HeaderIconButton(
                 icon = Icons.Default.Close,
                 contentDescription = closeLabel,
-                tint = OwnkeyBrand.Glass.InkSoft,
+                tint = panelPalette().inkSecondary,
                 onClick = { controller.close() },
             )
         }
@@ -859,10 +885,9 @@ private fun BoxScope.VoiceRecoveryBody(
                 text = message.text(),
                 spinner = false,
                 icon = Icons.Outlined.ErrorOutline,
-                color = OwnkeyBrand.WarningYellow,
             )
             model.scopeLabel?.let { scope ->
-                Text(text = scope.text(), color = OwnkeyBrand.Glass.InkSoft, fontSize = 12.sp)
+                Text(text = scope.text(), color = panelPalette().inkSecondary, fontSize = 12.sp)
             }
             model.recognizedInstruction?.let { instruction ->
                 HeardInstruction(instruction = instruction, onEditInstruction = null)
@@ -931,9 +956,11 @@ private fun BoxScope.PresetGeneratingBody(
 @Composable
 private fun generatingLabel(promptName: String): String {
     if (promptName.isBlank()) return stringRes(R.string.rewrite_panel__state_rewriting)
+    // The style name as written, e.g. "Shorter…". "voice" stays for older translations of the string.
     return stringRes(
         R.string.rewrite_panel__state_rewriting_with_voice,
-        "voice" to promptName.lowercase(Locale.getDefault()),
+        "style" to promptName,
+        "voice" to promptName,
     )
 }
 
@@ -959,7 +986,7 @@ private fun BoxScope.PresetResultBody(
             HeaderIconButton(
                 icon = Icons.Default.Close,
                 contentDescription = backLabel,
-                tint = OwnkeyBrand.Glass.InkSoft,
+                tint = panelPalette().inkSecondary,
                 onClick = onClose,
             )
         }
@@ -1008,7 +1035,7 @@ private fun BoxScope.ReplacedConfirmation(text: String) {
             checkScale.animateTo(1f, animationSpec = tween(300, easing = PanelEasing))
         }
     }
-    val accent = ownkeyAccentColor()
+    val accent = rememberKeyboardAccent()
     SessionSheet {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -1022,13 +1049,13 @@ private fun BoxScope.ReplacedConfirmation(text: String) {
                         scaleX = checkScale.value
                         scaleY = checkScale.value
                     }
-                    .background(accent, CircleShape),
+                    .background(accent.color, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = accentForeground(accent),
+                    tint = accent.onColor,
                     modifier = Modifier.size(30.dp),
                 )
             }
@@ -1036,7 +1063,7 @@ private fun BoxScope.ReplacedConfirmation(text: String) {
             Text(
                 text = text,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                color = OwnkeyBrand.Glass.Ink,
+                color = panelPalette().keyInk,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -1044,20 +1071,23 @@ private fun BoxScope.ReplacedConfirmation(text: String) {
     }
 }
 
-/** The single sheet every non-hub body renders in; it fills the panel frame and never overlaps it. */
+/**
+ * The single sheet every non-hub body renders in; it fills the panel frame and never overlaps it. It is
+ * a key-coloured card on the keyboard background, with no outline.
+ */
 @Composable
 private fun BoxScope.SessionSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val palette = panelPalette()
     Surface(
         modifier = Modifier
             .fillMaxSize()
             .widthIn(max = SheetMaxWidth)
             .align(Alignment.TopCenter),
-        color = OwnkeyBrand.Glass.Sheet,
-        contentColor = OwnkeyBrand.Glass.Ink,
+        color = palette.key,
+        contentColor = palette.keyInk,
         shape = CardShape,
-        border = BorderStroke(1.dp, OwnkeyBrand.Glass.Ink.copy(alpha = 0.08f)),
     ) {
         Column(
             modifier = Modifier
@@ -1069,13 +1099,13 @@ private fun BoxScope.SessionSheet(
     }
 }
 
+/** Small sentence-case label above a sheet's content. */
 @Composable
 private fun SheetEyebrow(text: String) {
     Text(
-        text = text.uppercase(Locale.getDefault()),
-        color = ownkeyAccentColor(),
-        fontSize = 11.sp,
-        letterSpacing = 0.6.sp,
+        text = text,
+        color = panelPalette().inkSecondary,
+        fontSize = 13.sp,
         fontWeight = FontWeight.Medium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -1089,8 +1119,9 @@ private fun StatusLine(
     spinner: Boolean,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    color: Color = OwnkeyBrand.Glass.Ink,
+    color: Color = panelPalette().keyInk,
 ) {
+    val accent = rememberKeyboardAccent()
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -1100,8 +1131,8 @@ private fun StatusLine(
             spinner -> CircularProgressIndicator(
                 modifier = Modifier.size(18.dp),
                 strokeWidth = 2.5.dp,
-                color = ownkeyAccentColor(),
-                trackColor = OwnkeyBrand.Glass.Ink.copy(alpha = 0.12f),
+                color = accent.color,
+                trackColor = color.copy(alpha = 0.12f),
             )
             icon != null -> Icon(
                 imageVector = icon,
@@ -1152,16 +1183,15 @@ private fun HeardInstruction(
                 .semantics { contentDescription = heardDescription },
         ) {
             Text(
-                text = stringRes(R.string.voice_rewrite__heard_label).uppercase(Locale.getDefault()),
-                color = OwnkeyBrand.Glass.Hint,
-                fontSize = 10.sp,
-                letterSpacing = 0.8.sp,
+                text = stringRes(R.string.voice_rewrite__heard_label),
+                color = panelPalette().inkSecondary,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
             )
             Text(
                 text = "“$instruction”",
-                color = OwnkeyBrand.Glass.InkSoft,
+                color = panelPalette().keyInk,
                 fontSize = 13.sp,
                 lineHeight = 17.sp,
                 maxLines = if (expanded) Int.MAX_VALUE else 2,
@@ -1172,9 +1202,9 @@ private fun HeardInstruction(
             HeaderIconButton(
                 icon = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                 contentDescription = "$editLabel. $editDescription",
-                tint = ownkeyAccentColor(),
+                tint = rememberKeyboardAccent().color,
                 onClick = onEditInstruction,
-                outlined = true,
+                filled = true,
             )
         }
     }
@@ -1186,18 +1216,14 @@ private fun HeaderIconButton(
     contentDescription: String,
     tint: Color,
     onClick: () -> Unit,
-    outlined: Boolean = false,
+    filled: Boolean = false,
 ) {
+    val fill = if (filled) panelPalette().keyPressed else Color.Transparent
     Box(
         modifier = Modifier
             .size(HeaderControlSize)
-            .then(
-                if (outlined) {
-                    Modifier.border(1.dp, tint.copy(alpha = 0.5f), CircleShape)
-                } else {
-                    Modifier
-                },
-            )
+            .clip(CircleShape)
+            .background(fill, CircleShape)
             .clickable(onClickLabel = contentDescription, onClick = onClick)
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
@@ -1215,10 +1241,13 @@ private enum class RailEmphasis {
     /** Cancel, Stop-adjacent, navigation, retry: readable but not the commit action. */
     NEUTRAL,
 
-    /** Stop: neutral in colour, prominent through a high-contrast fill and its glyph. */
+    /** Stop: neutral in colour, prominent through the label-colour fill and its glyph. */
     STRONG,
 
-    /** The one committing action of a state, such as Replace. */
+    /**
+     * The one committing action of a state, such as Replace: the primary label-colour pill. Text never
+     * sits on the accent, so this is drawn like [STRONG]; it also takes more of the rail's width.
+     */
     ACCENT,
 }
 
@@ -1263,26 +1292,22 @@ private fun RailButton(
 ) {
     val label = rail.label ?: rail.action.label()
     val description = rail.description ?: label
-    val accent = ownkeyAccentColor()
+    val palette = panelPalette()
+    // Inside the key-coloured sheet, secondary pills step up to the pressed-key fill.
     val (background, foreground) = when (rail.emphasis) {
-        RailEmphasis.NEUTRAL -> OwnkeyBrand.Glass.Key to OwnkeyBrand.Glass.Ink
-        RailEmphasis.STRONG -> OwnkeyBrand.Glass.Ink to OwnkeyBrand.Glass.Stage
-        RailEmphasis.ACCENT -> accent to accentForeground(accent)
+        RailEmphasis.NEUTRAL -> palette.keyPressed to palette.keyInk
+        RailEmphasis.STRONG, RailEmphasis.ACCENT -> palette.pill to palette.onPill
     }
     Surface(
         modifier = modifier
             .heightIn(min = MinTouchTarget)
             .fillMaxHeight()
+            .clip(PillShape)
             .clickable(onClickLabel = description, onClick = rail.onClick)
             .semantics { contentDescription = description },
         color = background,
         contentColor = foreground,
-        shape = CardShape,
-        border = if (rail.emphasis == RailEmphasis.NEUTRAL) {
-            BorderStroke(1.dp, OwnkeyBrand.Glass.Ink.copy(alpha = 0.10f))
-        } else {
-            null
-        },
+        shape = PillShape,
     ) {
         Row(
             modifier = Modifier
@@ -1313,11 +1338,3 @@ private fun RailButton(
         }
     }
 }
-
-/**
- * Ink on the user-configurable accent. White stays the brand default on dark accents; a light
- * accent (yellow, mint, pale blue) switches to dark ink so Replace and the replaced check remain
- * readable instead of washing out.
- */
-private fun accentForeground(accent: Color): Color =
-    if (accent.luminance() > 0.4f) OwnkeyBrand.Glass.Stage else OwnkeyBrand.Glass.Ink

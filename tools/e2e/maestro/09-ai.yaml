@@ -1,0 +1,173 @@
+# AI without real keys. Cloud dictation is disabled without a key and opens the key dialog; a
+# FAKE key is typed and the dialog is cancelled (Save is never tapped). The rewrite provider
+# sheet opens and closes. A rewrite style is added, edited and deleted.
+# Never taps Download, Delete model or anything that records audio.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 09 AI settings
+tags: [settings, ai]
+---
+- runFlow: helpers/open-home.yaml
+- tapOn:
+    id: home-ai
+- extendedWaitUntil:
+    visible:
+      id: dictation-option-cloud
+    timeout: 15000
+- assertVisible: "Dictation"
+- assertVisible:
+    id: dictation-option-orukeet
+- assertVisible:
+    id: dictation-option-external
+- assertVisible:
+    id: ai-dictionary
+- takeScreenshot: 09-ai-top
+
+# Precondition: no cloud dictation key on this device.
+- scrollUntilVisible:
+    element:
+      id: ai-cloud-key
+    direction: DOWN
+    centerElement: true
+- assertVisible: "Cloud dictation"
+- assertVisible:
+    id: ai-cloud-key
+    containsChild: "Not set"
+
+# Cloud can't be picked yet and says why; tapping it opens the key dialog.
+- scrollUntilVisible:
+    element:
+      id: dictation-option-cloud
+    direction: UP
+    centerElement: true
+- assertVisible: "Add a key below first"
+- tapOn:
+    id: dictation-option-cloud
+- extendedWaitUntil:
+    visible: "Dictation API key"
+    timeout: 5000
+- assertVisible: "Stored encrypted on this phone. You can't view it after saving."
+- assertVisible:
+    id: dialog-confirm
+- tapOn:
+    id: ai-key-field
+- inputText: "fake-e2e-key-not-real"
+- assertNotVisible: "fake-e2e-key-not-real"
+- takeScreenshot: 09-ai-key-dialog-fake-key
+- hideKeyboard
+- tapOn:
+    id: dialog-dismiss
+- assertNotVisible: "Dictation API key"
+- assertVisible: "Add a key below first"
+- assertVisible:
+    id: dictation-option-cloud
+    checked: false
+
+# Sections further down.
+- scrollUntilVisible:
+    element:
+      id: ai-rewrite-provider
+    direction: DOWN
+    centerElement: true
+- assertVisible:
+    id: ai-cloud-key
+    containsChild: "Not set"
+- assertVisible:
+    id: ai-cloud-language
+- assertVisible:
+    id: ai-cloud-provider
+- assertVisible: "Rewrite"
+- takeScreenshot: 09-ai-cloud-and-rewrite
+
+# Rewrite provider sheet opens and closes without a change.
+- tapOn:
+    id: ai-rewrite-provider
+- extendedWaitUntil:
+    visible: "Rewrite provider"
+    timeout: 5000
+- assertVisible: "OpenAI"
+- assertVisible: "Anthropic"
+- assertVisible: "Any OpenAI-compatible server."
+- takeScreenshot: 09-ai-rewrite-provider-sheet
+- back
+- assertNotVisible: "Rewrite provider"
+- assertVisible:
+    id: ai-rewrite-provider
+
+# Rewrite styles: clear leftovers from an interrupted run, then add, edit and delete a style.
+- scrollUntilVisible:
+    element:
+      id: ai-rewrite-styles
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: ai-rewrite-styles
+- extendedWaitUntil:
+    visible:
+      id: rewrite-style-add
+    timeout: 10000
+- assertVisible: "Rewrite styles"
+- repeat:
+    while:
+      visible: "E2E style.*"
+    commands:
+      - tapOn: "E2E style.*"
+      - tapOn:
+          id: dialog-neutral
+- takeScreenshot: 09-rewrite-styles
+
+- tapOn:
+    id: rewrite-style-add
+- extendedWaitUntil:
+    visible: "New style"
+    timeout: 5000
+- tapOn:
+    id: rewrite-style-name
+- eraseText: 30
+- inputText: "E2E style"
+- tapOn:
+    id: rewrite-style-instruction
+- inputText: "Reply in one short sentence."
+- hideKeyboard
+- takeScreenshot: 09-rewrite-style-new
+- tapOn:
+    id: dialog-confirm
+- extendedWaitUntil:
+    visible: "E2E style"
+    timeout: 5000
+- assertVisible: "Reply in one short sentence."
+
+- tapOn: "E2E style"
+- extendedWaitUntil:
+    visible: "Edit style"
+    timeout: 5000
+- tapOn:
+    id: rewrite-style-name
+- eraseText: 30
+- inputText: "E2E style edited"
+- hideKeyboard
+- tapOn:
+    id: dialog-confirm
+- extendedWaitUntil:
+    visible: "E2E style edited"
+    timeout: 5000
+- assertNotVisible: "E2E style"
+
+- tapOn: "E2E style edited"
+- extendedWaitUntil:
+    visible: "Edit style"
+    timeout: 5000
+- tapOn:
+    id: dialog-neutral
+- assertNotVisible: "Edit style"
+- assertNotVisible: "E2E style.*"
+- back
+# Back from Rewrite styles returns to where you left AI: the screen keeps its scroll offset,
+# so the Styles row is still on screen. The scroll below is a no-op when it is.
+- extendedWaitUntil:
+    visible:
+      id: ai-rewrite-styles
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: ai-rewrite-styles
+    direction: DOWN

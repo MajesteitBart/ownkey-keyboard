@@ -354,21 +354,18 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
         listPrefEntries {
             entry(
                 key = IncognitoMode.FORCE_OFF,
-                label = stringRes(R.string.enum__incognito_mode__force_off),
-                description = stringRes(R.string.enum__incognito_mode__force_off__description),
-                showDescriptionOnlyIfSelected = true,
+                label = stringRes(R.string.settings__privacy__incognito_off),
+                description = stringRes(R.string.settings__privacy__incognito_off_summary),
             )
             entry(
                 key = IncognitoMode.DYNAMIC_ON_OFF,
-                label = stringRes(R.string.enum__incognito_mode__dynamic_on_off),
-                description = stringRes(R.string.enum__incognito_mode__dynamic_on_off__description),
-                showDescriptionOnlyIfSelected = true,
+                label = stringRes(R.string.settings__privacy__incognito_automatic),
+                description = stringRes(R.string.settings__privacy__incognito_automatic_summary),
             )
             entry(
                 key = IncognitoMode.FORCE_ON,
-                label = stringRes(R.string.enum__incognito_mode__force_on),
-                description = stringRes(R.string.enum__incognito_mode__force_on__description),
-                showDescriptionOnlyIfSelected = true,
+                label = stringRes(R.string.settings__privacy__incognito_always),
+                description = stringRes(R.string.settings__privacy__incognito_always_summary),
             )
         }
     },
@@ -645,103 +642,118 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
         listPrefEntries {
             entry(
                 key = SwipeAction.NO_ACTION,
-                label = stringRes(R.string.enum__swipe_action__no_action),
-            )
-            entry(
-                key = SwipeAction.CYCLE_TO_PREVIOUS_KEYBOARD_MODE,
-                label = stringRes(R.string.enum__swipe_action__cycle_to_previous_keyboard_mode),
-            )
-            entry(
-                key = SwipeAction.CYCLE_TO_NEXT_KEYBOARD_MODE,
-                label = stringRes(R.string.enum__swipe_action__cycle_to_next_keyboard_mode),
-            )
-            entry(
-                key = SwipeAction.DELETE_WORD,
-                label = stringRes(R.string.enum__swipe_action__delete_word),
-            )
-            entry(
-                key = SwipeAction.HIDE_KEYBOARD,
-                label = stringRes(R.string.enum__swipe_action__hide_keyboard),
-            )
-            entry(
-                key = SwipeAction.INSERT_SPACE,
-                label = stringRes(R.string.enum__swipe_action__insert_space),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_UP,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_up),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_DOWN,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_down),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_LEFT,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_left),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_RIGHT,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_right),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_START_OF_LINE,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_start_of_line),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_END_OF_LINE,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_end_of_line),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_START_OF_PAGE,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_start_of_page),
-            )
-            entry(
-                key = SwipeAction.MOVE_CURSOR_END_OF_PAGE,
-                label = stringRes(R.string.enum__swipe_action__move_cursor_end_of_page),
+                label = stringRes(R.string.settings__keyboard__gesture_none),
             )
             entry(
                 key = SwipeAction.SHIFT,
-                label = stringRes(R.string.enum__swipe_action__shift),
+                label = stringRes(R.string.settings__keyboard__gesture_shift),
             )
             entry(
-                key = SwipeAction.REDO,
-                label = stringRes(R.string.enum__swipe_action__redo),
-            )
-            entry(
-                key = SwipeAction.UNDO,
-                label = stringRes(R.string.enum__swipe_action__undo),
-            )
-            entry(
-                key = SwipeAction.SWITCH_TO_CLIPBOARD_CONTEXT,
-                label = stringRes(R.string.enum__swipe_action__switch_to_clipboard_context),
-            )
-            entry(
-                key = SwipeAction.SWITCH_TO_MEDIA_CONTEXT,
-                label = stringRes(R.string.enum__swipe_action__switch_to_media_context)
-            )
-            entry(
-                key = SwipeAction.SHOW_INPUT_METHOD_PICKER,
-                label = stringRes(R.string.enum__swipe_action__show_input_method_picker),
-            )
-            entry(
-                key = SwipeAction.SHOW_SUBTYPE_PICKER,
-                label = "Show subtype picker"
-            )
-            entry(
-                key = SwipeAction.SWITCH_TO_PREV_SUBTYPE,
-                label = stringRes(R.string.enum__swipe_action__switch_to_prev_subtype),
+                key = SwipeAction.HIDE_KEYBOARD,
+                label = stringRes(R.string.settings__keyboard__gesture_hide_keyboard),
             )
             entry(
                 key = SwipeAction.SWITCH_TO_NEXT_SUBTYPE,
-                label = stringRes(R.string.enum__swipe_action__switch_to_next_subtype),
+                label = stringRes(R.string.settings__keyboard__gesture_next_language),
+                description = stringRes(R.string.settings__keyboard__gesture_next_language_description),
+            )
+            entry(
+                key = SwipeAction.SWITCH_TO_PREV_SUBTYPE,
+                label = stringRes(R.string.settings__keyboard__gesture_previous_language),
+                description = stringRes(R.string.settings__keyboard__gesture_previous_language_description),
+            )
+            entry(
+                key = SwipeAction.SHOW_SUBTYPE_PICKER,
+                label = stringRes(R.string.settings__keyboard__gesture_choose_language),
+                description = stringRes(R.string.settings__keyboard__gesture_choose_language_description),
+            )
+            entry(
+                key = SwipeAction.SHOW_INPUT_METHOD_PICKER,
+                label = stringRes(R.string.settings__keyboard__gesture_choose_keyboard),
+                description = stringRes(R.string.settings__keyboard__gesture_choose_keyboard_description),
             )
             entry(
                 key = SwipeAction.SWITCH_TO_PREV_KEYBOARD,
-                label = stringRes(R.string.enum__swipe_action__switch_to_prev_keyboard),
+                label = stringRes(R.string.settings__keyboard__gesture_last_keyboard),
+                description = stringRes(R.string.settings__keyboard__gesture_last_keyboard_description),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_LEFT,
+                label = stringRes(R.string.settings__keyboard__gesture_cursor_left),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_RIGHT,
+                label = stringRes(R.string.settings__keyboard__gesture_cursor_right),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_UP,
+                label = stringRes(R.string.settings__keyboard__gesture_cursor_up),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_DOWN,
+                label = stringRes(R.string.settings__keyboard__gesture_cursor_down),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_START_OF_LINE,
+                label = stringRes(R.string.settings__keyboard__gesture_start_of_line),
+                description = stringRes(R.string.settings__keyboard__gesture_start_of_line_description),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_END_OF_LINE,
+                label = stringRes(R.string.settings__keyboard__gesture_end_of_line),
+                description = stringRes(R.string.settings__keyboard__gesture_end_of_line_description),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_START_OF_PAGE,
+                label = stringRes(R.string.settings__keyboard__gesture_start_of_text),
+                description = stringRes(R.string.settings__keyboard__gesture_start_of_text_description),
+            )
+            entry(
+                key = SwipeAction.MOVE_CURSOR_END_OF_PAGE,
+                label = stringRes(R.string.settings__keyboard__gesture_end_of_text),
+                description = stringRes(R.string.settings__keyboard__gesture_end_of_text_description),
+            )
+            entry(
+                key = SwipeAction.INSERT_SPACE,
+                label = stringRes(R.string.settings__keyboard__gesture_insert_space),
+            )
+            entry(
+                key = SwipeAction.DELETE_WORD,
+                label = stringRes(R.string.settings__keyboard__gesture_delete_word),
+                description = stringRes(R.string.settings__keyboard__gesture_delete_word_description),
+            )
+            entry(
+                key = SwipeAction.UNDO,
+                label = stringRes(R.string.settings__keyboard__gesture_undo),
+            )
+            entry(
+                key = SwipeAction.REDO,
+                label = stringRes(R.string.settings__keyboard__gesture_redo),
+            )
+            entry(
+                key = SwipeAction.SWITCH_TO_CLIPBOARD_CONTEXT,
+                label = stringRes(R.string.settings__keyboard__gesture_clipboard),
+                description = stringRes(R.string.settings__keyboard__gesture_clipboard_description),
+            )
+            entry(
+                key = SwipeAction.SWITCH_TO_MEDIA_CONTEXT,
+                label = stringRes(R.string.settings__keyboard__gesture_emoji),
+                description = stringRes(R.string.settings__keyboard__gesture_emoji_description),
+            )
+            entry(
+                key = SwipeAction.CYCLE_TO_NEXT_KEYBOARD_MODE,
+                label = stringRes(R.string.settings__keyboard__gesture_next_page),
+                description = stringRes(R.string.settings__keyboard__gesture_next_page_description),
+            )
+            entry(
+                key = SwipeAction.CYCLE_TO_PREVIOUS_KEYBOARD_MODE,
+                label = stringRes(R.string.settings__keyboard__gesture_previous_page),
+                description = stringRes(R.string.settings__keyboard__gesture_previous_page_description),
             )
             entry(
                 key = SwipeAction.TOGGLE_SMARTBAR_VISIBILITY,
-                label = stringRes(R.string.enum__swipe_action__toggle_smartbar_visibility),
+                label = stringRes(R.string.settings__keyboard__gesture_toggle_toolbar),
+                description = stringRes(R.string.settings__keyboard__gesture_toggle_toolbar_description),
             )
         }
     },
@@ -749,27 +761,32 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
         listPrefEntries {
             entry(
                 key = SwipeAction.NO_ACTION,
-                label = stringRes(R.string.enum__swipe_action__no_action),
+                label = stringRes(R.string.settings__keyboard__gesture_none),
             )
             entry(
                 key = SwipeAction.DELETE_CHARACTERS_PRECISELY,
-                label = stringRes(R.string.enum__swipe_action__delete_characters_precisely),
-            )
-            entry(
-                key = SwipeAction.DELETE_WORD,
-                label = stringRes(R.string.enum__swipe_action__delete_word),
+                label = stringRes(R.string.settings__keyboard__gesture_delete_characters),
+                description = stringRes(R.string.settings__keyboard__gesture_delete_characters_description),
             )
             entry(
                 key = SwipeAction.DELETE_WORDS_PRECISELY,
-                label = stringRes(R.string.enum__swipe_action__delete_words_precisely),
+                label = stringRes(R.string.settings__keyboard__gesture_delete_words),
+                description = stringRes(R.string.settings__keyboard__gesture_delete_words_description),
+            )
+            entry(
+                key = SwipeAction.DELETE_WORD,
+                label = stringRes(R.string.settings__keyboard__gesture_delete_word),
+                description = stringRes(R.string.settings__keyboard__gesture_delete_word_description),
             )
             entry(
                 key = SwipeAction.SELECT_CHARACTERS_PRECISELY,
-                label = stringRes(R.string.enum__swipe_action__select_characters_precisely),
+                label = stringRes(R.string.settings__keyboard__gesture_select_characters),
+                description = stringRes(R.string.settings__keyboard__gesture_select_characters_description),
             )
             entry(
                 key = SwipeAction.SELECT_WORDS_PRECISELY,
-                label = stringRes(R.string.enum__swipe_action__select_words_precisely),
+                label = stringRes(R.string.settings__keyboard__gesture_select_words),
+                description = stringRes(R.string.settings__keyboard__gesture_select_words_description),
             )
         }
     },
@@ -777,11 +794,13 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
         listPrefEntries {
             entry(
                 key = SwipeAction.DELETE_CHARACTER,
-                label = stringRes(R.string.enum__swipe_action__delete_character),
+                label = stringRes(R.string.settings__keyboard__gesture_hold_characters),
+                description = stringRes(R.string.settings__keyboard__gesture_hold_characters_description),
             )
             entry(
                 key = SwipeAction.DELETE_WORD,
-                label = stringRes(R.string.enum__swipe_action__delete_word),
+                label = stringRes(R.string.settings__keyboard__gesture_hold_words),
+                description = stringRes(R.string.settings__keyboard__gesture_hold_words_description),
             )
         }
     },

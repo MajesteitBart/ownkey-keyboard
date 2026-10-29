@@ -1,0 +1,97 @@
+# About: seven taps on the version turn on developer tools, then Devtools turns them off again.
+# Debug builds always show the Developer tools row, so the switch state is what's checked.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 08 About and developer tools
+tags: [settings, about]
+---
+- runFlow: helpers/open-home.yaml
+- scrollUntilVisible:
+    element:
+      id: home-about
+    direction: DOWN
+- tapOn:
+    id: home-about
+- extendedWaitUntil:
+    visible:
+      id: about-version
+    timeout: 10000
+- assertVisible: "Version .*"
+- assertVisible:
+    id: about-license
+- assertVisible:
+    id: about-third-party
+- takeScreenshot: 08-about
+
+# Start with developer tools off.
+- tapOn:
+    id: about-devtools
+- extendedWaitUntil:
+    visible:
+      id: devtools-enabled
+    timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: devtools-enabled
+        checked: true
+    commands:
+      - tapOn:
+          id: devtools-enabled
+- assertVisible:
+    id: devtools-enabled
+    checked: false
+- back
+- extendedWaitUntil:
+    visible:
+      id: about-version
+    timeout: 5000
+
+# Seven quick taps.
+- tapOn:
+    id: about-version
+    repeat: 7
+    delay: 150
+    retryTapIfNoChange: false
+- takeScreenshot: 08-about-devtools-toast
+- tapOn:
+    id: about-devtools
+- extendedWaitUntil:
+    visible:
+      id: devtools-enabled
+    timeout: 10000
+- assertVisible:
+    id: devtools-enabled
+    checked: true
+- assertVisible: "Tools"
+- takeScreenshot: 08-devtools-on
+
+# Turn them off again.
+- tapOn:
+    id: devtools-enabled
+- assertVisible:
+    id: devtools-enabled
+    checked: false
+- assertNotVisible: "Tools"
+- back
+- extendedWaitUntil:
+    visible:
+      id: about-version
+    timeout: 5000
+
+# Licenses open.
+- tapOn:
+    id: about-license
+- extendedWaitUntil:
+    visible: "Ownkey license"
+    timeout: 10000
+- back
+- tapOn:
+    id: about-third-party
+- extendedWaitUntil:
+    visible: "Third-party licenses"
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: about-version
+    timeout: 5000

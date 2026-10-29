@@ -137,7 +137,7 @@ class LlmRewriteManager(
             return
         }
         if (!secretsStore.hasApiKey()) {
-            appContext.showShortToastSync("Add an LLM API key in Settings → AI")
+            appContext.showShortToastSync(R.string.ime__rewrite__needs_key)
             return
         }
 
@@ -206,7 +206,7 @@ class LlmRewriteManager(
             val selected = editorInstance.setSelection(target.start, target.end)
             val committed = selected && editorInstance.commitText(resultText)
             if (!committed) {
-                appContext.showShortToastSync("Could not replace text")
+                appContext.showShortToastSync(R.string.ime__rewrite__replace_failed)
                 _uiStateFlow.value = state.copy(step = RewriteStep.RESULT)
                 return@launch
             }
@@ -285,7 +285,7 @@ class LlmRewriteManager(
             if (error is CancellationException) throw error
             abandonTarget()
             _uiStateFlow.value = RewriteUiState()
-            appContext.showShortToastSync(error.message ?: "Rewrite failed")
+            appContext.showShortToastSync(error.message ?: appContext.getString(R.string.ime__rewrite__failed))
             return
         }.trim()
 

@@ -75,6 +75,8 @@ import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.ext.FONTS
 import dev.patrickgold.florisboard.app.ext.IMAGES
+import dev.patrickgold.florisboard.app.ui.OwnkeyButtonStyle
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
 import dev.patrickgold.florisboard.lib.ValidationResult
 import dev.patrickgold.florisboard.lib.cache.CacheManager
 import dev.patrickgold.florisboard.lib.compose.Validation
@@ -82,7 +84,6 @@ import dev.patrickgold.florisboard.lib.ext.ExtensionValidation
 import dev.patrickgold.florisboard.lib.rememberValidationResult
 import dev.patrickgold.jetpref.material.ui.ColorRepresentation
 import dev.patrickgold.jetpref.material.ui.ExperimentalJetPrefMaterial3Ui
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import dev.patrickgold.jetpref.material.ui.JetPrefColorPicker
 import dev.patrickgold.jetpref.material.ui.JetPrefDropdown
 import dev.patrickgold.jetpref.material.ui.JetPrefListItem
@@ -132,6 +133,8 @@ import org.florisboard.lib.snygg.value.SnyggUndefinedValue
 import org.florisboard.lib.snygg.value.SnyggUriValue
 import org.florisboard.lib.snygg.value.SnyggValue
 import org.florisboard.lib.snygg.value.SnyggValueEncoder
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.OwnkeyTextFieldDefaults
 
 internal val SnyggEmptyPropertyInfoForAdding = PropertyInfo(
     rule = SnyggEmptyRuleForAdding,
@@ -242,7 +245,7 @@ internal fun EditPropertyDialog(
         return propertyValue.let { it.encoder().serialize(it).isSuccess }
     }
 
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         title = stringRes(
             if (isAddPropertyDialog) {
                 R.string.settings__theme_editor__add_property
@@ -274,16 +277,14 @@ internal fun EditPropertyDialog(
             null
         },
         onNeutral = onDelete,
-        neutralColors = ButtonDefaults.textButtonColors(
-            contentColor = MaterialTheme.colorScheme.error,
-        ),
+        neutralStyle = OwnkeyButtonStyle.Destructive,
     ) {
         Column {
             AnimatedVisibility(visible = showAlreadyExistsError) {
                 Text(
                     modifier = Modifier.padding(bottom = 16.dp),
                     text = stringRes(R.string.settings__theme_editor__property_already_exists),
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                 )
             }
 
@@ -354,6 +355,7 @@ private fun PropertyNameInput(
             possiblePropertyNames.indexOf(name).coerceIn(possiblePropertyNames.indices)
         }
         JetPrefDropdown(
+            appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
             options = possiblePropertyLabels,
             selectedOptionIndex = propertiesSelectedIndex,
             onSelectOption = { index ->
@@ -365,6 +367,7 @@ private fun PropertyNameInput(
     } else {
         val focusManager = LocalFocusManager.current
         JetPrefTextField(
+            appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
             value = name,
             onValueChange = onNameChange,
             enabled = isAddPropertyDialog,
@@ -397,6 +400,7 @@ private fun PropertyValueEncoderDropdown(
     }
     val context = LocalContext.current
     JetPrefDropdown(
+        appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
         options = encoders,
         selectedOptionIndex = selectedIndex,
         onSelectOption = { index ->
@@ -432,6 +436,7 @@ private fun PropertyValueEditor(
             }
             Row(modifier, verticalAlignment = Alignment.CenterVertically) {
                 JetPrefDropdown(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier
                         .padding(end = 12.dp)
                         .weight(1f),
@@ -478,6 +483,7 @@ private fun PropertyValueEditor(
             }
             Row(modifier, verticalAlignment = Alignment.CenterVertically) {
                 JetPrefDropdown(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier
                         .padding(end = 12.dp)
                         .weight(1f),
@@ -525,6 +531,7 @@ private fun PropertyValueEditor(
             }
             Row(modifier, verticalAlignment = Alignment.CenterVertically) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.weight(1f),
                     value = sizeStr,
                     onValueChange = { value ->
@@ -549,6 +556,7 @@ private fun PropertyValueEditor(
             }
             Row(modifier, verticalAlignment = Alignment.CenterVertically) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.weight(1f),
                     value = sizeStr,
                     onValueChange = { value ->
@@ -572,6 +580,7 @@ private fun PropertyValueEditor(
             }
             Row(modifier, verticalAlignment = Alignment.CenterVertically) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.weight(1f),
                     value = sizeStr,
                     onValueChange = { value ->
@@ -606,6 +615,7 @@ private fun PropertyValueEditor(
                 mutableStateOf(value.encoder().serialize(value).getOrDefault("???"))
             }
             JetPrefTextField(
+                appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                 value = inputStr,
                 onValueChange = { newInputStr ->
                     inputStr = newInputStr
@@ -642,14 +652,14 @@ private fun PropertyValueEditor(
                             headlineContent = {
                                 Text(
                                     text = title,
-                                    color = MaterialTheme.colorScheme.secondary,
+                                    color = OwnkeyTokens.Secondary,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                             },
                             colors = ListItemDefaults.colors(
-                                containerColor = AlertDialogDefaults.containerColor
+                                containerColor = OwnkeyTokens.Card
                             ),
                         )
                         files.forEach { file ->
@@ -662,12 +672,12 @@ private fun PropertyValueEditor(
                                 },
                                 text = file.name,
                                 colors = ListItemDefaults.colors(
-                                    containerColor = AlertDialogDefaults.containerColor
+                                    containerColor = OwnkeyTokens.Card
                                 ),
                             )
                         }
                     }
-                    JetPrefAlertDialog(
+                    OwnkeyDialog(
                         title = stringRes(R.string.settings__theme_editor__file_selector_dialog_title),
                         dismissLabel = stringRes(R.string.action__cancel),
                         onDismiss = {
@@ -695,6 +705,7 @@ private fun PropertyValueEditor(
                     }
                 }
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = inputStr,
                     onValueChange = {},
                     isError = isError,
@@ -703,6 +714,7 @@ private fun PropertyValueEditor(
                         FlorisIconButton(
                             onClick = { showSelectFileDialog = true },
                             icon = Icons.AutoMirrored.Filled.ManageSearch,
+                            contentDescription = stringRes(R.string.action__select_file),
                         )
                     },
                 )
@@ -728,6 +740,7 @@ private fun <T> EnumLikeValueEditor(
     }
 
     JetPrefDropdown(
+        appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
         modifier = modifier,
         options = options,
         selectedOptionIndex = selectedIndex,
@@ -760,6 +773,7 @@ private fun CustomFontFamilyValueEditor(
     }
 
     JetPrefDropdown(
+        appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
         modifier = modifier,
         options = options,
         selectedOptionIndex = selectedIndex,
@@ -860,9 +874,9 @@ private fun PaddingValueEditor(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(OwnkeyTokens.Raised)
                     .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.inversePrimary),
+                    .background(OwnkeyTokens.Secondary),
             )
             DpChip(
                 onClick = {
@@ -893,7 +907,7 @@ private fun PaddingValueEditor(
             mutableStateOf(showDialogInitDp.value.toStringWithoutDotZero())
         }
         val sizeValidation = rememberValidationResult(ExtensionValidation.SnyggDpShapeValue, size)
-        JetPrefAlertDialog(
+        OwnkeyDialog(
             title = dialogForPaddingValue.label(),
             confirmLabel = stringRes(R.string.action__apply),
             onConfirm = {
@@ -917,6 +931,7 @@ private fun PaddingValueEditor(
         ) {
             Column {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = size,
                     onValueChange = { size = it },
                 )
@@ -1018,7 +1033,7 @@ private fun ShapeValueEditor(
                 Box(
                     modifier = Modifier
                         .requiredSize(40.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.onBackground, shape),
+                        .border(1.dp, OwnkeyTokens.Outline, shape),
                 )
                 Column {
                     FlorisChip(
@@ -1046,7 +1061,7 @@ private fun ShapeValueEditor(
                     mutableStateOf(showDialogInitDp.value.toStringWithoutDotZero())
                 }
                 val sizeValidation = rememberValidationResult(ExtensionValidation.SnyggDpShapeValue, size)
-                JetPrefAlertDialog(
+                OwnkeyDialog(
                     title = dialogForCorner.label(),
                     confirmLabel = stringRes(R.string.action__apply),
                     onConfirm = {
@@ -1070,6 +1085,7 @@ private fun ShapeValueEditor(
                 ) {
                     Column {
                         JetPrefTextField(
+                            appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                             value = size,
                             onValueChange = { size = it },
                         )
@@ -1164,7 +1180,7 @@ private fun ShapeValueEditor(
                 Box(
                     modifier = Modifier
                         .requiredSize(40.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.onBackground, shape),
+                        .border(1.dp, OwnkeyTokens.Outline, shape),
                 )
                 Column {
                     FlorisChip(
@@ -1192,7 +1208,7 @@ private fun ShapeValueEditor(
                     mutableStateOf(showDialogInitPercentage.toString())
                 }
                 val sizeValidation = rememberValidationResult(ExtensionValidation.SnyggPercentShapeValue, size)
-                JetPrefAlertDialog(
+                OwnkeyDialog(
                     title = dialogForCorner.label(),
                     confirmLabel = stringRes(R.string.action__apply),
                     onConfirm = {
@@ -1217,6 +1233,7 @@ private fun ShapeValueEditor(
                 ) {
                     Column {
                         JetPrefTextField(
+                            appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                             value = size,
                             onValueChange = { size = it },
                         )
@@ -1250,7 +1267,7 @@ private fun ShapeValueEditor(
                 Box(
                     modifier = Modifier
                         .requiredSize(40.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.onBackground, value.shape),
+                        .border(1.dp, OwnkeyTokens.Outline, value.shape),
                 )
             }
         }

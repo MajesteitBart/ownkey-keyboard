@@ -21,10 +21,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.ui.DialogSliderPreference
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
+import dev.patrickgold.florisboard.app.ui.Preference
+import dev.patrickgold.florisboard.app.ui.PreferenceGroup
+import dev.patrickgold.florisboard.app.ui.SwitchPreference
 import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.FlorisUserDictionaryDatabase
@@ -32,14 +39,11 @@ import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionArrangeme
 import dev.patrickgold.florisboard.lib.compose.FlorisConfirmDeleteDialog
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
-import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
-import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidSettings
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.android.showLongToast
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.stringRes
 
 class DebugOnPurposeCrashException : Exception(
@@ -59,13 +63,20 @@ fun DevtoolsScreen() = FlorisScreen {
     val (showDialog, setShowDialog) = remember { mutableStateOf(false) }
 
     content {
-        SwitchPreference(
-            prefs.devtools.enabled,
-            title = stringRes(R.string.devtools__enabled__label),
-            summary = stringRes(R.string.devtools__enabled__summary),
-        )
+        PreferenceGroup(title = "") {
+            SwitchPreference(
+                prefs.devtools.enabled,
+                modifier = Modifier.testTag("devtools-enabled"),
+                title = stringRes(R.string.devtools__enabled__label),
+                summary = stringRes(R.string.devtools__enabled__summary),
+            )
+        }
 
-        PreferenceGroup(title = stringRes(R.string.devtools__title)) {
+        // Everything below only shows while developer tools are on.
+        PreferenceGroup(
+            title = stringRes(R.string.about__devtools__group_tools),
+            visibleIf = { prefs.devtools.enabled isEqualTo true },
+        ) {
             SwitchPreference(
                 prefs.devtools.showPrimaryClip,
                 title = stringRes(R.string.devtools__show_primary_clip__label),
@@ -128,11 +139,11 @@ fun DevtoolsScreen() = FlorisScreen {
                 summary = stringRes(R.string.devtools__show_drag_and_drop_helpers__summary),
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
-            Preference(
+            OwnkeyRow(
                 title = stringRes(R.string.devtools__clear_udm_internal_database__label),
                 summary = stringRes(R.string.devtools__clear_udm_internal_database__summary),
+                titleColor = OwnkeyTokens.Danger,
                 onClick = { setShowDialog(true) },
-                enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
             Preference(
                 title = stringRes(R.string.devtools__reset_quick_actions_to_default__label),
@@ -158,10 +169,11 @@ fun DevtoolsScreen() = FlorisScreen {
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
             Preference(
-                title = "Debug log",
-                summary = "View and export the debug log",
+                title = stringRes(R.string.about__devtools__debug_log),
+                summary = stringRes(R.string.about__devtools__debug_log_summary),
                 onClick = { navController.navigate(Routes.Devtools.ExportDebugLog) },
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
+                chevron = true,
             )
             SwitchPreference(
                 prefs.glide.enabled,
@@ -172,7 +184,10 @@ fun DevtoolsScreen() = FlorisScreen {
             )
         }
 
-        PreferenceGroup(title = stringRes(R.string.devtools__group_ime_window_tools__title)) {
+        PreferenceGroup(
+            title = stringRes(R.string.devtools__group_ime_window_tools__title),
+            visibleIf = { prefs.devtools.enabled isEqualTo true },
+        ) {
             SwitchPreference(
                 prefs.devtools.showWindowResizeHandleBoundaries,
                 title = stringRes(R.string.devtools__show_window_resize_handle_boundaries__label),
@@ -201,9 +216,13 @@ fun DevtoolsScreen() = FlorisScreen {
             )
         }
 
-        PreferenceGroup(title = stringRes(R.string.devtools__group_android__title)) {
+        PreferenceGroup(
+            title = stringRes(R.string.devtools__group_android__title),
+            visibleIf = { prefs.devtools.enabled isEqualTo true },
+        ) {
             Preference(
                 title = stringRes(R.string.devtools__android_settings_global__title),
+                chevron = true,
                 onClick = {
                     navController.navigate(
                         Routes.Devtools.AndroidSettings(AndroidSettings.Global.groupId)
@@ -213,6 +232,7 @@ fun DevtoolsScreen() = FlorisScreen {
             )
             Preference(
                 title = stringRes(R.string.devtools__android_settings_secure__title),
+                chevron = true,
                 onClick = {
                     navController.navigate(
                         Routes.Devtools.AndroidSettings(AndroidSettings.Secure.groupId)
@@ -222,6 +242,7 @@ fun DevtoolsScreen() = FlorisScreen {
             )
             Preference(
                 title = stringRes(R.string.devtools__android_settings_system__title),
+                chevron = true,
                 onClick = {
                     navController.navigate(
                         Routes.Devtools.AndroidSettings(AndroidSettings.System.groupId)
@@ -231,12 +252,16 @@ fun DevtoolsScreen() = FlorisScreen {
             )
             Preference(
                 title = stringRes(R.string.devtools__android_locales__title),
+                chevron = true,
                 onClick = { navController.navigate(Routes.Devtools.AndroidLocales) },
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
         }
 
-        PreferenceGroup(title = "prefs.internal.version*") {
+        PreferenceGroup(
+            title = "prefs.internal.version*",
+            visibleIf = { prefs.devtools.enabled isEqualTo true },
+        ) {
             val versionOnInstall by prefs.internal.versionOnInstall.collectAsState()
             Preference(
                 title = "prefs.internal.versionOnInstall",
@@ -254,7 +279,10 @@ fun DevtoolsScreen() = FlorisScreen {
             )
         }
 
-        PreferenceGroup(title = "ExtensionManager index paths") {
+        PreferenceGroup(
+            title = "ExtensionManager index paths",
+            visibleIf = { prefs.devtools.enabled isEqualTo true },
+        ) {
             Preference(
                 title = "keyboardExtensions",
                 summary = extensionManager.keyboardExtensions.internalModuleDir.absolutePath,

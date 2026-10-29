@@ -16,7 +16,6 @@
 
 package dev.patrickgold.florisboard.ime.theme
 
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,24 +26,44 @@ import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.SnyggStylesheet
 
-val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
-    defines {
-        "--primary" to rgbaColor(76, 175, 80)
-        "--primary-variant" to rgbaColor(56, 142, 60)
-        "--secondary" to rgbaColor(245, 124, 0)
-        "--secondary-variant" to rgbaColor(230, 81, 0)
-        "--background" to rgbaColor(33, 33, 33)
-        "--background-variant" to rgbaColor(44, 44, 44)
-        "--surface" to rgbaColor(66, 66, 66)
-        "--surface-variant" to rgbaColor(97, 97, 97)
+/** Function keys, which sit on the darker `--surface-fn` fill. Never enter (10) or space (32). */
+private val FunctionKeyCodes = buildList {
+    addAll(-13..-1)
+    addAll(-28..-21)
+    addAll(-207..-201)
+    addAll(-213..-212)
+    addAll(-228..-221)
+    add(KeyCode.VOICE_INPUT)
+    add(KeyCode.TAB)
+}
 
-        "--on-primary" to rgbaColor(240, 240, 240)
+val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
+    // Signal Graphite, used when no stylesheet loads. Keep in step with ownkey_signal_graphite.json.
+    defines {
+        "--primary" to rgbaColor(222, 95, 20)
+        "--primary-variant" to rgbaColor(195, 84, 18)
+        "--secondary" to rgbaColor(222, 95, 20)
+        "--secondary-variant" to rgbaColor(222, 95, 20)
+        "--background" to rgbaColor(28, 28, 30)
+        "--background-variant" to rgbaColor(28, 28, 30)
+        "--surface" to rgbaColor(58, 58, 60)
+        "--surface-fn" to rgbaColor(44, 44, 46)
+        "--surface-variant" to rgbaColor(84, 84, 86)
+        "--popup-surface" to rgbaColor(84, 84, 86)
+        "--enter" to rgbaColor(84, 84, 86)
+        "--enter-pressed" to rgbaColor(99, 99, 102)
+
+        "--on-primary" to rgbaColor(255, 255, 255)
         "--on-background" to rgbaColor(255, 255, 255)
-        "--on-background-disabled" to rgbaColor(80, 80, 80)
+        "--on-background-disabled" to rgbaColor(255, 255, 255, 0.38f)
         "--on-surface" to rgbaColor(255, 255, 255)
+        "--on-surface-variant" to rgbaColor(174, 174, 178)
+        "--candidate" to rgbaColor(209, 209, 214)
+        "--pill" to rgbaColor(255, 255, 255)
+        "--on-pill" to rgbaColor(0, 0, 0)
 
         "--shape" to roundedCornerShape(8.dp)
-        "--shape-variant" to roundedCornerShape(12.dp)
+        "--shape-variant" to roundedCornerShape(16.dp)
     }
 
     FlorisImeUi.Window.elementName {
@@ -55,8 +74,8 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     FlorisImeUi.Key.elementName {
         background = `var`("--surface")
         foreground = `var`("--on-surface")
-        fontSize = fontSize(22.sp)
-        shadowElevation = size(2.dp)
+        fontSize = fontSize(21.sp)
+        shadowElevation = size(0.dp)
         shape = `var`("--shape")
         textMaxLines = textMaxLines(1)
     }
@@ -64,18 +83,21 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         background = `var`("--surface-variant")
         foreground = `var`("--on-surface")
     }
+    FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to FunctionKeyCodes) {
+        background = `var`("--surface-fn")
+    }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.ENTER)) {
-        background = `var`("--primary")
+        background = `var`("--enter")
         foreground = `var`("--on-surface")
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.ENTER), selector = SnyggSelector.PRESSED) {
-        background = `var`("--primary-variant")
+        background = `var`("--enter-pressed")
         foreground = `var`("--on-surface")
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.SPACE)) {
         background = `var`("--surface")
-        foreground = `var`("--on-surface")
-        fontSize = fontSize(12.sp)
+        foreground = `var`("--on-surface-variant")
+        fontSize = fontSize(13.sp)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(
@@ -83,7 +105,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         KeyCode.VIEW_SYMBOLS,
         KeyCode.VIEW_SYMBOLS2,
     )) {
-        fontSize = fontSize(18.sp)
+        fontSize = fontSize(16.sp)
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(
         KeyCode.VIEW_NUMERIC,
@@ -98,25 +120,25 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         FlorisImeUi.Attr.Code to listOf(KeyCode.SHIFT),
         FlorisImeUi.Attr.ShiftState to listOf(InputShiftState.CAPS_LOCK.toString()),
     ) {
-        foreground = rgbaColor(255, 152, 0)
+        foreground = `var`("--primary")
     }
     FlorisImeUi.KeyHint.elementName {
         background = rgbaColor(0, 0, 0, 0f)
         foreground = `var`("--on-surface-variant")
-        fontFamily = genericFontFamily(FontFamily.Monospace)
-        fontSize = fontSize(12.sp)
-        padding = padding(0.dp, 1.dp, 1.dp, 0.dp)
+        fontSize = fontSize(9.sp)
+        padding = padding(0.dp, 5.dp, 6.dp, 0.dp)
         textMaxLines = textMaxLines(1)
     }
     FlorisImeUi.KeyPopupBox.elementName {
-        background = rgbaColor(117, 117, 117)
+        background = `var`("--popup-surface")
         foreground = `var`("--on-surface")
-        fontSize = fontSize(22.sp)
+        fontSize = fontSize(21.sp)
         shape = `var`("--shape")
-        shadowElevation = size(2.dp)
+        shadowElevation = size(0.dp)
     }
     FlorisImeUi.KeyPopupElement.elementName(selector = SnyggSelector.FOCUS) {
-        background = rgbaColor(189, 189, 189)
+        background = `var`("--on-surface")
+        foreground = `var`("--background")
         shape = `var`("--shape")
     }
     FlorisImeUi.KeyPopupExtendedIndicator.elementName {
@@ -124,26 +146,27 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
 
     FlorisImeUi.Smartbar.elementName {
+        background = `var`("--background")
+        foreground = `var`("--on-surface")
         fontSize = fontSize(18.sp)
     }
     FlorisImeUi.SmartbarSharedActionsToggle.elementName {
-        background = `var`("--surface")
-        foreground = `var`("--on-surface")
-        margin = padding(6.dp)
+        background = rgbaColor(0, 0, 0, 0f)
+        foreground = `var`("--on-surface-variant")
+        margin = padding(4.dp)
         shape = circleShape()
-        shadowElevation = size(2.dp)
     }
     FlorisImeUi.SmartbarExtendedActionsToggle.elementName {
         background = rgbaColor(0, 0, 0, 0f)
-        foreground = rgbaColor(144, 144, 144)
-        margin = padding(6.dp)
+        foreground = `var`("--on-surface-variant")
+        margin = padding(4.dp)
         shape = circleShape()
     }
     FlorisImeUi.SmartbarActionKey.elementName {
         background = rgbaColor(0, 0, 0, 0f)
-        foreground = rgbaColor(220, 220, 220)
+        foreground = `var`("--on-surface-variant")
         fontSize = fontSize(22.sp)
-        shape = `var`("--shape")
+        shape = circleShape()
     }
     FlorisImeUi.SmartbarActionKey.elementName(selector = SnyggSelector.DISABLED) {
         foreground = `var`("--on-background-disabled")
@@ -153,19 +176,19 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         margin = padding(4.dp)
     }
     FlorisImeUi.SmartbarActionsOverflowCustomizeButton.elementName {
-        background = `var`("--primary")
-        foreground = `var`("--on-primary")
+        background = `var`("--popup-surface")
+        foreground = `var`("--on-surface")
         fontSize = fontSize(14.sp)
         margin = padding(0.dp, 8.dp, 0.dp, 0.dp)
         shape = roundedCornerShape(24.dp)
     }
     FlorisImeUi.SmartbarActionTile.elementName {
-        background = `var`("--background-variant")
-        foreground = `var`("--on-background")
-        fontSize = fontSize(14.sp)
+        background = `var`("--surface")
+        foreground = `var`("--on-surface")
+        fontSize = fontSize(13.sp)
         margin = padding(4.dp)
         padding = padding(4.dp)
-        shape = roundedCornerShape(20)
+        shape = `var`("--shape-variant")
         textAlign = textAlign(TextAlign.Center)
         textMaxLines = textMaxLines(2)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
@@ -195,9 +218,9 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         shape = circleShape()
     }
     FlorisImeUi.SmartbarActionsEditorSubheader.elementName {
-        foreground = `var`("--secondary")
-        fontSize = fontSize(16.sp)
-        fontWeight = fontWeight(FontWeight.Bold)
+        foreground = `var`("--on-surface")
+        fontSize = fontSize(13.sp)
+        fontWeight = fontWeight(FontWeight.Medium)
         padding = padding(12.dp, 16.dp, 12.dp, 8.dp)
         textMaxLines = textMaxLines(1)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
@@ -216,18 +239,22 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         foreground = `var`("--on-background-disabled")
     }
     FlorisImeUi.SmartbarActionsEditorTile.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.DRAG_MARKER)) {
-        foreground = rgbaColor(255, 0, 0)
+        foreground = `var`("--on-surface-variant")
     }
 
     FlorisImeUi.SmartbarCandidateWord.elementName {
         background = rgbaColor(0, 0, 0, 0f)
-        foreground = `var`("--on-background")
-        fontSize = fontSize(14.sp)
+        foreground = `var`("--candidate")
+        fontSize = fontSize(16.sp)
         margin = padding(4.dp)
         padding = padding(8.dp, 0.dp)
-        shape = rectangleShape()
+        shape = `var`("--shape")
         textMaxLines = textMaxLines(1)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
+    }
+    FlorisImeUi.SmartbarCandidateWord.elementName("auto-commit" to listOf(1)) {
+        foreground = `var`("--on-surface")
+        fontWeight = fontWeight(FontWeight.Medium)
     }
     FlorisImeUi.SmartbarCandidateWord.elementName(selector = SnyggSelector.PRESSED) {
         background = `var`("--surface")
@@ -239,7 +266,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
     FlorisImeUi.SmartbarCandidateClip.elementName {
         background = rgbaColor(0, 0, 0, 0f)
-        foreground = rgbaColor(220, 220, 220)
+        foreground = `var`("--candidate")
         fontSize = fontSize(14.sp)
         margin = padding(4.dp)
         padding = padding(8.dp, 0.dp)
@@ -255,7 +282,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         margin = padding(0.dp, 0.dp, 4.dp, 0.dp)
     }
     FlorisImeUi.SmartbarCandidateSpacer.elementName {
-        foreground = rgbaColor(255, 255, 255, 0.25f)
+        foreground = rgbaColor(0, 0, 0, 0f)
     }
 
     FlorisImeUi.ClipboardHeader.elementName {
@@ -270,31 +297,31 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         padding = padding(10.dp)
     }
     FlorisImeUi.ClipboardItem.elementName {
-        background = `var`("--surface")
+        background = `var`("--popup-surface")
         foreground = `var`("--on-surface")
         fontSize = fontSize(14.sp)
         margin = padding(4.dp)
         padding = padding(12.dp, 8.dp)
         shape = `var`("--shape-variant")
-        shadowElevation = size(2.dp)
+        shadowElevation = size(0.dp)
         textMaxLines = textMaxLines(10)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
     }
     FlorisImeUi.ClipboardItemPopup.elementName {
-        background = `var`("--surface")
+        background = `var`("--popup-surface")
         foreground = `var`("--on-surface")
         fontSize = fontSize(14.sp)
         margin = padding(4.dp)
         padding = padding(12.dp, 8.dp)
         shape = `var`("--shape-variant")
-        shadowElevation = size(2.dp)
+        shadowElevation = size(0.dp)
     }
     FlorisImeUi.ClipboardItemActions.elementName {
-        background = `var`("--surface")
+        background = `var`("--popup-surface")
         foreground = `var`("--on-surface")
         margin = padding(4.dp)
         shape = `var`("--shape-variant")
-        shadowElevation = size(2.dp)
+        shadowElevation = size(0.dp)
     }
     FlorisImeUi.ClipboardItemAction.elementName {
         fontSize = fontSize(16.sp)
@@ -304,9 +331,9 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         margin = padding(8.dp, 0.dp, 0.dp, 0.dp)
     }
     FlorisImeUi.ClipboardHistoryDisabledButton.elementName {
-        background = `var`("--primary")
-        foreground = `var`("--on-primary")
-        shape = roundedCornerShape(24.dp)
+        background = `var`("--pill")
+        foreground = `var`("--on-pill")
+        shape = roundedCornerShape(50)
     }
 
     FlorisImeUi.MediaEmojiKey.elementName {
@@ -321,11 +348,11 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
 
     FlorisImeUi.GlideTrail.elementName {
-        foreground = `var`("--primary")
+        foreground = rgbaColor(222, 95, 20, 0.7f)
     }
 
     FlorisImeUi.InlineAutofillChip.elementName {
-        background = `var`("--surface")
+        background = `var`("--popup-surface")
         foreground = `var`("--on-surface")
     }
 
@@ -334,8 +361,8 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
 
     FlorisImeUi.OneHandedPanel.elementName {
-        background = rgbaColor(27, 94, 32)
-        foreground = rgbaColor(238, 238, 238)
+        background = `var`("--background")
+        foreground = `var`("--on-surface")
     }
 
     FlorisImeUi.SubtypePanel.elementName {
@@ -344,7 +371,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         shape = roundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
     }
     FlorisImeUi.SubtypePanelHeader.elementName {
-        background = `var`("--surface")
+        background = `var`("--background")
         foreground = `var`("--on-surface")
         fontSize = fontSize(18.sp)
         padding = padding(12.dp)

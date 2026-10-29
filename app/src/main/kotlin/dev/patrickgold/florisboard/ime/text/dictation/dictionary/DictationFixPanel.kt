@@ -10,7 +10,6 @@
 
 package dev.patrickgold.florisboard.ime.text.dictation.dictionary
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
@@ -49,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -59,14 +59,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.OwnkeyBrand
-import dev.patrickgold.florisboard.app.ownkeyAccentColor
 import dev.patrickgold.florisboard.dictationFixController
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.theme.KeyboardAccent
+import dev.patrickgold.florisboard.ime.theme.KeyboardPalette
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 
 private val PillShape = RoundedCornerShape(999.dp)
-private val CardShape = RoundedCornerShape(10.dp)
 private val MinTouchTarget = 48.dp
 
 /** Smartbar pill shown for a short while after dictation inserted text. */
@@ -77,16 +78,16 @@ fun DictationFixChip(modifier: Modifier = Modifier) {
     val state by controller.state.collectAsState()
     if (state !is DictationFixState.Offered) return
     val label = userStringRes(R.string.dictation_fix__chip)
-    val accent = ownkeyAccentColor()
+    val palette = rememberKeyboardPalette()
     Surface(
         modifier = modifier
             .padding(horizontal = 8.dp, vertical = 4.dp)
+            // Clipping before the click keeps the ripple inside the pill; the light-theme shadow stays outside.
+            .shadow(elevation = if (palette.isLight) 2.dp else 0.dp, shape = PillShape, clip = true)
             .clickable(onClickLabel = label, role = Role.Button, onClick = controller::openChooser),
-        color = OwnkeyBrand.Glass.Sheet,
-        contentColor = OwnkeyBrand.Glass.Ink,
+        color = palette.popup,
+        contentColor = palette.popupInk,
         shape = PillShape,
-        shadowElevation = 4.dp,
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.45f)),
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
@@ -96,7 +97,7 @@ fun DictationFixChip(modifier: Modifier = Modifier) {
             Icon(
                 imageVector = Icons.Default.Edit,
                 contentDescription = null,
-                tint = accent,
+                tint = palette.popupInk,
                 modifier = Modifier.size(16.dp),
             )
             Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
@@ -107,17 +108,18 @@ fun DictationFixChip(modifier: Modifier = Modifier) {
 /** Suggestion-strip title while the chooser owns the keyboard area, so predictions do not compete with it. */
 @Composable
 fun DictationFixSmartbarTitle(modifier: Modifier = Modifier) {
+    val palette = rememberKeyboardPalette()
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(
                 imageVector = Icons.Default.Edit,
                 contentDescription = null,
-                tint = ownkeyAccentColor(),
+                tint = palette.inkSecondary,
                 modifier = Modifier.size(16.dp),
             )
             Text(
                 text = userStringRes(R.string.dictation_fix__chip),
-                color = OwnkeyBrand.Bone.copy(alpha = 0.86f),
+                color = palette.ink,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -138,7 +140,7 @@ fun DictationFixPanel(modifier: Modifier = Modifier) {
     val editorInstance by context.editorInstance()
     val state by controller.state.collectAsState()
     val choosing = state as? DictationFixState.Choosing ?: return
-    val accent = ownkeyAccentColor()
+    val palette = rememberKeyboardPalette()
     val selectedText = choosing.selectedText
     val closeLabel = userStringRes(R.string.dictation_fix__close)
     Column(
@@ -152,7 +154,7 @@ fun DictationFixPanel(modifier: Modifier = Modifier) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = userStringRes(R.string.dictation_fix__chooser_title),
-                    color = OwnkeyBrand.Glass.Ink,
+                    color = palette.ink,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -160,13 +162,13 @@ fun DictationFixPanel(modifier: Modifier = Modifier) {
                 )
                 Text(
                     text = userStringRes(R.string.dictation_fix__chooser_hint),
-                    color = OwnkeyBrand.Glass.InkSoft,
+                    color = palette.inkSecondary,
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            CloseButton(label = closeLabel, onClick = controller::dismiss)
+            CloseButton(label = closeLabel, ink = palette.ink, onClick = controller::dismiss)
         }
         FlowRow(
             modifier = Modifier
@@ -181,7 +183,7 @@ fun DictationFixPanel(modifier: Modifier = Modifier) {
                 TokenChip(
                     text = token.text,
                     selected = selected,
-                    accent = accent,
+                    palette = palette,
                     onClick = { controller.tapToken(index) },
                 )
             }
@@ -195,7 +197,7 @@ fun DictationFixPanel(modifier: Modifier = Modifier) {
                 label = userStringRes(R.string.dictation_fix__chooser_settings),
                 onClick = controller::openDictionaryForSource,
                 primary = false,
-                accent = accent,
+                palette = palette,
             )
             Spacer(modifier = Modifier.weight(1f))
             PanelButton(
@@ -206,7 +208,7 @@ fun DictationFixPanel(modifier: Modifier = Modifier) {
                 },
                 onClick = { controller.beginReplacement(editorInstance.activeContent) },
                 primary = true,
-                accent = accent,
+                palette = palette,
                 enabled = selectedText != null,
             )
         }
@@ -226,11 +228,12 @@ fun DictationFixRow(modifier: Modifier = Modifier) {
     if (current !is DictationFixState.Replacing && current !is DictationFixState.Saved &&
         current !is DictationFixState.Manual && current !is DictationFixState.SaveFailed
     ) return
-    val accent = ownkeyAccentColor()
+    val palette = rememberKeyboardPalette()
+    val accent = rememberKeyboardAccent()
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = OwnkeyBrand.Glass.Sheet,
-        contentColor = OwnkeyBrand.Glass.Ink,
+        color = palette.background,
+        contentColor = palette.ink,
     ) {
         Row(
             modifier = Modifier
@@ -240,10 +243,10 @@ fun DictationFixRow(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             when (current) {
-                is DictationFixState.Replacing -> ReplacingContent(current, accent, controller)
-                is DictationFixState.Saved -> SavedContent(current)
-                is DictationFixState.Manual -> ManualContent(current, accent, controller)
-                is DictationFixState.SaveFailed -> SaveFailedContent(current, controller)
+                is DictationFixState.Replacing -> ReplacingContent(current, palette, accent, controller)
+                is DictationFixState.Saved -> SavedContent(current, palette)
+                is DictationFixState.Manual -> ManualContent(current, palette, controller)
+                is DictationFixState.SaveFailed -> SaveFailedContent(current, palette, controller)
                 else -> Unit
             }
         }
@@ -253,7 +256,8 @@ fun DictationFixRow(modifier: Modifier = Modifier) {
 @Composable
 private fun RowScope.ReplacingContent(
     state: DictationFixState.Replacing,
-    accent: Color,
+    palette: KeyboardPalette,
+    accent: KeyboardAccent,
     controller: DictationFixController,
 ) {
     val replacement = state.replacement.trim()
@@ -280,31 +284,33 @@ private fun RowScope.ReplacingContent(
                 checked = state.addAsWord,
                 onCheckedChange = null,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = accent,
-                    uncheckedColor = OwnkeyBrand.Glass.InkSoft,
-                    checkmarkColor = OwnkeyBrand.Glass.Ink,
+                    checkedColor = accent.color,
+                    uncheckedColor = palette.inkSecondary,
+                    checkmarkColor = accent.onColor,
+                    disabledCheckedColor = accent.color.copy(alpha = 0.38f),
+                    disabledUncheckedColor = palette.inkSecondary.copy(alpha = 0.38f),
                 ),
                 modifier = Modifier.size(32.dp),
             )
-            Text(text = addWordLabel, color = OwnkeyBrand.Glass.InkSoft, fontSize = 12.sp, maxLines = 1)
+            Text(text = addWordLabel, color = palette.inkSecondary, fontSize = 12.sp, maxLines = 1)
         }
     }
     PanelButton(
         label = userStringRes(R.string.dictation_fix__row_save),
         onClick = controller::save,
         primary = true,
-        accent = accent,
+        palette = palette,
         enabled = state.canSave,
     )
-    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), onClick = controller::dismiss)
+    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), ink = palette.ink, onClick = controller::dismiss)
 }
 
 @Composable
-private fun RowScope.SavedContent(state: DictationFixState.Saved) {
+private fun RowScope.SavedContent(state: DictationFixState.Saved, palette: KeyboardPalette) {
     Icon(
         imageVector = Icons.Default.Check,
         contentDescription = null,
-        tint = OwnkeyBrand.Glass.Success,
+        tint = palette.ink,
         modifier = Modifier.size(20.dp),
     )
     Text(
@@ -323,23 +329,24 @@ private fun RowScope.SavedContent(state: DictationFixState.Saved) {
 @Composable
 private fun RowScope.SaveFailedContent(
     state: DictationFixState.SaveFailed,
+    palette: KeyboardPalette,
     controller: DictationFixController,
 ) {
     Text(
         text = userStringRes(R.string.dictation_fix__save_failed, "word" to state.source),
         modifier = Modifier.weight(1f),
-        color = OwnkeyBrand.WarningYellow,
+        color = palette.ink,
         fontSize = 13.sp,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
-    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), onClick = controller::dismiss)
+    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), ink = palette.ink, onClick = controller::dismiss)
 }
 
 @Composable
 private fun RowScope.ManualContent(
     state: DictationFixState.Manual,
-    accent: Color,
+    palette: KeyboardPalette,
     controller: DictationFixController,
 ) {
     Text(
@@ -353,29 +360,29 @@ private fun RowScope.ManualContent(
         label = userStringRes(R.string.dictation_fix__manual_open),
         onClick = controller::openDictionaryForSource,
         primary = true,
-        accent = accent,
+        palette = palette,
     )
-    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), onClick = controller::dismiss)
+    CloseButton(label = userStringRes(R.string.dictation_fix__row_dismiss), ink = palette.ink, onClick = controller::dismiss)
 }
 
 @Composable
 private fun TokenChip(
     text: String,
     selected: Boolean,
-    accent: Color,
+    palette: KeyboardPalette,
     onClick: () -> Unit,
 ) {
+    // A picked word inverts to the label colour, like a selected segment; text never sits on the accent.
     Surface(
         modifier = Modifier
             .heightIn(min = MinTouchTarget)
             .selectable(selected = selected, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = text },
-        color = if (selected) accent else OwnkeyBrand.Glass.Key,
-        contentColor = OwnkeyBrand.Glass.Ink,
-        shape = CardShape,
-        border = if (selected) null else BorderStroke(1.dp, OwnkeyBrand.Glass.Ink.copy(alpha = 0.08f)),
+        color = if (selected) palette.pill else palette.key,
+        contentColor = if (selected) palette.onPill else palette.keyInk,
+        shape = PillShape,
     ) {
-        Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp), contentAlignment = Alignment.Center) {
             Text(
                 text = text,
                 fontSize = 15.sp,
@@ -391,16 +398,18 @@ private fun PanelButton(
     label: String,
     onClick: () -> Unit,
     primary: Boolean,
-    accent: Color,
+    palette: KeyboardPalette,
     enabled: Boolean = true,
 ) {
+    // Primary is the label-colour pill, secondary the key fill, matching the settings app's buttons.
     Surface(
         modifier = Modifier
             .heightIn(min = MinTouchTarget)
-            .alpha(if (enabled) 1f else 0.4f)
+            .alpha(if (enabled) 1f else 0.38f)
+            .clip(PillShape)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
-        color = if (primary) accent else OwnkeyBrand.Glass.Key,
-        contentColor = OwnkeyBrand.Glass.Ink,
+        color = if (primary) palette.pill else palette.key,
+        contentColor = if (primary) palette.onPill else palette.keyInk,
         shape = PillShape,
     ) {
         Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -416,7 +425,7 @@ private fun PanelButton(
 }
 
 @Composable
-private fun CloseButton(label: String, onClick: () -> Unit) {
+private fun CloseButton(label: String, ink: Color, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(MinTouchTarget)
@@ -429,7 +438,7 @@ private fun CloseButton(label: String, onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Default.Close,
             contentDescription = null,
-            tint = OwnkeyBrand.Glass.Ink.copy(alpha = 0.9f),
+            tint = ink,
             modifier = Modifier.size(20.dp),
         )
     }

@@ -23,34 +23,28 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,8 +57,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
@@ -73,8 +70,10 @@ import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.LocalNavController
-import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.ui.OwnkeyButton
+import dev.patrickgold.florisboard.app.ui.OwnkeyButtonStyle
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.compose.FlorisScreenScope
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
@@ -86,15 +85,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidVersion
-import org.florisboard.lib.compose.FlorisBulletSpacer
 import org.florisboard.lib.compose.FlorisStepState
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.ownkeyFocusRing
 import org.florisboard.lib.compose.stringRes
+
+private val StatusCircleSize = 28.dp
+private val StepFocusShape = RoundedCornerShape(20.dp)
 
 @Composable
 fun SetupScreen() = FlorisScreen {
     title = stringRes(R.string.setup__title)
     navigationIconVisible = false
-    scrollable = false
 
     val navController = LocalNavController.current
     val context = LocalContext.current
@@ -199,194 +201,181 @@ private fun FlorisScreenScope.content(
             }
         }
 
-        MaterialTheme(
-            colorScheme = darkColorScheme(
-                primary = OwnkeyBrand.TrustBlue,
-                onPrimary = OwnkeyBrand.Bone,
-                background = OwnkeyBrand.Key,
-                onBackground = OwnkeyBrand.Bone,
-                surface = OwnkeyBrand.Panel,
-                onSurface = OwnkeyBrand.Bone,
-                surfaceVariant = OwnkeyBrand.Action,
-                onSurfaceVariant = OwnkeyBrand.Ash,
-                outline = OwnkeyBrand.Line,
-            ),
-        ) {
-            SetupContent(
-                stepState = stepState,
-                steps = steps(context, navController, requestMicrophone, requestNotification, scope),
-                footer = { footer(context) },
-            )
-        }
+        SetupContent(
+            context = context,
+            stepState = stepState,
+            steps = steps(context, navController, requestMicrophone, requestNotification, scope),
+        )
     }
 }
 
 @Composable
 private fun SetupContent(
+    context: Context,
     stepState: FlorisStepState,
     steps: List<SetupStep>,
-    footer: @Composable () -> Unit,
 ) {
     val currentStepId by stepState.getCurrent()
     val autoStepId by stepState.getCurrentAuto()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(OwnkeyBrand.Key),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = OwnkeyBrand.Panel,
-                contentColor = OwnkeyBrand.Bone,
-                shape = RoundedCornerShape(22.dp),
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-            ) {
-                Row(
-                    modifier = Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_ownkey_mark),
-                        contentDescription = stringRes(R.string.floris_app_name),
-                        modifier = Modifier.size(width = 58.dp, height = 44.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = stringRes(R.string.floris_app_name),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringRes(R.string.setup__intro_message),
-                            color = OwnkeyBrand.Ash,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
+    Text(
+        modifier = Modifier.padding(bottom = OwnkeyTokens.GroupGap),
+        text = stringRes(R.string.setup__intro_message),
+        style = MaterialTheme.typography.bodyLarge,
+        color = OwnkeyTokens.Secondary,
+    )
+
+    OwnkeyGroup {
+        steps.forEachIndexed { index, step ->
+            val status = when {
+                step.id == currentStepId -> StepStatus.CURRENT
+                step.id < autoStepId -> StepStatus.DONE
+                else -> StepStatus.LOCKED
             }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            steps.forEachIndexed { index, step ->
-                SetupStepCard(
-                    number = index + 1,
-                    step = step,
-                    isCurrent = step.id == currentStepId,
-                    isAvailable = step.id <= autoStepId,
-                    isDone = step.id < autoStepId,
-                    onClick = { stepState.setCurrentManual(step.id) },
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            footer()
-            Spacer(modifier = Modifier.height(16.dp))
+            SetupStepRow(
+                number = index + 1,
+                step = step,
+                status = status,
+                // Finished steps can be reopened, for example to switch keyboards again.
+                onClick = if (step.id <= autoStepId && status != StepStatus.CURRENT) {
+                    { stepState.setCurrentManual(step.id) }
+                } else {
+                    null
+                },
+            )
         }
     }
-}
 
-@Composable
-private fun SetupStepCard(
-    number: Int,
-    step: SetupStep,
-    isCurrent: Boolean,
-    isAvailable: Boolean,
-    isDone: Boolean,
-    onClick: () -> Unit,
-) {
-    val modifier = if (isAvailable && !isCurrent) {
-        Modifier.clickable(onClick = onClick)
-    } else {
-        Modifier
-    }
-    val cardColor = if (isCurrent) OwnkeyBrand.PanelRaised else OwnkeyBrand.Panel
-    val numberColor = when {
-        isCurrent -> OwnkeyBrand.SignalOrange
-        isDone -> OwnkeyBrand.ActionPressed
-        else -> OwnkeyBrand.Action
-    }
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(1.dp, OwnkeyBrand.Line, RoundedCornerShape(22.dp)),
-        color = cardColor,
-        contentColor = OwnkeyBrand.Bone,
-        shape = RoundedCornerShape(22.dp),
-        tonalElevation = 0.dp,
-        shadowElevation = if (isCurrent) 2.dp else 0.dp,
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(numberColor),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = number.toString(),
-                        color = OwnkeyBrand.Bone,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = step.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (!isCurrent) {
-                        Text(
-                            text = if (isDone) stringRes(R.string.setup__step_status_done) else stringRes(R.string.setup__step_status_locked),
-                            color = OwnkeyBrand.Ash,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-            }
-
-            AnimatedVisibility(visible = isCurrent) {
-                Column(modifier = Modifier.padding(top = 14.dp)) {
-                    step.content(this)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun footer(context: Context) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
     ) {
         val privacyPolicyUrl = stringRes(R.string.florisboard__privacy_policy_url)
-        TextButton(onClick = { context.launchUrl(privacyPolicyUrl) }) {
-            Text(text = stringRes(R.string.setup__footer__privacy_policy), color = OwnkeyBrand.Ash)
-        }
-        FlorisBulletSpacer()
+        OwnkeyButton(
+            label = stringRes(R.string.setup__footer__privacy_policy),
+            onClick = { context.launchUrl(privacyPolicyUrl) },
+            style = OwnkeyButtonStyle.Plain,
+        )
         val repositoryUrl = stringRes(R.string.florisboard__repo_url)
-        TextButton(onClick = { context.launchUrl(repositoryUrl) }) {
-            Text(text = stringRes(R.string.setup__footer__repository), color = OwnkeyBrand.Ash)
+        OwnkeyButton(
+            label = stringRes(R.string.setup__footer__repository),
+            onClick = { context.launchUrl(repositoryUrl) },
+            style = OwnkeyButtonStyle.Plain,
+        )
+    }
+}
+
+private enum class StepStatus { DONE, CURRENT, LOCKED }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SetupStepRow(
+    number: Int,
+    step: SetupStep,
+    status: StepStatus,
+    onClick: (() -> Unit)?,
+) {
+    val stateText = stringRes(
+        when (status) {
+            StepStatus.DONE -> R.string.setup__step_status_done
+            StepStatus.CURRENT -> R.string.setup__step_status_current
+            StepStatus.LOCKED -> R.string.setup__step_status_locked
+        }
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(OwnkeyTokens.Card)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .ownkeyFocusRing(StepFocusShape, inset = true)
+                        .clickable(role = Role.Button, onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+            .semantics(mergeDescendants = status != StepStatus.CURRENT) { stateDescription = stateText }
+            .testTag("setup-step-${step.id}")
+            .heightIn(min = OwnkeyTokens.RowMinHeight)
+            .padding(horizontal = OwnkeyTokens.RowPaddingHorizontal, vertical = OwnkeyTokens.RowPaddingVertical),
+        verticalAlignment = Alignment.Top,
+    ) {
+        StatusCircle(number = number, status = status)
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier.heightIn(min = StatusCircleSize),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = step.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (status == StepStatus.LOCKED) OwnkeyTokens.Secondary else OwnkeyTokens.Label,
+                )
+            }
+            if (status == StepStatus.CURRENT) {
+                Text(
+                    text = step.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OwnkeyTokens.Secondary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    OwnkeyButton(
+                        modifier = Modifier.testTag("setup-step-action"),
+                        label = step.actionLabel,
+                        onClick = step.onAction,
+                    )
+                    if (step.skipLabel != null && step.onSkip != null) {
+                        OwnkeyButton(
+                            modifier = Modifier.testTag("setup-step-skip"),
+                            label = step.skipLabel,
+                            onClick = step.onSkip,
+                            style = OwnkeyButtonStyle.Plain,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Done: accent with a check. Current: white with a black number. Locked: Raised with a grey number. */
+@Composable
+private fun StatusCircle(number: Int, status: StepStatus) {
+    val accent = MaterialTheme.colorScheme.primary
+    val onAccent = MaterialTheme.colorScheme.onPrimary
+    Box(
+        modifier = Modifier
+            .size(StatusCircleSize)
+            .clip(CircleShape)
+            .background(
+                when (status) {
+                    StepStatus.DONE -> accent
+                    StepStatus.CURRENT -> OwnkeyTokens.Label
+                    StepStatus.LOCKED -> OwnkeyTokens.Raised
+                }
+            )
+            .clearAndSetSemantics { },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (status == StepStatus.DONE) {
+            Icon(
+                modifier = Modifier.size(18.dp),
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = onAccent,
+            )
+        } else {
+            Text(
+                text = number.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (status == StepStatus.CURRENT) OwnkeyTokens.Black else OwnkeyTokens.Secondary,
+            )
         }
     }
 }
@@ -399,97 +388,77 @@ private fun PreferenceUiScope<FlorisPreferenceModel>.steps(
     requestNotification: ManagedActivityResultLauncher<String, Boolean>,
     scope: CoroutineScope,
 ): List<SetupStep> {
+    val notNow = stringRes(R.string.setup__not_now)
     return listOfNotNull(
         SetupStep(
             id = Steps.EnableIme.id,
             title = stringRes(R.string.setup__enable_ime__title),
-        ) {
-            StepText(stringRes(R.string.setup__enable_ime__description))
-            StepButton(label = stringRes(R.string.setup__enable_ime__open_settings_btn)) {
-                InputMethodUtils.showImeEnablerActivity(context)
-            }
-        },
+            body = stringRes(R.string.setup__enable_ime__description),
+            actionLabel = stringRes(R.string.setup__enable_ime__open_settings_btn),
+            onAction = { InputMethodUtils.showImeEnablerActivity(context) },
+        ),
         SetupStep(
             id = Steps.SelectIme.id,
             title = stringRes(R.string.setup__select_ime__title),
-        ) {
-            StepText(stringRes(R.string.setup__select_ime__description))
-            StepButton(label = stringRes(R.string.setup__select_ime__switch_keyboard_btn)) {
-                InputMethodUtils.showImePicker(context)
-            }
-        },
+            body = stringRes(R.string.setup__select_ime__description),
+            actionLabel = stringRes(R.string.setup__select_ime__switch_keyboard_btn),
+            onAction = { InputMethodUtils.showImePicker(context) },
+        ),
         SetupStep(
             id = Steps.SelectMicrophone.id,
             title = stringRes(R.string.setup__grant_microphone_permission__title),
-        ) {
-            StepText(stringRes(R.string.setup__grant_microphone_permission__description))
-            StepButton(label = stringRes(R.string.setup__grant_microphone_permission__btn)) {
+            body = stringRes(R.string.setup__grant_microphone_permission__description),
+            actionLabel = stringRes(R.string.setup__grant_microphone_permission__btn),
+            onAction = {
+                scope.launch { prefs.internal.microphonePermissionRequested.set(true) }
                 requestMicrophone.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        },
+            },
+            // Skipping counts as a denial, so setup stops asking; AI asks again when dictation needs it.
+            skipLabel = notNow,
+            onSkip = {
+                scope.launch { prefs.internal.microphonePermissionState.set(MicrophonePermissionState.DENIED) }
+            },
+        ),
         if (AndroidVersion.ATLEAST_API33_T) {
             SetupStep(
                 id = Steps.SelectNotification.id,
                 title = stringRes(R.string.setup__grant_notification_permission__title),
-            ) {
-                StepText(stringRes(R.string.setup__grant_notification_permission__description))
-                StepButton(stringRes(R.string.setup__grant_notification_permission__btn)) {
-                    requestNotification.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
+                body = stringRes(R.string.setup__grant_notification_permission__description),
+                actionLabel = stringRes(R.string.setup__grant_notification_permission__btn),
+                onAction = { requestNotification.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                skipLabel = notNow,
+                onSkip = {
+                    scope.launch {
+                        prefs.internal.notificationPermissionState.set(NotificationPermissionState.DENIED)
+                    }
+                },
+            )
         } else null,
         SetupStep(
             id = Steps.FinishUp.id,
             title = stringRes(R.string.setup__finish_up__title),
-        ) {
-            StepText(stringRes(R.string.setup__finish_up__description_p1))
-            StepText(stringRes(R.string.setup__finish_up__description_p2))
-            StepButton(label = stringRes(R.string.setup__finish_up__finish_btn)) {
+            body = stringRes(R.string.setup__finish_up__description_p1),
+            actionLabel = stringRes(R.string.setup__finish_up__finish_btn),
+            onAction = {
                 scope.launch { this@steps.prefs.internal.isImeSetUp.set(true) }
                 navController.navigate(Routes.Settings.Home) {
                     popUpTo(Routes.Setup.Screen) {
                         inclusive = true
                     }
                 }
-            }
-        }
-    )
-}
-
-@Composable
-private fun StepText(text: String) {
-    Text(
-        modifier = Modifier.padding(bottom = 10.dp),
-        text = text,
-        color = OwnkeyBrand.Ash,
-        style = MaterialTheme.typography.bodyMedium,
-    )
-}
-
-@Composable
-private fun ColumnScope.StepButton(
-    label: String,
-    onClick: () -> Unit,
-) {
-    Button(
-        modifier = Modifier
-            .align(Alignment.End)
-            .padding(top = 6.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = OwnkeyBrand.TrustBlue,
-            contentColor = OwnkeyBrand.Bone,
+            },
         ),
-        shape = RoundedCornerShape(16.dp),
-        onClick = onClick,
-    ) {
-        Text(text = label, fontWeight = FontWeight.SemiBold)
-    }
+    )
 }
 
 private data class SetupStep(
     val id: Int,
     val title: String,
-    val content: @Composable ColumnScope.() -> Unit,
+    val body: String,
+    val actionLabel: String,
+    val onAction: () -> Unit,
+    val skipLabel: String? = null,
+    val onSkip: (() -> Unit)? = null,
 )
 
 private fun Context.hasMicrophonePermission(): Boolean {

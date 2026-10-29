@@ -1,0 +1,10 @@
+appId: nl.bartvandermeeren.ownkey.debug
+---
+- runFlow:
+    when:
+      visible: "Show actions"
+    commands:
+      - tapOn: "Show actions"
+- extendedWaitUntil:
+    visible: "More actions"
+    timeout: 5000

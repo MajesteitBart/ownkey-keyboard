@@ -1,0 +1,47 @@
+# Rewrite without a key: select text, open the rewrite panel, tap a style and get the
+# "needs an API key" message. Nothing is sent: the flow first checks that Home reports no
+# rewrite key, and the voice card (which records) is never tapped.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 23 Rewrite without a key
+tags: [keyboard, ai]
+---
+- runFlow: helpers/open-home.yaml
+- assertVisible:
+    id: home-ai
+    containsDescendants:
+      - "Needs a key|Needs setup"
+- runFlow: helpers/open-keyboard.yaml
+- runFlow:
+    file: helpers/type-word.yaml
+    env:
+      WORD: "hello"
+- runFlow: helpers/expand-toolbar.yaml
+- tapOn: "Select all"
+- tapOn:
+    text: "Rewrite"
+    below:
+      id: preview-field
+- extendedWaitUntil:
+    visible: "AI rewrite"
+    timeout: 5000
+- assertVisible: "Close AI rewrite"
+- assertVisible: "Improve writing"
+- assertVisible: "5 characters selected.*"
+- takeScreenshot: 23-rewrite-panel
+
+- tapOn: "Improve writing"
+- extendedWaitUntil:
+    visible: "Rewrite needs an API key.*"
+    timeout: 5000
+- takeScreenshot: 23-rewrite-needs-key
+- assertVisible:
+    id: preview-field
+    text: "hello"
+
+- tapOn: "Close AI rewrite"
+- extendedWaitUntil:
+    visible: "q"
+    timeout: 5000
+- assertNotVisible: "AI rewrite"
+- runFlow: helpers/collapse-toolbar.yaml
+- hideKeyboard

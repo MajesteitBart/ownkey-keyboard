@@ -70,6 +70,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
+import dev.patrickgold.florisboard.app.ui.OwnkeyButtonStyle
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
@@ -89,7 +91,6 @@ import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.NATIVE_NULLPTR
 import dev.patrickgold.florisboard.lib.compose.FlorisHyperlinkText
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import dev.patrickgold.jetpref.material.ui.JetPrefDropdown
 import dev.patrickgold.jetpref.material.ui.JetPrefTextField
 import dev.patrickgold.jetpref.material.ui.JetPrefTextFieldDefaults
@@ -107,6 +108,8 @@ import org.florisboard.lib.snygg.SnyggRule
 import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.ui.NonNullSaver
 import kotlin.reflect.KClass
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.OwnkeyTextFieldDefaults
 
 private val TransparentTextSelectionColors = TextSelectionColors(
     handleColor = Color.Transparent,
@@ -166,7 +169,7 @@ internal fun EditRuleDialog(
         )
     }
 
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         title = stringRes(
             if (isAddRuleDialog) {
                 R.string.settings__theme_editor__add_rule
@@ -197,7 +200,7 @@ internal fun EditRuleDialog(
         } else {
             null
         },
-        neutralColors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        neutralStyle = OwnkeyButtonStyle.Destructive,
         onNeutral = { onDeleteRule(initRule) },
     ) {
         Column {
@@ -205,12 +208,13 @@ internal fun EditRuleDialog(
                 Text(
                     modifier = Modifier.padding(bottom = 16.dp),
                     text = stringRes(R.string.settings__theme_editor__rule_already_exists),
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                 )
             }
 
             DialogProperty(text = stringRes(R.string.settings__theme_editor__rule_name)) {
                 JetPrefDropdown(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     options = possibleRuleLabels,
                     selectedOptionIndex = elementsSelectedIndex,
                     onSelectOption = { elementsSelectedIndex = it },
@@ -222,6 +226,7 @@ internal fun EditRuleDialog(
             (currentRule as? SnyggAnnotationRule.Font)?.apply {
                 DialogProperty(text = stringRes(R.string.snygg__rule_annotation__font_name)) {
                     JetPrefTextField(
+                        appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                         modifier = Modifier,
                         value = fontName,
                         onValueChange = {
@@ -314,6 +319,7 @@ internal fun EditRuleDialog(
                             onClick = { editCodeDialogValue = KeyCode.UNSPECIFIED.toString() },
                             modifier = Modifier.offset(x = 12.dp),
                             icon = Icons.Default.Add,
+                            contentDescription = stringRes(R.string.settings__theme_editor__add_code),
                         )
                     },
                 ) {
@@ -400,7 +406,7 @@ private fun EditCodeValueDialog(
     val recordingKeyColor = if (isRecordingKey) {
         rememberInfiniteTransition().animateColor(
             initialValue = LocalContentColor.current,
-            targetValue = MaterialTheme.colorScheme.error,
+            targetValue = OwnkeyTokens.Danger,
             animationSpec = infiniteRepeatable(
                 tween(750),
                 repeatMode = RepeatMode.Reverse,
@@ -453,7 +459,7 @@ private fun EditCodeValueDialog(
         }
     }
 
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         title = stringRes(
             if (codeValue == KeyCode.UNSPECIFIED.toString()) {
                 R.string.settings__theme_editor__add_code
@@ -501,7 +507,7 @@ private fun EditCodeValueDialog(
         } else {
             null
         },
-        neutralColors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        neutralStyle = OwnkeyButtonStyle.Destructive,
         onNeutral = {
             onDelete(codeValue)
             onDismiss()
@@ -511,6 +517,7 @@ private fun EditCodeValueDialog(
                 onClick = { showKeyCodesHelp = !showKeyCodesHelp },
                 modifier = Modifier.offset(x = 12.dp),
                 icon = Icons.AutoMirrored.Filled.HelpOutline,
+                contentDescription = stringRes(R.string.about__ext__key_code_help),
             )
         },
     ) {
@@ -579,6 +586,7 @@ private fun EditCodeValueDialog(
                             FlorisIconButton(
                                 onClick = { requestStartRecording() },
                                 icon = Icons.Default.Pageview,
+                                contentDescription = stringRes(R.string.about__ext__record_key_code),
                                 iconColor = recordingKeyColor,
                             )
                         }
@@ -594,7 +602,7 @@ private fun EditCodeValueDialog(
                         "i_min" to KeyCode.Spec.INTERNAL_MIN,
                         "i_max" to KeyCode.Spec.INTERNAL_MAX,
                     ),
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                 )
             }
         }
@@ -695,6 +703,7 @@ private fun <V : Any> EnumLikeAttributeBox(
                 onClick = { showAddDialog = true },
                 modifier = Modifier.offset(x = 12.dp),
                 icon = Icons.Default.Add,
+                contentDescription = stringRes(R.string.about__ext__add_value, "name" to text),
             )
         },
     ) {
@@ -717,7 +726,7 @@ private fun <V : Any> EnumLikeAttributeBox(
     }
 
     if (showAddDialog) {
-        JetPrefAlertDialog(
+        OwnkeyDialog(
             title = stringRes(R.string.action__add),
             dismissLabel = stringRes(R.string.action__cancel),
             onDismiss = { showAddDialog = false },
