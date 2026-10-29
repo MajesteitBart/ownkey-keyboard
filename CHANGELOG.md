@@ -2,18 +2,32 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
-## Unreleased
+## 0.11.0 (2026-10-29)
+
+Version code 126.
 
 ### Added
-- The voice-only bar has a rewrite button and, with more than one keyboard language, a language button. Rewrite opens the rewrite panel in the full keyboard, and the bar returns when you close the panel or insert the result. The language button shows the active keyboard language and switches to the next one.
+- The voice-only bar has a rewrite button and, with more than one keyboard language, a language button ([#23](https://github.com/MajesteitBart/ownkey-keyboard/pull/23)). Rewrite opens the rewrite panel in the full keyboard, and the bar returns when you close the panel or insert the result. The language button shows the active keyboard language and switches to the next one.
+- **Privacy & backup** in Settings holds incognito mode, personalized suggestions, Clear learned data, Back up and Restore ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Backup files don't include API keys, so you enter them again after a restore.
+- A Dutch preset under **Add language**, which now lists your phone's languages first ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). **Set up another language** opens the manual editor for languages without a preset.
+- A **Not now** button on the microphone and notification steps of setup ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)).
 
 ### Changed
-- The app is English only. It used to show a partial Dutch translation on Dutch phones, so screens switched between Dutch and English. Language names, such as the one on the space bar, are now in English too. Keyboard layouts, autocorrect and dictation languages are unaffected. The settings language option is gone.
-- **Settings → AI** starts with what dictation and rewrite use, for example "Orukeet (on device)" and "OpenRouter · meta/muse-spark-1.1". Dictation has one choice between Orukeet, cloud dictation and system voice input. An option that can't work yet says what is missing. The Orukeet card now only manages the model, and the rewrite section asks for the provider first, then its API key, then the model.
-- A rewrite voice such as Fix grammar now rewrites the whole field when nothing is selected, the same as a spoken instruction. It used to take only the sentence before the cursor.
+- Settings and the keyboard have a new, minimal dark design ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Settings uses a black background, grey rounded cards, white buttons and the Inter font. On the keyboard, Enter is no longer orange, keys have no borders or shadows, and the mic is the only key in the accent color. The rewrite panel, the voice-only bar and toasts use the theme's colors.
+- Home has 7 rows instead of 11 and starts with an AI card ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). The card shows what dictation and rewrite use, with a dot when something needs setup. Smartbar and Gestures moved to **Keyboard**, Emojis to **Clipboard & emoji**, and the contents of Other to **Privacy & backup** and **About**.
+- **Appearance** replaces Theme ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Pick Dark, Light or Auto, Graphite or Black, and one of six accent colors or your own. The mic, the recording ring, the waveform and caps lock use the accent. Graphite is now clearly grey and Black is pure black. The theme manager and editor are under Advanced.
+- **Keyboard** settings group layout, keys, toolbar, sound and vibration, and gestures ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Pairs of switches and lists became one choice each, such as Key sounds (Off, Follow phone, Always) and Autocorrect (Off, Gentle, Normal, Strong).
+- **Settings → AI** is reorganized ([#23](https://github.com/MajesteitBart/ownkey-keyboard/pull/23), [#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Dictation is one choice between Orukeet, cloud dictation and system voice input, and an option that can't work yet says what is missing. The Orukeet card only manages the model. Rewrite asks for the provider first, then its API key, then the model. Cloud dictation and rewrite name the host that receives your data, for example "Audio goes to api.mistral.ai". Rewrite voices have their own **Rewrite styles** screen.
+- A rewrite voice such as Fix grammar now rewrites the whole field when nothing is selected, the same as a spoken instruction ([#23](https://github.com/MajesteitBart/ownkey-keyboard/pull/23)). It used to take only the sentence before the cursor.
+- The app is English only ([#23](https://github.com/MajesteitBart/ownkey-keyboard/pull/23)). It used to show a partial Dutch translation on Dutch phones, so screens switched between Dutch and English. Language names, such as the one on the space bar, are now in English too. Keyboard layouts, autocorrect and dictation languages are unaffected. The settings language option is gone.
+- New installs show one smartbar row with suggestions and the mic ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Keyboards set to another smartbar layout switch to this one, because the other layouts could hide the mic.
+- Settings that did nothing or confused people are hidden, such as key spacing, swipe thresholds, emoji history limits and clipboard sync ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). Their stored values stay. A hidden setting remains visible while it differs from its default, so you can still reset it.
+- Developer tools open when you tap the version in **About** seven times ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)).
+- The keyboard stops growing with the system font size above 130%, so the keys keep their layout at 200% ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)).
 
 ### Removed
-- The Wear OS keyboard and **Sync to Wear** in Settings → AI. The phone app no longer depends on Google Play services for Wear.
+- The Wear OS keyboard and **Sync to Wear** in Settings → AI ([#23](https://github.com/MajesteitBart/ownkey-keyboard/pull/23)). The phone app no longer depends on Google Play services for Wear.
+- The settings for the launcher icon, the toolbar icon color, size and style, the Follow time theme mode and Orukeet recognition hints ([#24](https://github.com/MajesteitBart/ownkey-keyboard/pull/24)). If you hid the launcher icon, it shows again. Follow time becomes Follow system, toolbar icons follow the keyboard theme, and Orukeet no longer uses your saved words as hints.
 
 ## 0.10.0 (2026-10-03)
 

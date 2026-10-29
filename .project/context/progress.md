@@ -1,6 +1,7 @@
 # Progress
 
 ## What Changed
+- 2026-10-29: 0.11.0 ships the minimal redesign of settings and keyboard (#24), the English-only UI, voice-bar rewrite and language buttons, and reorganized AI settings (#23). Wear OS support is removed. [Minimal redesign delivery](../projects/minimal-redesign/).
 - 2026-10-03: 0.10.0 lets public arm64 installs with a 64-bit process download and activate Orukeet. The owner chose to ship before the physical phone gates were measured. [Decision](../projects/orukeet-offline-dictation/decisions.md).
 - 2026-09-17: The recovered internal build reopens the existing onboarding flow once after updating, preserving other preferences. [Setup verification](../projects/ownkey-brand-system-refresh/updates/2026-09-17-reopen-setup.md).
 - 2026-09-17: Recovered the uncommitted Orukeet integration and combined it with saved-voice persistence recovery on `fix/saved-voices-orukeet`. [Validation and internal APK handoff](../projects/voice-prompt-rewrite/updates/2026-09-17-orukeet-reconciliation.md).
@@ -12,8 +13,8 @@
 - Play Store USP working list added in `play-store-usps.md`.
 
 ## Current Product State
-- Settings home now shows `AI` with summary `Configure dictation and rewrite`.
-- AI settings page is styled like onboarding and groups dictation plus rewrite.
+- Settings home starts with an `AI` card that shows what dictation and rewrite use, with a dot when setup is missing.
+- AI settings group the dictation choice and personal dictionary, the on-device model, cloud dictation, then rewrite. Each group names the host that receives its data.
 - Rewrite provider presets exist for OpenAI Responses, OpenAI Chat Completions, Anthropic, Mistral, OpenRouter, and Other / Custom.
 - Rewrite client handles OpenAI Responses, Anthropic Messages, and chat-completions-shaped providers separately.
 - Default rewrite provider is OpenRouter with model setting `meta/muse-spark-1.1`.

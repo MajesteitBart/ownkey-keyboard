@@ -1,0 +1,7 @@
+• New minimal dark design for settings and the keyboard, with your choice of accent color
+• Home starts with an AI card that shows what dictation and rewrite use
+• Privacy & backup groups incognito mode, learned data, backup and restore
+• Rewrite and language buttons on the voice-only bar
+• Dutch keyboard preset
+• App screens are English only; Dutch typing and dictation work as before
+• Wear OS support removed
