@@ -22,20 +22,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -52,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 
+/** Primary pill (white with black text). Custom [colors] still apply. */
 @Composable
 fun FlorisButton(
     onClick: () -> Unit,
@@ -59,31 +53,24 @@ fun FlorisButton(
     icon: ImageVector? = null,
     text: String,
     enabled: Boolean = true,
-    shape: Shape = MaterialTheme.shapes.small,
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    shape: Shape = OwnkeyTokens.PillShape,
+    contentPadding: PaddingValues = OwnkeyPillDefaults.contentPadding(OwnkeyPillStyle.Primary),
+    colors: ButtonColors = OwnkeyPillDefaults.colors(OwnkeyPillStyle.Primary),
 ) {
-    Button(
+    OwnkeyPillButton(
+        label = text,
+        onClick = onClick,
         modifier = modifier,
+        style = OwnkeyPillStyle.Primary,
         enabled = enabled,
-        shape = shape,
+        icon = icon,
         colors = colors,
         contentPadding = contentPadding,
-        onClick = onClick,
-    ) {
-        if (icon != null) {
-            Icon(
-                modifier = Modifier
-                    .padding(end = ButtonDefaults.IconSpacing)
-                    .size(ButtonDefaults.IconSize),
-                imageVector = icon,
-                contentDescription = null,
-            )
-        }
-        Text(text = text)
-    }
+        shape = shape,
+    )
 }
 
+/** Secondary pill (Raised with white text). Kept under its old name; it has no outline. */
 @Composable
 fun FlorisOutlinedButton(
     onClick: () -> Unit,
@@ -91,31 +78,24 @@ fun FlorisOutlinedButton(
     icon: ImageVector? = null,
     text: String,
     enabled: Boolean = true,
-    shape: Shape = MaterialTheme.shapes.small,
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
+    shape: Shape = OwnkeyTokens.PillShape,
+    contentPadding: PaddingValues = OwnkeyPillDefaults.contentPadding(OwnkeyPillStyle.Secondary),
+    colors: ButtonColors = OwnkeyPillDefaults.colors(OwnkeyPillStyle.Secondary),
 ) {
-    OutlinedButton(
+    OwnkeyPillButton(
+        label = text,
+        onClick = onClick,
         modifier = modifier,
+        style = OwnkeyPillStyle.Secondary,
         enabled = enabled,
-        shape = shape,
+        icon = icon,
         colors = colors,
         contentPadding = contentPadding,
-        onClick = onClick,
-    ) {
-        if (icon != null) {
-            Icon(
-                modifier = Modifier
-                    .padding(end = ButtonDefaults.IconSpacing)
-                    .size(ButtonDefaults.IconSize),
-                imageVector = icon,
-                contentDescription = null,
-            )
-        }
-        Text(text = text)
-    }
+        shape = shape,
+    )
 }
 
+/** Plain text button in Label colour. */
 @Composable
 fun FlorisTextButton(
     onClick: () -> Unit,
@@ -123,29 +103,21 @@ fun FlorisTextButton(
     icon: ImageVector? = null,
     text: String,
     enabled: Boolean = true,
-    shape: Shape = ButtonDefaults.shape,
-    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
-    colors: ButtonColors = ButtonDefaults.textButtonColors(),
+    shape: Shape = OwnkeyTokens.PillShape,
+    contentPadding: PaddingValues = OwnkeyPillDefaults.contentPadding(OwnkeyPillStyle.Plain),
+    colors: ButtonColors = OwnkeyPillDefaults.colors(OwnkeyPillStyle.Plain),
 ) {
-    TextButton(
+    OwnkeyPillButton(
+        label = text,
+        onClick = onClick,
         modifier = modifier,
+        style = OwnkeyPillStyle.Plain,
         enabled = enabled,
-        shape = shape,
+        icon = icon,
         colors = colors,
         contentPadding = contentPadding,
-        onClick = onClick,
-    ) {
-        if (icon != null) {
-            Icon(
-                modifier = Modifier
-                    .padding(end = ButtonDefaults.IconSpacing)
-                    .size(ButtonDefaults.IconSize),
-                imageVector = icon,
-                contentDescription = null,
-            )
-        }
-        Text(text = text)
-    }
+        shape = shape,
+    )
 }
 
 @Composable
@@ -156,6 +128,7 @@ fun FlorisIconButton(
     enabled: Boolean = true,
     iconModifier: Modifier = Modifier,
     iconColor: Color = Color.Unspecified,
+    contentDescription: String? = null,
 ) {
     IconButton(
         modifier = modifier,
@@ -170,7 +143,7 @@ fun FlorisIconButton(
             Icon(
                 modifier = iconModifier,
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = contentDescription,
             )
         }
     }

@@ -102,6 +102,9 @@ jobs:
       - name: Build phone APK with Gradle
         run: ./gradlew clean ${{ steps.vars.outputs.app_apk_task }} --stacktrace
 
+      - name: Run app unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
       - name: Build phone release AAB
         if: ${{ steps.vars.outputs.app_bundle_task != '' }}
         run: ./gradlew ${{ steps.vars.outputs.app_bundle_task }} -Pownkey.apkSplits=false --stacktrace

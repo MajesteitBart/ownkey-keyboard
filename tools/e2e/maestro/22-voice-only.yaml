@@ -1,0 +1,39 @@
+# Voice only: overflow -> Voice only shows the bar instead of the keys; Show keyboard brings the
+# keys back. The mic is never tapped, so nothing is recorded.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 22 Voice only
+tags: [keyboard, ai]
+---
+- runFlow: helpers/open-home.yaml
+- runFlow: helpers/open-keyboard.yaml
+- runFlow: helpers/expand-toolbar.yaml
+- tapOn: "More actions"
+- extendedWaitUntil:
+    visible: "Voice only"
+    timeout: 5000
+- tapOn: "Voice only"
+- extendedWaitUntil:
+    visible: "Tap to speak"
+    timeout: 5000
+- assertVisible: "Show keyboard"
+- assertVisible: "Rewrite text"
+- assertVisible: "Keyboard language: .*"
+- assertVisible: "Start dictation"
+- assertNotVisible: "q"
+- takeScreenshot: 22-voice-only-bar
+
+- tapOn: "Show keyboard"
+- extendedWaitUntil:
+    visible: "q"
+    timeout: 5000
+- assertNotVisible: "Tap to speak"
+- takeScreenshot: 22-voice-only-back-to-keys
+
+# Close the overflow if it came back with the keys, and leave the toolbar collapsed.
+- runFlow:
+    when:
+      visible: "Voice only"
+    commands:
+      - tapOn: "More actions"
+- runFlow: helpers/collapse-toolbar.yaml
+- hideKeyboard

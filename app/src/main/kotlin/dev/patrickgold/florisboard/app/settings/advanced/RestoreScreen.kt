@@ -18,29 +18,15 @@ package dev.patrickgold.florisboard.app.settings.advanced
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
@@ -62,7 +48,6 @@ import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.jetpref.datastore.runtime.AndroidAppDataStorage
 import dev.patrickgold.jetpref.datastore.runtime.FileBasedStorage
 import dev.patrickgold.jetpref.datastore.runtime.ImportStrategy
-import dev.patrickgold.jetpref.datastore.ui.Preference
 import java.io.FileNotFoundException
 import java.text.DateFormat
 import java.util.*
@@ -73,15 +58,20 @@ import org.florisboard.lib.android.readToFile
 import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.compose.FlorisButtonBar
-import org.florisboard.lib.compose.FlorisCardDefaults
-import org.florisboard.lib.compose.FlorisOutlinedBox
-import org.florisboard.lib.compose.FlorisOutlinedButton
-import org.florisboard.lib.compose.defaultFlorisOutlinedBox
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
 import org.florisboard.lib.kotlin.io.readJson
 import org.florisboard.lib.kotlin.io.subDir
 import org.florisboard.lib.kotlin.io.subFile
+import androidx.compose.ui.platform.testTag
+import dev.patrickgold.florisboard.app.ui.OwnkeyButton
+import dev.patrickgold.florisboard.app.ui.OwnkeyButtonStyle
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
+import dev.patrickgold.florisboard.app.ui.OwnkeyNotice
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
+import dev.patrickgold.florisboard.app.ui.OwnkeyTone
+import dev.patrickgold.florisboard.app.ui.PreferenceGroup
+import org.florisboard.lib.compose.OwnkeyTokens
 
 object Restore {
     const val MIN_VERSION_CODE = 64
@@ -293,16 +283,14 @@ fun RestoreScreen() = FlorisScreen {
     }
 
     content {
-        FlorisOutlinedBox(
-            modifier = Modifier.defaultFlorisOutlinedBox(),
-            title = stringRes(R.string.backup_and_restore__restore__mode),
-        ) {
+        PreferenceGroup(title = stringRes(R.string.backup_and_restore__restore__mode)) {
             RadioListItem(
                 onClick = {
                     importStrategy = ImportStrategy.Merge
                 },
                 selected = importStrategy == ImportStrategy.Merge,
                 text = stringRes(R.string.backup_and_restore__restore__mode_merge),
+                secondaryText = stringRes(R.string.settings__privacy__restore_merge_summary),
             )
             RadioListItem(
                 onClick = {
@@ -310,9 +298,16 @@ fun RestoreScreen() = FlorisScreen {
                 },
                 selected = importStrategy == ImportStrategy.Erase,
                 text = stringRes(R.string.backup_and_restore__restore__mode_erase_and_overwrite),
+                secondaryText = stringRes(R.string.settings__privacy__restore_replace_summary),
             )
         }
-        FlorisOutlinedButton(
+        OwnkeyButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = OwnkeyTokens.GroupGap)
+                .testTag("restore-select-file"),
+            label = stringRes(R.string.action__select_file),
+            style = OwnkeyButtonStyle.Secondary,
             onClick = {
                 runCatching {
                     restoreDataFromFileSystemLauncher.launch("*/*")
@@ -323,36 +318,23 @@ fun RestoreScreen() = FlorisScreen {
                     )
                 }
             },
-            modifier = Modifier
-                .padding(vertical = 16.dp)
-                .align(Alignment.CenterHorizontally),
-            text = stringRes(R.string.action__select_file),
         )
         val workspace = restoreWorkspace
         if (workspace == null) {
-            Text(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(horizontal = 16.dp),
-                text = stringRes(R.string.state__no_file_selected),
-                fontStyle = FontStyle.Italic,
-            )
+            OwnkeyNotice(text = stringRes(R.string.settings__privacy__restore_no_file))
         } else {
-            FlorisOutlinedBox(
-                modifier = Modifier.defaultFlorisOutlinedBox(),
-                title = stringRes(R.string.backup_and_restore__restore__metadata),
-            ) {
-                Preference(
-                    icon = Icons.Default.Code,
-                    title = workspace.metadata.packageName,
+            OwnkeyGroup(title = stringRes(R.string.backup_and_restore__restore__metadata)) {
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__privacy__restore_app),
+                    value = workspace.metadata.packageName,
                 )
-                Preference(
-                    icon = Icons.Outlined.Info,
-                    title = "${workspace.metadata.versionName} (${workspace.metadata.versionCode})",
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__privacy__restore_version),
+                    value = "${workspace.metadata.versionName} (${workspace.metadata.versionCode})",
                 )
-                Preference(
-                    icon = Icons.Default.Schedule,
-                    title = remember(workspace.metadata.timestamp) {
+                OwnkeyRow(
+                    title = stringRes(R.string.settings__privacy__restore_created),
+                    value = remember(workspace.metadata.timestamp) {
                         val formatter = DateFormat.getDateTimeInstance()
                         val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
                         calendar.timeInMillis = workspace.metadata.timestamp
@@ -360,37 +342,15 @@ fun RestoreScreen() = FlorisScreen {
                     },
                 )
                 if (workspace.restoreErrorId != null) {
-                    Column(modifier = Modifier.padding(FlorisCardDefaults.ContentPadding)) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(9.dp)
-                                .padding(bottom = 8.dp)
-                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.56f))
-                        )
-                        Text(
-                            text = stringRes(workspace.restoreErrorId!!),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            fontStyle = FontStyle.Italic,
-                        )
-                    }
+                    OwnkeyNotice(
+                        text = stringRes(workspace.restoreErrorId!!),
+                        tone = OwnkeyTone.Error,
+                    )
                 } else if (workspace.restoreWarningId != null) {
-                    Column(modifier = Modifier.padding(FlorisCardDefaults.ContentPadding)) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(9.dp)
-                                .padding(bottom = 8.dp)
-                                .background(LocalContentColor.current)
-                        )
-                        Text(
-                            text = stringRes(workspace.restoreWarningId!!),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = LocalContentColor.current,
-                            fontStyle = FontStyle.Italic,
-                        )
-                    }
+                    OwnkeyNotice(
+                        text = stringRes(workspace.restoreWarningId!!),
+                        tone = OwnkeyTone.Warning,
+                    )
                 }
             }
             if (workspace.restoreErrorId == null) {

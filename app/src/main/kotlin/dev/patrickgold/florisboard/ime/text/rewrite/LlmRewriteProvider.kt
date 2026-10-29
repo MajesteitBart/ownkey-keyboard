@@ -16,21 +16,25 @@
 
 package dev.patrickgold.florisboard.ime.text.rewrite
 
+import androidx.annotation.StringRes
+import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.lib.util.NetworkUtils
 
 data class LlmRewriteProviderPreset(
     val id: String,
-    val label: String,
-    val summary: String,
+    /** Name in the settings provider choice. */
+    @param:StringRes val labelRes: Int,
+    /** One-line description in the settings provider choice. */
+    @param:StringRes val summaryRes: Int,
     val endpointUrl: String,
     val defaultModel: String,
-    val isCustom: Boolean = false,
     /**
      * Provider identity without the API variant, for the keyboard's compact summaries and the
      * data-sharing disclosure. Both OpenAI presets send data to OpenAI; the protocol difference
      * stays a configuration detail in settings.
      */
-    val providerName: String = label,
+    val providerName: String,
+    val isCustom: Boolean = false,
 )
 
 /** The provider, endpoint and model a rewrite request actually uses, after legacy inference and defaults. */
@@ -60,45 +64,48 @@ object LlmRewriteProviders {
     val presets = listOf(
         LlmRewriteProviderPreset(
             id = OpenAiResponses,
-            label = "OpenAI Responses",
-            summary = "Best fit for GPT-5.5 and newer OpenAI models.",
+            labelRes = R.string.settings__ai__rewrite_provider__openai,
+            summaryRes = R.string.settings__ai__rewrite_provider__openai_summary,
             endpointUrl = "https://api.openai.com/v1/responses",
             defaultModel = "gpt-5.5",
             providerName = "OpenAI",
         ),
         LlmRewriteProviderPreset(
             id = OpenAiChatCompletions,
-            label = "OpenAI Chat Completions",
-            summary = "Chat-compatible OpenAI endpoint for lower-cost rewrite models.",
+            labelRes = R.string.settings__ai__rewrite_provider__openai_chat,
+            summaryRes = R.string.settings__ai__rewrite_provider__openai_chat_summary,
             endpointUrl = "https://api.openai.com/v1/chat/completions",
             defaultModel = "gpt-5.4-mini",
             providerName = "OpenAI",
         ),
         LlmRewriteProviderPreset(
             id = Anthropic,
-            label = "Anthropic",
-            summary = "Claude Messages API with native Anthropic headers.",
+            labelRes = R.string.settings__ai__rewrite_provider__anthropic,
+            summaryRes = R.string.settings__ai__rewrite_provider__anthropic_summary,
             endpointUrl = "https://api.anthropic.com/v1/messages",
             defaultModel = "claude-sonnet-4-5-20250929",
+            providerName = "Anthropic",
         ),
         LlmRewriteProviderPreset(
             id = Mistral,
-            label = "Mistral",
-            summary = "Mistral chat completions endpoint.",
+            labelRes = R.string.settings__ai__rewrite_provider__mistral,
+            summaryRes = R.string.settings__ai__rewrite_provider__mistral_summary,
             endpointUrl = "https://api.mistral.ai/v1/chat/completions",
             defaultModel = "mistral-small-latest",
+            providerName = "Mistral",
         ),
         LlmRewriteProviderPreset(
             id = OpenRouter,
-            label = "OpenRouter",
-            summary = "OpenAI-compatible routing through OpenRouter.",
+            labelRes = R.string.settings__ai__rewrite_provider__openrouter,
+            summaryRes = R.string.settings__ai__rewrite_provider__openrouter_summary,
             endpointUrl = DefaultEndpointUrl,
             defaultModel = DefaultModel,
+            providerName = "OpenRouter",
         ),
         LlmRewriteProviderPreset(
             id = Custom,
-            label = "Other / Custom",
-            summary = "Use your own OpenAI-compatible endpoint.",
+            labelRes = R.string.settings__ai__rewrite_provider__other,
+            summaryRes = R.string.settings__ai__rewrite_provider__other_summary,
             endpointUrl = "",
             defaultModel = "",
             isCustom = true,

@@ -529,6 +529,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "internal__microphone_permission_state",
             default = MicrophonePermissionState.NOT_SET,
         )
+        // Set once Ownkey has shown Android's microphone prompt. Together with the rationale flag it tells
+        // a permission the user blocked apart from one that was never asked for.
+        val microphonePermissionRequested = boolean(
+            key = "internal__microphone_permission_requested",
+            default = false,
+        )
     }
 
     val keyboard = Keyboard()
@@ -731,7 +737,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val extendedActionsExpanded = boolean(
             key = "smartbar__extended_actions_expanded",
-            default = true,
+            default = false,
         )
         val extendedActionsPlacement = enum(
             key = "smartbar__extended_actions_placement",
@@ -767,7 +773,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val displayMode = enum(
             key = "suggestion__display_mode",
-            default = CandidatesDisplayMode.DYNAMIC_SCROLLABLE,
+            default = CandidatesDisplayMode.CLASSIC,
         )
         val blockPossiblyOffensive = boolean(
             key = "suggestion__block_possibly_offensive",
@@ -963,7 +969,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 entry.transform(key = "other__settings_language")
             }
             "advanced__show_app_icon" -> {
-                entry.transform(key = "other__show_app_icon")
+                entry.renameLocked(key = "other__show_app_icon")
             }
             "advanced__incognito_mode" -> {
                 entry.transform(key = "suggestion__incognito_mode")
@@ -1118,8 +1124,87 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 }
             }
 
+            // Settings Ownkey no longer offers stay at fixed values; see OwnkeyPrefMigrations
+            in OwnkeyPrefMigrations.keys -> {
+                when (val decision = OwnkeyPrefMigrations.decide(entry.key, entry.rawValue)) {
+                    MigrationDecision.Reset -> entry.reset()
+                    is MigrationDecision.Transform -> entry.transform(rawValue = decision.rawValue)
+                    MigrationDecision.Keep, null -> entry.keepAsIs()
+                }
+            }
+
             // Default: keep entry
             else -> entry.keepAsIs()
         }
     }
+
+    /**
+     * Moves an entry to [key] and applies that key's Ownkey lock. jetpref stores a transformed entry as it is and
+     * never runs migrate() on it again, so a plain rename would skip the lock.
+     */
+    private fun PreferenceMigrationEntry.renameLocked(key: String): PreferenceMigrationEntry =
+        when (val decision = OwnkeyPrefMigrations.decideRenamed(key, rawValue)) {
+            MigrationDecision.Keep -> transform(key = key)
+            MigrationDecision.Reset -> reset()
+            is MigrationDecision.Transform -> transform(key = key, rawValue = decision.rawValue)
+        }
+}
+
+/** What a migrate rule does with one stored value. */
+sealed interface MigrationDecision {
+    data object Keep : MigrationDecision
+    data object Reset : MigrationDecision
+    data class Transform(val rawValue: String) : MigrationDecision
+}
+
+/**
+ * Locks for settings that Ownkey's settings no longer offer, so nobody is stuck with a value they can't change.
+ * jetpref runs migrate() on every load and every restore, which makes each rule permanent. Each decision is a pure
+ * function of the stored raw value.
+ */
+object OwnkeyPrefMigrations {
+    /** Only the extended toolbar is left; the other layouts have no setting to leave them again. */
+    fun smartbarLayout(rawValue: String): MigrationDecision =
+        if (rawValue == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED.name) {
+            MigrationDecision.Keep
+        } else {
+            MigrationDecision.Reset
+        }
+
+    /** Follow time is no longer offered; following the system's dark mode is the closest choice. */
+    fun themeMode(rawValue: String): MigrationDecision =
+        if (rawValue == ThemeMode.FOLLOW_TIME.name) {
+            MigrationDecision.Transform(ThemeMode.FOLLOW_SYSTEM.name)
+        } else {
+            MigrationDecision.Keep
+        }
+
+    /** For settings that must always hold their default. */
+    @Suppress("UNUSED_PARAMETER")
+    fun alwaysReset(rawValue: String): MigrationDecision = MigrationDecision.Reset
+
+    private val rules: Map<String, (String) -> MigrationDecision> = mapOf(
+        "smartbar__layout" to ::smartbarLayout,
+        // On-device recognition hints stay off until the beam-search profile is qualified.
+        "ai__local_vocabulary_hints" to ::alwaysReset,
+        // The switch is gone, and on Android 8-9 a hidden launcher icon would stay hidden.
+        "other__show_app_icon" to ::alwaysReset,
+        // Toolbar icons follow the keyboard theme.
+        "theme__toolbar_icon_color" to ::alwaysReset,
+        "theme__toolbar_icon_size_percent" to ::alwaysReset,
+        "theme__icon_style" to ::alwaysReset,
+        "theme__mode" to ::themeMode,
+    )
+
+    val keys: Set<String> = rules.keys
+
+    /** The decision for a stored [key], or null when no lock covers it. */
+    fun decide(key: String, rawValue: String): MigrationDecision? = rules[key]?.invoke(rawValue)
+
+    /**
+     * The decision for an entry that migrate() renames to [newKey]: the lock of [newKey], else keep. Today only
+     * "advanced__show_app_icon" is renamed onto a locked key.
+     */
+    fun decideRenamed(newKey: String, rawValue: String): MigrationDecision =
+        decide(newKey, rawValue) ?: MigrationDecision.Keep
 }

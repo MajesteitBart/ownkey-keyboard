@@ -23,7 +23,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import kotlinx.coroutines.delay
 import org.florisboard.lib.compose.stringRes
@@ -182,16 +182,16 @@ private fun Modifier.placeAbove(anchor: Rect): Modifier = layout { measurable, c
 
 @Composable
 private fun VoiceActionHintBubble() {
+    val palette = rememberKeyboardPalette()
     Box(
         modifier = Modifier
-            .shadow(elevation = 6.dp, shape = HintShape, clip = false)
-            .background(color = OwnkeyBrand.Glass.Sheet, shape = HintShape)
-            .border(1.dp, OwnkeyBrand.Glass.Ink.copy(alpha = 0.1f), HintShape)
+            .shadow(elevation = if (palette.isLight) 2.dp else 0.dp, shape = HintShape, clip = false)
+            .background(color = palette.popup, shape = HintShape)
             .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
         Text(
             text = stringRes(R.string.voice_rewrite__hold_hint),
-            color = OwnkeyBrand.Glass.Ink,
+            color = palette.popupInk,
             fontSize = 12.sp,
             lineHeight = 14.sp,
             fontWeight = FontWeight.Medium,

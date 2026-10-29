@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -200,7 +201,7 @@ private val HeroiconForTabler by lazy {
         R.drawable.ic_tabler_world to R.drawable.ic_hero_globe_alt,
         R.drawable.ic_tabler_settings to R.drawable.ic_hero_cog_6_tooth,
         R.drawable.ic_tabler_arrow_big_up to R.drawable.ic_hero_arrow_up,
-        R.drawable.ic_tabler_select_all to R.drawable.ic_hero_viewfinder_circle,
+        R.drawable.ic_tabler_select_all to R.drawable.ic_hero_select_all,
         R.drawable.ic_tabler_arrow_back_up to R.drawable.ic_hero_arrow_uturn_left,
         R.drawable.ic_tabler_arrow_forward_up to R.drawable.ic_hero_arrow_uturn_right,
         R.drawable.ic_tabler_dots to R.drawable.ic_hero_ellipsis_horizontal,
@@ -383,10 +384,14 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
             styledIcon(R.drawable.ic_tabler_settings, Icons.Filled.Settings, Icons.Rounded.Settings, Icons.Sharp.Settings)
         }
         KeyCode.SHIFT -> {
-            when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
-                // A filled circle marks shift and caps lock; the Signal themes also color caps lock.
-                true -> heroicon(R.drawable.ic_hero_arrow_up_circle) ?: Icons.Default.KeyboardCapslock
-                else -> styledIcon(R.drawable.ic_tabler_arrow_big_up, Icons.Filled.ArrowUpward, Icons.Rounded.ArrowUpward, Icons.Sharp.ArrowUpward)
+            // Each state has its own shape, so caps lock never depends on colour alone: an outline arrow,
+            // a filled circle for shift, and the filled circle with a bar for caps lock.
+            when (evaluator.state.inputShiftState) {
+                InputShiftState.UNSHIFTED -> {
+                    styledIcon(R.drawable.ic_tabler_arrow_big_up, Icons.Filled.ArrowUpward, Icons.Rounded.ArrowUpward, Icons.Sharp.ArrowUpward)
+                }
+                InputShiftState.CAPS_LOCK -> heroicon(R.drawable.ic_hero_caps_lock) ?: Icons.Default.KeyboardCapslock
+                else -> heroicon(R.drawable.ic_hero_arrow_up_circle) ?: Icons.Filled.ArrowCircleUp
             }
         }
         KeyCode.SPACE, KeyCode.CJK_SPACE -> {

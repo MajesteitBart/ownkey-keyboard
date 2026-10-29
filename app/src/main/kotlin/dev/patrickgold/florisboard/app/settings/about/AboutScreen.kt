@@ -16,38 +16,52 @@
 
 package dev.patrickgold.florisboard.app.settings.about
 
-import androidx.compose.foundation.layout.Arrangement
+import android.content.pm.ApplicationInfo
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.launchUrl
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import org.florisboard.lib.android.showShortToastSync
-import org.florisboard.lib.android.stringRes
+import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.compose.FlorisCanvasIcon
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.stringRes
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AboutScreen() = FlorisScreen {
     title = stringRes(R.string.about__title)
@@ -55,73 +69,141 @@ fun AboutScreen() = FlorisScreen {
     val navController = LocalNavController.current
     val context = LocalContext.current
     val clipboardManager by context.clipboardManager()
+    val scope = rememberCoroutineScope()
 
     val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+    val isDebuggable = remember(context) {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
+    var unlock by remember { mutableStateOf(DevtoolsUnlock()) }
 
     content {
+        val devtoolsPref = prefs.devtools.enabled
+        val devtoolsEnabled by devtoolsPref.collectAsState()
+        val copyLabel = stringRes(R.string.about__copy_version)
         Column(
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp, bottom = 32.dp)
+                .padding(top = 8.dp, bottom = OwnkeyTokens.GroupGap),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             FlorisCanvasIcon(
-                modifier = Modifier.requiredSize(64.dp),
+                modifier = Modifier.requiredSize(72.dp),
                 iconId = R.mipmap.ownkey_app_icon,
-                contentDescription = "Ownkey app icon",
+                contentDescription = null,
             )
             Text(
-                text = stringRes(R.string.floris_app_name),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 16.dp),
+                text = stringRes(R.string.about__app_name),
+                style = MaterialTheme.typography.titleMedium,
+                color = OwnkeyTokens.Label,
+            )
+            Box(
+                modifier = Modifier
+                    .heightIn(min = OwnkeyTokens.MinTouchTarget)
+                    .clip(OwnkeyTokens.PillShape)
+                    .combinedClickable(
+                        role = Role.Button,
+                        onLongClickLabel = copyLabel,
+                        onLongClick = {
+                            scope.launch {
+                                try {
+                                    clipboardManager.addNewPlaintext(appVersion)
+                                    context.showShortToast(R.string.about__version_copied__title)
+                                } catch (e: Throwable) {
+                                    context.showShortToast(
+                                        R.string.about__version_copied__error,
+                                        "error_message" to e.message,
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            unlock = unlock.tap(System.currentTimeMillis())
+                            if (unlock.unlocksNow) {
+                                val wasEnabled = devtoolsEnabled
+                                scope.launch {
+                                    if (wasEnabled) {
+                                        context.showShortToast(R.string.about__devtools_already_on)
+                                    } else {
+                                        devtoolsPref.set(true)
+                                        context.showShortToast(R.string.about__devtools_on)
+                                    }
+                                }
+                            }
+                        },
+                    )
+                    .padding(horizontal = 16.dp)
+                    .testTag("about-version"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringRes(R.string.about__version_value, "version" to appVersion),
+                    // No tabular figures: they put wide gaps around the dots, hyphen and plus of the version.
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OwnkeyTokens.Secondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        OwnkeyGroup {
+            AboutLinkRow(
+                tag = "about-whats-new",
+                title = stringRes(R.string.about__changelog__title),
+                onClick = { context.launchUrl(R.string.florisboard__changelog_url, "version" to BuildConfig.VERSION_NAME) },
+            )
+            AboutLinkRow(
+                tag = "about-source-code",
+                title = stringRes(R.string.about__repository__title),
+                onClick = { context.launchUrl(R.string.florisboard__repo_url) },
+            )
+            AboutLinkRow(
+                tag = "about-privacy-policy",
+                title = stringRes(R.string.about__privacy_policy__title),
+                onClick = { context.launchUrl(R.string.florisboard__privacy_policy_url) },
+            )
+            OwnkeyRow(
+                modifier = Modifier.testTag("about-license"),
+                title = stringRes(R.string.about__project_license__title),
+                chevron = true,
+                onClick = { navController.navigate(Routes.Settings.ProjectLicense) },
+            )
+            OwnkeyRow(
+                modifier = Modifier.testTag("about-third-party"),
+                title = stringRes(R.string.about__third_party_licenses__title),
+                chevron = true,
+                onClick = { navController.navigate(Routes.Settings.ThirdPartyLicenses) },
             )
         }
-        Preference(
-            icon = Icons.Outlined.Info,
-            title = stringRes(R.string.about__version__title),
-            summary = appVersion,
-            onClick = {
-                try {
-                    clipboardManager.addNewPlaintext(appVersion)
-                    context.showShortToastSync(R.string.about__version_copied__title)
-                } catch (e: Throwable) {
-                    context.showShortToastSync(
-                        context.stringRes(R.string.about__version_copied__error, "error_message" to e.message),
-                    )
-                }
-            },
-        )
-        Preference(
-            icon = Icons.Default.History,
-            title = stringRes(R.string.about__changelog__title),
-            summary = stringRes(R.string.about__changelog__summary),
-            onClick = { context.launchUrl(R.string.florisboard__changelog_url, "version" to BuildConfig.VERSION_NAME) },
-        )
-        Preference(
-            icon = Icons.Default.Code,
-            title = stringRes(R.string.about__repository__title),
-            summary = stringRes(R.string.about__repository__summary),
-            onClick = { context.launchUrl(R.string.florisboard__repo_url) },
-        )
-        Preference(
-            icon = Icons.Outlined.Policy,
-            title = stringRes(R.string.about__privacy_policy__title),
-            summary = stringRes(R.string.about__privacy_policy__summary),
-            onClick = { context.launchUrl(R.string.florisboard__privacy_policy_url) },
-        )
-        Preference(
-            icon = Icons.Outlined.Description,
-            title = stringRes(R.string.about__project_license__title),
-            summary = stringRes(R.string.about__project_license__summary, "license_name" to "Apache 2.0"),
-            onClick = { navController.navigate(Routes.Settings.ProjectLicense) },
-        )
-        Preference(
-            icon = Icons.Outlined.Description,
-            title = stringRes(id = R.string.about__third_party_licenses__title),
-            summary = stringRes(id = R.string.about__third_party_licenses__summary),
-            onClick = { navController.navigate(Routes.Settings.ThirdPartyLicenses) },
-        )
+
+        if (devtoolsEnabled || isDebuggable) {
+            OwnkeyGroup {
+                OwnkeyRow(
+                    modifier = Modifier.testTag("about-devtools"),
+                    title = stringRes(R.string.devtools__title),
+                    chevron = true,
+                    onClick = { navController.navigate(Routes.Devtools.Home) },
+                )
+            }
+        }
     }
+}
+
+/** A row that opens a web page; the trailing icon says it leaves the app. */
+@Composable
+private fun AboutLinkRow(tag: String, title: String, onClick: () -> Unit) {
+    OwnkeyRow(
+        modifier = Modifier.testTag(tag),
+        title = title,
+        onClick = onClick,
+        trailing = {
+            Icon(
+                modifier = Modifier.size(20.dp),
+                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = null,
+                tint = OwnkeyTokens.Secondary,
+            )
+        },
+    )
 }

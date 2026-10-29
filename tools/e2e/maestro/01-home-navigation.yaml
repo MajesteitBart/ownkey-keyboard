@@ -1,0 +1,128 @@
+# Every Home row opens the right screen, and Back (system or top bar) returns to Home.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 01 Home navigation
+tags: [settings]
+---
+- runFlow: helpers/open-home.yaml
+- assertVisible: "Ownkey"
+- assertVisible:
+    id: home-languages
+- assertVisible:
+    id: home-appearance
+- assertVisible:
+    id: home-keyboard
+- assertVisible:
+    id: home-typing
+- takeScreenshot: 01-home
+
+- tapOn:
+    id: home-ai
+- extendedWaitUntil:
+    visible:
+      id: dictation-option-cloud
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 5000
+
+- tapOn:
+    id: home-languages
+- extendedWaitUntil:
+    visible:
+      id: languages-add
+    timeout: 10000
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 5000
+
+- tapOn:
+    id: home-appearance
+- extendedWaitUntil:
+    visible:
+      id: appearance-custom-colour
+    timeout: 10000
+- assertVisible: "Appearance"
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 5000
+
+- tapOn:
+    id: home-keyboard
+- extendedWaitUntil:
+    visible:
+      id: keyboard-space-neighbor
+    timeout: 10000
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 5000
+
+- tapOn:
+    id: home-typing
+- extendedWaitUntil:
+    visible:
+      id: typing-autocorrect
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: home-clipboard
+    direction: DOWN
+- tapOn:
+    id: home-clipboard
+- extendedWaitUntil:
+    visible:
+      id: clipboard-history
+    timeout: 10000
+- assertVisible:
+    id: emoji-skin-tone
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-clipboard
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: home-privacy
+    direction: DOWN
+- tapOn:
+    id: home-privacy
+- extendedWaitUntil:
+    visible:
+      id: privacy-incognito
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-privacy
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: home-about
+    direction: DOWN
+- tapOn:
+    id: home-about
+- extendedWaitUntil:
+    visible:
+      id: about-version
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-about
+    timeout: 5000
+- takeScreenshot: 01-home-after-navigation

@@ -218,6 +218,8 @@ tasks.withType<Test> {
         events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
     }
     useJUnitPlatform()
+    // The IME window property tests run out of Gradle's default 512 MB test heap under Kover instrumentation.
+    maxHeapSize = "2g"
 }
 
 kover {

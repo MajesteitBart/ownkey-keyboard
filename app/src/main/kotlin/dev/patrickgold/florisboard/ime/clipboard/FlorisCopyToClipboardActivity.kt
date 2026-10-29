@@ -39,7 +39,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -47,9 +46,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.app.AppTheme
 import dev.patrickgold.florisboard.app.apptheme.FlorisAppTheme
-import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.android.AndroidClipboardManager
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.android.stringRes
@@ -135,14 +133,12 @@ class FlorisCopyToClipboardActivity : ComponentActivity() {
 
     @Composable
     private fun Content() {
-        val prefs by FlorisPreferenceStore
         ProvideLocalizedResources(
             resourcesContext = this,
             appName = R.string.app_name,
             forceLayoutDirection = LayoutDirection.Ltr,
         ) {
-            val theme by prefs.other.settingsTheme.collectAsState()
-            FlorisAppTheme(theme) {
+            FlorisAppTheme(AppTheme.DARK) {
                 BottomSheet {
                     Row {
                         Text(

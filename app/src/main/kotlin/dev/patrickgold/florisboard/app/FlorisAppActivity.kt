@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -37,8 +36,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -62,6 +64,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.android.hideAppIcon
 import org.florisboard.lib.android.showAppIcon
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.ProvideLocalizedResources
 import org.florisboard.lib.compose.conditional
 import org.florisboard.lib.compose.stringRes
@@ -83,11 +86,11 @@ class FlorisAppActivity : ComponentActivity() {
     private val prefs by FlorisPreferenceStore
     private val appContext by appContext()
     private val cacheManager by cacheManager()
-    private var appTheme by mutableStateOf(AppTheme.AUTO)
     private var showAppIcon = true
     private var resourcesContext by mutableStateOf(this as Context)
     private var intentToBeHandled by mutableStateOf<Intent?>(null)
 
+    @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         // Splash screen should be installed before calling super.onCreate()
         installSplashScreen().apply {
@@ -96,9 +99,6 @@ class FlorisAppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        prefs.other.settingsTheme.asFlow().collectIn(lifecycleScope) {
-            appTheme = it
-        }
         if (AndroidVersion.ATMOST_API28_P) {
             prefs.other.showAppIcon.asFlow().collectIn(lifecycleScope) {
                 showAppIcon = it
@@ -127,14 +127,22 @@ class FlorisAppActivity : ComponentActivity() {
                     resourcesContext,
                     appName = R.string.app_name,
                 ) {
-                    FlorisAppTheme(theme = appTheme) {
-                        Surface(color = MaterialTheme.colorScheme.background) {
+                    // The settings app is dark only; the stored settings theme is no longer read.
+                    FlorisAppTheme(theme = AppTheme.DARK) {
+                        Surface(
+                            modifier = Modifier.semantics { testTagsAsResourceId = true },
+                            color = OwnkeyTokens.Black,
+                        ) {
                             AppContent()
                         }
                     }
                 }
             }
-            onNewIntent(intent)
+            // A recreated activity (rotation) restores its back stack; handling the launch intent again would
+            // reopen the deep link screen on top of where the user was.
+            if (savedInstanceState == null) {
+                onNewIntent(intent)
+            }
         }
     }
 

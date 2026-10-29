@@ -11,9 +11,11 @@
     </style>
 
     <style name="FlorisAppTheme" parent="android:style/Theme.Material.NoActionBar">
-        <item name="android:colorPrimary">@color/colorPrimary</item>
-        <item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:colorPrimary">@color/ownkey_settings_black</item>
+        <item name="android:colorPrimaryDark">@color/ownkey_settings_black</item>
+        <item name="android:colorAccent">@color/ownkey_settings_accent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
 
         <!-- IMPORTANT: the following 2 colors MUST be references and not inline colors, or older
              versions of Android will not set the window background and thus causing weird

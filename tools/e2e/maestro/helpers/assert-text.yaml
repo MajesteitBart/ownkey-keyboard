@@ -1,0 +1,7 @@
+# Used by run.sh after it opens a deep link: EXPECT is visible text, SHOT a screenshot name.
+appId: nl.bartvandermeeren.ownkey.debug
+---
+- extendedWaitUntil:
+    visible: ${EXPECT}
+    timeout: 15000
+- takeScreenshot: ${SHOT}

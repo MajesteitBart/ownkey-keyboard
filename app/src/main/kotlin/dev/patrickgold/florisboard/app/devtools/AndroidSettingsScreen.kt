@@ -17,20 +17,26 @@
 package dev.patrickgold.florisboard.app.devtools
 
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.ui.LazyCardRow
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
+import dev.patrickgold.florisboard.app.ui.OwnkeyRow
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
+import dev.patrickgold.florisboard.lib.compose.LocalOwnkeyContentPadding
 import org.florisboard.lib.android.AndroidSettings
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.stringRes
 
 @Composable
@@ -55,26 +61,35 @@ fun AndroidSettingsScreen(name: String?) = FlorisScreen {
     var dialogKey by remember { mutableStateOf<String?>(null) }
 
     content {
-        LazyColumn {
-            items(nameValueTable) { (fieldName, key) ->
-                Preference(
-                    title = fieldName,
-                    summary = key,
-                    onClick = { dialogKey = key },
-                )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = LocalOwnkeyContentPadding.current,
+        ) {
+            itemsIndexed(nameValueTable) { index, (fieldName, key) ->
+                LazyCardRow(index = index, count = nameValueTable.size) {
+                    OwnkeyRow(
+                        title = fieldName,
+                        summary = key,
+                        onClick = { dialogKey = key },
+                    )
+                }
             }
         }
 
         if (dialogKey != null) {
-            JetPrefAlertDialog(
+            OwnkeyDialog(
                 title = dialogKey!!,
                 onDismiss = { dialogKey = null },
+                confirmLabel = stringRes(R.string.action__ok),
+                onConfirm = { dialogKey = null },
             ) {
                 SelectionContainer {
                     Text(
                         text = remember {
                             (settingsGroup.getString(context, dialogKey!!) ?: "(null)").ifBlank { "(blank)" }
                         },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OwnkeyTokens.Label,
                     )
                 }
             }

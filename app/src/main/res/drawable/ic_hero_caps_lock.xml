@@ -1,0 +1,15 @@
+<!-- Caps lock: Heroicons arrow-up-circle, 20 solid (MIT, Tailwind Labs), with a bar under the arrow -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group
+        android:translateX="2"
+        android:translateY="2">
+        <path
+            android:fillColor="#000000"
+            android:fillType="evenOdd"
+            android:pathData="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-.75-6a.75.75 0 0 0 1.5 0V7.41l1.95 2.1a.75.75 0 1 0 1.1-1.02l-3.25-3.5a.75.75 0 0 0-1.1 0L6.2 8.49a.75.75 0 1 0 1.1 1.02l1.95-2.1V12ZM6.75 14.5a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Z" />
+    </group>
+</vector>

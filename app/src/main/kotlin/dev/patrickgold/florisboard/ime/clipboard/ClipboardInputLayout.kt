@@ -695,7 +695,7 @@ private fun ClipCategoryTitle(
 ) {
     SnyggText(FlorisImeUi.ClipboardSubheader.elementName,
         modifier = modifier.fillMaxWidth(),
-        text = text.uppercase(),
+        text = text,
     )
 }
 

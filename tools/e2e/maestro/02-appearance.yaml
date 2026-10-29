@@ -1,0 +1,151 @@
+# Appearance: Dark/Light/Auto, the Graphite and Black tiles, accent circles, and that choices
+# survive leaving and reopening. Ends on the defaults: Dark, Graphite, Ember.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 02 Appearance
+tags: [settings, appearance]
+---
+- runFlow: helpers/open-home.yaml
+- tapOn:
+    id: home-appearance
+- extendedWaitUntil:
+    visible:
+      id: appearance-mode
+    timeout: 10000
+
+# Dark with the Black tile.
+- tapOn:
+    id: segment-0
+- assertVisible:
+    id: segment-0
+    selected: true
+- tapOn:
+    id: appearance-style-black
+- assertVisible:
+    id: appearance-style-black
+    checked: true
+- assertVisible:
+    id: appearance-style-graphite
+    checked: false
+- takeScreenshot: 02-appearance-dark-black
+
+# Back to Graphite.
+- tapOn:
+    id: appearance-style-graphite
+- assertVisible:
+    id: appearance-style-graphite
+    checked: true
+- assertVisible:
+    id: appearance-style-black
+    checked: false
+
+# Accent circles: one selected at a time.
+- tapOn:
+    id: appearance-accent-blue
+- assertVisible:
+    id: appearance-accent-blue
+    checked: true
+- assertVisible:
+    id: appearance-accent-ember
+    checked: false
+- assertVisible: "Blue"
+- tapOn:
+    id: appearance-accent-lime
+- assertVisible:
+    id: appearance-accent-lime
+    checked: true
+- assertVisible:
+    id: appearance-accent-blue
+    checked: false
+- takeScreenshot: 02-appearance-accent-lime
+
+# Light hides the dark style tiles.
+- tapOn:
+    id: segment-1
+- assertVisible:
+    id: segment-1
+    selected: true
+- assertNotVisible:
+    id: appearance-style-graphite
+- takeScreenshot: 02-appearance-light
+- runFlow: helpers/open-keyboard.yaml
+- takeScreenshot: 02-appearance-light-keyboard
+- hideKeyboard
+
+# Auto brings the tiles back. Pick Black and Violet, then leave and reopen.
+- tapOn:
+    id: segment-2
+- assertVisible:
+    id: segment-2
+    selected: true
+- tapOn:
+    id: appearance-style-black
+- tapOn:
+    id: appearance-accent-violet
+- assertVisible:
+    id: appearance-accent-violet
+    checked: true
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-appearance
+    timeout: 5000
+- assertVisible: "Auto · Black"
+- tapOn:
+    id: home-appearance
+- extendedWaitUntil:
+    visible:
+      id: appearance-mode
+    timeout: 10000
+- assertVisible:
+    id: segment-2
+    selected: true
+- assertVisible:
+    id: appearance-style-black
+    checked: true
+- assertVisible:
+    id: appearance-accent-violet
+    checked: true
+- takeScreenshot: 02-appearance-auto-black-violet-reopened
+
+# Close the activity and launch again: still persisted.
+- back
+- back
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 20000
+- assertVisible: "Auto · Black"
+
+# Restore Dark, Graphite, Ember.
+- tapOn:
+    id: home-appearance
+- extendedWaitUntil:
+    visible:
+      id: appearance-mode
+    timeout: 10000
+- tapOn:
+    id: segment-0
+- tapOn:
+    id: appearance-style-graphite
+- tapOn:
+    id: appearance-accent-ember
+- assertVisible:
+    id: segment-0
+    selected: true
+- assertVisible:
+    id: appearance-style-graphite
+    checked: true
+- assertVisible:
+    id: appearance-accent-ember
+    checked: true
+- runFlow: helpers/open-keyboard.yaml
+- takeScreenshot: 02-appearance-dark-graphite-keyboard
+- hideKeyboard
+- back
+- extendedWaitUntil:
+    visible:
+      id: home-appearance
+    timeout: 5000
+- assertVisible: "Graphite"

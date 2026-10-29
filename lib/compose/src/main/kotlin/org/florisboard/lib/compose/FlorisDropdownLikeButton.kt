@@ -16,24 +16,30 @@
 
 package org.florisboard.lib.compose
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import dev.patrickgold.jetpref.material.ui.JetPrefDropdownMenuDefaults
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import dev.patrickgold.jetpref.material.ui.JetPrefTextField
 import dev.patrickgold.jetpref.material.ui.JetPrefTextFieldAppearance
 
-
+/**
+ * A read-only field that opens a picker. The field only draws [item]; a layer on top takes the taps and the
+ * whole control is one button for accessibility, so quick taps and TalkBack both reach [onClick].
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlorisDropdownLikeButton(
@@ -41,20 +47,24 @@ fun FlorisDropdownLikeButton(
     modifier: Modifier = Modifier,
     isError: Boolean = false,
     onClick: () -> Unit = { },
-    appearance: JetPrefTextFieldAppearance = JetPrefDropdownMenuDefaults.filled(),
+    appearance: JetPrefTextFieldAppearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
 ) {
     Box(
-        modifier = modifier.wrapContentSize(Alignment.TopStart)
+        modifier = modifier
+            .wrapContentSize(Alignment.TopStart)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                contentDescription = item
+                onClick {
+                    onClick()
+                    true
+                }
+            },
     ) {
-        val interactionSource = remember { MutableInteractionSource() }
-        val pressed by interactionSource.collectIsPressedAsState()
-
-        if (pressed) {
-            onClick()
-        }
-
         JetPrefTextField(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics { },
             value = item,
             onValueChange = {},
             enabled = true,
@@ -68,7 +78,13 @@ fun FlorisDropdownLikeButton(
                 )
             },
             appearance = appearance,
-            interactionSource = interactionSource,
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(OwnkeyTokens.FieldShape)
+                .clickable(onClick = onClick)
+                .clearAndSetSemantics { },
         )
     }
 }

@@ -17,6 +17,7 @@
 package dev.patrickgold.florisboard.app.settings.about
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,8 +30,10 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.compose.LocalOwnkeyContentPadding
 import dev.patrickgold.florisboard.lib.io.FlorisRef
 import dev.patrickgold.florisboard.lib.io.loadTextAsset
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.florisHorizontalScroll
 import org.florisboard.lib.compose.florisVerticalScroll
 import org.florisboard.lib.compose.stringRes
@@ -51,7 +54,8 @@ fun ProjectLicenseScreen() = FlorisScreen {
                 modifier = Modifier
                     .fillMaxSize()
                     .florisVerticalScroll()
-                    .florisHorizontalScroll(),
+                    .florisHorizontalScroll()
+                    .padding(LocalOwnkeyContentPadding.current),
             ) {
                 val licenseText = FlorisRef.assets("license/project_license.txt").loadTextAsset(
                     context
@@ -61,7 +65,8 @@ fun ProjectLicenseScreen() = FlorisScreen {
                 Text(
                     text = licenseText,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
+                    color = OwnkeyTokens.Label,
                     softWrap = false,
                 )
             }

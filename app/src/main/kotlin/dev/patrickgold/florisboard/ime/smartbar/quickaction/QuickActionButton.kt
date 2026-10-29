@@ -48,11 +48,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
@@ -70,16 +72,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.FlorisPreferenceStore
-import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
@@ -87,7 +89,9 @@ import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
 import dev.patrickgold.florisboard.ime.smartbar.MicButtonFace
 import dev.patrickgold.florisboard.ime.smartbar.MicIdleStyle
+import dev.patrickgold.florisboard.ime.smartbar.micActionLabelRes
 import dev.patrickgold.florisboard.ime.smartbar.micFaceState
+import dev.patrickgold.florisboard.ime.smartbar.micStateLabelRes
 import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
@@ -98,6 +102,7 @@ import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteEntryOrigin
 import dev.patrickgold.florisboard.ime.text.rewrite.stringResId
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
 import dev.patrickgold.florisboard.lib.util.rememberReducedMotion
 import dev.patrickgold.florisboard.llmRewriteManager
 import dev.patrickgold.florisboard.voiceRewriteUiController
@@ -180,7 +185,6 @@ fun QuickActionButton(
     val longPressTimeoutMs = LocalViewConfiguration.current.longPressTimeoutMillis
     val gestureArbiter = remember(longPressTimeoutMs) { VoiceActionGestureArbiter(longPressTimeoutMs) }
     val voiceRewriteUiController = remember(context) { context.voiceRewriteUiController() }
-    val dictationClickLabel = stringRes(R.string.voice_rewrite__action_start_dictation)
     val voiceRewriteLabel = stringRes(R.string.voice_rewrite__action_voice_rewrite)
 
     // Press feedback for the voice gesture: the hold hint drawn by the IME root, and a ring that
@@ -200,11 +204,8 @@ fun QuickActionButton(
     val aiUnavailableReason = (aiAvailability as? AiAvailability.Unavailable)?.reason
     val aiUnavailableText = aiUnavailableReason?.let { stringRes(it.stringResId()) }
 
-    // Toolbar icons use the chosen toolbar color. Otherwise the Smartbar row uses the quiet Stone of the Signal
-    // design, and themed keys use their theme foreground. The AI action turns orange while a rewrite result waits
-    // for the user.
-    val prefs by FlorisPreferenceStore
-    val toolbarIconColor by prefs.theme.toolbarIconColor.collectAsState()
+    // Toolbar icons take the theme's `smartbar-action-key` foreground, including its disabled selector. The AI
+    // action takes the keyboard accent while a rewrite result waits for the user.
     val aiResultReady = if (action is QuickAction.InsertKey && action.data.code == KeyCode.AI_REWRITE) {
         val llmRewriteManager by context.llmRewriteManager()
         val rewriteState by llmRewriteManager.uiStateFlow.collectAsState()
@@ -214,9 +215,34 @@ fun QuickActionButton(
     } else {
         false
     }
-    val windowBackground = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName).background()
-    val quietIcon = if (windowBackground.luminance() > 0.5f) OwnkeyBrand.StoneDark else OwnkeyBrand.Stone
-    val toolbarIconTint = if (aiResultReady) OwnkeyBrand.Ember else toolbarIconColor.takeOrElse { quietIcon }
+    val keyboardAccent = rememberKeyboardAccent()
+    val themedIconTint = rememberSnyggThemeQuery(
+        FlorisImeUi.SmartbarActionKey.elementName,
+        attributes,
+        selector,
+    ).foreground()
+    val toolbarIconTint = if (aiResultReady) keyboardAccent.color else themedIconTint
+    // Toolbar buttons show a press as the theme's pressed circle (the popup fill) behind the icon instead of
+    // a rectangular ripple across the whole slot; the mic shows it by growing. Tiles keep the ripple.
+    val pressIndication = if (type == QuickActionBarType.INTERACTIVE_BUTTON) null else localIndication
+    val pressedCircle = if (type == QuickActionBarType.INTERACTIVE_BUTTON && fillContainer && !isVoiceInputAction) {
+        rememberSnyggThemeQuery(FlorisImeUi.SmartbarActionKey.elementName, attributes, SnyggSelector.PRESSED)
+            .background()
+    } else {
+        Color.Unspecified
+    }
+    val displayName = action.computeDisplayName(evaluator = evaluator)
+
+    // TalkBack hears what the dictation key will do now, plus "Recording" while it listens.
+    val micFeedbackPhase = if (usesVoiceGesture) {
+        val voxtralDictationManager by context.voxtralDictationManager()
+        voxtralDictationManager.feedbackStateFlow.collectAsState().value.phase
+    } else {
+        VoiceActionFeedbackPhase.IDLE
+    }
+    val micFace = micFaceState(micFeedbackPhase, aiUnavailable = false)
+    val micActionLabel = stringRes(micActionLabelRes(micFace))
+    val micStateLabel = micStateLabelRes(micFace)?.let { stringRes(it) }
 
     fun dispatchVoiceOutcome(outcome: VoiceActionGestureOutcome) {
         if (aiUnavailableText != null) {
@@ -247,7 +273,7 @@ fun QuickActionButton(
     }
 
     fun Modifier.quickActionInput(): Modifier {
-        return indication(interactionSource, localIndication)
+        return indication(interactionSource, pressIndication)
             .pointerInput(action, isEnabled) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
@@ -277,7 +303,7 @@ fun QuickActionButton(
      * recognized hold has to own the gesture and make the following release inert.
      */
     fun Modifier.voiceQuickActionInput(): Modifier {
-        return indication(interactionSource, localIndication)
+        return indication(interactionSource, pressIndication)
             .pointerInput(action, isEnabled, longPressTimeoutMs, aiAvailability, reducedMotion) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
@@ -362,8 +388,7 @@ fun QuickActionButton(
      * long-click plus an explicit `Voice rewrite` custom action both start voice rewrite.
      */
     val voiceActionDescription = if (usesVoiceGesture) {
-        val displayName = action.computeDisplayName(evaluator = evaluator)
-        if (aiUnavailableText == null) displayName else "$displayName. $aiUnavailableText"
+        if (aiUnavailableText == null) micActionLabel else "$micActionLabel. $aiUnavailableText"
     } else {
         ""
     }
@@ -371,7 +396,8 @@ fun QuickActionButton(
     fun Modifier.voiceActionSemantics(): Modifier = this.semantics(mergeDescendants = true) {
         role = Role.Button
         contentDescription = voiceActionDescription
-        onClick(label = dictationClickLabel) {
+        if (micStateLabel != null) stateDescription = micStateLabel
+        onClick(label = micActionLabel) {
             dispatchVoiceOutcome(VoiceActionGestureOutcome.DICTATION)
             true
         }
@@ -387,12 +413,29 @@ fun QuickActionButton(
         )
     }
 
+    /** Every other toolbar and overflow button is a named button that TalkBack can activate. */
+    fun Modifier.quickActionSemantics(): Modifier = this.semantics(mergeDescendants = true) {
+        role = Role.Button
+        contentDescription = displayName
+        if (isEnabled) {
+            onClick {
+                action.onPointerDown(context)
+                action.onPointerUp(context)
+                true
+            }
+        } else {
+            disabled()
+        }
+    }
+
     fun Modifier.actionInput(): Modifier = if (usesVoiceGesture) {
         voiceQuickActionInput()
             .voiceActionSemantics()
             .onGloballyPositioned { coords -> hintState?.updateAnchor(coords.boundsInRoot()) }
-    } else {
+    } else if (type == QuickActionBarType.EDITOR_TILE) {
         quickActionInput()
+    } else {
+        quickActionInput().quickActionSemantics()
     }
 
     // The voice key has its own press hint, so the generic long-press tooltip stays off it: a hold
@@ -402,7 +445,14 @@ fun QuickActionButton(
     if (type == QuickActionBarType.INTERACTIVE_BUTTON && fillContainer) {
         PlainTooltip(action.computeTooltip(evaluator), enabled = showsGenericTooltip) {
             Box(
-                modifier = modifier.actionInput(),
+                modifier = modifier
+                    .actionInput()
+                    .drawBehind {
+                        if (isPressed && pressedCircle.isSpecified) {
+                            val radius = minOf(size.minDimension / 2f, (iconSize.toPx() + 20.dp.toPx()) / 2f)
+                            drawCircle(color = pressedCircle, radius = radius)
+                        }
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 if (isVoiceInputAction) {
@@ -423,7 +473,7 @@ fun QuickActionButton(
                                 modifier = Modifier.requiredSize(iconSize),
                                 imageVector = imageVector,
                                 contentDescription = null,
-                                tint = toolbarIconTint,
+                                tint = toolbarIconTint.takeOrElse { LocalContentColor.current },
                             )
                         } else if (label != null) {
                             SnyggText(
@@ -482,12 +532,7 @@ fun QuickActionButton(
                                     modifier = Modifier.requiredSize(iconSize),
                                     imageVector = imageVector,
                                     contentDescription = null,
-                                    // Inside the themed key, the theme's foreground (including its disabled
-                                    // selector) is the fallback; the Signal themes set it to Stone.
-                                    tint = when {
-                                        aiResultReady -> OwnkeyBrand.Ember
-                                        else -> toolbarIconColor.takeOrElse { LocalContentColor.current }
-                                    },
+                                    tint = toolbarIconTint.takeOrElse { LocalContentColor.current },
                                 )
                             } else {
                                 SnyggBox(
@@ -537,7 +582,7 @@ fun QuickActionButton(
                             elementName = "$elementName-text",
                             attributes = attributes,
                             selector = selector,
-                            text = action.computeDisplayName(evaluator = evaluator),
+                            text = displayName,
                         )
                     }
                 }
@@ -547,11 +592,11 @@ fun QuickActionButton(
 }
 
 /**
- * The keyboard's dictation key. Its face comes from [MicButtonFace] in the quiet idle style, so it matches the
- * voice-only bar in every state: listening, paused, transcribing, inserted, failed, and unavailable.
+ * The keyboard's dictation key. Its face comes from [MicButtonFace], so it matches the voice-only bar in every
+ * state: listening, paused, transcribing, inserted, failed, and unavailable.
  *
  * While pressed the pill grows slightly and, as the finger stays down, [holdProgress] fills an
- * orange ring around it that completes exactly when the hold becomes voice rewrite.
+ * accent ring around it that completes exactly when the hold becomes voice rewrite.
  */
 @Composable
 private fun DictationMicPill(
@@ -566,6 +611,7 @@ private fun DictationMicPill(
     val feedbackState by voxtralDictationManager.feedbackStateFlow.collectAsState()
     val pillSize = (FlorisImeSizing.smartbarHeight - 8.dp).coerceAtLeast(34.dp)
     val showSuccess = feedbackState.phase == VoiceActionFeedbackPhase.SUCCESS
+    val holdRingColor = rememberKeyboardAccent().color
 
     // Reduced motion removes the success scale and the press growth; every state keeps its face.
     val reducedMotion = rememberReducedMotion()
@@ -599,7 +645,7 @@ private fun DictationMicPill(
             if (progress > 0f) {
                 val ringStroke = 2.5.dp.toPx()
                 drawArc(
-                    color = OwnkeyBrand.Ember,
+                    color = holdRingColor,
                     startAngle = -90f,
                     sweepAngle = 360f * progress,
                     useCenter = false,

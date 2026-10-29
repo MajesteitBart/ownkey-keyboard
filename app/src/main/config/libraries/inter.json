@@ -1,0 +1,14 @@
+{
+  "uniqueId": "inter",
+  "name": "Inter 4.1",
+  "developers": [
+    {
+      "name": "The Inter Project Authors",
+      "organisationUrl": "https://rsms.me/inter/"
+    }
+  ],
+  "website": "https://github.com/rsms/inter",
+  "licenses": [
+    "inter-ofl"
+  ]
+}

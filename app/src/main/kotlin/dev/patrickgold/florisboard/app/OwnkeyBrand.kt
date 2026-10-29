@@ -67,16 +67,14 @@ object OwnkeyBrand {
     const val MotionStandardMillis = 180
 
     /**
-     * Dark Liquid Glass design system tokens (keyboard mockup spec). One accent, everything else
-     * translucent grays; no borders, depth via inner top highlight and soft shadows.
+     * Neutral dark tokens for keyboard surfaces drawn outside the Snygg theme. One accent, everything else
+     * opaque grays; no borders or shadows, depth comes from fill steps.
      */
     object Glass {
-        // Surface colors are opaque, pre-composited to the mockup's translucent glass appearance.
-        // Actual translucency renders grainy on-device and lets drop shadows bleed through fills.
-        val Stage = Color(0xFF12141D)
-        val Canvas = Color(0xFF1A1E2B)
-        val Key = Color(0xFF3E4253)
-        val KeyPressed = Color(0xFF595F72)
+        val Stage = Color(0xFF000000)
+        val Canvas = Color(0xFF1C1C1E)
+        val Key = Color(0xFF38383A)
+        val KeyPressed = Color(0xFF48484A)
         val Ink = Color(0xFFFFFFFF)
         val InkSoft = Color(0xB8FFFFFF)         // white 72%
         val Hint = Color(0x6BFFFFFF)            // white 42%
@@ -84,7 +82,7 @@ object OwnkeyBrand {
         val AccentDim = Color(0x590A84FF)       // accent 35%, glow only
         val Success = Color(0xFF30D158)
         val Danger = Color(0xFFFF453A)
-        val Sheet = Color(0xFF232839)
-        val CancelCapsule = Color(0xFF1E2230)
+        val Sheet = Color(0xFF262628)
+        val CancelCapsule = Color(0xFF38383A)
     }
 }

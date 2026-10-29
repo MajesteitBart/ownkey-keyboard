@@ -62,6 +62,7 @@ import org.florisboard.lib.compose.florisHorizontalScroll
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.kotlin.resultOk
+import org.florisboard.lib.compose.OwnkeyTokens
 
 enum class ExtensionImportScreenType(
     val id: String,
@@ -232,7 +233,7 @@ fun ExtensionImportScreen(type: ExtensionImportScreenType, initUuid: String?) = 
                     modifier = Modifier.padding(horizontal = 16.dp),
                     text = stringRes(R.string.ext__import__error_unexpected_exception),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                 )
                 SelectionContainer {
                     Text(
@@ -241,7 +242,7 @@ fun ExtensionImportScreen(type: ExtensionImportScreenType, initUuid: String?) = 
                             .padding(horizontal = 16.dp),
                         text = result.exceptionOrNull()?.stackTraceToString() ?: "null",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
+                        color = OwnkeyTokens.Danger,
                         fontStyle = FontStyle.Italic,
                     )
                 }
@@ -321,16 +322,16 @@ private fun FileInfoView(
                     .fillMaxWidth()
                     .height(19.dp)
                     .padding(top = 10.dp, bottom = 8.dp)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.56f)))
+                    .background(OwnkeyTokens.Danger.copy(alpha = 0.56f)))
                 Text(
                     text = stringRes(R.string.ext__import__file_skip),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                 )
                 Text(
                     text = stringRes(fileInfo.skipReason),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                     fontStyle = FontStyle.Italic,
                 )
             }

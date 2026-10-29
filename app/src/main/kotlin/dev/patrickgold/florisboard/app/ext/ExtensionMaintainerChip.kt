@@ -30,9 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
 import dev.patrickgold.florisboard.lib.ext.ExtensionMaintainer
 import dev.patrickgold.florisboard.lib.util.launchUrl
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import org.florisboard.lib.compose.FlorisChip
 
 @Composable
@@ -61,7 +61,7 @@ fun ExtensionMaintainerChip(
     )
 
     if (showDialog) {
-        JetPrefAlertDialog(
+        OwnkeyDialog(
             title = maintainer.name,
             onDismiss = { showDialog = false },
         ) {

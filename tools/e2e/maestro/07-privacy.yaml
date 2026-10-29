@@ -1,0 +1,90 @@
+# Privacy & backup: the incognito sheet, the Clear learned data confirm (cancelled), and the
+# Back up and Restore screens (opened, nothing run).
+appId: nl.bartvandermeeren.ownkey.debug
+name: 07 Privacy and backup
+tags: [settings, privacy]
+---
+- runFlow: helpers/open-home.yaml
+- scrollUntilVisible:
+    element:
+      id: home-privacy
+    direction: DOWN
+- tapOn:
+    id: home-privacy
+- extendedWaitUntil:
+    visible:
+      id: privacy-incognito
+    timeout: 10000
+- assertVisible: "Typing data"
+- assertVisible: "Backup files don't include API keys. Enter them again after a restore."
+- takeScreenshot: 07-privacy
+
+# Incognito sheet: three choices with their explanations. Pick Always, check it stuck, then
+# go back to Automatic (the default).
+- tapOn:
+    id: privacy-incognito
+- extendedWaitUntil:
+    visible:
+      id: sheet-option-2
+    timeout: 5000
+- assertVisible: "Never on. Hides the incognito button."
+- assertVisible: "In private fields, or when you tap the incognito button."
+- assertVisible: "Always on. Dictation and rewrite stay off."
+- takeScreenshot: 07-incognito-sheet
+- tapOn:
+    id: sheet-option-2
+- assertVisible:
+    id: privacy-incognito
+    containsChild: "Always"
+- back
+- tapOn:
+    id: home-privacy
+- extendedWaitUntil:
+    visible:
+      id: privacy-incognito
+      containsChild: "Always"
+    timeout: 10000
+- tapOn:
+    id: privacy-incognito
+- tapOn:
+    id: sheet-option-1
+- assertVisible:
+    id: privacy-incognito
+    containsChild: "Automatic"
+
+# Clear learned data asks first; cancel.
+- tapOn:
+    id: privacy-clear-learned
+- extendedWaitUntil:
+    visible: "Clear learned data\\?"
+    timeout: 5000
+- takeScreenshot: 07-clear-learned-confirm
+- tapOn:
+    id: dialog-dismiss
+- assertNotVisible: "Clear learned data\\?"
+
+# Back up and Restore open; nothing is started.
+- tapOn:
+    id: privacy-backup
+- extendedWaitUntil:
+    visible: "Save to"
+    timeout: 10000
+- assertVisible: "Include"
+- takeScreenshot: 07-backup
+- back
+- extendedWaitUntil:
+    visible:
+      id: privacy-restore
+    timeout: 5000
+- tapOn:
+    id: privacy-restore
+- extendedWaitUntil:
+    visible:
+      id: restore-select-file
+    timeout: 10000
+- takeScreenshot: 07-restore
+- back
+- extendedWaitUntil:
+    visible:
+      id: privacy-backup
+    timeout: 5000

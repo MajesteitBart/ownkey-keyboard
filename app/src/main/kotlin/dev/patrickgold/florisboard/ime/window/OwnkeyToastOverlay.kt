@@ -29,8 +29,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,8 +47,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
@@ -51,10 +58,14 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.OwnkeyBrand
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import kotlinx.coroutines.delay
 import org.florisboard.lib.android.OwnkeyToastBus
 import org.florisboard.lib.android.OwnkeyToastMessage
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.stringRes
 
 /** Room above the voice-only bar that a toast needs; with less, it goes below the bar. */
 private val ToastRoomAboveBar = 96.dp
@@ -123,6 +134,8 @@ fun BoxScope.OwnkeyToastOverlay() {
         modifier = Modifier
             .align(toastAlignment)
             .zIndex(100f)
+            // Over the full keyboard, stay above the system's hide and switch-keyboard buttons.
+            .then(if (placement == null) Modifier.safeDrawingPadding() else Modifier)
             .padding(toastPadding),
     ) {
         val current = message ?: return@AnimatedVisibility
@@ -139,59 +152,81 @@ private fun OwnkeyToastBanner(
     message: String,
     onDismiss: (() -> Unit)?,
 ) {
+    // The popup fill with label text, like every floating surface on the keyboard. On a light keyboard the
+    // toast inverts to near-black so it still reads as floating; nothing is lighter than the white keys.
+    val palette = rememberKeyboardPalette()
+    val fill = if (palette.isLight) palette.pill else palette.popup
+    val ink = if (palette.isLight) palette.onPill else palette.popupInk
+    val tone = remember(message) { ownkeyToastTone(message) }
+    val shape = RoundedCornerShape(16.dp)
+    // The 48dp dismiss target sets the row height, so the row itself needs little vertical padding.
+    val verticalPadding = if (onDismiss != null) 4.dp else 10.dp
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 10.dp,
-                shape = RoundedCornerShape(16.dp),
-                clip = false,
-            )
-            .background(
-                color = ownkeyToastBackground(message),
-                shape = RoundedCornerShape(16.dp),
-            )
-            .padding(start = 16.dp, top = 10.dp, end = 8.dp, bottom = 10.dp),
+            .background(color = fill, shape = shape)
+            .padding(start = 16.dp, top = verticalPadding, end = 0.dp, bottom = verticalPadding),
     ) {
+        tone.dotColor()?.let { dot ->
+            Box(
+                modifier = Modifier
+                    .padding(end = 10.dp)
+                    .size(8.dp)
+                    .background(color = dot, shape = CircleShape),
+            )
+        }
         Text(
             text = message,
-            color = Color.Black,
+            color = ink,
             fontSize = 13.sp,
             lineHeight = 17.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .weight(1f)
-                .padding(end = 8.dp),
+                .padding(end = if (onDismiss != null) 0.dp else 16.dp),
         )
         if (onDismiss != null) {
+            val dismissLabel = stringRes(R.string.ime__toast__dismiss)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(34.dp)
-                    .clickable(onClick = onDismiss),
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable(onClickLabel = dismissLabel, onClick = onDismiss)
+                    .semantics { contentDescription = dismissLabel },
             ) {
-                Text(
-                    text = "x",
-                    color = Color.Black,
-                    fontSize = 20.sp,
-                    lineHeight = 20.sp,
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
     }
 }
 
-private fun ownkeyToastBackground(text: String): Color {
+/** How a toast message reads. The dot carries the tone; the words always say it too. */
+internal enum class OwnkeyToastTone { NEUTRAL, SUCCESS, WARNING, ERROR }
+
+private fun OwnkeyToastTone.dotColor(): Color? = when (this) {
+    OwnkeyToastTone.NEUTRAL -> null
+    OwnkeyToastTone.SUCCESS -> OwnkeyTokens.Success
+    OwnkeyToastTone.WARNING -> OwnkeyTokens.Warning
+    OwnkeyToastTone.ERROR -> OwnkeyTokens.Danger
+}
+
+internal fun ownkeyToastTone(text: String): OwnkeyToastTone {
     val normalized = text.lowercase()
     return when {
         listOf("success", "successfully", "saved", "copied", "inserted", "gelukt", "opgeslagen", "gekopieerd")
-            .any { it in normalized } -> OwnkeyBrand.SuccessGreen
+            .any { it in normalized } -> OwnkeyToastTone.SUCCESS
         listOf("warning", "permission", "paused", "let op", "machtiging", "toestemming")
-            .any { it in normalized } -> OwnkeyBrand.WarningYellow
+            .any { it in normalized } -> OwnkeyToastTone.WARNING
         listOf("error", "failed", "failure", "unable", "missing", "could not", "invalid", "fout", "mislukt")
-            .any { it in normalized } -> OwnkeyBrand.ErrorRed
-        else -> OwnkeyBrand.Bone
+            .any { it in normalized } -> OwnkeyToastTone.ERROR
+        else -> OwnkeyToastTone.NEUTRAL
     }
 }

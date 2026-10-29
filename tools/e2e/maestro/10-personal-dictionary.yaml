@@ -1,0 +1,64 @@
+# Personal dictionary: add a word, see it in the list, delete it.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 10 Personal dictionary
+tags: [settings, ai]
+---
+- runFlow: helpers/open-home.yaml
+- tapOn:
+    id: home-ai
+- extendedWaitUntil:
+    visible:
+      id: ai-dictionary
+    timeout: 15000
+- tapOn:
+    id: ai-dictionary
+- extendedWaitUntil:
+    visible:
+      id: dictionary-word-field
+    timeout: 10000
+- assertVisible: "Personal dictionary"
+
+# Remove a leftover from an interrupted run.
+- runFlow:
+    when:
+      visible: "Delete Zorblaxian"
+    commands:
+      - tapOn: "Delete Zorblaxian"
+
+- tapOn:
+    id: dictionary-word-field
+- inputText: "Zorblaxian"
+- hideKeyboard
+- tapOn:
+    id: dictionary-save
+- scrollUntilVisible:
+    element: "Delete Zorblaxian"
+    direction: DOWN
+    centerElement: true
+- assertVisible: "Zorblaxian"
+- takeScreenshot: 10-dictionary-entry-added
+
+# Survives leaving and coming back.
+- back
+- tapOn:
+    id: ai-dictionary
+- extendedWaitUntil:
+    visible:
+      id: dictionary-word-field
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Delete Zorblaxian"
+    direction: DOWN
+    centerElement: true
+
+- tapOn: "Delete Zorblaxian"
+- assertNotVisible: "Delete Zorblaxian"
+- assertVisible: "Removed “Zorblaxian”."
+- assertVisible:
+    id: dictionary-undo
+- takeScreenshot: 10-dictionary-entry-deleted
+- back
+- extendedWaitUntil:
+    visible:
+      id: ai-dictionary
+    timeout: 5000

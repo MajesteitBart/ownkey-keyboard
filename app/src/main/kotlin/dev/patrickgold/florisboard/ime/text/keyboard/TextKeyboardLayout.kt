@@ -68,6 +68,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntRect
@@ -104,6 +105,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
 import dev.patrickgold.florisboard.ime.window.ImeWindowMode
 import dev.patrickgold.florisboard.ime.window.ImeWindowSpec
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
@@ -426,11 +428,13 @@ private fun TextKeyButton(
     val size = remember(key, desiredKey) {
         key.visibleBounds.size.toDpSize()
     }
+    val testTag = keyTestTag(key.computedData.code)
     SnyggBox(
         FlorisImeUi.Key.elementName,
         attributes = attributes,
         selector = selector,
         modifier = Modifier
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .requiredSize(size)
             .absoluteOffset { key.visibleBounds.topLeft.toIntOffset() },
     ) {
@@ -492,6 +496,16 @@ private fun TextKeyButton(
     }
 }
 
+/** Test tag for keys that UI tests can't find by a text label. */
+internal fun keyTestTag(code: Int): String? = when (code) {
+    KeyCode.SPACE -> "key-space"
+    KeyCode.SHIFT -> "key-shift"
+    KeyCode.DELETE -> "key-delete"
+    KeyCode.ENTER -> "key-enter"
+    KeyCode.LANGUAGE_SWITCH -> "key-language"
+    else -> null
+}
+
 @Composable
 private fun BlinkingRecordingDot(modifier: Modifier = Modifier) {
     // Reduced motion keeps the dot visible but stops the decorative pulse; the recording state is
@@ -514,7 +528,7 @@ private fun BlinkingRecordingDot(modifier: Modifier = Modifier) {
         modifier = modifier
             .size(8.dp)
             .alpha(blinkAlpha)
-            .background(Color(0xFFE53935), CircleShape),
+            .background(rememberKeyboardAccent().color, CircleShape),
     )
 }
 

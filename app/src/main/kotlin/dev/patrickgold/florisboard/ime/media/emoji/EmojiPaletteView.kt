@@ -72,7 +72,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
@@ -263,6 +262,8 @@ fun EmojiPaletteView(
             selectedTabIndex = selectedTabIndex,
             containerColor = Color.Transparent,
             contentColor = style.foreground(),
+            // The default divider reads MaterialTheme; the keyboard draws no lines anyway.
+            divider = {},
             indicator = {
                 val style = rememberSnyggThemeQuery(
                     elementName = FlorisImeUi.MediaEmojiTab.elementName,
@@ -270,7 +271,7 @@ fun EmojiPaletteView(
                 )
                 TabRowDefaults.PrimaryIndicator(
                     Modifier.tabIndicatorOffset(selectedTabIndex),
-                    height = 4.dp,
+                    height = 3.dp,
                     color = style.foreground(),
                 )
             },
@@ -290,6 +291,7 @@ fun EmojiPaletteView(
                         selector = if (activeCategory == category) SnyggSelector.FOCUS else SnyggSelector.NONE,
                         modifier = Modifier.size(ButtonDefaults.IconSize),
                         imageVector = category.icon(),
+                        contentDescription = stringRes(category.labelRes()),
                     ) },
                 )
             }
@@ -376,7 +378,6 @@ fun EmojiPaletteView(
                             Text(
                                 modifier = Modifier.padding(top = 8.dp),
                                 text = stringRes(R.string.emoji__history__usage_tip),
-                                fontStyle = FontStyle.Italic,
                             )
                         }
                     }

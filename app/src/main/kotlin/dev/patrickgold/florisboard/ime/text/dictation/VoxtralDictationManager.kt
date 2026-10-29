@@ -192,7 +192,7 @@ class VoxtralDictationManager(
                     DictationState.LISTENING -> stopAndInsertTranscript()
                     DictationState.PAUSED -> stopAndInsertTranscript()
                     DictationState.TRANSCRIBING -> {
-                        appContext.showShortToastSync("Dictation is already transcribing…")
+                        appContext.showShortToastSync(dev.patrickgold.florisboard.R.string.ime__dictation__already_transcribing)
                     }
                 }
             }
@@ -208,13 +208,13 @@ class VoxtralDictationManager(
             if (mode.lacksApiKey(hasCloudKey = kotlinx.coroutines.withContext(Dispatchers.IO) { apiKey().isNotBlank() })) {
                 _stateFlow.value = DictationState.ERROR
                 feedbackController.standaloneError(VoiceActionErrorReason.PROVIDER_CONFIGURATION)
-                appContext.showShortToast("Add a transcription API key in Settings → AI")
+                appContext.showShortToast(dev.patrickgold.florisboard.R.string.ime__dictation__needs_key)
                 return@launch
             }
             if (mode != TranscriptionBackend.MOCK && !hasRecordAudioPermission()) {
                 _stateFlow.value = DictationState.ERROR
                 feedbackController.standaloneError(VoiceActionErrorReason.MICROPHONE_PERMISSION)
-                appContext.showShortToastSync("Microphone permission missing. Grant it in Settings → AI.")
+                appContext.showShortToastSync(dev.patrickgold.florisboard.R.string.ime__dictation__mic_missing)
                 return@launch
             }
             var snapshot: TranscriptionSession? = null
@@ -270,7 +270,7 @@ class VoxtralDictationManager(
                 if (generation == sessionGeneration) {
                     _stateFlow.value = DictationState.ERROR
                     feedbackController.standaloneError(VoiceActionErrorReason.TRANSCRIPTION)
-                    appContext.showShortToastSync(if (mode == TranscriptionBackend.ORUKEET) appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__not_ready) else "Unable to start dictation")
+                    appContext.showShortToastSync(if (mode == TranscriptionBackend.ORUKEET) appContext.getString(dev.patrickgold.florisboard.R.string.orukeet__not_ready) else appContext.getString(dev.patrickgold.florisboard.R.string.ime__dictation__start_failed))
                 }
             } finally { if (generation == sessionGeneration) operationJob = null }
         }
@@ -303,7 +303,7 @@ class VoxtralDictationManager(
         activeSession = null
         _recordingSessionFlow.value = null
         _stateFlow.value = DictationState.IDLE
-        appContext.showShortToastSync("Dictation cancelled")
+        appContext.showShortToastSync(dev.patrickgold.florisboard.R.string.ime__dictation__cancelled)
     }
 
     fun stopAndInsertTranscript() {
@@ -411,7 +411,7 @@ class VoxtralDictationManager(
             syncRecordingSession(lease)
             _stateFlow.value = DictationState.PAUSED
         } else {
-            appContext.showShortToastSync("Unable to pause dictation")
+            appContext.showShortToastSync(dev.patrickgold.florisboard.R.string.ime__dictation__pause_failed)
         }
     }
 
@@ -422,7 +422,7 @@ class VoxtralDictationManager(
             syncRecordingSession(lease)
             _stateFlow.value = DictationState.LISTENING
         } else {
-            appContext.showShortToastSync("Unable to resume dictation")
+            appContext.showShortToastSync(dev.patrickgold.florisboard.R.string.ime__dictation__resume_failed)
         }
     }
 

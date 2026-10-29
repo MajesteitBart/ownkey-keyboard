@@ -17,10 +17,16 @@
 package dev.patrickgold.florisboard.ime.window
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.AbstractComposeView
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
@@ -66,8 +72,10 @@ class ImeRootView(val ims: FlorisImeService) : AbstractComposeView(ims) {
                 appName = R.string.app_name,
                 forceLayoutDirection = LayoutDirection.Ltr,
             ) {
-                FlorisImeTheme {
-                    ImeRootWindow()
+                ProvideImeFontScale {
+                    FlorisImeTheme {
+                        ImeRootWindow()
+                    }
                 }
             }
         }
@@ -76,4 +84,34 @@ class ImeRootView(val ims: FlorisImeService) : AbstractComposeView(ims) {
     override fun getAccessibilityClassName(): CharSequence? {
         return this::class.simpleName
     }
+}
+
+/**
+ * The largest system font scale the keyboard follows. Keys and the toolbar have a fixed height, so larger text
+ * would run into the hint labels and push labels such as `?123` out of their keys.
+ */
+internal const val ImeMaxFontScale = 1.3f
+
+internal fun imeFontScale(systemFontScale: Float): Float = systemFontScale.coerceAtMost(ImeMaxFontScale)
+
+/**
+ * Caps the font scale for everything the keyboard draws. Below the cap the platform density is passed on as is;
+ * above it, the platform's own scaling curve for [ImeMaxFontScale] is used. It is resolved once per configuration,
+ * so key presses and recompositions do no extra work.
+ */
+@Composable
+private fun ProvideImeFontScale(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val imeDensity = remember(context, configuration, density) {
+        val fontScale = imeFontScale(density.fontScale)
+        if (fontScale == density.fontScale) {
+            density
+        } else {
+            val capped = Configuration(configuration).apply { this.fontScale = fontScale }
+            Density(context.createConfigurationContext(capped))
+        }
+    }
+    CompositionLocalProvider(LocalDensity provides imeDensity, content = content)
 }

@@ -46,9 +46,9 @@
     <string name="emoji__category__objects" comment="Emoji category name">Objects</string>
     <string name="emoji__category__symbols" comment="Emoji category name">Symbols</string>
     <string name="emoji__category__flags" comment="Emoji category name">Flags</string>
-    <string name="emoji__history__empty_message" comment="Message if the emoji history is empty">No recently used emojis found. Once you start typing emojis they will automatically appear here.</string>
+    <string name="emoji__history__empty_message" comment="Message if the emoji history is empty">No recent emoji yet. Emoji you use show up here.</string>
     <string name="emoji__history__phone_locked_message" comment="Message to show if phone is locked">To access your emoji history, please first unlock your device.</string>
-    <string name="emoji__history__usage_tip" comment="Feature discoverability for actions of emoji history">Pro tip: Long press emojis in the emoji history to pin or remove them!</string>
+    <string name="emoji__history__usage_tip" comment="Feature discoverability for actions of emoji history">Touch and hold an emoji to pin or remove it.</string>
     <string name="emoji__history__removal_success_message" comment="Toast message if user has used the delete action on an emoji in the emoji history">Removed {emoji} from emoji history</string>
     <string name="emoji__history__pinned">Pinned</string>
     <string name="emoji__history__recent">Recent</string>
@@ -138,8 +138,8 @@
     <string name="select_subtype_panel__header">Select subtype</string>
 
     <!-- Incognito mode strings -->
-    <string name="incognito_mode__toast_after_enabled">Incognito mode is now enabled\n\n{app_name} will not learn words from your input, and dictation and rewrite are switched off while this mode is active</string>
-    <string name="incognito_mode__toast_after_disabled">Incognito mode is now disabled by default\n\nDictation and rewrite are available again</string>
+    <string name="incognito_mode__toast_after_enabled">Incognito is on. {app_name} won\'t learn new words, and dictation and rewrite are off.</string>
+    <string name="incognito_mode__toast_after_disabled">Incognito is off. Dictation and rewrite are available again.</string>
 
     <!-- Settings UI strings -->
     <string name="settings__title" comment="Title of Settings">Settings</string>
@@ -148,11 +148,28 @@
     <string name="settings__default" comment="General string which is used when a preference has the default value set">Default</string>
     <string name="settings__system_default" comment="General string which is used when a preference has the system default value set">System default</string>
 
-    <string name="settings__home__title" comment="Title of the Home screen">Welcome to {app_name}</string>
+    <string name="settings__home__title" comment="Title of the Home screen">Ownkey</string>
     <string name="settings__home__ime_not_enabled" comment="Error message shown in Home fragment when Ownkey Keyboard is not enabled in the system">Ownkey Keyboard is not enabled in the system and thus won\'t be available as an input method in the input picker. Click here to resolve this issue.</string>
     <string name="settings__home__ime_not_selected" comment="Warning message shown in Home fragment when Ownkey Keyboard is not selected as the default keyboard">Ownkey Keyboard is not selected as the default input method. Click here to resolve this issue.</string>
 
-    <string name="settings__localization__title" comment="Title of languages and Layout screen">Languages &amp; Layouts</string>
+    <!-- Home -->
+    <string name="settings__home__off_title" comment="Home setup notice title when the keyboard is not enabled in the system">Ownkey is off</string>
+    <string name="settings__home__off_body" comment="Home setup notice body when the keyboard is not enabled in the system">Turn it on in system settings to start typing.</string>
+    <string name="settings__home__off_action" comment="Button that opens the system keyboard settings">Turn on</string>
+    <string name="settings__home__not_selected_title" comment="Home setup notice title when another keyboard is selected">Ownkey isn\'t your keyboard</string>
+    <string name="settings__home__not_selected_action" comment="Button that opens the keyboard picker">Switch keyboard</string>
+    <string name="settings__home__ai" comment="Title of the AI card on Home">AI</string>
+    <string name="settings__home__ai_dictation" comment="Label of the dictation line in the Home AI card">Dictation</string>
+    <string name="settings__home__ai_rewrite" comment="Label of the rewrite line in the Home AI card">Rewrite</string>
+    <string name="settings__home__languages" comment="Home row that opens the languages screen">Languages</string>
+    <string name="settings__home__appearance" comment="Home row that opens the appearance screen">Appearance</string>
+    <string name="settings__home__keyboard" comment="Home row that opens the keyboard screen">Keyboard</string>
+    <string name="settings__home__typing" comment="Home row that opens the typing screen">Typing</string>
+    <string name="settings__home__clipboard" comment="Home row that opens the clipboard and emoji screen">Clipboard &amp; emoji</string>
+    <string name="settings__home__privacy" comment="Home row that opens the privacy and backup screen">Privacy &amp; backup</string>
+    <string name="settings__home__about" comment="Home row that opens the about screen">About</string>
+
+    <string name="settings__localization__title" comment="Title of languages and Layout screen">Languages</string>
     <string name="settings__localization__display_language_names_in__label" comment="Label of Display language names in preference">Display language names in</string>
     <string name="settings__localization__display_keyboard_labels_in_subtype_language" comment="Label of Display keyboard labels in subtype language preference">Display keyboard labels in subtype language</string>
     <string name="settings__localization__group_subtypes__label" comment="Label of subtypes group">Subtypes</string>
@@ -163,16 +180,16 @@
     <string name="settings__localization__subtype_locale" comment="Label for locale dropdown in subtype dialog">Primary language</string>
     <string name="settings__localization__subtype_popup_mapping" comment="Label for popup mapping dropdown in subtype screen">Popup mapping</string>
     <string name="settings__localization__subtype_characters_layout" comment="Label for layout dropdown in subtype dialog">Characters layout</string>
-    <string name="settings__localization__subtype_suggestion_provider" comment="Label for suggestion provider dropdown in subtype dialog">Suggestion engine</string>
-    <string name="settings__localization__subtype_symbols_layout" comment="Label for layout dropdown in subtype dialog">Symbols primary layout</string>
-    <string name="settings__localization__subtype_symbols2_layout" comment="Label for layout dropdown in subtype dialog">Symbols secondary layout</string>
+    <string name="settings__localization__subtype_suggestion_provider" comment="Label for suggestion provider dropdown in subtype dialog">Suggestions</string>
+    <string name="settings__localization__subtype_symbols_layout" comment="Label for layout dropdown in subtype dialog">Symbols</string>
+    <string name="settings__localization__subtype_symbols2_layout" comment="Label for layout dropdown in subtype dialog">More symbols</string>
     <string name="settings__localization__subtype_composer" comment="Label for composer dropdown in subtype dialog.">Composer</string>
-    <string name="settings__localization__subtype_currency_set" comment="Label for currency set dropdown in subtype dialog. 'set' is used as a noun here and can be compared to a group of elements (in this case currency symbols).">Currency set</string>
-    <string name="settings__localization__subtype_numeric_layout" comment="Label for layout dropdown in subtype dialog">Numeric layout</string>
-    <string name="settings__localization__subtype_numeric_advanced_layout" comment="Label for layout dropdown in subtype dialog">Numeric (advanced) layout</string>
-    <string name="settings__localization__subtype_numeric_row_layout" comment="Label for layout dropdown in subtype dialog">Number row layout</string>
-    <string name="settings__localization__subtype_phone_layout" comment="Label for layout dropdown in subtype dialog">Phone primary layout</string>
-    <string name="settings__localization__subtype_phone2_layout" comment="Label for layout dropdown in subtype dialog">Phone secondary layout</string>
+    <string name="settings__localization__subtype_currency_set" comment="Label for currency set dropdown in subtype dialog. 'set' is used as a noun here and can be compared to a group of elements (in this case currency symbols).">Currency</string>
+    <string name="settings__localization__subtype_numeric_layout" comment="Label for layout dropdown in subtype dialog">Numbers</string>
+    <string name="settings__localization__subtype_numeric_advanced_layout" comment="Label for layout dropdown in subtype dialog">Numbers (advanced)</string>
+    <string name="settings__localization__subtype_numeric_row_layout" comment="Label for layout dropdown in subtype dialog">Number row</string>
+    <string name="settings__localization__subtype_phone_layout" comment="Label for layout dropdown in subtype dialog">Phone pad</string>
+    <string name="settings__localization__subtype_phone2_layout" comment="Label for layout dropdown in subtype dialog">Phone pad, second page</string>
     <string name="settings__localization__subtype_select_locale" comment="Subtype select language title">Select language</string>
     <string name="settings__localization__subtype_search_locale_placeholder" comment="Subtype search language placeholder">Search for a language</string>
     <string name="settings__localization__subtype_search_locale_not_found" comment="Subtype search language not found">Could not find a language matching \"{search_term}\".</string>
@@ -189,6 +206,34 @@
     <string name="settings__localization__group_layouts__label" comment="Label of layouts group">Layouts</string>
     <string name="settings__localization__subtype_delete_confirmation_title" comment="Title of the subtype delete confirmation dialog">Delete Confirmation</string>
     <string name="settings__localization__subtype_delete_confirmation_warning" comment="Warning message in the confirmation dialog to confirm the user's intent to delete">Are you sure you want to delete this subtype?</string>
+
+    <!-- Languages -->
+    <string name="settings__languages__empty">No languages added. Ownkey types in English (QWERTY) until you add one.</string>
+    <string name="settings__languages__list_footer">Tap a language to change its layout. Touch and hold to remove it.</string>
+    <string name="settings__languages__add">Add language</string>
+    <string name="settings__languages__group_advanced">Advanced</string>
+    <string name="settings__languages__language_packs">Language packs</string>
+    <string name="settings__languages__language_packs_summary">Extra input methods, such as Chinese shape-based typing</string>
+    <string name="settings__languages__no_language_packs">No language packs installed.</string>
+    <string name="settings__languages__remove_title">Remove {language}?</string>
+    <string name="settings__languages__remove_message">You can add it again later.</string>
+    <string name="settings__languages__remove">Remove</string>
+    <string name="settings__languages__on_this_phone">On this phone</string>
+    <string name="settings__languages__all_languages">All languages</string>
+    <string name="settings__languages__added">Added</string>
+    <string name="settings__languages__edit_title">Edit language</string>
+    <string name="settings__languages__new_title" comment="Title of the editor that sets up a language without a preset">New language</string>
+    <string name="settings__languages__set_up_other" comment="Row at the end of Add language that opens the manual language editor">Set up another language</string>
+    <string name="settings__languages__set_up_other_summary">Pick any language and its layout</string>
+    <string name="settings__languages__already_added" comment="Error in the new language editor when the same language and layout already exist">You already have this language with this layout.</string>
+    <string name="settings__languages__not_set">Not set</string>
+    <string name="settings__languages__language">Language</string>
+    <string name="settings__languages__layout">Layout</string>
+    <string name="settings__languages__advanced_summary">Accents, symbols, numbers and currency</string>
+    <string name="settings__languages__accents">Accents</string>
+    <string name="settings__languages__fields_missing">Pick a value for every field marked in red.</string>
+    <string name="settings__languages__expanded">Expanded</string>
+    <string name="settings__languages__collapsed">Collapsed</string>
 
     <string name="settings__theme__title" comment="Title of the Theme screen">Theme</string>
     <string name="pref__theme__mode__label" comment="Label of the theme mode preference">Theme mode</string>
@@ -228,8 +273,34 @@
     <string name="pref__theme__source_internal" comment="Label for the theme source field">Internal Storage</string>
     <string name="pref__theme__source_external" comment="Label for the theme source field">External Provider</string>
 
-    <string name="settings__theme_manager__title_day" comment="Title of the theme manager screen for day theme selection">Select day theme</string>
-    <string name="settings__theme_manager__title_night" comment="Title of the theme manager screen for night theme selection">Select night theme</string>
+    <string name="settings__theme_manager__title_day" comment="Title of the theme manager screen for day theme selection">Day theme</string>
+    <string name="settings__theme_manager__title_night" comment="Title of the theme manager screen for night theme selection">Night theme</string>
+
+    <!-- Appearance -->
+    <string name="settings__appearance__title" comment="Title of the appearance screen">Appearance</string>
+    <string name="settings__appearance__mode_dark" comment="Keyboard theme mode: always dark">Dark</string>
+    <string name="settings__appearance__mode_light" comment="Keyboard theme mode: always light">Light</string>
+    <string name="settings__appearance__mode_auto" comment="Keyboard theme mode: follows the phone's dark theme">Auto</string>
+    <string name="settings__appearance__dark_style" comment="Title of the dark keyboard style picker">Dark style</string>
+    <string name="settings__appearance__graphite" comment="Name of the dark grey keyboard style">Graphite</string>
+    <string name="settings__appearance__black" comment="Name of the pure black keyboard style">Black</string>
+    <string name="settings__appearance__light" comment="Appearance summary on Home: light keyboard">Light</string>
+    <string name="settings__appearance__auto_graphite" comment="Appearance summary on Home: follows the phone, Graphite when dark">Auto · Graphite</string>
+    <string name="settings__appearance__auto_black" comment="Appearance summary on Home: follows the phone, Black when dark">Auto · Black</string>
+    <string name="settings__appearance__custom" comment="Appearance summary on Home, and accent value, for a user-picked theme or colour">Custom</string>
+    <string name="settings__appearance__accent" comment="Title of the accent colour picker">Accent</string>
+    <string name="settings__appearance__accent_ember" comment="Accent colour name (orange)">Ember</string>
+    <string name="settings__appearance__accent_lime" comment="Accent colour name">Lime</string>
+    <string name="settings__appearance__accent_blue" comment="Accent colour name">Blue</string>
+    <string name="settings__appearance__accent_violet" comment="Accent colour name">Violet</string>
+    <string name="settings__appearance__accent_pink" comment="Accent colour name">Pink</string>
+    <string name="settings__appearance__accent_mono" comment="Accent colour name (white)">Mono</string>
+    <string name="settings__appearance__custom_colour" comment="Row that opens the custom accent colour picker">Custom colour</string>
+    <string name="settings__appearance__custom_colour_too_dark" comment="Shown when a picked accent colour is too dark to see on the dark background">Too dark to see. Pick a lighter colour.</string>
+    <string name="settings__appearance__advanced" comment="Group title for less common appearance settings">Advanced</string>
+    <string name="settings__appearance__custom_themes_summary" comment="Summary of the custom themes row">Make and edit your own themes</string>
+    <string name="settings__appearance__theme_dark" comment="Summary of a dark theme in the theme list">Dark</string>
+    <string name="settings__appearance__theme_light" comment="Summary of a light theme in the theme list">Light</string>
 
     <string name="settings__theme_editor__fine_tune__title">Fine tune editor</string>
     <string name="settings__theme_editor__fine_tune__level">Editing level</string>
@@ -459,7 +530,7 @@
     <string name="snygg__property_value__text_overflow">Text overflow</string>
     <string name="snygg__property_value__uri">URI reference</string>
 
-    <string name="settings__input_feedback__title" comment="Title of Input Feedback screen">Sounds &amp; Vibration</string>
+    <string name="settings__input_feedback__title" comment="Title of Input Feedback screen">Sound &amp; vibration</string>
     <string name="pref__input_feedback__group_audio__label" comment="Preference group title">Audio feedback / Sounds</string>
     <string name="pref__input_feedback__audio_enabled__label" comment="Preference title">Enable audio feedback</string>
     <string name="pref__input_feedback__audio_enabled__summary_disabled" comment="Preference summary">Never play sounds for input events, regardless of system settings</string>
@@ -488,9 +559,20 @@
     <string name="pref__input_feedback__any_feat_gesture_swipe__summary" comment="Preference summary">not implemented</string>
     <string name="pref__input_feedback__any_feat_gesture_moving_swipe__summary" comment="Preference summary">e.g. cursor control swipe</string>
 
+    <!-- Sound & vibration -->
+    <string name="settings__keyboard__key_sounds" comment="List title: sounds when pressing keys">Key sounds</string>
+    <string name="settings__keyboard__feedback_off" comment="Key sounds or vibration option">Off</string>
+    <string name="settings__keyboard__feedback_follow_phone" comment="Key sounds or vibration option">Follow phone</string>
+    <string name="settings__keyboard__feedback_always" comment="Key sounds or vibration option">Always</string>
+    <string name="settings__keyboard__key_sounds_follow_summary" comment="Explains the Follow phone option for key sounds">Uses your phone\'s touch sound setting</string>
+    <string name="settings__keyboard__volume" comment="Slider title: key sound volume">Volume</string>
+    <string name="settings__keyboard__vibration" comment="List title: vibration when pressing keys">Vibration</string>
+    <string name="settings__keyboard__vibration_follow_summary" comment="Explains the Follow phone option for vibration">Uses your phone\'s touch feedback setting</string>
+    <string name="settings__keyboard__strength" comment="Slider title: vibration strength">Strength</string>
+
     <string name="settings__keyboard__title" comment="Title of Keyboard preferences screen">Keyboard</string>
     <string name="pref__keyboard__number_row__label" comment="Preference title">Number row</string>
-    <string name="pref__keyboard__number_row__summary" comment="Preference summary">Show a number row above the character layout</string>
+    <string name="pref__keyboard__number_row__summary" comment="Preference summary">Numbers above the letters</string>
     <string name="pref__keyboard__hinted_number_row_mode__label" comment="Preference title">Hinted number row</string>
     <string name="pref__keyboard__hinted_symbols_mode__label" comment="Preference title">Hinted symbols</string>
     <string name="pref__keyboard__utility_key_enabled__label" comment="Preference title">Show utility key</string>
@@ -515,6 +597,44 @@
     <string name="pref__keyboard__space_bar_switches_to_characters__summary" comment="Preference summary">Automatically switches back to characters when in symbols or numeric</string>
     <string name="pref__keyboard__incognito_indicator__label" comment="Preference title">Incognito indicator</string>
 
+    <!-- Keyboard -->
+    <string name="settings__keyboard__group_keys" comment="Keyboard group title">Keys</string>
+    <string name="settings__keyboard__group_toolbar" comment="Keyboard group title">Toolbar</string>
+    <string name="settings__keyboard__group_other" comment="Keyboard group title">Other</string>
+    <string name="settings__keyboard__number_hints" comment="Switch: small numbers on the top letter row">Number hints</string>
+    <string name="settings__keyboard__number_hints_summary" comment="Summary of the number hints switch">Long-press the top row for numbers</string>
+    <string name="settings__keyboard__number_hint_priority" comment="Hidden row title, shown only while changed">Number hint priority</string>
+    <string name="settings__keyboard__symbol_hints" comment="Switch: small symbols on the letter keys">Symbol hints</string>
+    <string name="settings__keyboard__symbol_hints_summary" comment="Summary of the symbol hints switch">Long-press letters for symbols</string>
+    <string name="settings__keyboard__symbol_hint_priority" comment="Hidden row title, shown only while changed">Symbol hint priority</string>
+    <string name="settings__keyboard__space_neighbor" comment="Title of the setting for the key next to the space bar">Key next to space</string>
+    <string name="settings__keyboard__space_neighbor_none" comment="Key next to space option">None</string>
+    <string name="settings__keyboard__space_neighbor_emoji" comment="Key next to space option">Emoji</string>
+    <string name="settings__keyboard__space_neighbor_language" comment="Key next to space option">Language</string>
+    <string name="settings__keyboard__space_neighbor_automatic" comment="Key next to space option">Automatic</string>
+    <string name="settings__keyboard__space_neighbor_automatic_summary" comment="Explains the Automatic option for the key next to space">Language if you have more than one, otherwise emoji</string>
+    <string name="settings__keyboard__space_neighbor_switch_keyboard" comment="Key next to space option: switch to another keyboard app">Switch keyboard</string>
+    <string name="settings__keyboard__split_gap" comment="Slider title: width of the gap in the split keyboard">Split gap</string>
+    <string name="settings__keyboard__key_label_size" comment="Slider title: size of the letters on the keys">Key label size</string>
+    <string name="settings__keyboard__long_press_delay" comment="Slider title">Long-press delay</string>
+    <string name="settings__keyboard__key_preview" comment="Switch title">Key preview</string>
+    <string name="settings__keyboard__key_preview_summary" comment="Summary of the key preview switch">Show a larger key while pressing</string>
+    <string name="settings__keyboard__show_toolbar" comment="Switch title: the row above the keys">Show toolbar</string>
+    <string name="settings__keyboard__show_toolbar_summary" comment="Summary of the show toolbar switch">Suggestions, dictation and AI actions</string>
+    <string name="settings__keyboard__dictation_left" comment="Switch title: put the dictation button on the left side of the toolbar">Dictation button on the left</string>
+    <string name="settings__keyboard__reset_toolbar" comment="Row title">Reset toolbar actions</string>
+    <string name="settings__keyboard__reset_toolbar_confirm_title" comment="Confirm dialog title">Reset toolbar actions?</string>
+    <string name="settings__keyboard__reset_toolbar_confirm_text" comment="Confirm dialog text">The toolbar goes back to the default buttons in their default order.</string>
+    <string name="settings__keyboard__reset_toolbar_done" comment="Toast after resetting the toolbar">Toolbar actions reset</string>
+    <string name="settings__keyboard__physical_keyboard" comment="Switch title">Physical keyboard</string>
+    <string name="settings__keyboard__physical_keyboard_summary" comment="Summary of the physical keyboard switch">Keep Ownkey on screen when one is connected</string>
+    <string name="settings__keyboard__reset_window" comment="Row title">Reset size and position</string>
+    <string name="settings__keyboard__reset_window_confirm_title" comment="Confirm dialog title">Reset size and position?</string>
+    <string name="settings__keyboard__reset_window_confirm_text" comment="Confirm dialog text">The keyboard goes back to its default size, padding and place on the screen.</string>
+    <string name="settings__keyboard__reset_window_done" comment="Toast after resetting the keyboard window">Size and position reset</string>
+    <string name="settings__keyboard__reset_window_failed" comment="Toast when resetting the keyboard window fails">Couldn\'t reset size and position: {message}</string>
+    <string name="settings__keyboard__suggestion_layout" comment="Hidden row title, shown only while changed">Suggestion layout</string>
+
     <!-- Smartbar strings -->
     <string name="settings__smartbar__title" comment="Title of Smartbar screen">Smartbar</string>
     <string name="pref__smartbar__enabled__label" comment="Preference title">Enable Smartbar</string>
@@ -526,6 +646,24 @@
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Auto-expand/collapse</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Auto-expands/collapses the shared action row based on current state</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Action row placement</string>
+
+    <!-- Keyboard UI: dictation button, toolbar and toasts -->
+    <string name="ime__mic__stop_dictation" comment="Accessibility name of the dictation button while it records">Stop dictation</string>
+    <string name="ime__mic__recording" comment="Accessibility state of the dictation button while it records">Recording</string>
+    <string name="ime__mic__paused" comment="Accessibility state of the dictation button while recording is paused">Paused</string>
+    <string name="ime__toolbar__show_actions" comment="Accessibility name of the toolbar chevron that shows the action row">Show actions</string>
+    <string name="ime__toolbar__hide_actions" comment="Accessibility name of the toolbar chevron that hides the action row">Hide actions</string>
+    <string name="ime__toast__dismiss" comment="Accessibility label of the close button on a keyboard toast">Dismiss</string>
+    <string name="ime__dictation__already_transcribing" comment="Toast when dictation is tapped while it still transcribes">Dictation is already transcribing…</string>
+    <string name="ime__dictation__needs_key" comment="Toast when cloud dictation starts without an API key">Dictation needs an API key. Add one in Settings → AI.</string>
+    <string name="ime__dictation__mic_missing" comment="Toast when dictation starts without microphone permission">Microphone permission missing. Grant it in Settings → AI.</string>
+    <string name="ime__dictation__start_failed" comment="Toast when dictation can't start">Unable to start dictation</string>
+    <string name="ime__dictation__cancelled" comment="Toast after dictation is cancelled">Dictation cancelled</string>
+    <string name="ime__dictation__pause_failed" comment="Toast when dictation can't pause">Unable to pause dictation</string>
+    <string name="ime__dictation__resume_failed" comment="Toast when dictation can't resume">Unable to resume dictation</string>
+    <string name="ime__rewrite__needs_key" comment="Toast when a rewrite style is tapped without an API key">Rewrite needs an API key. Add one in Settings → AI.</string>
+    <string name="ime__rewrite__replace_failed" comment="Toast when the rewritten text can't replace the original">Could not replace text</string>
+    <string name="ime__rewrite__failed" comment="Toast when a rewrite fails without an error message">Rewrite failed</string>
 
     <!-- Typing strings -->
     <string name="settings__typing__title" comment="Title of Typing screen">Typing</string>
@@ -575,7 +713,32 @@
     <string name="pref__spelling__use_udm_entries__label" comment="Label of Use user dictionary entries pref">Use user dictionary entries</string>
     <string name="pref__spelling__use_udm_entries__summary" comment="Summary of Use user dictionary entries pref">Look up entries from the user dictionaries</string>
 
-    <string name="settings__dictionary__title" comment="Title of the User dictionaries screen">User dictionaries</string>
+    <!-- Typing -->
+    <string name="settings__typing__group_suggestions">Suggestions</string>
+    <string name="settings__typing__group_formatting">Formatting</string>
+    <string name="settings__typing__group_words">Words</string>
+    <string name="settings__typing__show_suggestions">Show suggestions</string>
+    <string name="settings__typing__autocorrect_off">Off</string>
+    <string name="settings__typing__autocorrect_off_summary">Never changes what you type</string>
+    <string name="settings__typing__emoji_suggestions">Emoji suggestions</string>
+    <string name="settings__typing__emoji_suggestions_summary">Type : and a name, like :smile</string>
+    <string name="settings__typing__block_offensive">Block offensive words</string>
+    <string name="settings__typing__autofill">Autofill suggestions</string>
+    <string name="settings__typing__autofill_summary">From your password manager</string>
+    <string name="settings__typing__auto_capitalize">Auto-capitalize</string>
+    <string name="settings__typing__auto_capitalize_summary">Start sentences with a capital letter</string>
+    <string name="settings__typing__space_after_punctuation">Space after punctuation</string>
+    <string name="settings__typing__space_after_punctuation_summary">Adds a space when you start a new word</string>
+    <string name="settings__typing__double_space_period">Double-space for period</string>
+    <string name="settings__typing__double_space_period_summary">Tap space twice to type a period</string>
+    <string name="settings__typing__spell_checker">Spell checker</string>
+    <string name="settings__typing__spell_checker_off">Off</string>
+    <string name="settings__typing__spell_checker_not_set">Not set</string>
+    <string name="settings__typing__spell_checker_none_notice">Spell checking is on, but no spell checker is selected.</string>
+    <string name="settings__typing__spell_checker_choose">Choose</string>
+    <string name="settings__typing__spell_checker_languages">Spell checker languages</string>
+
+    <string name="settings__dictionary__title" comment="Title of the User dictionaries screen">Saved words</string>
     <string name="pref__dictionary__enable_system_user_dictionary__label" comment="Preference title">Enable system user dictionary</string>
     <string name="pref__dictionary__enable_system_user_dictionary__summary" comment="Preference summary">Suggest words stored in the system user dictionary</string>
     <string name="pref__dictionary__manage_system_user_dictionary__label" comment="Preference title">Manage system user dictionary</string>
@@ -584,8 +747,8 @@
     <string name="pref__dictionary__enable_internal_user_dictionary__summary" comment="Preference summary">Suggest words stored in the internal user dictionary</string>
     <string name="pref__dictionary__manage_floris_user_dictionary__label" comment="Preference title">Manage internal user dictionary</string>
     <string name="pref__dictionary__manage_floris_user_dictionary__summary" comment="Preference summary">Add, view, and remove entries for the internal user dictionary</string>
-    <string name="settings__udm__title_floris" comment="Title of the User Dictionary Manager activity for internal">Internal User Dictionary</string>
-    <string name="settings__udm__title_system" comment="Title of the User Dictionary Manager activity for system">System User Dictionary</string>
+    <string name="settings__udm__title_floris" comment="Title of the User Dictionary Manager activity for internal">Your words</string>
+    <string name="settings__udm__title_system" comment="Title of the User Dictionary Manager activity for system">System dictionary</string>
     <string name="settings__udm__no_words_in_dictionary" comment="String to show if no words are present in the dictionary">This user dictionary does not contain any words.</string>
     <string name="settings__udm__word_summary_freq" comment="Summary label for a word entry. The decimal placeholder inserts the frequency for the word it summarizes.">Frequency: {freq}</string>
     <string name="settings__udm__word_summary_freq_shortcut" comment="Summary label for a word entry. The first placeholder inserts the frequency for the word it summarizes, the second placeholder the shortcut defined.">Frequency: {freq} | Shortcut: {shortcut}</string>
@@ -606,7 +769,17 @@
     <string name="settings__udm__dialog__locale_label" comment="Label for the language code in the user dictionary add/edit dialog">Language code (optional)</string>
     <string name="settings__udm__dialog__locale_error_invalid" comment="Error label for the language code in the user dictionary add/edit dialog">This language code does not conform to the expected syntax. The code must either be a language only (like en), a language and country (like en_US) or a language, country, and script (like en_US-script).</string>
 
-    <string name="settings__gestures__title" comment="Title of Gestures screen">Gestures &amp; Glide typing</string>
+    <!-- Saved words -->
+    <string name="settings__typing__saved_words_footer">Your words and the system dictionary shape suggestions while you type. The personal dictionary is for dictation, but spell check and autocorrect also leave its words alone.</string>
+    <string name="settings__typing__your_words_summary">Words you added to Ownkey</string>
+    <string name="settings__typing__system_dictionary_summary">Words saved on your phone</string>
+    <string name="settings__typing__personal_dictionary">Personal dictionary</string>
+    <string name="settings__typing__personal_dictionary_summary">Names and spellings for dictation</string>
+    <string name="settings__typing__no_saved_words">No words yet. Add one, or import a list from the menu.</string>
+    <string name="settings__typing__word_shortcut">Shortcut: {shortcut}</string>
+    <string name="settings__typing__more_options">More options</string>
+
+    <string name="settings__gestures__title" comment="Title of Gestures screen">Gestures</string>
     <string name="pref__glide__title" comment="Preference group title">Glide typing</string>
     <string name="pref__glide__enabled__label" comment="Preference title">Enable glide typing</string>
     <string name="pref__glide__enabled__summary" comment="Preference summary">Type in a word by sliding your finger through its letters</string>
@@ -633,8 +806,80 @@
     <string name="pref__gestures__swipe_velocity_threshold__label" comment="Preference title">Swipe velocity threshold</string>
     <string name="pref__gestures__swipe_distance_threshold__label" comment="Preference title">Swipe distance threshold</string>
 
+    <!-- Gestures -->
+    <string name="settings__keyboard__gestures_letters" comment="Gestures group title">Swipe on letters</string>
+    <string name="settings__keyboard__gestures_space_bar" comment="Gestures group title">Space bar</string>
+    <string name="settings__keyboard__gestures_delete_key" comment="Gestures group title">Delete key</string>
+    <string name="settings__keyboard__gestures_long_press" comment="Gesture row title">Long press</string>
+    <string name="settings__keyboard__gestures_sensitivity" comment="Gestures group title for swipe thresholds, shown only while changed">Swipe sensitivity</string>
+    <string name="settings__keyboard__gesture_none" comment="Gesture action, shown as a row value; keep it short">None</string>
+    <string name="settings__keyboard__gesture_previous_page" comment="Gesture action, shown as a row value; keep it short">Previous page</string>
+    <string name="settings__keyboard__gesture_previous_page_description" comment="Gesture action description in the choice sheet">Steps back through letters, symbols and numbers.</string>
+    <string name="settings__keyboard__gesture_next_page" comment="Gesture action, shown as a row value; keep it short">Next page</string>
+    <string name="settings__keyboard__gesture_next_page_description" comment="Gesture action description in the choice sheet">Steps through letters, symbols and numbers.</string>
+    <string name="settings__keyboard__gesture_delete_word" comment="Gesture action, shown as a row value; keep it short">Delete word</string>
+    <string name="settings__keyboard__gesture_delete_word_description" comment="Gesture action description in the choice sheet">Deletes the word before the cursor.</string>
+    <string name="settings__keyboard__gesture_hide_keyboard" comment="Gesture action, shown as a row value; keep it short">Hide keyboard</string>
+    <string name="settings__keyboard__gesture_insert_space" comment="Gesture action, shown as a row value; keep it short">Insert space</string>
+    <string name="settings__keyboard__gesture_cursor_up" comment="Gesture action, shown as a row value; keep it short">Cursor up</string>
+    <string name="settings__keyboard__gesture_cursor_down" comment="Gesture action, shown as a row value; keep it short">Cursor down</string>
+    <string name="settings__keyboard__gesture_cursor_left" comment="Gesture action, shown as a row value; keep it short">Cursor left</string>
+    <string name="settings__keyboard__gesture_cursor_right" comment="Gesture action, shown as a row value; keep it short">Cursor right</string>
+    <string name="settings__keyboard__gesture_start_of_line" comment="Gesture action, shown as a row value; keep it short">Start of line</string>
+    <string name="settings__keyboard__gesture_start_of_line_description" comment="Gesture action description in the choice sheet">Moves the cursor to the start of the line.</string>
+    <string name="settings__keyboard__gesture_end_of_line" comment="Gesture action, shown as a row value; keep it short">End of line</string>
+    <string name="settings__keyboard__gesture_end_of_line_description" comment="Gesture action description in the choice sheet">Moves the cursor to the end of the line.</string>
+    <string name="settings__keyboard__gesture_start_of_text" comment="Gesture action, shown as a row value; keep it short">Start of text</string>
+    <string name="settings__keyboard__gesture_start_of_text_description" comment="Gesture action description in the choice sheet">Moves the cursor to the start of the text field.</string>
+    <string name="settings__keyboard__gesture_end_of_text" comment="Gesture action, shown as a row value; keep it short">End of text</string>
+    <string name="settings__keyboard__gesture_end_of_text_description" comment="Gesture action description in the choice sheet">Moves the cursor to the end of the text field.</string>
+    <string name="settings__keyboard__gesture_shift" comment="Gesture action, shown as a row value; keep it short">Shift</string>
+    <string name="settings__keyboard__gesture_undo" comment="Gesture action, shown as a row value; keep it short">Undo</string>
+    <string name="settings__keyboard__gesture_redo" comment="Gesture action, shown as a row value; keep it short">Redo</string>
+    <string name="settings__keyboard__gesture_clipboard" comment="Gesture action, shown as a row value; keep it short">Clipboard</string>
+    <string name="settings__keyboard__gesture_clipboard_description" comment="Gesture action description in the choice sheet">Opens clipboard history.</string>
+    <string name="settings__keyboard__gesture_emoji" comment="Gesture action, shown as a row value; keep it short">Emoji</string>
+    <string name="settings__keyboard__gesture_emoji_description" comment="Gesture action description in the choice sheet">Opens the emoji panel.</string>
+    <string name="settings__keyboard__gesture_choose_keyboard" comment="Gesture action, shown as a row value; keep it short">Choose keyboard</string>
+    <string name="settings__keyboard__gesture_choose_keyboard_description" comment="Gesture action description in the choice sheet">Shows your phone\'s list of keyboards.</string>
+    <string name="settings__keyboard__gesture_choose_language" comment="Gesture action, shown as a row value; keep it short">Choose language</string>
+    <string name="settings__keyboard__gesture_choose_language_description" comment="Gesture action description in the choice sheet">Shows your keyboard languages to pick from.</string>
+    <string name="settings__keyboard__gesture_next_language" comment="Gesture action, shown as a row value; keep it short">Next language</string>
+    <string name="settings__keyboard__gesture_next_language_description" comment="Gesture action description in the choice sheet">Switches to your next keyboard language.</string>
+    <string name="settings__keyboard__gesture_previous_language" comment="Gesture action, shown as a row value; keep it short">Previous language</string>
+    <string name="settings__keyboard__gesture_previous_language_description" comment="Gesture action description in the choice sheet">Switches back to your previous keyboard language.</string>
+    <string name="settings__keyboard__gesture_last_keyboard" comment="Gesture action, shown as a row value; keep it short">Last keyboard</string>
+    <string name="settings__keyboard__gesture_last_keyboard_description" comment="Gesture action description in the choice sheet">Goes back to the keyboard you used before Ownkey.</string>
+    <string name="settings__keyboard__gesture_toggle_toolbar" comment="Gesture action, shown as a row value; keep it short">Toggle toolbar</string>
+    <string name="settings__keyboard__gesture_toggle_toolbar_description" comment="Gesture action description in the choice sheet">Shows or hides the toolbar.</string>
+    <string name="settings__keyboard__gesture_delete_characters" comment="Gesture action, shown as a row value; keep it short">Delete letters</string>
+    <string name="settings__keyboard__gesture_delete_characters_description" comment="Gesture action description in the choice sheet">Slide to choose how many characters to delete.</string>
+    <string name="settings__keyboard__gesture_delete_words" comment="Gesture action, shown as a row value; keep it short">Delete words</string>
+    <string name="settings__keyboard__gesture_delete_words_description" comment="Gesture action description in the choice sheet">Slide to choose how many words to delete.</string>
+    <string name="settings__keyboard__gesture_select_characters" comment="Gesture action, shown as a row value; keep it short">Select letters</string>
+    <string name="settings__keyboard__gesture_select_characters_description" comment="Gesture action description in the choice sheet">Slide to select characters before the cursor.</string>
+    <string name="settings__keyboard__gesture_select_words" comment="Gesture action, shown as a row value; keep it short">Select words</string>
+    <string name="settings__keyboard__gesture_select_words_description" comment="Gesture action description in the choice sheet">Slide to select words before the cursor.</string>
+    <string name="settings__keyboard__gesture_hold_characters" comment="Gesture action, shown as a row value; keep it short">Letters</string>
+    <string name="settings__keyboard__gesture_hold_characters_description" comment="Gesture action description in the choice sheet">Deletes one character at a time while you hold.</string>
+    <string name="settings__keyboard__gesture_hold_words" comment="Gesture action, shown as a row value; keep it short">Words</string>
+    <string name="settings__keyboard__gesture_hold_words_description" comment="Gesture action description in the choice sheet">Deletes one word at a time while you hold.</string>
+
     <string name="settings__other__title" comment="Title of Other settings">Other</string>
+    <string name="settings__privacy__title" comment="Title of the Privacy &amp; backup settings screen">Privacy &amp; backup</string>
     <string name="settings__voxtral__title" comment="Title of AI settings screen">AI</string>
+    <string name="settings__ai__rewrite_styles__title" comment="Title of the screen that lists the rewrite styles">Rewrite styles</string>
+    <string name="settings__ai__status__on_device" comment="AI status value: dictation runs on the phone with Orukeet">On device</string>
+    <string name="settings__ai__status__on_device_needs_download" comment="AI status value: on-device dictation is chosen but its model isn't downloaded">On device · Needs download</string>
+    <string name="settings__ai__status__cloud" comment="AI status value: cloud dictation; {provider} is a provider name or server host">Cloud · {provider}</string>
+    <string name="settings__ai__status__cloud_needs_key" comment="AI status value: cloud dictation is chosen but has no API key">Cloud · Needs a key</string>
+    <string name="settings__ai__status__cloud_check_address" comment="AI status value: the cloud dictation server address doesn't start with http:// or https://">Cloud · Check server address</string>
+    <string name="settings__ai__status__system_voice_input" comment="AI status value: dictation uses the phone's own voice typing">System voice input</string>
+    <string name="settings__ai__status__demo" comment="AI status value in debug builds: dictation inserts demo text">Demo text (debug build)</string>
+    <string name="settings__ai__status__not_set_up" comment="AI status value: no dictation route works yet">Not set up</string>
+    <string name="settings__ai__status__needs_key" comment="AI status value: rewrite has no API key">Needs a key</string>
+    <string name="settings__ai__status__needs_setup" comment="AI status value: the rewrite server address or model is missing or invalid">Needs setup</string>
+    <string name="settings__ai__status__custom_server" comment="Provider name in an AI status value when the server is unknown and has no readable host">Custom server</string>
     <string name="settings__voxtral__summary" comment="Summary shown on Settings home item for AI">Configure dictation and rewrite</string>
     <string name="pref__voxtral__api_key__label" comment="Label of the cloud dictation API key text field">Dictation API key</string>
     <string name="pref__voxtral__api_key__summary" comment="How the cloud dictation API key is stored">Stored encrypted on this device. Once saved, the key is hidden and can\'t be shown again.</string>
@@ -642,7 +887,7 @@
     <string name="pref__voxtral__api_key__status_set" comment="Status text shown when the cloud dictation API key is configured">Dictation API key saved.</string>
     <string name="pref__voxtral__api_key__status_missing" comment="Status text shown when the cloud dictation API key is missing">No dictation API key yet.</string>
     <string name="pref__voxtral__api_key__save_action" comment="Button label to save the cloud dictation API key">Save API key</string>
-    <string name="pref__voxtral__api_key__save_failed" comment="Toast when the dictation settings could not be stored, so the API key was not saved">Couldn\'t save the API key. Try again.</string>
+    <string name="pref__voxtral__api_key__save_failed" comment="Error in the API key dialog when the key, or the dictation choice saved with it, could not be stored">Couldn\'t save the API key. Try again.</string>
     <string name="pref__voxtral__api_key__clear_action" comment="Button label to remove the cloud dictation API key">Remove API key</string>
     <string name="pref__voxtral__endpoint__label" comment="Label of the cloud dictation endpoint URL text field">Endpoint URL</string>
     <string name="pref__voxtral__endpoint__summary" comment="Supporting text under the cloud dictation endpoint field">Mistral by default. Any OpenAI-compatible transcription endpoint works, including a self-hosted one.</string>
@@ -702,14 +947,164 @@
     <string name="pref__ai__rewrite_endpoint__label" comment="Label for rewrite endpoint URL">Rewrite endpoint</string>
     <string name="pref__ai__rewrite_endpoint__summary_custom" comment="Supporting text under the custom rewrite endpoint field">An OpenAI-compatible chat completions URL.</string>
     <string name="pref__ai__rewrite_endpoint__summary" comment="Where rewrite text goes; {host} is a host name such as api.openai.com">Text you rewrite is sent to {host}.</string>
-    <string name="pref__ai__rewrite_voices__label" comment="Label for rewrite prompt presets">Rewrite voices</string>
-    <string name="pref__ai__rewrite_voices__summary" comment="Summary of the rewrite voices editor">The presets in the rewrite panel. Each voice is a name and the instruction sent along with your text.</string>
-    <string name="pref__ai__rewrite_voice_name__label" comment="Label for rewrite voice name">Voice name</string>
-    <string name="pref__ai__rewrite_instruction__label" comment="Label for rewrite prompt instruction">Prompt instruction</string>
-    <string name="pref__ai__rewrite_voice__remove_action" comment="Button label to remove a rewrite voice">Remove</string>
-    <string name="pref__ai__rewrite_voice__add_action" comment="Button label to add a rewrite voice">Add voice</string>
-    <string name="pref__ai__rewrite_voice__reset_action" comment="Button label to reset rewrite voices">Reset</string>
-    <string name="pref__ai__rewrite_voice__save_action" comment="Button label to save rewrite voices">Save voices</string>
+    <string name="pref__ai__rewrite_voices__label" comment="Title of the rewrite styles list">Rewrite styles</string>
+    <string name="pref__ai__rewrite_voices__summary" comment="Footer of the rewrite styles list">The buttons in the rewrite panel. Each style\'s instruction is sent with your text.</string>
+    <string name="pref__ai__rewrite_voice_name__label" comment="Label of a rewrite style name field">Name</string>
+    <string name="pref__ai__rewrite_instruction__label" comment="Label of a rewrite style instruction field">Instruction</string>
+    <string name="pref__ai__rewrite_voice__remove_action" comment="Button that deletes a rewrite style">Delete</string>
+    <string name="pref__ai__rewrite_voice__add_action" comment="Button that adds a rewrite style">Add style</string>
+    <string name="pref__ai__rewrite_voice__reset_action" comment="Button that restores the built-in rewrite styles">Reset to defaults</string>
+
+    <!-- AI: Shared -->
+    <string name="settings__ai__save" comment="Button that saves a field in an AI settings dialog">Save</string>
+    <string name="settings__ai__remove" comment="Destructive button that removes a saved API key">Remove</string>
+    <string name="settings__ai__done" comment="Button that closes the dictation language sheet">Done</string>
+    <string name="settings__ai__not_set" comment="Row value when an AI setting has no value yet">Not set</string>
+    <string name="settings__ai__your_server" comment="Fallback for {host} when a server address has no readable host">your server</string>
+    <string name="settings__ai__address_error" comment="Error under a server address field that lacks http:// or https://">Start with https:// or http://</string>
+
+    <!-- AI: Microphone -->
+    <string name="settings__ai__mic__notice" comment="Warning on the AI screen when microphone permission is missing">Ownkey needs the microphone to dictate.</string>
+    <string name="settings__ai__mic__allow" comment="Action that asks for microphone permission">Allow</string>
+
+    <!-- AI: Dictation -->
+    <string name="settings__ai__dictation__title" comment="Group header of the dictation route choice">Dictation</string>
+    <string name="settings__ai__dictation__on_device" comment="Dictation route that runs on the phone">On device</string>
+    <string name="settings__ai__dictation__on_device_summary" comment="Summary of the on-device dictation route">Orukeet. Works offline after a one-time download.</string>
+    <string name="settings__ai__dictation__cloud" comment="Dictation route that sends audio to a cloud provider">Cloud</string>
+    <string name="settings__ai__dictation__cloud_summary" comment="Summary of the cloud dictation route; {provider} is a provider name or server host">Sends audio to {provider}.</string>
+    <string name="settings__ai__dictation__system" comment="Dictation route that uses the phone's own voice typing">System voice input</string>
+    <string name="settings__ai__dictation__system_summary" comment="Summary of the system voice input route">Your phone\'s voice typing. No personal dictionary or voice rewrite.</string>
+    <string name="settings__ai__dictation__note_needs_key" comment="Why the cloud route can't be picked yet; tapping it opens the key dialog">Add a key below first</string>
+    <string name="settings__ai__dictation__note_fix_address" comment="Why the cloud route can't be picked: the server address lacks http(s)">Fix the server address below</string>
+    <string name="settings__ai__dictation__note_needs_download" comment="Why the on-device route can't be picked yet; tapping it opens the download dialog">Download the model first</string>
+    <string name="settings__ai__dictation__note_unsupported" comment="Why the on-device route can't be picked on this phone">Not supported on this phone</string>
+    <string name="settings__ai__dictation__note_checking" comment="On-device route note while the stored model is checked">Checking the model…</string>
+    <string name="settings__ai__dictation__note_loading" comment="On-device route note while the model loads">Loading the model…</string>
+    <string name="settings__ai__dictation__note_downloading" comment="On-device route note while the model downloads">Downloading the model…</string>
+    <string name="settings__ai__dictation__footer" comment="Footer under the dictation route choice">Voice rewrite uses the dictation option above, except System voice input. The text you rewrite goes to your rewrite provider.</string>
+    <string name="settings__ai__dictionary__empty" comment="Personal dictionary row value when it has no entries">Empty</string>
+    <plurals name="settings__ai__dictionary__count">
+        <item quantity="one">{count} entry</item>
+        <item quantity="other">{count} entries</item>
+    </plurals>
+
+    <!-- AI: On-device model -->
+    <string name="settings__ai__model__title" comment="Group header of the on-device model settings">On-device model</string>
+    <string name="settings__ai__model__row" comment="Status row title for the Orukeet model">Orukeet model</string>
+    <string name="settings__ai__model__checking" comment="Orukeet model status">Checking…</string>
+    <string name="settings__ai__model__not_downloaded" comment="Orukeet model status">Not downloaded</string>
+    <string name="settings__ai__model__downloading" formatted="false" comment="Orukeet model status; {percent} is a number from 0 to 100">Downloading {percent}%</string>
+    <string name="settings__ai__model__downloading_unknown" comment="Orukeet model status before the size is known">Downloading…</string>
+    <string name="settings__ai__model__verifying" comment="Orukeet model status">Verifying…</string>
+    <string name="settings__ai__model__waiting_wifi" comment="Orukeet model status">Waiting for Wi-Fi</string>
+    <string name="settings__ai__model__waiting_internet" comment="Orukeet model status">Waiting for internet</string>
+    <string name="settings__ai__model__waiting_start" comment="Orukeet model status while Android hasn't started the download job">Waiting to start</string>
+    <string name="settings__ai__model__waiting_wifi_summary" comment="Explains the Waiting for Wi-Fi status">Starts on Wi-Fi or Ethernet. Mobile data is off for this download.</string>
+    <string name="settings__ai__model__waiting_internet_summary" comment="Explains the Waiting for internet status">Starts when you\'re back online.</string>
+    <string name="settings__ai__model__waiting_start_summary" comment="Explains the Waiting to start status">Android hasn\'t started the download yet. You can retry now.</string>
+    <string name="settings__ai__model__loading" comment="Orukeet model status">Loading…</string>
+    <string name="settings__ai__model__ready" comment="Orukeet model status: in use for dictation">Ready</string>
+    <string name="settings__ai__model__in_use" comment="Orukeet model status while it transcribes">In use</string>
+    <string name="settings__ai__model__downloaded" comment="Orukeet model status: downloaded but not the dictation route">Downloaded</string>
+    <string name="settings__ai__model__update" comment="Orukeet model status">Update available</string>
+    <string name="settings__ai__model__deleting" comment="Orukeet model status">Deleting…</string>
+    <string name="settings__ai__model__unsupported" comment="Orukeet model status">Not supported on this phone</string>
+    <string name="settings__ai__model__download" comment="Primary action that opens the Orukeet download dialog">Download</string>
+    <string name="settings__ai__model__download_update" comment="Primary action that downloads a newer Orukeet model">Download update</string>
+    <string name="settings__ai__model__retry" comment="Primary action after a failed download">Retry download</string>
+    <string name="settings__ai__model__use" comment="Primary action that makes Orukeet the dictation route">Use for dictation</string>
+    <string name="settings__ai__model__apply_update" comment="Primary action that switches to the downloaded model update">Apply update</string>
+    <string name="settings__ai__model__cancel_download" comment="Row that cancels the model download">Cancel download</string>
+    <string name="settings__ai__model__retry_now" comment="Row that retries a download that waits for the network">Retry now</string>
+    <string name="settings__ai__model__change_connection" comment="Row that changes which connection the download may use">Change connection</string>
+    <string name="settings__ai__model__cancel_loading" comment="Row that cancels loading the model">Cancel loading</string>
+    <string name="settings__ai__model__delete" comment="Destructive row that deletes the Orukeet model">Delete model</string>
+    <string name="settings__ai__model__notices" comment="Row that opens the Orukeet license and notices">License and notices</string>
+    <string name="settings__ai__model__download_title" comment="Title of the Orukeet download dialog">Download Orukeet?</string>
+    <string name="settings__ai__model__download_text" comment="Body of the Orukeet download dialog">Orukeet recognises the language on its own, including Dutch and English. The download is 672 MB, and setup needs about 940 MB of free storage. Downloading doesn\'t change your dictation route.</string>
+    <string name="settings__ai__model__wifi_only" comment="Download connection choice">Wi-Fi or Ethernet only</string>
+    <string name="settings__ai__model__any_connection" comment="Download connection choice">Any connection, including mobile data</string>
+    <string name="settings__ai__model__delete_title" comment="Title of the delete model dialog">Delete the model?</string>
+    <string name="settings__ai__model__delete_active" comment="Delete dialog body when Orukeet is the dictation route; {route} is the route it switches back to">Dictation switches back to {route}. To use Orukeet again, you\'ll need to download it again.</string>
+    <string name="settings__ai__model__delete_inactive" comment="Delete dialog body when Orukeet isn't the dictation route">This deletes the downloaded model and any partial download. Your dictation route stays the same.</string>
+    <string name="settings__ai__model__delete_confirm" comment="Destructive confirm button of the delete model dialog">Delete</string>
+
+    <!-- AI: Cloud dictation -->
+    <string name="settings__ai__cloud__title" comment="Group header of the cloud dictation settings">Cloud dictation</string>
+    <string name="settings__ai__key__row" comment="Row that opens an API key dialog">API key</string>
+    <string name="settings__ai__key__saved" comment="API key row value when a key is stored">Saved</string>
+    <string name="settings__ai__key__storage" comment="How API keys are stored, shown in the key dialogs">Stored encrypted on this phone. You can\'t view it after saving.</string>
+    <string name="settings__ai__key__field" comment="Label of the masked API key field">API key</string>
+    <string name="settings__ai__key__remove_failed" comment="Error in the API key dialog when the stored key could not be removed">Couldn\'t remove the API key. Try again.</string>
+    <string name="settings__ai__cloud_key__title" comment="Title of the cloud dictation key dialog">Dictation API key</string>
+    <string name="settings__ai__cloud_key__signup" comment="Link that opens the Mistral console to create an account">Create a Mistral account</string>
+    <string name="settings__ai__language__row" comment="Row for the cloud dictation language">Language</string>
+    <string name="settings__ai__language__title" comment="Title of the dictation language sheet">Dictation language</string>
+    <string name="settings__ai__language__keyboard" comment="Dictation language choice">Keyboard language</string>
+    <string name="settings__ai__language__keyboard_summary" comment="Summary of the Keyboard language choice">Uses the language you\'re typing in.</string>
+    <string name="settings__ai__language__auto" comment="Dictation language choice">Detect automatically</string>
+    <string name="settings__ai__language__auto_summary" comment="Summary of the Detect automatically choice">Your provider works out the language.</string>
+    <string name="settings__ai__language__specific" comment="Dictation language choice">Specific language</string>
+    <string name="settings__ai__language__specific_summary" comment="Summary of the Specific language choice">Always uses one language.</string>
+    <string name="settings__ai__language__code" comment="Label of the language code field">Language code</string>
+    <string name="settings__ai__language__code_hint" comment="Supporting text under the language code field">A language code, like nl or en.</string>
+    <string name="settings__ai__provider__row" comment="Row that opens the dictation or rewrite provider choice">Provider</string>
+    <string name="settings__ai__cloud_provider__title" comment="Title of the dictation provider dialog">Dictation provider</string>
+    <string name="settings__ai__cloud_provider__text" comment="Body of the dictation provider dialog">Mistral by default. Any server with an OpenAI-compatible transcription API works, including your own.</string>
+    <string name="settings__ai__cloud_provider__address" comment="Label of the server address field">Server address</string>
+    <string name="settings__ai__cloud_provider__model" comment="Label of the dictation model field">Model</string>
+    <string name="settings__ai__cloud_provider__reset" comment="Button that restores the Mistral server address and model">Reset to Mistral</string>
+    <string name="settings__ai__cloud__footer" comment="Footer of the cloud dictation group; {host} is a host name such as api.mistral.ai">Audio goes to {host}.</string>
+    <string name="settings__ai__cloud__footer_words" comment="Footer of the cloud dictation group when dictionary words are sent too; {host} is a host name">Audio and your dictionary words go to {host}.</string>
+
+    <!-- AI: Rewrite -->
+    <string name="settings__ai__rewrite__title" comment="Group header of the rewrite settings">Rewrite</string>
+    <string name="settings__ai__rewrite_provider__title" comment="Title of the rewrite provider sheet">Rewrite provider</string>
+    <string name="settings__ai__rewrite_key__title" comment="Title of the rewrite key dialog">Rewrite API key</string>
+    <string name="settings__ai__rewrite_key__help" comment="Rewrite key dialog text; {provider} is a provider name such as OpenAI">Get a key from {provider}. A ChatGPT or Claude subscription doesn\'t include one. Ownkey keeps one rewrite key, so replace it when you switch provider.</string>
+    <string name="settings__ai__rewrite_key__help_custom" comment="Rewrite key dialog text for a custom server">Use the key your server expects. Ownkey keeps one rewrite key, so replace it when you switch provider.</string>
+    <string name="settings__ai__rewrite_model__row" comment="Row for the rewrite model">Model</string>
+    <string name="settings__ai__rewrite_model__default" comment="Rewrite model row value when the provider's default model is used">Default</string>
+    <string name="settings__ai__rewrite_model__title" comment="Title of the rewrite model dialog">Rewrite model</string>
+    <string name="settings__ai__rewrite_model__hint" comment="Supporting text under the rewrite model field; the default model shows as the field hint">Leave empty to use the default.</string>
+    <string name="settings__ai__rewrite_model__hint_custom" comment="Supporting text under the rewrite model field for a custom server">The model name your server expects.</string>
+    <string name="settings__ai__rewrite_server__row" comment="Row for the custom rewrite server address">Server address</string>
+    <string name="settings__ai__rewrite_server__title" comment="Title of the custom rewrite server dialog">Rewrite server</string>
+    <string name="settings__ai__rewrite_server__hint" comment="Supporting text under the custom rewrite server field">An OpenAI-compatible chat completions address.</string>
+    <string name="settings__ai__rewrite_styles__row" comment="Row that opens the rewrite styles screen">Rewrite styles</string>
+    <string name="settings__ai__rewrite__footer" comment="Footer of the rewrite group; {host} is a host name such as openrouter.ai">The text you rewrite and your instruction go to {host}.</string>
+    <string name="settings__ai__rewrite_provider__openai" comment="Rewrite provider name">OpenAI</string>
+    <string name="settings__ai__rewrite_provider__openai_summary" comment="Rewrite provider description">GPT-5.5 and newer.</string>
+    <string name="settings__ai__rewrite_provider__openai_chat" comment="Rewrite provider name: OpenAI's older Chat Completions API">OpenAI (Chat Completions)</string>
+    <string name="settings__ai__rewrite_provider__openai_chat_summary" comment="Rewrite provider description">Older API, cheaper mini models.</string>
+    <string name="settings__ai__rewrite_provider__anthropic" comment="Rewrite provider name">Anthropic</string>
+    <string name="settings__ai__rewrite_provider__anthropic_summary" comment="Rewrite provider description">Claude models.</string>
+    <string name="settings__ai__rewrite_provider__mistral" comment="Rewrite provider name">Mistral</string>
+    <string name="settings__ai__rewrite_provider__mistral_summary" comment="Rewrite provider description">Mistral models.</string>
+    <string name="settings__ai__rewrite_provider__openrouter" comment="Rewrite provider name">OpenRouter</string>
+    <string name="settings__ai__rewrite_provider__openrouter_summary" comment="Rewrite provider description">Many models with one key.</string>
+    <string name="settings__ai__rewrite_provider__other" comment="Rewrite provider name for a custom server">Other</string>
+    <string name="settings__ai__rewrite_provider__other_summary" comment="Rewrite provider description">Any OpenAI-compatible server.</string>
+
+    <!-- AI: Rewrite styles -->
+    <string name="settings__ai__styles__edit_title" comment="Title of the dialog that edits a rewrite style">Edit style</string>
+    <string name="settings__ai__styles__new_title" comment="Title of the dialog that adds a rewrite style">New style</string>
+    <string name="settings__ai__styles__instruction_hint" comment="Placeholder of the instruction field">For example: Make it friendly and short.</string>
+    <string name="settings__ai__styles__reset_title" comment="Title of the reset styles confirmation">Reset styles?</string>
+    <string name="settings__ai__styles__reset_text" comment="Body of the reset styles confirmation">Your styles are replaced by the five built-in ones. Edits and added styles are lost.</string>
+    <string name="settings__ai__styles__reset_confirm" comment="Destructive confirm of the reset styles dialog">Reset</string>
+
+    <!-- AI: Personal dictionary -->
+    <string name="settings__ai__dictionary__fillers_switch_summary" comment="Summary of the Remove filler words switch">Hesitations like “uh” and “ehm”, removed on this phone.</string>
+    <string name="settings__ai__dictionary__languages_text" comment="Explains the filler language switches">Pick the languages you dictate in. A filler in one language can be a real word in another: with Dutch on, “er” stays; with German on, “um” stays.</string>
+    <string name="settings__ai__dictionary__extra_row" comment="Row for the user's own filler words">Extra words</string>
+    <string name="settings__ai__dictionary__extra_none" comment="Extra words row value when there are none">None</string>
+    <string name="settings__ai__dictionary__extra_text" comment="Body of the extra filler words dialog">Separate words with commas. Your own words are removed even when a selected language keeps them.</string>
+    <string name="settings__ai__dictionary__edit_entry" comment="Accessibility label of the edit button on a dictionary entry; {entry} is the word or correction">Edit {entry}</string>
+    <string name="settings__ai__dictionary__delete_entry" comment="Accessibility label of the delete button on a dictionary entry; {entry} is the word or correction">Delete {entry}</string>
+    <string name="settings__ai__dictionary__advanced" comment="Row that shows or hides the advanced dictionary settings">Advanced</string>
+    <string name="settings__ai__dictionary__advanced_summary" comment="Summary of the Advanced row">Recognition hints</string>
 
     <!-- Voice rewrite (in-keyboard) UI strings -->
     <string name="voice_rewrite__provider_custom" comment="Provider display name shown when the configured transcription endpoint is not a known provider">Custom endpoint</string>
@@ -816,7 +1211,7 @@
     <string name="rewrite_panel__state_inserted">Inserted</string>
     <string name="rewrite_panel__text_changed_copied" comment="Toast when the text changed while a rewrite was generated, so the result was copied instead of inserted">Your text changed, so the rewrite was copied instead. Paste it where you want it.</string>
     <string name="rewrite_panel__state_rewriting" comment="Generic generating label with no named voice">Rewriting…</string>
-    <string name="rewrite_panel__state_rewriting_with_voice" comment="Generating label naming the chosen rewrite voice">Rewriting — {voice}…</string>
+    <string name="rewrite_panel__state_rewriting_with_voice" comment="Generating label naming the chosen rewrite style">{style}…</string>
     <string name="rewrite_panel__smartbar_title" comment="Quiet smartbar title while the AI rewrite panel replaces the keyboard">AI rewrite</string>
     <string name="rewrite_panel__action_close" comment="Accessible label of the smartbar control that closes the AI rewrite panel">Close AI rewrite</string>
     <string name="rewrite_panel__group_quality" comment="Caption above the quality and length rewrite presets">Quality &amp; length</string>
@@ -847,50 +1242,67 @@
     <string name="about__version__title" comment="Preference title">Version</string>
     <string name="about__version_copied__title" comment="Title of the toast for copying the version string">Version copied to clipboard</string>
     <string name="about__version_copied__error" comment="Title of the error toast for copying the version string">Something went wrong: {error_message}</string>
-    <string name="about__changelog__title" comment="Preference title">Changelog</string>
+    <string name="about__changelog__title" comment="Preference title">What\'s new</string>
     <string name="about__changelog__summary" comment="Preference summary">What\'s new</string>
-    <string name="about__repository__title" comment="Preference title">Repository (GitHub)</string>
+    <string name="about__repository__title" comment="Preference title">Source code</string>
     <string name="about__repository__summary" comment="Preference summary">Source code, discussions, issues and info</string>
     <string name="about__privacy_policy__title" comment="Preference title">Privacy policy</string>
     <string name="about__privacy_policy__summary" comment="Preference summary">The privacy policy for this project</string>
-    <string name="about__project_license__title" comment="Preference title">Project license</string>
+    <string name="about__project_license__title" comment="Preference title">Ownkey license</string>
     <string name="about__project_license__summary" comment="Preference summary">Ownkey Keyboard is licensed under {license_name}</string>
     <string name="about__project_license__error_license_text_failed" comment="Error text for license text loading failure">Error: Failed to load license text.\n-&gt; Reason: {error_message}</string>
     <string name="about__project_license__error_reason_asset_manager_null" comment="Error text if asset manager is null">Asset manager reference is null</string>
     <string name="about__third_party_licenses__title" comment="Preference title">Third-party licenses</string>
     <string name="about__third_party_licenses__summary" comment="Preference summary">Licenses of the third-party libraries included in this app</string>
 
+    <!-- About -->
+    <string name="about__app_name" translatable="false">Ownkey</string>
+    <string name="about__version_value">Version {version}</string>
+    <string name="about__copy_version">Copy version</string>
+    <string name="about__devtools_on">Developer tools on</string>
+    <string name="about__devtools_already_on">Developer tools are already on</string>
+    <string name="about__devtools__group_tools">Tools</string>
+    <string name="about__devtools__debug_log">Debug log</string>
+    <string name="about__devtools__debug_log_summary">View and export the debug log</string>
+    <string name="about__ext__list_empty">Nothing here yet.</string>
+    <string name="about__ext__new_theme">New theme</string>
+    <string name="about__ext__close" comment="Accessibility label of the close button in the theme and extension editors">Close</string>
+    <string name="about__ext__move_up" comment="Accessibility label: moves a property set up in the theme editor">Move up</string>
+    <string name="about__ext__move_down" comment="Accessibility label: moves a property set down in the theme editor">Move down</string>
+    <string name="about__ext__key_code_help" comment="Accessibility label of the button that shows help for key codes">Key code help</string>
+    <string name="about__ext__record_key_code" comment="Accessibility label of the button that records the next key press as a key code">Record key code</string>
+    <string name="about__ext__add_value" comment="Accessibility label of an add button next to a theme rule field; {name} is the field name">Add {name}</string>
+
     <!-- Setup UI strings -->
-    <string name="setup__title" comment="Title of Setup">Welcome!</string>
-    <string name="setup__intro_message" comment="Short intro message welcoming new users">Thanks for using {app_name}! This quick setup guides you through the required steps to use {app_name} on your device.</string>
+    <string name="setup__title" comment="Title of Setup">Set up Ownkey</string>
+    <string name="setup__intro_message" comment="Short intro message welcoming new users">Turn it on, pick it, and you\'re typing.</string>
     <string name="setup__footer__privacy_policy" comment="Privacy policy label for URL">Privacy policy</string>
-    <string name="setup__footer__repository" comment="Repository label for URL">Repository</string>
+    <string name="setup__footer__repository" comment="Repository label for URL">Source code</string>
 
-    <string name="setup__enable_ime__title">Enable {app_name}</string>
-    <string name="setup__enable_ime__description">Android requires that every custom keyboard is separately enabled before you can use it. Open the System <i>Language &amp; Input</i> Settings, there enable "{app_name}".</string>
-    <string name="setup__enable_ime__open_settings_btn">Open System Settings</string>
+    <string name="setup__enable_ime__title">Turn on Ownkey</string>
+    <string name="setup__enable_ime__description">Open system settings and switch on Ownkey.</string>
+    <string name="setup__enable_ime__open_settings_btn">Open settings</string>
 
-    <string name="setup__select_ime__title">Select {app_name}</string>
-    <string name="setup__select_ime__description">{app_name} is now enabled in your system. To actively use it, switch to {app_name} by selecting it in the input selector dialog!</string>
-    <string name="setup__select_ime__switch_keyboard_btn">Switch Keyboard</string>
+    <string name="setup__select_ime__title">Make it your keyboard</string>
+    <string name="setup__select_ime__description">Pick Ownkey in the keyboard list.</string>
+    <string name="setup__select_ime__switch_keyboard_btn">Switch keyboard</string>
 
-    <string name="setup__grant_microphone_permission__title">Allow Microphone Access</string>
-    <string name="setup__grant_microphone_permission__description">{app_name} uses the microphone only when you start dictation. Grant access now so voice input is ready from the keyboard.</string>
-    <string name="setup__grant_microphone_permission__btn">Allow Microphone</string>
+    <string name="setup__grant_microphone_permission__title">Allow the microphone</string>
+    <string name="setup__grant_microphone_permission__description">Only used while you dictate.</string>
+    <string name="setup__grant_microphone_permission__btn">Allow</string>
 
-    <string name="setup__grant_notification_permission__title">Permit Crash Report Notifications</string>
-    <string name="setup__grant_notification_permission__description">As of Android 13+, apps must ask for permission to
-        send notifications. In Ownkey Keyboard, this is only used to open a crash report screen in the event of a crash.
-        This permission can be changed at any time in the system settings.
-    </string>
-    <string name="setup__grant_notification_permission__btn">Grant Permission</string>
+    <string name="setup__grant_notification_permission__title">Allow notifications</string>
+    <string name="setup__grant_notification_permission__description">Shows download progress and crash alerts.</string>
+    <string name="setup__grant_notification_permission__btn">Allow</string>
 
-    <string name="setup__finish_up__title">Finish Up</string>
-    <string name="setup__finish_up__description_p1">{app_name} is now enabled in the system and ready to be customized by you.</string>
+    <string name="setup__finish_up__title">You\'re set</string>
+    <string name="setup__finish_up__description_p1">Dictation and rewrite are under AI.</string>
     <string name="setup__finish_up__description_p2">If you encounter any issues, bugs, crashes or just want to make a suggestion, check out the project repository from the about screen!</string>
-    <string name="setup__finish_up__finish_btn">Start Customizing</string>
+    <string name="setup__finish_up__finish_btn">Done</string>
     <string name="setup__step_status_done">Done</string>
     <string name="setup__step_status_locked">Waiting</string>
+    <string name="setup__not_now" comment="Skips a permission step in setup">Not now</string>
+    <string name="setup__step_status_current" comment="Accessibility state of the current setup step">Current step</string>
 
     <!-- Physical keyboard -->
     <string name="physical_keyboard__title">Physical keyboard</string>
@@ -902,35 +1314,59 @@
 
     <!-- Back up & Restore -->
     <string name="backup_and_restore__title">Back up &amp; Restore</string>
-    <string name="backup_and_restore__back_up__title">Back up data</string>
+    <string name="backup_and_restore__back_up__title">Back up</string>
     <string name="backup_and_restore__back_up__summary">Generate a backup archive of preferences and customizations</string>
-    <string name="backup_and_restore__back_up__destination">Select backup destination</string>
-    <string name="backup_and_restore__back_up__destination_file_sys">Local file system</string>
-    <string name="backup_and_restore__back_up__destination_share_intent">Third-party app via share menu</string>
-    <string name="backup_and_restore__back_up__files">Select what to back up</string>
-    <string name="backup_and_restore__back_up__files_jetpref_datastore">Preferences</string>
+    <string name="backup_and_restore__back_up__destination">Save to</string>
+    <string name="backup_and_restore__back_up__destination_file_sys">A file on this phone</string>
+    <string name="backup_and_restore__back_up__destination_share_intent">Another app</string>
+    <string name="backup_and_restore__back_up__files">Include</string>
+    <string name="backup_and_restore__back_up__files_jetpref_datastore">Settings</string>
     <string name="backup_and_restore__back_up__files_ime_keyboard">Keyboard extensions</string>
     <string name="backup_and_restore__back_up__files_ime_spelling">Spelling extensions / dictionaries</string>
-    <string name="backup_and_restore__back_up__files_ime_theme">Theme extensions</string>
+    <string name="backup_and_restore__back_up__files_ime_theme">Custom themes</string>
     <string name="backup_and_restore__back_up__files_clipboard_history">Clipboard history</string>
     <string name="backup_and_restore__back_up__files_clipboard_history__clipboard_text_items">Text items</string>
     <string name="backup_and_restore__back_up__files_clipboard_history__clipboard_image_items">Images</string>
     <string name="backup_and_restore__back_up__files_clipboard_history__clipboard_video_items">Videos</string>
     <string name="backup_and_restore__back_up__success">Successfully exported backup archive!</string>
     <string name="backup_and_restore__back_up__failure">Failed to export backup archive: {error_message}</string>
-    <string name="backup_and_restore__restore__title">Restore data</string>
+    <string name="backup_and_restore__restore__title">Restore</string>
     <string name="backup_and_restore__restore__summary">Restore preferences and customizations from a backup archive</string>
-    <string name="backup_and_restore__restore__files">Select what to restore</string>
-    <string name="backup_and_restore__restore__metadata">Selected backup archive</string>
+    <string name="backup_and_restore__restore__files">Include</string>
+    <string name="backup_and_restore__restore__metadata">Backup file</string>
     <string name="backup_and_restore__restore__metadata_warn_different_version">This backup archive was generated in another version than current, which is generally supported. Be aware though that minor issues can occur or some preferences may not get transferred properly due to feature differences.</string>
     <string name="backup_and_restore__restore__metadata_warn_different_vendor">This backup archive was generated in a third-party app, which is generally not supported. Data losses may occur, restore at your own risk!</string>
     <string name="backup_and_restore__restore__metadata_error_invalid_metadata">This backup archive contains invalid metadata. Either it has been corrupted or poorly modified. Restoring from this archive is not possible, please select another one.</string>
     <string name="backup_and_restore__restore__metadata_error_nothing_to_restore">This backup archive does not contain any files to restore, please select another one.</string>
-    <string name="backup_and_restore__restore__mode">Restore mode</string>
-    <string name="backup_and_restore__restore__mode_merge">Merge with current data</string>
-    <string name="backup_and_restore__restore__mode_erase_and_overwrite">Erase and overwrite current data</string>
+    <string name="backup_and_restore__restore__mode">Mode</string>
+    <string name="backup_and_restore__restore__mode_merge">Merge</string>
+    <string name="backup_and_restore__restore__mode_erase_and_overwrite">Replace</string>
     <string name="backup_and_restore__restore__success">Successfully restored data!</string>
     <string name="backup_and_restore__restore__failure">Failed to restore data: {error_message}</string>
+
+    <!-- Privacy & backup -->
+    <string name="settings__privacy__group_typing_data">Typing data</string>
+    <string name="settings__privacy__group_backup">Backup</string>
+    <string name="settings__privacy__incognito_summary">Stops learning and turns off AI while on.</string>
+    <string name="settings__privacy__incognito_off">Off</string>
+    <string name="settings__privacy__incognito_off_summary">Never on. Hides the incognito button.</string>
+    <string name="settings__privacy__incognito_automatic">Automatic</string>
+    <string name="settings__privacy__incognito_automatic_summary">In private fields, or when you tap the incognito button.</string>
+    <string name="settings__privacy__incognito_always">Always</string>
+    <string name="settings__privacy__incognito_always_summary">Always on. Dictation and rewrite stay off.</string>
+    <string name="settings__privacy__personalized_summary">Learns from your typing on this phone</string>
+    <string name="settings__privacy__clear_learned_title">Clear learned data?</string>
+    <string name="settings__privacy__clear_learned_message">Ownkey forgets the words and details it learned from your typing, such as email addresses. You can\'t undo this.</string>
+    <string name="settings__privacy__clear_learned_confirm">Clear</string>
+    <string name="settings__privacy__back_up">Back up</string>
+    <string name="settings__privacy__restore">Restore</string>
+    <string name="settings__privacy__restore_merge_summary">Keeps your current data and adds the backup</string>
+    <string name="settings__privacy__restore_replace_summary">Erases your current data first</string>
+    <string name="settings__privacy__restore_no_file">No backup file selected.</string>
+    <string name="settings__privacy__restore_app">App</string>
+    <string name="settings__privacy__restore_version">Version</string>
+    <string name="settings__privacy__restore_created">Created</string>
+    <string name="settings__privacy__backup_footer">Backup files don\'t include API keys. Enter them again after a restore.</string>
 
     <!-- Crash Dialog strings -->
     <string name="crash_dialog__title" comment="Title of crash dialog">Ownkey Keyboard error report</string>
@@ -976,7 +1412,7 @@
     <string name="clipboard__cleared_full_history">Cleared full history</string>
     <string name="clipboard__confirm_clear_unfiltered_history__message">Are you sure you want to clear your full clipboard history? This will affect all items, except pinned ones.</string>
     <string name="clipboard__confirm_clear_filtered_history__message">Are you sure you want to clear your clipboard history? This will affect all currently filtered items, except pinned ones.</string>
-    <string name="settings__clipboard__title">Clipboard</string>
+    <string name="settings__clipboard__title">Clipboard &amp; emoji</string>
     <string name="pref__clipboard__use_internal_clipboard__label">Use internal clipboard</string>
     <string name="pref__clipboard__use_internal_clipboard__summary">Use an internal clipboard instead of the system clipboard</string>
     <string name="pref__clipboard__sync_from_system_clipboard__label">Sync from system clipboard</string>
@@ -1000,13 +1436,36 @@
     <string name="pref__clipboard__history_hide_on_next_text_field__label">Hide history on next text field</string>
     <string name="pref__clipboard__clear_primary_clip_affects_history_if_unpinned__label">Clear primary clip affects history</string>
     <string name="pref__clipboard__clear_primary_clip_affects_history_if_unpinned__summary">Clearing the primary clip also removes it from the history, if not pinned</string>
+
+    <!-- Clipboard & emoji -->
+    <string name="settings__clipboard__group_clipboard">Clipboard</string>
+    <string name="settings__clipboard__group_emoji">Emoji</string>
+    <string name="settings__clipboard__history">Clipboard history</string>
+    <string name="settings__clipboard__history_summary">Keeps what you copy for later</string>
+    <string name="settings__clipboard__suggest_recent">Suggest recent copies</string>
+    <string name="settings__clipboard__suggest_recent_summary">Shows what you just copied above the keys</string>
+    <string name="settings__clipboard__delete_old">Delete old items</string>
+    <string name="settings__clipboard__delete_old_summary">Pinned items stay</string>
+    <string name="settings__clipboard__after">After</string>
+    <string name="settings__clipboard__clear_sensitive">Clear sensitive items</string>
+    <string name="settings__clipboard__clear_sensitive_summary">Such as passwords and codes</string>
+    <string name="settings__clipboard__internal_summary">Copies made in Ownkey stay in Ownkey. Other apps can\'t paste them.</string>
+    <string name="settings__clipboard__internal_summary_synced" comment="Use internal clipboard summary while Sync to system clipboard still sends copies to Android">Sync to system clipboard still sends copies to Android\'s clipboard, so other apps can paste them.</string>
+    <string name="settings__clipboard__skin_tone">Skin tone</string>
+    <string name="settings__clipboard__recent_emoji">Recent emoji</string>
+    <string name="settings__clipboard__recent_emoji_summary">Shows your recent emoji first</string>
+    <string name="settings__clipboard__clear_emoji_history">Clear emoji history</string>
+    <string name="settings__clipboard__clear_emoji_history_title">Clear emoji history?</string>
+    <string name="settings__clipboard__clear_emoji_history_message">Removes your recent and pinned emoji. You can\'t undo this.</string>
+    <string name="settings__clipboard__clear_emoji_history_confirm">Clear</string>
+    <string name="settings__clipboard__clear_emoji_history_done">Emoji history cleared</string>
     <string name="send_to_clipboard__unknown_error">An unknown error occurred. Please try again!</string>
     <string name="send_to_clipboard__type_not_supported_error">This media type is not supported.</string>
     <string name="send_to_clipboard__description__copied_image_to_clipboard">Copied below image to clipboard.</string>
 
 
     <!-- Devtools strings -->
-    <string name="devtools__title" comment="Title of Devtools screen. Translators: treat this string as 'Developer tools' for translation, except a similar short term is available for your language.">Devtools</string>
+    <string name="devtools__title" comment="Title of Devtools screen. Translators: treat this string as 'Developer tools' for translation, except a similar short term is available for your language.">Developer tools</string>
     <string name="devtools__enabled__label" comment="Label of Enable developer tools in Devtools">Enable developer tools</string>
     <string name="devtools__enabled__summary" comment="Summary of Enable developer tools in Devtools">Tools specifically designed for debugging and troubleshooting</string>
     <string name="devtools__show_primary_clip__label" comment="Label of Show primary clip in Devtools">Show primary clip</string>
@@ -1053,7 +1512,7 @@
 
     <!-- Extension strings -->
     <string name="ext__home__title">Addons &amp; Extensions</string>
-    <string name="ext__list__ext_theme">Theme extensions</string>
+    <string name="ext__list__ext_theme">Custom themes</string>
     <string name="ext__list__ext_keyboard">Keyboard extensions</string>
     <string name="ext__list__ext_languagepack">Language pack extensions</string>
     <string name="ext__meta__authors">Authors</string>
@@ -1252,12 +1711,12 @@
     <string name="enum__emoji_history_update_strategy__manual_sort_append" comment="Enum value label">Manual sort (append)</string>
     <string name="enum__emoji_history_update_strategy__manual_sort_append__description" comment="Enum value description">Do not automatically reorder emojis on emoji usage. New emojis are added to the end.</string>
 
-    <string name="enum__emoji_skin_tone__default" comment="Enum value label">{emoji} Default skin tone</string>
-    <string name="enum__emoji_skin_tone__light_skin_tone" comment="Enum value label">{emoji} Light skin tone</string>
-    <string name="enum__emoji_skin_tone__medium_light_skin_tone" comment="Enum value label">{emoji} Medium light skin tone</string>
-    <string name="enum__emoji_skin_tone__medium_skin_tone" comment="Enum value label">{emoji} Medium skin tone</string>
-    <string name="enum__emoji_skin_tone__medium_dark_skin_tone" comment="Enum value label">{emoji} Medium dark skin tone</string>
-    <string name="enum__emoji_skin_tone__dark_skin_tone" comment="Enum value label">{emoji} Dark skin tone</string>
+    <string name="enum__emoji_skin_tone__default" comment="Enum value label">{emoji} Default</string>
+    <string name="enum__emoji_skin_tone__light_skin_tone" comment="Enum value label">{emoji} Light</string>
+    <string name="enum__emoji_skin_tone__medium_light_skin_tone" comment="Enum value label">{emoji} Medium light</string>
+    <string name="enum__emoji_skin_tone__medium_skin_tone" comment="Enum value label">{emoji} Medium</string>
+    <string name="enum__emoji_skin_tone__medium_dark_skin_tone" comment="Enum value label">{emoji} Medium dark</string>
+    <string name="enum__emoji_skin_tone__dark_skin_tone" comment="Enum value label">{emoji} Dark</string>
 
     <string name="enum__emoji_hair_style__default" comment="Enum value label">{emoji} Default hair</string>
     <string name="enum__emoji_hair_style__red_hair" comment="Enum value label">{emoji} Red hair</string>
@@ -1472,7 +1931,7 @@
     <string name="orukeet__close">Close</string>
     <string name="orukeet__cloud_label">Configured cloud provider</string>
     <string name="orukeet__external_label">System voice input</string>
-    <string name="orukeet__mock_label">Demo dictation</string>
+    <string name="orukeet__mock_label" comment="Dictation choice in debug builds that inserts demo text instead of recording">Demo text (debug build)</string>
     <string name="orukeet__unavailable_label">Unavailable provider</string>
     <string name="orukeet__download_consent">The download contains Orukeet model data and its licence and notices. Downloading does not change your dictation provider.</string>
     <string name="orukeet__wifi_only">Wi-Fi or Ethernet only</string>
@@ -1495,10 +1954,10 @@
     <!-- Personal dictionary for dictation: vocabulary hints, corrections and filler-word removal. -->
     <string name="speech_dictionary__title">Personal dictionary</string>
     <string name="speech_dictionary__intro_title">Your words, your spelling</string>
-    <string name="speech_dictionary__intro_summary">Words help dictation recognise names and terms. Corrections replace what is heard wrong, every time. Filler words are removed on this device.</string>
-    <string name="speech_dictionary__backend_unused">System voice input is selected, so this dictionary is not used. Words, corrections and filler removal work with Orukeet or a configured cloud provider. Change the dictation provider in Settings → AI.</string>
-    <string name="speech_dictionary__backend_not_set_up">Dictation is not set up for the selected provider yet, so this dictionary is not used. Add an API key or activate Orukeet in Settings → AI.</string>
-    <string name="speech_dictionary__cloud_disclosure">With cloud dictation and recognition hints on, your words travel with the audio to the configured endpoint. With hints off or on-device dictation, they stay on this phone.</string>
+    <string name="speech_dictionary__intro_summary">Words help dictation spell names right. Corrections fix what it keeps mishearing. Filler words are removed on this phone.</string>
+    <string name="speech_dictionary__backend_unused">System voice input is your dictation route, so this dictionary isn\'t used. Pick On device or Cloud under AI to use it.</string>
+    <string name="speech_dictionary__backend_not_set_up">Dictation isn\'t set up yet, so this dictionary isn\'t used. Add a key or download the model under AI.</string>
+    <string name="speech_dictionary__cloud_disclosure">With cloud dictation, recognition hints can send your words with the audio to your provider. On device, they stay on this phone.</string>
     <string name="speech_dictionary__add_title">Add an entry</string>
     <string name="speech_dictionary__add_summary">Save a name or term to recognise, or turn on correction to replace a recurring mishearing.</string>
     <string name="speech_dictionary__correction_toggle">Correct a misspelling</string>
@@ -1551,15 +2010,15 @@
     <string name="speech_dictionary__language_fr">French</string>
     <string name="speech_dictionary__language_es">Spanish</string>
     <string name="speech_dictionary__hints_title">Recognition hints</string>
-    <string name="speech_dictionary__hints_summary">Your words are passed to the recogniser so names are spelled right more often. Hints improve recognition; they do not guarantee spelling. Add a correction for that.</string>
+    <string name="speech_dictionary__hints_summary">Your words go to the cloud recogniser so it spells names right more often. That helps but isn\'t a guarantee: add a correction for that.</string>
     <string name="speech_dictionary__hints_cloud_label">Cloud dictation</string>
     <string name="speech_dictionary__hints_cloud_auto">Automatic</string>
-    <string name="speech_dictionary__hints_cloud_auto_summary">Mistral receives them as context bias and OpenAI as a prompt. Other or custom endpoints receive no words.</string>
+    <string name="speech_dictionary__hints_cloud_auto_summary">Mistral gets them as context bias, OpenAI as a prompt. Other servers get no words.</string>
     <string name="speech_dictionary__hints_cloud_prompt">Send as prompt</string>
-    <string name="speech_dictionary__hints_cloud_prompt_summary">For OpenAI-compatible endpoints that accept a prompt field. An endpoint that does not may reject the request.</string>
+    <string name="speech_dictionary__hints_cloud_prompt_summary">For OpenAI-compatible servers that accept a prompt. A server that doesn\'t may reject the request.</string>
     <string name="speech_dictionary__hints_cloud_off">Do not send words</string>
-    <string name="speech_dictionary__hints_cloud_off_summary">Corrections and filler removal still run on this device.</string>
-    <string name="speech_dictionary__hints_cloud_auto_unsupported">Your configured endpoint is not one of the known ones, so in Automatic mode it receives no words. Pick “Send as prompt” if it accepts a prompt field.</string>
+    <string name="speech_dictionary__hints_cloud_off_summary">Corrections and filler removal still run on this phone.</string>
+    <string name="speech_dictionary__hints_cloud_auto_unsupported">Ownkey doesn\'t know your server, so Automatic sends it no words. Pick Send as prompt if it accepts a prompt.</string>
     <string name="speech_dictionary__hints_cloud_budget_exceeded">{included} of {total} words fit one cloud request. The rest stay saved but are not sent.</string>
     <string name="speech_dictionary__hints_local_label">On-device dictation (Orukeet)</string>
     <string name="speech_dictionary__hints_local_toggle">Use words for on-device recognition</string>
@@ -1612,4 +2071,10 @@
     <string name="dictation_fix__save_failed">“{word}” could not be saved to storage. It is kept for now and saved with the next change; check free space.</string>
     <string name="dictation_fix__manual_open">Open dictionary</string>
     <string name="floating_split__opacity">Floating split background opacity</string>
+
+    <!-- Shared Ownkey settings components -->
+    <string name="ownkey_ui__back">Back</string>
+    <string name="ownkey_ui__preview_field_label">Try Ownkey here</string>
+    <string name="ownkey_ui__choose_keyboard">Choose keyboard</string>
+    <string name="ownkey_ui__choice_unavailable" comment="Accessibility state of a dictation choice that can't be picked yet; tapping it runs the fix named in its note">Unavailable</string>
 </resources>

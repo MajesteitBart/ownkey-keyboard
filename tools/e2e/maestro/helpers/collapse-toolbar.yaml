@@ -1,0 +1,11 @@
+# Leaves the toolbar collapsed, its default.
+appId: nl.bartvandermeeren.ownkey.debug
+---
+- runFlow:
+    when:
+      visible: "Hide actions"
+    commands:
+      - tapOn: "Hide actions"
+- extendedWaitUntil:
+    visible: "Show actions"
+    timeout: 5000

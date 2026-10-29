@@ -1,0 +1,45 @@
+# Toolbar: expand and collapse with the chevron, open the overflow and close it. Ends collapsed.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 21 Toolbar
+tags: [keyboard]
+---
+- runFlow: helpers/open-home.yaml
+- runFlow: helpers/open-keyboard.yaml
+- runFlow: helpers/collapse-toolbar.yaml
+- assertNotVisible: "More actions"
+- assertVisible: "Start dictation"
+- takeScreenshot: 21-toolbar-collapsed
+
+- tapOn: "Show actions"
+- extendedWaitUntil:
+    visible: "Hide actions"
+    timeout: 5000
+- assertVisible: "More actions"
+- assertVisible: "Undo"
+- assertVisible: "Select all"
+- assertVisible: "Clipboard"
+- takeScreenshot: 21-toolbar-expanded
+
+- tapOn: "More actions"
+- extendedWaitUntil:
+    visible: "Voice only"
+    timeout: 5000
+- assertVisible: "Settings"
+- assertVisible: "Incognito"
+- assertNotVisible:
+    text: "q"
+    below:
+      text: "Start dictation"
+- takeScreenshot: 21-toolbar-overflow
+- tapOn: "More actions"
+- extendedWaitUntil:
+    visible: "q"
+    timeout: 5000
+- assertNotVisible: "Voice only"
+
+- tapOn: "Hide actions"
+- extendedWaitUntil:
+    visible: "Show actions"
+    timeout: 5000
+- assertNotVisible: "More actions"
+- hideKeyboard

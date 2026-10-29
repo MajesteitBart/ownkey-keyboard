@@ -1,0 +1,33 @@
+# Types "hello world" into the preview field with real key taps on Ownkey.
+# Letter keys are found by their labels. The space key has no label of its own, so it's found
+# as the text between the "," and "." keys on the bottom row (the space bar shows the language).
+appId: nl.bartvandermeeren.ownkey.debug
+name: 20 Keyboard typing
+tags: [keyboard]
+---
+- runFlow: helpers/open-home.yaml
+- runFlow: helpers/open-keyboard.yaml
+- takeScreenshot: 20-keyboard-open
+- runFlow:
+    file: helpers/type-word.yaml
+    env:
+      WORD: "hello"
+# The system's keyboard nav bar ("Back", "Switch input method") sits below the keys, so it's excluded.
+- tapOn:
+    text: "(?!Switch input method|Back).+"
+    rightOf:
+      text: ","
+    leftOf:
+      text: "\\."
+    below:
+      text: "b"
+    retryTapIfNoChange: false
+- runFlow:
+    file: helpers/type-word.yaml
+    env:
+      WORD: "world"
+- assertVisible:
+    id: preview-field
+    text: "(?i)hello world\\s*"
+- takeScreenshot: 20-keyboard-typed
+- hideKeyboard

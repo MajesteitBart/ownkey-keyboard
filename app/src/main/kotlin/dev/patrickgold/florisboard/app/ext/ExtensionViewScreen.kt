@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +61,9 @@ import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.compose.FlorisOutlinedButton
 import org.florisboard.lib.compose.defaultFlorisOutlinedBox
 import org.florisboard.lib.compose.stringRes
+import org.florisboard.lib.compose.OwnkeyTokens
+import dev.patrickgold.florisboard.app.ui.OwnkeyButtonStyle
+import dev.patrickgold.florisboard.app.ui.OwnkeyButton
 
 @Composable
 fun ExtensionViewScreen(id: String) {
@@ -142,15 +144,13 @@ private fun ViewScreen(ext: Extension) = FlorisScreen {
             }
             Row(modifier = Modifier.fillMaxWidth()) {
                 if (extensionManager.canDelete(ext)) {
-                    FlorisOutlinedButton(
+                    OwnkeyButton(
                         onClick = {
                             extToDelete = ext
                         },
                         icon = Icons.Default.Delete,
-                        text = stringRes(R.string.action__delete),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
+                        label = stringRes(R.string.action__delete),
+                        style = OwnkeyButtonStyle.Destructive,
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -223,9 +223,6 @@ private fun ExtensionMetaRowSimpleText(
     showDividerAbove: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
-    if (showDividerAbove) {
-        HorizontalDivider()
-    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -233,7 +230,7 @@ private fun ExtensionMetaRowSimpleText(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(modifier = Modifier.padding(end = 24.dp), text = label)
+        Text(modifier = Modifier.padding(end = 24.dp), text = label, color = OwnkeyTokens.Secondary)
         content()
     }
 }
@@ -245,15 +242,12 @@ private fun ExtensionMetaRowScrollableChips(
     showDividerAbove: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
-    if (showDividerAbove) {
-        HorizontalDivider()
-    }
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(modifier = Modifier.padding(end = 24.dp), text = label)
+        Text(modifier = Modifier.padding(end = 24.dp), text = label, color = OwnkeyTokens.Secondary)
         Row(
             modifier = Modifier
                 .weight(1.0f, fill = false)

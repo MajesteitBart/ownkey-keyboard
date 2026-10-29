@@ -29,6 +29,8 @@ import com.mikepenz.aboutlibraries.ui.compose.m3.chipColors
 import com.mikepenz.aboutlibraries.ui.compose.m3.libraryColors
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.compose.LocalOwnkeyContentPadding
+import org.florisboard.lib.compose.OwnkeyTokens
 import org.florisboard.lib.compose.florisScrollbar
 import org.florisboard.lib.compose.stringRes
 
@@ -47,14 +49,23 @@ fun ThirdPartyLicensesScreen() = FlorisScreen {
             modifier = Modifier
                 .fillMaxSize()
                 .florisScrollbar(lazyListState, isVertical = true),
+            contentPadding = LocalOwnkeyContentPadding.current,
             colors = LibraryDefaults.libraryColors(
-                libraryBackgroundColor = MaterialTheme.colorScheme.background,
-                licenseChipColors = LibraryDefaults.chipColors(
-                    MaterialTheme.colorScheme.primaryContainer,
-                    MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-                libraryContentColor = MaterialTheme.colorScheme.onBackground,
-                dialogConfirmButtonColor = MaterialTheme.colorScheme.primary,
+                libraryBackgroundColor = OwnkeyTokens.Black,
+                libraryContentColor = OwnkeyTokens.Label,
+                versionChipColors = LibraryDefaults.chipColors(OwnkeyTokens.Card, OwnkeyTokens.Secondary),
+                licenseChipColors = LibraryDefaults.chipColors(OwnkeyTokens.Raised, OwnkeyTokens.Label),
+                fundingChipColors = LibraryDefaults.chipColors(OwnkeyTokens.Raised, OwnkeyTokens.Label),
+                // The license dialog is a separate window: Card fill, Label text and button.
+                dialogBackgroundColor = OwnkeyTokens.Card,
+                dialogContentColor = OwnkeyTokens.Label,
+                dialogConfirmButtonColor = OwnkeyTokens.Label,
+            ),
+            shapes = LibraryDefaults.libraryShapes(chipShape = OwnkeyTokens.PillShape),
+            textStyles = LibraryDefaults.libraryTextStyles(
+                nameTextStyle = MaterialTheme.typography.bodyLarge,
+                versionTextStyle = MaterialTheme.typography.bodySmall,
+                authorTextStyle = MaterialTheme.typography.bodyMedium,
             ),
             lazyListState = lazyListState,
         )

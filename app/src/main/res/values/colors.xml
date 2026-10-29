@@ -26,5 +26,8 @@
     <color name="toolbarForegroundColor">#000000</color><!-- Black -->
     <color name="windowBackground">#FAFAFA</color><!-- Gray 50 -->
 
-    <color name="florisApp_windowBackground">#FFFFFFFF</color>
+    <!-- The settings app is dark only: window, splash and first frame are pure black. -->
+    <color name="florisApp_windowBackground">#FF000000</color>
+    <color name="ownkey_settings_black">#FF000000</color>
+    <color name="ownkey_settings_accent">#FFDE5F14</color>
 </resources>

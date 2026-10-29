@@ -44,12 +44,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -77,6 +75,7 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.apptheme.Shapes
 import dev.patrickgold.florisboard.app.ext.ExtensionComponentView
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.ime.theme.ThemeExtensionComponent
 import dev.patrickgold.florisboard.ime.theme.ThemeExtensionComponentEditor
@@ -92,7 +91,6 @@ import dev.patrickgold.florisboard.lib.ext.ExtensionValidation
 import dev.patrickgold.florisboard.lib.rememberValidationResult
 import dev.patrickgold.florisboard.themeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import dev.patrickgold.jetpref.material.ui.JetPrefDropdown
 import dev.patrickgold.jetpref.material.ui.JetPrefListItem
 import dev.patrickgold.jetpref.material.ui.JetPrefTextField
@@ -119,6 +117,11 @@ import org.florisboard.lib.snygg.SnyggSpecDecl
 import org.florisboard.lib.snygg.SnyggStylesheet
 import org.florisboard.lib.snygg.SnyggStylesheetEditor
 import org.florisboard.lib.snygg.ui.Saver
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.OwnkeyTextFieldDefaults
+import androidx.compose.ui.platform.testTag
+import dev.patrickgold.florisboard.app.ui.OwnkeySwitch
+import dev.patrickgold.florisboard.app.ui.OwnkeyButton
 
 internal val PrettyPrintConfig = SnyggJsonConfiguration.of(
     prettyPrint = true,
@@ -228,6 +231,7 @@ fun ThemeEditorScreen(
         FlorisIconButton(
             onClick = { handleBackPress() },
             icon = Icons.Default.Close,
+            contentDescription = stringRes(R.string.about__ext__close),
         )
     }
 
@@ -235,18 +239,15 @@ fun ThemeEditorScreen(
         FlorisIconButton(
             onClick = { showFineTuneDialog = true },
             icon = Icons.Default.Tune,
+            contentDescription = stringRes(R.string.settings__theme_editor__fine_tune__title),
         )
     }
 
     floatingActionButton {
-        ExtendedFloatingActionButton(
-            icon = { Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-            ) },
-            text = { Text(
-                text = stringRes(R.string.settings__theme_editor__add_rule),
-            ) },
+        OwnkeyButton(
+            modifier = Modifier.testTag("theme-editor-add-rule"),
+            label = stringRes(R.string.settings__theme_editor__add_rule),
+            icon = Icons.Default.Add,
             onClick = { snyggRuleToEdit = SnyggEmptyRuleForAdding },
         )
     }
@@ -257,7 +258,7 @@ fun ThemeEditorScreen(
 
     content {
         stylesheetEditorFailure?.let { failure ->
-            JetPrefAlertDialog(
+            OwnkeyDialog(
                 title = stringRes(R.string.settings__theme_editor__stylesheet_error_title),
                 confirmLabel = stringRes(R.string.action__yes),
                 onConfirm = {
@@ -403,7 +404,7 @@ fun ThemeEditorScreen(
                                         Text(
                                             modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
                                             text = "Required property '$propertyName' does not exist",
-                                            color = MaterialTheme.colorScheme.error,
+                                            color = OwnkeyTokens.Danger,
                                         )
                                     }
                                 }
@@ -448,7 +449,8 @@ fun ThemeEditorScreen(
                                                         }
                                                     },
                                                     icon = Icons.Default.KeyboardArrowUp,
-                                                    iconColor = MaterialTheme.colorScheme.primary,
+                                                    contentDescription = stringRes(R.string.about__ext__move_up),
+                                                    iconColor = OwnkeyTokens.Label,
                                                     iconModifier = Modifier.size(ButtonDefaults.IconSize),
                                                     enabled = propertySetIndex > 0,
                                                 )
@@ -462,7 +464,8 @@ fun ThemeEditorScreen(
                                                         }
                                                     },
                                                     icon = Icons.Default.KeyboardArrowDown,
-                                                    iconColor = MaterialTheme.colorScheme.primary,
+                                                    contentDescription = stringRes(R.string.about__ext__move_down),
+                                                    iconColor = OwnkeyTokens.Label,
                                                     iconModifier = Modifier.size(ButtonDefaults.IconSize),
                                                     enabled = propertySetIndex + 1 < sets.size,
                                                 )
@@ -473,7 +476,8 @@ fun ThemeEditorScreen(
                                                         }
                                                     },
                                                     icon = Icons.Default.Delete,
-                                                    iconColor = MaterialTheme.colorScheme.primary,
+                                                    contentDescription = stringRes(R.string.action__delete),
+                                                    iconColor = OwnkeyTokens.Label,
                                                     iconModifier = Modifier.size(ButtonDefaults.IconSize),
                                                 )
                                                 FlorisIconButton(
@@ -484,7 +488,8 @@ fun ThemeEditorScreen(
                                                         )
                                                     },
                                                     icon = Icons.Default.Add,
-                                                    iconColor = MaterialTheme.colorScheme.primary,
+                                                    contentDescription = stringRes(R.string.settings__theme_editor__add_property),
+                                                    iconColor = OwnkeyTokens.Label,
                                                     iconModifier = Modifier.size(ButtonDefaults.IconSize),
                                                 )
                                             }
@@ -627,7 +632,7 @@ private fun ComponentMetaEditorDialog(
     var stylesheetPath by rememberSaveable { mutableStateOf(editor.stylesheetPath) }
     val stylesheetPathValidation = rememberValidationResult(ExtensionValidation.ThemeComponentStylesheetPath, stylesheetPath)
 
-    JetPrefAlertDialog(
+    OwnkeyDialog(
         title = stringRes(R.string.ext__editor__metadata__title),
         confirmLabel = stringRes(R.string.action__apply),
         onConfirm = {
@@ -659,6 +664,7 @@ private fun ComponentMetaEditorDialog(
         Column {
             DialogProperty(text = stringRes(R.string.ext__meta__id)) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = id,
                     onValueChange = { id = it },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
@@ -668,6 +674,7 @@ private fun ComponentMetaEditorDialog(
             }
             DialogProperty(text = stringRes(R.string.ext__meta__label)) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = label,
                     onValueChange = { label = it },
                     singleLine = true,
@@ -676,6 +683,7 @@ private fun ComponentMetaEditorDialog(
             }
             DialogProperty(text = stringRes(R.string.ext__meta__authors)) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = authors,
                     onValueChange = { authors = it },
                 )
@@ -685,12 +693,13 @@ private fun ComponentMetaEditorDialog(
                 modifier = Modifier.toggleable(isNightTheme) { isNightTheme = it },
                 text = stringRes(R.string.settings__theme_editor__component_meta_is_night_theme),
                 trailing = {
-                    Switch(checked = isNightTheme, onCheckedChange = null)
+                    OwnkeySwitch(checked = isNightTheme, onCheckedChange = null)
                 },
-                colors = ListItemDefaults.colors(containerColor = AlertDialogDefaults.containerColor)
+                colors = ListItemDefaults.colors(containerColor = OwnkeyTokens.Card)
             )
             DialogProperty(text = stringRes(R.string.settings__theme_editor__component_meta_stylesheet_path)) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     value = stylesheetPath,
                     onValueChange = { stylesheetPath = it },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
@@ -706,6 +715,7 @@ private fun ComponentMetaEditorDialog(
 
             DialogProperty(text = stringRes(R.string.settings__theme_editor__component_meta_material_you__title)) {
                 JetPrefDropdown(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.padding(bottom = 8.dp),
                     labelText = stringRes(R.string.settings__theme_editor__component_meta_material_you__palette_style),
                     optionsLabelProvider = {
@@ -718,6 +728,7 @@ private fun ComponentMetaEditorDialog(
                     selectedOptionIndex = materialYouFlags.paletteStyle.ordinal
                 )
                 JetPrefDropdown(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.padding(bottom = 8.dp),
                     labelText = stringRes(R.string.settings__theme_editor__component_meta_material_you__color_contrast),
                     optionsLabelProvider = {
@@ -730,6 +741,7 @@ private fun ComponentMetaEditorDialog(
                     selectedOptionIndex = materialYouFlags.contrastLevel.ordinal
                 )
                 JetPrefDropdown(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.padding(bottom = 8.dp),
                     labelText = stringRes(R.string.settings__theme_editor__component_meta_material_you__spec_version),
                     optionsLabelProvider = {
@@ -762,7 +774,8 @@ private fun SnyggRuleRow(
         Text(
             modifier = Modifier
                 .padding(end = 8.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, shape = Shapes.small),
+                .background(OwnkeyTokens.Raised, shape = Shapes.small)
+                .padding(horizontal = 6.dp),
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = FontFamily.Monospace,
@@ -845,14 +858,16 @@ private fun SnyggRuleRow(
             FlorisIconButton(
                 onClick = onEditRuleBtnClick,
                 icon = Icons.Default.Edit,
-                iconColor = MaterialTheme.colorScheme.primary,
+                contentDescription = stringRes(R.string.settings__theme_editor__edit_rule),
+                iconColor = OwnkeyTokens.Label,
                 iconModifier = Modifier.size(ButtonDefaults.IconSize),
             )
         }
         FlorisIconButton(
             onClick = onAddPropertyBtnClick,
             icon = Icons.Default.Add,
-            iconColor = MaterialTheme.colorScheme.secondary,
+            contentDescription = stringRes(R.string.settings__theme_editor__add_property),
+            iconColor = OwnkeyTokens.Secondary,
             iconModifier = Modifier.size(ButtonDefaults.IconSize),
         )
     }
@@ -865,14 +880,15 @@ internal fun DialogProperty(
     trailingIconTitle: @Composable () -> Unit = { },
     content: @Composable () -> Unit,
 ) {
-    Column(modifier = modifier.padding(bottom = 8.dp)) {
+    Column(modifier = modifier.padding(bottom = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(vertical = 8.dp),
+                    .padding(start = 4.dp, top = 4.dp, bottom = 6.dp),
                 text = text,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelMedium,
+                color = OwnkeyTokens.Secondary,
             )
             trailingIconTitle()
         }

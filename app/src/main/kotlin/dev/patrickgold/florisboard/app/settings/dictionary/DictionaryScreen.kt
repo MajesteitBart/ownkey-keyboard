@@ -17,12 +17,15 @@
 package dev.patrickgold.florisboard.app.settings.dictionary
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.ui.Preference
+import dev.patrickgold.florisboard.app.ui.PreferenceGroup
+import dev.patrickgold.florisboard.app.ui.SwitchPreference
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
 import org.florisboard.lib.compose.stringRes
 
 @Composable
@@ -33,34 +36,53 @@ fun DictionaryScreen() = FlorisScreen {
     val navController = LocalNavController.current
 
     content {
-        SwitchPreference(
-            prefs.dictionary.enableSystemUserDictionary,
-            title = stringRes(R.string.pref__dictionary__enable_system_user_dictionary__label),
-            summary = stringRes(R.string.pref__dictionary__enable_system_user_dictionary__summary),
-        )
-        Preference(
-            title = stringRes(R.string.pref__dictionary__manage_system_user_dictionary__label),
-            summary = stringRes(R.string.pref__dictionary__manage_system_user_dictionary__summary),
-            onClick = { navController.navigate(Routes.Settings.UserDictionary(UserDictionaryType.SYSTEM)) },
-            enabledIf = { prefs.dictionary.enableSystemUserDictionary isEqualTo true },
-        )
-        SwitchPreference(
-            prefs.dictionary.enableFlorisUserDictionary,
-            title = stringRes(R.string.pref__dictionary__enable_internal_user_dictionary__label),
-            summary = stringRes(R.string.pref__dictionary__enable_internal_user_dictionary__summary),
-        )
-        Preference(
-            title = stringRes(R.string.pref__dictionary__manage_floris_user_dictionary__label),
-            summary = stringRes(R.string.pref__dictionary__manage_floris_user_dictionary__summary),
-            onClick = { navController.navigate(Routes.Settings.UserDictionary(UserDictionaryType.FLORIS)) },
-            enabledIf = { prefs.dictionary.enableFlorisUserDictionary isEqualTo true },
-        )
-        // Speech entries live apart from the typing dictionaries: they bias recognition and rewrite
-        // transcripts, and they can travel to a cloud endpoint. Typing entries never do.
-        Preference(
-            title = stringRes(R.string.speech_dictionary__typing_link_title),
-            summary = stringRes(R.string.speech_dictionary__typing_link_summary),
-            onClick = { navController.navigate(Routes.Settings.SpeechDictionary()) },
-        )
+        val dictionary = prefs.dictionary
+        PreferenceGroup(
+            title = "",
+            footer = stringRes(R.string.settings__typing__saved_words_footer),
+        ) {
+            // The enable switches left the UI; each shows up only while it is off, so it can be turned back on.
+            SwitchPreference(
+                dictionary.enableFlorisUserDictionary,
+                title = stringRes(R.string.pref__dictionary__enable_internal_user_dictionary__label),
+                summary = stringRes(R.string.pref__dictionary__enable_internal_user_dictionary__summary),
+                visibleIf = {
+                    dictionary.enableFlorisUserDictionary isNotEqualTo dictionary.enableFlorisUserDictionary.default
+                },
+            )
+            Preference(
+                modifier = Modifier.testTag("saved-words-yours"),
+                title = stringRes(R.string.settings__udm__title_floris),
+                summary = stringRes(R.string.settings__typing__your_words_summary),
+                onClick = { navController.navigate(Routes.Settings.UserDictionary(UserDictionaryType.FLORIS)) },
+                enabledIf = { dictionary.enableFlorisUserDictionary isEqualTo true },
+                chevron = true,
+            )
+            SwitchPreference(
+                dictionary.enableSystemUserDictionary,
+                title = stringRes(R.string.pref__dictionary__enable_system_user_dictionary__label),
+                summary = stringRes(R.string.pref__dictionary__enable_system_user_dictionary__summary),
+                visibleIf = {
+                    dictionary.enableSystemUserDictionary isNotEqualTo dictionary.enableSystemUserDictionary.default
+                },
+            )
+            Preference(
+                modifier = Modifier.testTag("saved-words-system"),
+                title = stringRes(R.string.settings__udm__title_system),
+                summary = stringRes(R.string.settings__typing__system_dictionary_summary),
+                onClick = { navController.navigate(Routes.Settings.UserDictionary(UserDictionaryType.SYSTEM)) },
+                enabledIf = { dictionary.enableSystemUserDictionary isEqualTo true },
+                chevron = true,
+            )
+            // Speech entries live apart from the typing dictionaries: they bias recognition and rewrite
+            // transcripts, and they can travel to a cloud endpoint. Typing entries never do.
+            Preference(
+                modifier = Modifier.testTag("saved-words-personal"),
+                title = stringRes(R.string.settings__typing__personal_dictionary),
+                summary = stringRes(R.string.settings__typing__personal_dictionary_summary),
+                onClick = { navController.navigate(Routes.Settings.SpeechDictionary()) },
+                chevron = true,
+            )
+        }
     }
 }

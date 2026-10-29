@@ -17,7 +17,6 @@
 package dev.patrickgold.florisboard.ime.window
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +63,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -74,29 +74,31 @@ import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.OwnkeyBrand
 import dev.patrickgold.florisboard.audioLevelHistorySampler
 import dev.patrickgold.florisboard.audioSessionCoordinator
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
 import dev.patrickgold.florisboard.ime.smartbar.MeasuredLevelWaveform
 import dev.patrickgold.florisboard.ime.smartbar.MicButtonFace
-import dev.patrickgold.florisboard.ime.smartbar.MicFaceState
 import dev.patrickgold.florisboard.ime.smartbar.MicIdleStyle
 import dev.patrickgold.florisboard.ime.smartbar.VoiceRecordingPhase
 import dev.patrickgold.florisboard.ime.smartbar.label
+import dev.patrickgold.florisboard.ime.smartbar.micActionLabelRes
 import dev.patrickgold.florisboard.ime.smartbar.micFaceState
+import dev.patrickgold.florisboard.ime.smartbar.micStateLabelRes
 import dev.patrickgold.florisboard.ime.smartbar.voiceRecordingRowState
+import dev.patrickgold.florisboard.ime.theme.KeyboardPalette
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionErrorReason
 import dev.patrickgold.florisboard.ime.text.dictation.VoiceActionFeedbackPhase
-import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.subtypeManager
 import dev.patrickgold.florisboard.voxtralDictationManager
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import org.florisboard.lib.compose.contrastRatio
 import org.florisboard.lib.compose.stringRes
-import org.florisboard.lib.snygg.ui.rememberSnyggThemeQuery
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -126,6 +128,34 @@ private val ButtonSize = 48.dp
 private val ButtonCircleSize = 40.dp
 private val MinStatusWidth = 72.dp
 private val MaxStatusWidth = 120.dp
+
+/** The bar needs a visible edge over black apps and dark cards, without a border or shadow. */
+private const val MinBarContrastOnBlack = 1.8
+private const val MinStatusContrast = 4.5
+
+/** Fills of the voice-only bar and its round buttons, and the colour of its status line. */
+internal data class VoiceBarColors(val bar: Color, val button: Color, val status: Color)
+
+/**
+ * Picks the bar's colours from the keyboard theme. The bar floats over the app, so on a dark keyboard it takes
+ * the letter-key fill, or the pressed fill when the key fill is too close to black (Signal Black); its buttons
+ * take the other of the two so they stand apart from the bar. A light keyboard keeps its own fill with white
+ * buttons and a small shadow, since nothing is lighter than white.
+ */
+internal fun voiceBarColors(palette: KeyboardPalette): VoiceBarColors {
+    val liftKey = !palette.isLight && contrastRatio(palette.key, Color.Black) < MinBarContrastOnBlack
+    val bar = when {
+        palette.isLight -> palette.background
+        liftKey -> palette.keyPressed
+        else -> palette.key
+    }
+    val button = when {
+        palette.isLight || liftKey -> palette.key
+        else -> palette.keyPressed
+    }
+    val status = palette.inkSecondary.takeIf { contrastRatio(it, bar) >= MinStatusContrast } ?: palette.keyInk
+    return VoiceBarColors(bar = bar, button = button, status = status)
+}
 
 /** Which optional buttons the bar shows, and how wide its status column is. */
 internal data class VoiceBarLayout(val showRewrite: Boolean, val showLanguage: Boolean, val statusWidth: Dp)
@@ -286,12 +316,12 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
     // recording, so both wait until dictation has finished.
     val sessionBusy = recording != null
 
-    val windowTheme = rememberSnyggThemeQuery(FlorisImeUi.Window.elementName)
-    val keyTheme = rememberSnyggThemeQuery(FlorisImeUi.Key.elementName)
-    val background = windowTheme.background(default = OwnkeyBrand.Panel)
-    val foreground = windowTheme.foreground(default = OwnkeyBrand.Bone)
-    val keyBackground = keyTheme.background(default = OwnkeyBrand.Action)
-    val keyForeground = keyTheme.foreground(default = OwnkeyBrand.Bone)
+    val palette = rememberKeyboardPalette()
+    val accent = rememberKeyboardAccent()
+    val colors = remember(palette) { voiceBarColors(palette) }
+    val background = colors.bar
+    val keyBackground = colors.button
+    val keyForeground = palette.keyInk
     val barShape = CircleShape
 
     val status = when {
@@ -309,9 +339,9 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
     Row(
         modifier = Modifier
             .height(BarHeight)
-            .shadow(elevation = 8.dp, shape = barShape)
+            // No outline: the fill steps carry the depth. Only a light bar keeps a small shadow.
+            .shadow(elevation = if (palette.isLight) 2.dp else 0.dp, shape = barShape)
             .background(background, barShape)
-            .border(1.dp, foreground.copy(alpha = 0.08f), barShape)
             .padding(horizontal = BarPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BarSpacing),
@@ -337,14 +367,14 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
                 modifier = Modifier
                     .width(54.dp)
                     .height(18.dp),
-                color = OwnkeyBrand.Ember,
+                color = accent.color,
                 barWidth = 3.dp,
                 barPitch = 6.dp,
             )
             Text(
                 text = status,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                color = foreground.copy(alpha = 0.72f),
+                color = colors.status,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -363,7 +393,7 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_sparkles),
                     contentDescription = null,
-                    tint = keyForeground.copy(alpha = 0.86f),
+                    tint = keyForeground,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -385,7 +415,7 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
             ) {
                 Text(
                     text = locale.language.uppercase(Locale.ROOT),
-                    color = keyForeground.copy(alpha = 0.86f),
+                    color = keyForeground,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -404,7 +434,7 @@ private fun VoiceOnlyBar(maxBarWidth: Dp) {
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_keyboard),
                 contentDescription = null,
-                tint = keyForeground.copy(alpha = 0.86f),
+                tint = keyForeground,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -447,13 +477,8 @@ private fun VoiceOnlyMicButton(
     onClick: () -> Unit,
 ) {
     val state = micFaceState(feedbackPhase, aiUnavailable = false)
-    val label = stringRes(
-        when (state) {
-            MicFaceState.LISTENING, MicFaceState.PAUSED -> R.string.voice_recording__stop_dictation
-            MicFaceState.TRANSCRIBING -> R.string.voice_recording__processing
-            else -> R.string.voice_rewrite__action_start_dictation
-        },
-    )
+    val label = stringRes(micActionLabelRes(state))
+    val stateLabel = micStateLabelRes(state)?.let { stringRes(it) }
     MicButtonFace(
         state = state,
         idleStyle = MicIdleStyle.SOLID,
@@ -461,7 +486,10 @@ private fun VoiceOnlyMicButton(
         modifier = Modifier
             .clip(CircleShape)
             .clickable(onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label },
+            .semantics {
+                contentDescription = label
+                if (stateLabel != null) stateDescription = stateLabel
+            },
     )
 }
 

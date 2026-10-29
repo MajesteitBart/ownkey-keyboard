@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +53,8 @@ import dev.patrickgold.florisboard.app.settings.advanced.RadioListItem
 import dev.patrickgold.florisboard.app.settings.theme.DialogProperty
 import dev.patrickgold.florisboard.app.settings.theme.PrettyPrintConfig
 import dev.patrickgold.florisboard.app.settings.theme.ThemeEditorScreen
+import dev.patrickgold.florisboard.app.ui.OwnkeyDialog
+import dev.patrickgold.florisboard.app.ui.Preference
 import dev.patrickgold.florisboard.cacheManager
 import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardExtension
@@ -80,14 +83,11 @@ import dev.patrickgold.florisboard.lib.io.FlorisRef
 import dev.patrickgold.florisboard.lib.io.ZipUtils
 import dev.patrickgold.florisboard.lib.rememberValidationResult
 import dev.patrickgold.florisboard.themeManager
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import dev.patrickgold.jetpref.material.ui.JetPrefTextField
 import java.util.*
 import org.florisboard.lib.compose.FlorisButtonBar
 import org.florisboard.lib.compose.FlorisIconButton
 import org.florisboard.lib.compose.FlorisInfoCard
-import org.florisboard.lib.compose.FlorisOutlinedBox
 import org.florisboard.lib.compose.defaultFlorisOutlinedBox
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.android.showLongToastSync
@@ -96,6 +96,9 @@ import org.florisboard.lib.kotlin.io.subDir
 import org.florisboard.lib.kotlin.io.subFile
 import org.florisboard.lib.kotlin.io.writeJson
 import kotlin.reflect.KClass
+import org.florisboard.lib.compose.OwnkeyTokens
+import org.florisboard.lib.compose.OwnkeyTextFieldDefaults
+import dev.patrickgold.florisboard.app.ui.OwnkeyGroup
 
 private val TextFieldVerticalPadding = 8.dp
 private val MetaDataContentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp)
@@ -318,6 +321,7 @@ private fun EditScreen(
         FlorisIconButton(
             onClick = { handleBackPress() },
             icon = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = stringRes(R.string.ownkey_ui__back),
         )
     }
 
@@ -338,23 +342,24 @@ private fun EditScreen(
             handleBackPress()
         }
 
-        FlorisOutlinedBox(
-            modifier = Modifier.defaultFlorisOutlinedBox(),
-        ) {
+        OwnkeyGroup {
             Preference(
                 onClick = { workspace.currentAction = EditorAction.ManageMetaData },
                 icon = Icons.Default.Code,
                 title = stringRes(R.string.ext__editor__metadata__title),
+                chevron = true,
             )
             Preference(
                 onClick = { workspace.currentAction = EditorAction.ManageDependencies },
                 icon = Icons.AutoMirrored.Outlined.LibraryBooks,
                 title = stringRes(R.string.ext__editor__dependencies__title),
+                chevron = true,
             )
             Preference(
                 onClick = { workspace.currentAction = EditorAction.ManageFiles },
                 icon = ImageVector.vectorResource(R.drawable.ic_file_blank),
                 title = stringRes(R.string.ext__editor__files__title),
+                chevron = true,
             )
         }
 
@@ -366,6 +371,7 @@ private fun EditScreen(
                     onCreateBtnClick = {
                         workspace.currentAction = EditorAction.CreateComponent(ThemeExtensionComponent::class)
                     },
+                    createBtnLabel = stringRes(R.string.ext__editor__create_component__title_theme),
                 ) { component ->
                     ExtensionComponentView(
                         modifier = Modifier.defaultFlorisOutlinedBox(),
@@ -397,7 +403,7 @@ private fun EditScreen(
         }
 
         if (showInvalidMetadataDialog) {
-            JetPrefAlertDialog(
+            OwnkeyDialog(
                 title = stringRes(R.string.ext__editor__metadata__title_invalid),
                 confirmLabel = stringRes(R.string.action__ok),
                 onConfirm = {
@@ -474,6 +480,7 @@ private fun ManageMetaDataScreen(
         FlorisIconButton(
             onClick = { handleBackPress() },
             icon = Icons.Default.Close,
+            contentDescription = stringRes(R.string.about__ext__close),
         )
     }
 
@@ -576,6 +583,7 @@ private fun ManageDependenciesScreen(workspace: CacheManager.ExtEditorWorkspace<
         FlorisIconButton(
             onClick = { handleBackPress() },
             icon = Icons.Default.Close,
+            contentDescription = stringRes(R.string.about__ext__close),
         )
     }
 
@@ -622,13 +630,15 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
 
     var createFrom by rememberSaveable { mutableStateOf(CreateFrom.EXISTING) }
     val extId = workspace.editor?.meta?.id ?: "null"
-    val components = remember<Map<ExtensionComponentName, ExtensionComponent>> {
+    // Keyed to the theme index: in a fresh process it may still be empty when this screen opens.
+    val indexedThemes by themeManager.indexedThemeConfigs.collectAsState()
+    val components = remember<Map<ExtensionComponentName, ExtensionComponent>>(indexedThemes) {
         when (val editor = workspace.editor) {
             is ThemeExtensionEditor -> buildMap {
                 for (theme in editor.themes) {
                     put(ExtensionComponentName(extId, theme.id), theme)
                 }
-                for ((componentName, theme) in themeManager.indexedThemeConfigs.value.first) {
+                for ((componentName, theme) in indexedThemes.first) {
                     if (componentName.extensionId != extId) {
                         put(componentName, theme)
                     }
@@ -742,6 +752,7 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
         FlorisIconButton(
             onClick = { handleBackPress() },
             icon = Icons.Default.Close,
+            contentDescription = stringRes(R.string.about__ext__close),
         )
     }
 
@@ -765,9 +776,7 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
             handleBackPress()
         }
 
-        FlorisOutlinedBox(
-            modifier = Modifier.defaultFlorisOutlinedBox(),
-        ) {
+        OwnkeyGroup(selectableGroup = true) {
             RadioListItem(
                 onClick = { createFrom = CreateFrom.EXISTING },
                 selected = createFrom == CreateFrom.EXISTING,
@@ -781,9 +790,7 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
         }
 
         if (createFrom == CreateFrom.EXISTING) {
-            FlorisOutlinedBox(
-                modifier = Modifier.defaultFlorisOutlinedBox(),
-            ) {
+            OwnkeyGroup(selectableGroup = true) {
                 for ((componentName, component) in components) {
                     RadioListItem(
                         onClick = { selectedComponentName = componentName },
@@ -799,10 +806,10 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
                 text = stringRes(R.string.ext__editor__create_component__from_empty_warning),
             )
             DialogProperty(
-                modifier = Modifier.padding(horizontal = 16.dp),
                 text = stringRes(R.string.ext__meta__id),
             ) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.fillMaxWidth(),
                     value = newId,
                     onValueChange = { newId = it },
@@ -811,10 +818,10 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
                 Validation(showValidationErrors, newIdValidation)
             }
             DialogProperty(
-                modifier = Modifier.padding(horizontal = 16.dp),
                 text = stringRes(R.string.ext__meta__label),
             ) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.fillMaxWidth(),
                     value = newLabel,
                     onValueChange = { newLabel = it },
@@ -824,10 +831,10 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
 
             }
             DialogProperty(
-                modifier = Modifier.padding(horizontal = 16.dp),
                 text = stringRes(R.string.ext__meta__authors),
             ) {
                 JetPrefTextField(
+                    appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
                     modifier = Modifier.fillMaxWidth(),
                     value = newAuthors,
                     onValueChange = { newAuthors = it },
@@ -865,11 +872,12 @@ private fun EditorSheetTextField(
                     modifier = Modifier.padding(start = 2.dp),
                     text = "*",
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = OwnkeyTokens.Danger,
                 )
             }
         }
         JetPrefTextField(
+            appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
             modifier = modifier.fillMaxWidth(),
             enabled = enabled,
             value = value,

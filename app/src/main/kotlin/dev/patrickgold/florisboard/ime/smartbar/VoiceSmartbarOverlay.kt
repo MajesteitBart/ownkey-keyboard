@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
@@ -44,8 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
-import dev.patrickgold.florisboard.app.OwnkeyBrand
-import dev.patrickgold.florisboard.app.ownkeyAccentColor
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardAccent
+import dev.patrickgold.florisboard.ime.theme.rememberKeyboardPalette
 import dev.patrickgold.florisboard.ime.text.rewrite.VoiceRewriteSurface
 import dev.patrickgold.florisboard.voiceRewriteUiController
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -115,14 +116,18 @@ private fun VoiceRewriteCoachMark(
     }
 
     val dismissLabel = stringRes(R.string.voice_rewrite__coach_mark_dismiss)
+    val palette = rememberKeyboardPalette()
+    val accent = rememberKeyboardAccent()
+    val shape = RoundedCornerShape(999.dp)
     Surface(
         modifier = modifier
             .padding(horizontal = 8.dp, vertical = 4.dp)
+            // Clipping before the click keeps the ripple inside the pill; the light-theme shadow stays outside.
+            .shadow(elevation = if (palette.isLight) 2.dp else 0.dp, shape = shape, clip = true)
             .clickable(onClickLabel = dismissLabel, onClick = dismiss),
-        color = OwnkeyBrand.Glass.Sheet,
-        contentColor = OwnkeyBrand.Glass.Ink,
-        shape = RoundedCornerShape(999.dp),
-        shadowElevation = 4.dp,
+        color = palette.popup,
+        contentColor = palette.popupInk,
+        shape = shape,
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
@@ -132,7 +137,7 @@ private fun VoiceRewriteCoachMark(
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_hero_microphone),
                 contentDescription = null,
-                tint = ownkeyAccentColor(),
+                tint = accent.color,
                 modifier = Modifier.size(18.dp),
             )
             Text(
@@ -144,7 +149,7 @@ private fun VoiceRewriteCoachMark(
             )
             Text(
                 text = dismissLabel,
-                color = ownkeyAccentColor(),
+                color = palette.popupInk,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,

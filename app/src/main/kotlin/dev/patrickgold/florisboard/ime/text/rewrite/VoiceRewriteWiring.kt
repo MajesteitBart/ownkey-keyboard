@@ -45,8 +45,8 @@ const val VOICE_REWRITE_DISCLOSURE_VERSION = 2
 
 private const val AI_SETTINGS_DEEPLINK = "ui://florisboard/settings/voxtral"
 
-/** Incognito lives with the typing privacy preferences, not with the AI provider forms. */
-private const val INCOGNITO_SETTINGS_DEEPLINK = "ui://florisboard/settings/typing"
+/** Incognito lives under Privacy & backup, not with the AI provider forms. */
+private const val INCOGNITO_SETTINGS_DEEPLINK = "ui://florisboard/settings/privacy"
 
 fun createVoiceRewriteSessionManager(
     context: Context,

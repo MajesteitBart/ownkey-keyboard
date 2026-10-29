@@ -27,9 +27,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.ui.Preference
+import dev.patrickgold.florisboard.app.ui.PreferenceGroup
+import dev.patrickgold.florisboard.app.ui.SwitchPreference
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
 import org.florisboard.lib.compose.stringRes
 
 @Composable
@@ -46,24 +47,27 @@ fun PhysicalKeyboardScreen() = FlorisScreen {
     ) { }
 
     content {
-        if (physicalKeyboardAttached) {
-            Preference(
-                title = stringRes(R.string.physical_keyboard__system_settings__title),
-                summary = stringRes(R.string.physical_keyboard__system_settings__summary),
-                onClick = {
-                    activityForResult.launch(Intent(Settings.ACTION_HARD_KEYBOARD_SETTINGS))
-                }
-            )
-        } else {
-            Preference(
-                title = stringRes(R.string.physical_keyboard__system_settings__title),
-                summary = stringRes(R.string.physical_keyboard__system_settings__summary_not_attached),
+        PreferenceGroup(title = "") {
+            if (physicalKeyboardAttached) {
+                Preference(
+                    title = stringRes(R.string.physical_keyboard__system_settings__title),
+                    summary = stringRes(R.string.physical_keyboard__system_settings__summary),
+                    onClick = {
+                        activityForResult.launch(Intent(Settings.ACTION_HARD_KEYBOARD_SETTINGS))
+                    },
+                )
+            } else {
+                Preference(
+                    title = stringRes(R.string.physical_keyboard__system_settings__title),
+                    summary = stringRes(R.string.physical_keyboard__system_settings__summary_not_attached),
+                    enabledIf = { false },
+                )
+            }
+            SwitchPreference(
+                pref = prefs.physicalKeyboard.showOnScreenKeyboard,
+                title = stringRes(R.string.settings__keyboard__physical_keyboard),
+                summary = stringRes(R.string.settings__keyboard__physical_keyboard_summary),
             )
         }
-        SwitchPreference(
-            pref = prefs.physicalKeyboard.showOnScreenKeyboard,
-            title = stringRes(R.string.physical_keyboard__show_on_screen_keyboard__title),
-            summary = stringRes(R.string.physical_keyboard__show_on_screen_keyboard__summary),
-        )
     }
 }

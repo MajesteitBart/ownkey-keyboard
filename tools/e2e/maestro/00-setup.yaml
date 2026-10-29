@@ -1,0 +1,80 @@
+# Onboarding from a fresh state. run.sh resets the setup flag and the permission answers first
+# (or wipes the app with --reset) and keeps Ownkey enabled and selected, so Setup opens on the
+# microphone step. The steps that need system settings are checked, not driven.
+appId: nl.bartvandermeeren.ownkey.debug
+name: 00 Setup steps through to Home
+tags: [settings, onboarding]
+---
+# Maestro's launchApp grants every permission unless told otherwise; Setup must ask for them.
+- launchApp:
+    stopApp: false
+    permissions:
+      all: unset
+- extendedWaitUntil:
+    visible: "Set up Ownkey"
+    timeout: 20000
+- assertVisible: "Turn it on, pick it, and you're typing."
+- assertNotVisible:
+    text: "Open system settings and switch on Ownkey."
+    label: "Ownkey is enabled, so step 1 is done"
+- assertNotVisible:
+    text: "Pick Ownkey in the keyboard list."
+    label: "Ownkey is selected, so step 2 is done"
+- takeScreenshot: 00-setup-start
+
+# Step 3: microphone. Allow, then accept Android's prompt if it shows.
+- extendedWaitUntil:
+    visible: "Only used while you dictate."
+    timeout: 10000
+- assertVisible:
+    id: setup-step-skip
+- tapOn:
+    id: setup-step-action
+- runFlow:
+    when:
+      visible:
+        id: "com.android.permissioncontroller:id/permission_allow_foreground_only_button"
+    commands:
+      - tapOn:
+          id: "com.android.permissioncontroller:id/permission_allow_foreground_only_button"
+
+# Step 4: notifications (Android 13 and later).
+- runFlow:
+    when:
+      visible: "Shows download progress and crash alerts."
+    commands:
+      - takeScreenshot: 00-setup-notifications
+      - tapOn:
+          id: setup-step-action
+      - runFlow:
+          when:
+            visible:
+              id: "com.android.permissioncontroller:id/permission_allow_button"
+          commands:
+            - tapOn:
+                id: "com.android.permissioncontroller:id/permission_allow_button"
+
+# Step 5: done.
+- extendedWaitUntil:
+    visible: "Dictation and rewrite are under AI."
+    timeout: 10000
+- takeScreenshot: 00-setup-done-step
+- tapOn:
+    id: setup-step-action
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 10000
+- assertNotVisible:
+    id: home-setup
+- takeScreenshot: 00-setup-home
+
+# Setup doesn't come back on the next launch. Back closes the activity; relaunching
+# creates it again, which re-reads the setup flag.
+- back
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: home-ai
+    timeout: 20000

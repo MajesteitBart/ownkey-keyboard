@@ -1,0 +1,35 @@
+# From any screen with the preview field: focus it and wait for Ownkey's letter keys.
+# Recovers from keyboard states an earlier flow or another tool may leave behind: the voice-only
+# bar, an open rewrite panel, the emoji or symbol pages, or an open overflow.
+appId: nl.bartvandermeeren.ownkey.debug
+---
+- tapOn:
+    id: preview-field
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "q|Show keyboard|ABC|More actions|Close AI rewrite"
+    timeout: 10000
+- runFlow:
+    when:
+      visible: "Show keyboard"
+    commands:
+      - tapOn: "Show keyboard"
+- runFlow:
+    when:
+      visible: "Close AI rewrite"
+    commands:
+      - tapOn: "Close AI rewrite"
+- runFlow:
+    when:
+      visible: "ABC"
+    commands:
+      - tapOn: "ABC"
+- runFlow:
+    when:
+      notVisible: "q"
+      visible: "More actions"
+    commands:
+      - tapOn: "More actions"
+- extendedWaitUntil:
+    visible: "q"
+    timeout: 10000
