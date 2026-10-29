@@ -86,7 +86,7 @@ Ownkey doesn't ask for your contacts, location, photos or files.
 
 ## Security
 
-- All connections use HTTPS. Android blocks unencrypted connections for Ownkey.
+- Ownkey connects over HTTPS. The endpoint settings also accept an `http://` address, but Android blocks unencrypted connections for Ownkey, so a request to such an address fails instead of going out unencrypted.
 - API keys are encrypted with AES-256 under a key in Android Keystore. They never go into backup files.
 - Before Orukeet is used, each model file is checked against a SHA-256 checksum built into the app.
 - Dictation and rewrite are off in password fields and in incognito mode.
