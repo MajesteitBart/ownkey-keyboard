@@ -6,8 +6,8 @@ workstream: WS-F
 created: 2026-10-29T03:00:52Z
 updated: 2026-10-29T09:15:44Z
 linear_issue_id:
-github_issue:
-github_pr:
+github_issue: https://github.com/MajesteitBart/ownkey-keyboard/issues/25
+github_pr: https://github.com/MajesteitBart/ownkey-keyboard/pull/24
 depends_on: ['T-006']
 conflicts_with: []
 parallel: false

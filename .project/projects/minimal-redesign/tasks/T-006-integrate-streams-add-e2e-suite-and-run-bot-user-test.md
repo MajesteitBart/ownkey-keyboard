@@ -6,7 +6,7 @@ workstream: WS-F
 created: 2026-10-29T03:00:52Z
 updated: 2026-10-29T09:15:44Z
 linear_issue_id:
-github_issue:
+github_issue: https://github.com/MajesteitBart/ownkey-keyboard/issues/25
 github_pr:
 depends_on: ['T-002', 'T-003', 'T-004', 'T-005']
 conflicts_with: []

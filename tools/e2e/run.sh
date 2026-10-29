@@ -45,6 +45,8 @@ find_maestro() {
 # when the release or beta build is installed too.
 deeplink() {
   local path="${1#/}"
+  # The path ends up inside a device shell command, so only accept route characters.
+  [[ "$path" =~ ^[A-Za-z0-9/_.?=\&%-]+$ ]] || die "invalid deep-link path: $path"
   shell "am start -W -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d 'ui://florisboard/$path' -n $SETTINGS_ACTIVITY" >/dev/null
 }
 
@@ -308,7 +310,8 @@ main() {
   prep_device
 
   local flows run name flow outdir start rc
-  flows="$(select_flows)"
+  flows="$(select_flows)" || exit $?
+  [ -n "$flows" ] || die "no flows selected"
   for run in $(seq "$FIRST_RUN" $((FIRST_RUN + REPEAT - 1))); do
     for name in $flows; do
       outdir="$OUT/run$run/$name"
