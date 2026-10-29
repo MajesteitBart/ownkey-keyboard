@@ -79,7 +79,11 @@ On a wide screen the keyboard can split in two, with a space bar on each half. *
 
 Ownkey stores API keys encrypted on the phone, using Android Keystore. [VOXTRAL_API_SETUP.md](VOXTRAL_API_SETUP.md) explains how to send dictation through your own relay instead of calling Mistral directly.
 
+<a name="privacy-model"></a>
+
 ## Where your data goes
+
+The full privacy policy is in [PRIVACY.md](PRIVACY.md).
 
 | What you do | What leaves the phone |
 | --- | --- |
