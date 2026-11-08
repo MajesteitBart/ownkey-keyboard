@@ -1,0 +1,48 @@
+# Confusion groups of the app (app/src/main/kotlin/.../ime/nlp/latin/engine/ConfusionSets.kt), one per line, for
+# run_sim.sh --confusion-sets. Keep in step with that file; the Dutch d/dt/t verb endings are built into the simulator.
+then than
+your you're
+its it's
+there their they're
+to too
+were we're where
+whose who's
+lose loose
+of off
+weather whether
+quite quiet
+know no now
+knew new
+hear here
+peace piece
+advice advise
+breath breathe
+accept except
+affect effect
+thing think
+form from
+wont won't
+cant can't
+lets let's
+ill i'll
+id i'd
+well we'll
+past passed
+our are
+by buy
+see sea
+fair fare
+meat meet met
+would wood
+feel fell
+though thought through
+does dose
+great grate
+week weak
+whole hole
+right write
+als dan
+jou jouw
+u uw
+en een
+t

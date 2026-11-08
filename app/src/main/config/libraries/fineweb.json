@@ -1,0 +1,14 @@
+{
+  "uniqueId": "fineweb",
+  "name": "FineWeb and FineWeb-2 (n-gram model statistics)",
+  "developers": [
+    {
+      "name": "Hugging Face",
+      "organisationUrl": "https://huggingface.co/HuggingFaceFW"
+    }
+  ],
+  "website": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-2",
+  "licenses": [
+    "odc-by-1.0"
+  ]
+}

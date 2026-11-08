@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
+import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.agp.application)
@@ -101,6 +104,9 @@ configure<ApplicationExtension> {
         // Ownkey's own copy exists only in English. Packaging the inherited FlorisBoard translations
         // made the UI switch between English and the device language from one screen to the next.
         localeFilters += "en"
+        // The n-gram models (assets/ime/dict/ngram/*.bin) are memory-mapped from the APK, which needs them stored
+        // uncompressed; compressed they would have to be copied into the Java heap (LatinPredictionEngines).
+        noCompress += ".bin"
     }
 
     bundle {
@@ -226,6 +232,48 @@ kover {
     useJacoco()
 }
 
+/*
+ * Fails the build when an n-gram model (assets/ime/dict/ngram/<lang>.bin) is missing from an APK or stored compressed: a
+ * compressed model cannot be memory-mapped and would be copied into the Java heap (LatinPredictionEngines), about
+ * 40 MB per language. Runs as part of every `assemble<Variant>` and checks every APK of the variant (one per ABI with
+ * ABI splits); the report lists every model entry.
+ */
+androidComponents {
+    onVariants { variant ->
+        val variantName = variant.name.replaceFirstChar { it.uppercase() }
+        val apkDirectory = variant.artifacts.get(SingleArtifact.APK)
+        val reportFile = layout.buildDirectory.file("reports/ngram-assets/${variant.name}.txt")
+        val checkTask = tasks.register("check${variantName}NgramModelsStored") {
+            description = "Checks that the n-gram models are stored uncompressed in the ${variant.name} APKs."
+            inputs.files(apkDirectory).withPathSensitivity(PathSensitivity.NONE)
+            outputs.file(reportFile)
+            doLast {
+                val pattern = Regex("assets/ime/dict/ngram/[^/]+\\.bin")
+                val dir = apkDirectory.get().asFile
+                val apks = dir.listFiles { f -> f.extension == "apk" }.orEmpty().sortedBy { it.name }
+                check(apks.isNotEmpty()) { "no APK in $dir" }
+                val lines = ArrayList<String>()
+                for (apk in apks) {
+                    ZipFile(apk).use { zip ->
+                        val models = zip.entries().asSequence().filter { pattern.matches(it.name) }.toList()
+                        check(models.isNotEmpty()) { "${apk.name}: no entry matches ${pattern.pattern}" }
+                        val compressed = models.filter { it.method != ZipEntry.STORED }
+                        check(compressed.isEmpty()) {
+                            "${apk.name}: ${compressed.joinToString { it.name }} compressed; the n-gram models must be " +
+                                "stored uncompressed to be memory-mapped (androidResources.noCompress in app/build.gradle.kts)"
+                        }
+                        models.forEach { lines.add("${apk.name} ${it.name} stored ${it.size}") }
+                    }
+                }
+                reportFile.get().asFile.writeText(lines.joinToString("\n", postfix = "\n"))
+            }
+        }
+        tasks.configureEach {
+            if (name == "assemble$variantName") dependsOn(checkTask)
+        }
+    }
+}
+
 dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
@@ -270,6 +318,7 @@ dependencies {
     implementation(projects.lib.color)
     implementation(projects.lib.compose)
     implementation(projects.lib.kotlin)
+    implementation(projects.lib.prediction)
     implementation(projects.lib.snygg)
 
     testImplementation(libs.kotest.assertions.core)

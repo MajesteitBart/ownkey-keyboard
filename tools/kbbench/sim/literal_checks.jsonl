@@ -1,0 +1,288 @@
+{"kind": "name", "lang": "nl", "context": "ik zie", "input": "sanne", "expect": "sanne"}
+{"kind": "name", "lang": "nl", "context": "dat is", "input": "jeroen", "expect": "jeroen"}
+{"kind": "name", "lang": "nl", "context": "bel even", "input": "anouk", "expect": "anouk"}
+{"kind": "name", "lang": "nl", "context": "samen met", "input": "femke", "expect": "femke"}
+{"kind": "name", "lang": "nl", "context": "vraag het aan", "input": "joris", "expect": "joris"}
+{"kind": "name", "lang": "nl", "context": "ik ga met", "input": "thijs", "expect": "thijs"}
+{"kind": "name", "lang": "nl", "context": "waar is", "input": "bram", "expect": "bram"}
+{"kind": "name", "lang": "nl", "context": "dag", "input": "lotte", "expect": "lotte"}
+{"kind": "name", "lang": "nl", "context": "hoi", "input": "sven", "expect": "sven"}
+{"kind": "name", "lang": "nl", "context": "zeg tegen", "input": "niels", "expect": "niels"}
+{"kind": "name", "lang": "nl", "context": "ik sprak", "input": "wouter", "expect": "wouter"}
+{"kind": "name", "lang": "nl", "context": "samen met", "input": "maaike", "expect": "maaike"}
+{"kind": "name", "lang": "nl", "context": "dit is", "input": "sietske", "expect": "sietske"}
+{"kind": "name", "lang": "nl", "context": "ik bel", "input": "jelle", "expect": "jelle"}
+{"kind": "name", "lang": "nl", "context": "morgen komt", "input": "joost", "expect": "joost"}
+{"kind": "name", "lang": "nl", "context": "vraag", "input": "mirjam", "expect": "mirjam"}
+{"kind": "name", "lang": "nl", "context": "met", "input": "ilse", "expect": "ilse"}
+{"kind": "name", "lang": "nl", "context": "dag", "input": "rutger", "expect": "rutger"}
+{"kind": "name", "lang": "nl", "context": "ik zag", "input": "gijs", "expect": "gijs"}
+{"kind": "name", "lang": "nl", "context": "waar is", "input": "pim", "expect": "pim"}
+{"kind": "name", "lang": "nl", "context": "samen met", "input": "mees", "expect": "mees"}
+{"kind": "name", "lang": "nl", "context": "ik bel", "input": "lieke", "expect": "lieke"}
+{"kind": "name", "lang": "nl", "context": "en", "input": "jasmijn", "expect": "jasmijn"}
+{"kind": "name", "lang": "nl", "context": "dag", "input": "marit", "expect": "marit"}
+{"kind": "name", "lang": "nl", "context": "met", "input": "fenna", "expect": "fenna"}
+{"kind": "name", "lang": "nl", "context": "ik zie", "input": "noud", "expect": "noud"}
+{"kind": "name", "lang": "nl", "context": "en", "input": "sjoerd", "expect": "sjoerd"}
+{"kind": "name", "lang": "nl", "context": "met", "input": "hidde", "expect": "hidde"}
+{"kind": "name", "lang": "nl", "context": "ik heb", "input": "floortje", "expect": "floortje"}
+{"kind": "name", "lang": "nl", "context": "ik ken", "input": "jurre", "expect": "jurre"}
+{"kind": "name", "lang": "nl", "context": "ik zag", "input": "teun", "expect": "teun"}
+{"kind": "name", "lang": "nl", "context": "met", "input": "esmee", "expect": "esmee"}
+{"kind": "name", "lang": "nl", "context": "meneer", "input": "dijkstra", "expect": "dijkstra"}
+{"kind": "name", "lang": "nl", "context": "mevrouw", "input": "hoekstra", "expect": "hoekstra"}
+{"kind": "name", "lang": "nl", "context": "meneer", "input": "vermeulen", "expect": "vermeulen"}
+{"kind": "name", "lang": "nl", "context": "familie", "input": "kuipers", "expect": "kuipers"}
+{"kind": "name", "lang": "nl", "context": "mevrouw", "input": "veenstra", "expect": "veenstra"}
+{"kind": "name", "lang": "nl", "context": "meneer", "input": "wijnands", "expect": "wijnands"}
+{"kind": "name", "lang": "en", "context": "i saw", "input": "kayla", "expect": "kayla"}
+{"kind": "name", "lang": "en", "context": "tell", "input": "brayden", "expect": "brayden"}
+{"kind": "name", "lang": "en", "context": "with", "input": "jaxon", "expect": "jaxon"}
+{"kind": "name", "lang": "en", "context": "ask", "input": "aaliyah", "expect": "aaliyah"}
+{"kind": "name", "lang": "en", "context": "call", "input": "siobhan", "expect": "siobhan"}
+{"kind": "name", "lang": "en", "context": "this is", "input": "niamh", "expect": "niamh"}
+{"kind": "name", "lang": "en", "context": "meet", "input": "declan", "expect": "declan"}
+{"kind": "name", "lang": "en", "context": "with", "input": "caitlin", "expect": "caitlin"}
+{"kind": "name", "lang": "en", "context": "hi", "input": "priya", "expect": "priya"}
+{"kind": "name", "lang": "en", "context": "ask", "input": "rohan", "expect": "rohan"}
+{"kind": "name", "lang": "en", "context": "text", "input": "zoey", "expect": "zoey"}
+{"kind": "name", "lang": "en", "context": "call", "input": "maddie", "expect": "maddie"}
+{"kind": "name", "lang": "en", "context": "thanks", "input": "bryce", "expect": "bryce"}
+{"kind": "name", "lang": "en", "context": "with", "input": "kenji", "expect": "kenji"}
+{"kind": "name", "lang": "en", "context": "hey", "input": "anaya", "expect": "anaya"}
+{"kind": "name", "lang": "en", "context": "ask", "input": "tobias", "expect": "tobias"}
+{"kind": "name", "lang": "en", "context": "mr", "input": "okafor", "expect": "okafor"}
+{"kind": "name", "lang": "en", "context": "ms", "input": "nguyen", "expect": "nguyen"}
+{"kind": "name", "lang": "en", "context": "dr", "input": "patel", "expect": "patel"}
+{"kind": "name", "lang": "en", "context": "with", "input": "jayden", "expect": "jayden"}
+{"kind": "place", "lang": "nl", "context": "in de", "input": "jordaan", "expect": "jordaan"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "zaandam", "expect": "zaandam"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "amersfoort", "expect": "amersfoort"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "zoetermeer", "expect": "zoetermeer"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "veenendaal", "expect": "veenendaal"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "harderwijk", "expect": "harderwijk"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "lelystad", "expect": "lelystad"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "ijmuiden", "expect": "ijmuiden"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "scheveningen", "expect": "scheveningen"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "breukelen", "expect": "breukelen"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "woerden", "expect": "woerden"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "hilversum", "expect": "hilversum"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "purmerend", "expect": "purmerend"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "zandvoort", "expect": "zandvoort"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "drachten", "expect": "drachten"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "nieuwegein", "expect": "nieuwegein"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "houten", "expect": "houten"}
+{"kind": "place", "lang": "nl", "context": "in", "input": "bussum", "expect": "bussum"}
+{"kind": "place", "lang": "nl", "context": "naar", "input": "terschelling", "expect": "terschelling"}
+{"kind": "place", "lang": "nl", "context": "op", "input": "texel", "expect": "texel"}
+{"kind": "place", "lang": "en", "context": "in", "input": "brooklyn", "expect": "brooklyn"}
+{"kind": "place", "lang": "en", "context": "to", "input": "shoreditch", "expect": "shoreditch"}
+{"kind": "place", "lang": "en", "context": "in", "input": "brighton", "expect": "brighton"}
+{"kind": "place", "lang": "en", "context": "near", "input": "seattle", "expect": "seattle"}
+{"kind": "place", "lang": "en", "context": "in", "input": "austin", "expect": "austin"}
+{"kind": "place", "lang": "en", "context": "to", "input": "denver", "expect": "denver"}
+{"kind": "place", "lang": "en", "context": "in", "input": "glasgow", "expect": "glasgow"}
+{"kind": "place", "lang": "en", "context": "from", "input": "bristol", "expect": "bristol"}
+{"kind": "brand", "lang": "nl", "context": "ik stuur het via", "input": "whatsapp", "expect": "whatsapp"}
+{"kind": "brand", "lang": "nl", "context": "zet het op", "input": "spotify", "expect": "spotify"}
+{"kind": "brand", "lang": "nl", "context": "kijken we", "input": "netflix", "expect": "netflix"}
+{"kind": "brand", "lang": "nl", "context": "ik zag het op", "input": "tiktok", "expect": "tiktok"}
+{"kind": "brand", "lang": "nl", "context": "de vergadering is op", "input": "zoom", "expect": "zoom"}
+{"kind": "brand", "lang": "nl", "context": "mijn", "input": "iphone", "expect": "iphone"}
+{"kind": "brand", "lang": "nl", "context": "mijn", "input": "airpods", "expect": "airpods"}
+{"kind": "brand", "lang": "nl", "context": "betaal met", "input": "tikkie", "expect": "tikkie"}
+{"kind": "brand", "lang": "nl", "context": "kijk op", "input": "buienradar", "expect": "buienradar"}
+{"kind": "brand", "lang": "nl", "context": "bestel via", "input": "thuisbezorgd", "expect": "thuisbezorgd"}
+{"kind": "brand", "lang": "nl", "context": "besteld bij", "input": "coolblue", "expect": "coolblue"}
+{"kind": "brand", "lang": "nl", "context": "met de", "input": "flixbus", "expect": "flixbus"}
+{"kind": "brand", "lang": "nl", "context": "via", "input": "airbnb", "expect": "airbnb"}
+{"kind": "brand", "lang": "nl", "context": "verkoop het op", "input": "vinted", "expect": "vinted"}
+{"kind": "brand", "lang": "nl", "context": "zet het op", "input": "marktplaats", "expect": "marktplaats"}
+{"kind": "brand", "lang": "nl", "context": "ik keek op", "input": "funda", "expect": "funda"}
+{"kind": "brand", "lang": "nl", "context": "mijn", "input": "rabobank", "expect": "rabobank"}
+{"kind": "brand", "lang": "nl", "context": "met", "input": "bunq", "expect": "bunq"}
+{"kind": "brand", "lang": "nl", "context": "ik heb", "input": "gboard", "expect": "gboard"}
+{"kind": "brand", "lang": "nl", "context": "ik gebruik", "input": "ownkey", "expect": "ownkey"}
+{"kind": "brand", "lang": "nl", "context": "bij de", "input": "ikea", "expect": "ikea"}
+{"kind": "brand", "lang": "nl", "context": "bestel bij", "input": "deliveroo", "expect": "deliveroo"}
+{"kind": "brand", "lang": "en", "context": "push it to", "input": "github", "expect": "github"}
+{"kind": "brand", "lang": "en", "context": "open it in", "input": "figma", "expect": "figma"}
+{"kind": "brand", "lang": "en", "context": "write it in", "input": "notion", "expect": "notion"}
+{"kind": "brand", "lang": "en", "context": "ping me on", "input": "slack", "expect": "slack"}
+{"kind": "brand", "lang": "en", "context": "file a", "input": "jira", "expect": "jira"}
+{"kind": "brand", "lang": "en", "context": "add me on", "input": "linkedin", "expect": "linkedin"}
+{"kind": "brand", "lang": "en", "context": "i saw it on", "input": "youtube", "expect": "youtube"}
+{"kind": "brand", "lang": "en", "context": "post it on", "input": "instagram", "expect": "instagram"}
+{"kind": "brand", "lang": "en", "context": "ask", "input": "chatgpt", "expect": "chatgpt"}
+{"kind": "brand", "lang": "en", "context": "written in", "input": "kotlin", "expect": "kotlin"}
+{"kind": "brand", "lang": "en", "context": "join the", "input": "discord", "expect": "discord"}
+{"kind": "brand", "lang": "en", "context": "posted on", "input": "reddit", "expect": "reddit"}
+{"kind": "brand", "lang": "en", "context": "streaming on", "input": "twitch", "expect": "twitch"}
+{"kind": "brand", "lang": "en", "context": "put it in", "input": "dropbox", "expect": "dropbox"}
+{"kind": "brand", "lang": "en", "context": "save it to", "input": "onedrive", "expect": "onedrive"}
+{"kind": "brand", "lang": "en", "context": "my", "input": "airpods", "expect": "airpods"}
+{"kind": "brand", "lang": "en", "context": "i installed", "input": "gboard", "expect": "gboard"}
+{"kind": "brand", "lang": "en", "context": "we use", "input": "gitlab", "expect": "gitlab"}
+{"kind": "brand", "lang": "en", "context": "my new", "input": "xbox", "expect": "xbox"}
+{"kind": "brand", "lang": "en", "context": "play it on", "input": "nintendo", "expect": "nintendo"}
+{"kind": "slang", "lang": "en", "context": "i", "input": "idk", "expect": "idk"}
+{"kind": "slang", "lang": "en", "context": "that was funny", "input": "lol", "expect": "lol"}
+{"kind": "slang", "lang": "en", "context": "ok", "input": "thx", "expect": "thx"}
+{"kind": "slang", "lang": "en", "context": "send it", "input": "pls", "expect": "pls"}
+{"kind": "slang", "lang": "en", "context": "help", "input": "plz", "expect": "plz"}
+{"kind": "slang", "lang": "en", "context": "see you", "input": "tmrw", "expect": "tmrw"}
+{"kind": "slang", "lang": "en", "context": "thanks", "input": "np", "expect": "np"}
+{"kind": "slang", "lang": "en", "context": "just", "input": "jk", "expect": "jk"}
+{"kind": "slang", "lang": "en", "context": "that is", "input": "imo", "expect": "imo"}
+{"kind": "slang", "lang": "en", "context": "honestly", "input": "tbh", "expect": "tbh"}
+{"kind": "slang", "lang": "en", "context": "oh", "input": "btw", "expect": "btw"}
+{"kind": "slang", "lang": "en", "context": "wow", "input": "omg", "expect": "omg"}
+{"kind": "slang", "lang": "en", "context": "one sec", "input": "brb", "expect": "brb"}
+{"kind": "slang", "lang": "en", "context": "not gonna lie", "input": "ngl", "expect": "ngl"}
+{"kind": "slang", "lang": "en", "context": "busy", "input": "rn", "expect": "rn"}
+{"kind": "slang", "lang": "en", "context": "thanks", "input": "ty", "expect": "ty"}
+{"kind": "slang", "lang": "en", "context": "good game", "input": "gg", "expect": "gg"}
+{"kind": "slang", "lang": "en", "context": "hey", "input": "wyd", "expect": "wyd"}
+{"kind": "slang", "lang": "en", "context": "call me", "input": "hmu", "expect": "hmu"}
+{"kind": "slang", "lang": "en", "context": "please", "input": "lmk", "expect": "lmk"}
+{"kind": "slang", "lang": "en", "context": "we met", "input": "irl", "expect": "irl"}
+{"kind": "slang", "lang": "en", "context": "that is true", "input": "afaik", "expect": "afaik"}
+{"kind": "slang", "lang": "en", "context": "it was", "input": "kinda", "expect": "kinda"}
+{"kind": "slang", "lang": "en", "context": "i was", "input": "sorta", "expect": "sorta"}
+{"kind": "slang", "lang": "en", "context": "come on", "input": "bruh", "expect": "bruh"}
+{"kind": "slang", "lang": "en", "context": "that is", "input": "sus", "expect": "sus"}
+{"kind": "slang", "lang": "en", "context": "i", "input": "lowkey", "expect": "lowkey"}
+{"kind": "slang", "lang": "en", "context": "yes", "input": "ikr", "expect": "ikr"}
+{"kind": "slang", "lang": "en", "context": "just", "input": "fyi", "expect": "fyi"}
+{"kind": "slang", "lang": "en", "context": "send it", "input": "asap", "expect": "asap"}
+{"kind": "slang", "lang": "en", "context": "nice", "input": "tho", "expect": "tho"}
+{"kind": "slang", "lang": "en", "context": "oh", "input": "nvm", "expect": "nvm"}
+{"kind": "slang", "lang": "en", "context": "ok", "input": "cya", "expect": "cya"}
+{"kind": "slang", "lang": "en", "context": "talk", "input": "ttyl", "expect": "ttyl"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "kheb", "expect": "kheb"}
+{"kind": "slang", "lang": "nl", "context": "ik", "input": "kga", "expect": "kga"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "kben", "expect": "kben"}
+{"kind": "slang", "lang": "nl", "context": "nee", "input": "kweet", "expect": "kweet"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "kzou", "expect": "kzou"}
+{"kind": "slang", "lang": "nl", "context": "maar", "input": "tis", "expect": "tis"}
+{"kind": "slang", "lang": "nl", "context": "ik ga", "input": "ff", "expect": "ff"}
+{"kind": "slang", "lang": "nl", "context": "doe", "input": "gwn", "expect": "gwn"}
+{"kind": "slang", "lang": "nl", "context": "misschien", "input": "mss", "expect": "mss"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "idd", "expect": "idd"}
+{"kind": "slang", "lang": "nl", "context": "dat is", "input": "wss", "expect": "wss"}
+{"kind": "slang", "lang": "nl", "context": "ik weet het", "input": "nie", "expect": "nie"}
+{"kind": "slang", "lang": "nl", "context": "ik heb", "input": "nx", "expect": "nx"}
+{"kind": "slang", "lang": "nl", "context": "dat is", "input": "egt", "expect": "egt"}
+{"kind": "slang", "lang": "nl", "context": "pizza", "input": "ofz", "expect": "ofz"}
+{"kind": "slang", "lang": "nl", "context": "ik kom", "input": "iig", "expect": "iig"}
+{"kind": "slang", "lang": "nl", "context": "ik neem de trein", "input": "ipv", "expect": "ipv"}
+{"kind": "slang", "lang": "nl", "context": "tot ziens", "input": "mvg", "expect": "mvg"}
+{"kind": "slang", "lang": "nl", "context": "ach", "input": "joh", "expect": "joh"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "jwz", "expect": "jwz"}
+{"kind": "slang", "lang": "nl", "context": "ok", "input": "hihi", "expect": "hihi"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "okee", "expect": "okee"}
+{"kind": "slang", "lang": "nl", "context": "dat is", "input": "tog", "expect": "tog"}
+{"kind": "slang", "lang": "nl", "context": "maar", "input": "wrm", "expect": "wrm"}
+{"kind": "slang", "lang": "nl", "context": "en", "input": "wnr", "expect": "wnr"}
+{"kind": "slang", "lang": "nl", "context": "kom", "input": "zsm", "expect": "zsm"}
+{"kind": "slang", "lang": "nl", "context": "doe het", "input": "gwoon", "expect": "gwoon"}
+{"kind": "slang", "lang": "nl", "context": "ik", "input": "kvind", "expect": "kvind"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "kdenk", "expect": "kdenk"}
+{"kind": "slang", "lang": "nl", "context": "ja", "input": "tkan", "expect": "tkan"}
+{"kind": "compound", "lang": "nl", "context": "morgen is mijn", "input": "thuiswerkdag", "expect": "thuiswerkdag"}
+{"kind": "compound", "lang": "nl", "context": "bij de", "input": "laadpaal", "expect": "laadpaal"}
+{"kind": "compound", "lang": "nl", "context": "ik pak een", "input": "deelscooter", "expect": "deelscooter"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "mondkapjesplicht", "expect": "mondkapjesplicht"}
+{"kind": "compound", "lang": "nl", "context": "het", "input": "energieplafond", "expect": "energieplafond"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "stikstofcrisis", "expect": "stikstofcrisis"}
+{"kind": "compound", "lang": "nl", "context": "het", "input": "woningtekort", "expect": "woningtekort"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "kinderopvangtoeslag", "expect": "kinderopvangtoeslag"}
+{"kind": "compound", "lang": "nl", "context": "een", "input": "zelftest", "expect": "zelftest"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "avondklok", "expect": "avondklok"}
+{"kind": "compound", "lang": "nl", "context": "in de", "input": "appgroep", "expect": "appgroep"}
+{"kind": "compound", "lang": "nl", "context": "in de", "input": "groepsapp", "expect": "groepsapp"}
+{"kind": "compound", "lang": "nl", "context": "stuur een", "input": "spraakbericht", "expect": "spraakbericht"}
+{"kind": "compound", "lang": "nl", "context": "mijn", "input": "oplaadkabel", "expect": "oplaadkabel"}
+{"kind": "compound", "lang": "nl", "context": "een", "input": "wachtwoordbeheerder", "expect": "wachtwoordbeheerder"}
+{"kind": "compound", "lang": "nl", "context": "mijn", "input": "thuiswerkplek", "expect": "thuiswerkplek"}
+{"kind": "compound", "lang": "nl", "context": "een", "input": "deelauto", "expect": "deelauto"}
+{"kind": "compound", "lang": "nl", "context": "een", "input": "warmtepomp", "expect": "warmtepomp"}
+{"kind": "compound", "lang": "nl", "context": "mijn", "input": "laadkabel", "expect": "laadkabel"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "statiegeldbon", "expect": "statiegeldbon"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "pakketbezorger", "expect": "pakketbezorger"}
+{"kind": "compound", "lang": "nl", "context": "stuur de", "input": "vergaderlink", "expect": "vergaderlink"}
+{"kind": "compound", "lang": "nl", "context": "het", "input": "teamuitje", "expect": "teamuitje"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "inwerkperiode", "expect": "inwerkperiode"}
+{"kind": "compound", "lang": "nl", "context": "een", "input": "belafspraak", "expect": "belafspraak"}
+{"kind": "compound", "lang": "nl", "context": "mijn", "input": "schermtijd", "expect": "schermtijd"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "kerstborrel", "expect": "kerstborrel"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "boodschappenapp", "expect": "boodschappenapp"}
+{"kind": "compound", "lang": "nl", "context": "een", "input": "fietsenstalling", "expect": "fietsenstalling"}
+{"kind": "compound", "lang": "nl", "context": "de", "input": "thuisbatterij", "expect": "thuisbatterij"}
+{"kind": "neologism", "lang": "en", "context": "stop", "input": "doomscrolling", "expect": "doomscrolling"}
+{"kind": "neologism", "lang": "en", "context": "she is a", "input": "podcaster", "expect": "podcaster"}
+{"kind": "neologism", "lang": "en", "context": "i will", "input": "unfollow", "expect": "unfollow"}
+{"kind": "neologism", "lang": "en", "context": "watch the", "input": "livestream", "expect": "livestream"}
+{"kind": "neologism", "lang": "en", "context": "he", "input": "ghosted", "expect": "ghosted"}
+{"kind": "neologism", "lang": "en", "context": "send it by", "input": "airdrop", "expect": "airdrop"}
+{"kind": "neologism", "lang": "en", "context": "i am", "input": "hangry", "expect": "hangry"}
+{"kind": "neologism", "lang": "en", "context": "he has", "input": "rizz", "expect": "rizz"}
+{"kind": "neologism", "lang": "en", "context": "a travel", "input": "vlogger", "expect": "vlogger"}
+{"kind": "neologism", "lang": "en", "context": "very", "input": "bingeable", "expect": "bingeable"}
+{"kind": "neologism", "lang": "en", "context": "we need", "input": "upskilling", "expect": "upskilling"}
+{"kind": "neologism", "lang": "en", "context": "a", "input": "staycation", "expect": "staycation"}
+{"kind": "neologism", "lang": "en", "context": "he", "input": "photobombed", "expect": "photobombed"}
+{"kind": "neologism", "lang": "en", "context": "i", "input": "rewatched", "expect": "rewatched"}
+{"kind": "neologism", "lang": "en", "context": "the", "input": "unboxing", "expect": "unboxing"}
+{"kind": "spelling-keep", "lang": "en", "context": "they", "input": "wed", "expect": "wed"}
+{"kind": "spelling-keep", "lang": "en", "context": "we", "input": "were", "expect": "were"}
+{"kind": "spelling-keep", "lang": "en", "context": "very", "input": "well", "expect": "well"}
+{"kind": "spelling-keep", "lang": "en", "context": "the dog wagged", "input": "its", "expect": "its"}
+{"kind": "spelling-keep", "lang": "en", "context": "i feel", "input": "ill", "expect": "ill"}
+{"kind": "spelling-keep", "lang": "en", "context": "go to", "input": "hell", "expect": "hell"}
+{"kind": "spelling-keep", "lang": "en", "context": "a sea", "input": "shell", "expect": "shell"}
+{"kind": "spelling-keep", "lang": "en", "context": "the tools are in the", "input": "shed", "expect": "shed"}
+{"kind": "spelling-keep", "lang": "en", "context": "your user", "input": "id", "expect": "id"}
+{"kind": "spelling-keep", "lang": "en", "context": "it", "input": "lets", "expect": "lets"}
+{"kind": "spelling-keep", "lang": "en", "context": "we", "input": "shed", "expect": "shed"}
+{"kind": "spelling-keep", "lang": "nl", "context": "ik heb", "input": "een", "expect": "een"}
+{"kind": "spelling-keep", "lang": "nl", "context": "nog", "input": "een", "expect": "een"}
+{"kind": "spelling-keep", "lang": "nl", "context": "wacht", "input": "even", "expect": "even"}
+{"kind": "spelling-keep", "lang": "nl", "context": "dank", "input": "voor", "expect": "voor"}
+{"kind": "spelling-keep", "lang": "nl", "context": "op", "input": "een", "expect": "een"}
+{"kind": "spelling-switch", "lang": "en", "context": "i", "input": "dont", "expect": "don't"}
+{"kind": "spelling-switch", "lang": "en", "context": "she", "input": "doesnt", "expect": "doesn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "we", "input": "didnt", "expect": "didn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "it", "input": "isnt", "expect": "isn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "that", "input": "wasnt", "expect": "wasn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "they", "input": "arent", "expect": "aren't"}
+{"kind": "spelling-switch", "lang": "en", "context": "i", "input": "couldnt", "expect": "couldn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "he", "input": "wouldnt", "expect": "wouldn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "you", "input": "shouldnt", "expect": "shouldn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "i", "input": "havent", "expect": "haven't"}
+{"kind": "spelling-switch", "lang": "en", "context": "she", "input": "hasnt", "expect": "hasn't"}
+{"kind": "spelling-switch", "lang": "en", "context": "i think", "input": "youre", "expect": "you're"}
+{"kind": "spelling-switch", "lang": "en", "context": "i hope", "input": "theyre", "expect": "they're"}
+{"kind": "spelling-switch", "lang": "en", "context": "i know", "input": "thats", "expect": "that's"}
+{"kind": "spelling-switch", "lang": "en", "context": "so", "input": "whats", "expect": "what's"}
+{"kind": "spelling-switch", "lang": "en", "context": "i", "input": "cant", "expect": "can't"}
+{"kind": "spelling-switch", "lang": "en", "context": "i", "input": "wont", "expect": "won't"}
+{"kind": "spelling-switch", "lang": "en", "context": "yes", "input": "ive", "expect": "i've"}
+{"kind": "spelling-switch", "lang": "en", "context": "i think", "input": "shes", "expect": "she's"}
+{"kind": "spelling-switch", "lang": "en", "context": "we", "input": "werent", "expect": "weren't"}
+{"kind": "spelling-switch", "lang": "en", "context": "see", "input": "yall", "expect": "y'all"}
+{"kind": "spelling-switch", "lang": "nl", "context": "goede", "input": "ideeen", "expect": "ideeën"}
+{"kind": "spelling-switch", "lang": "nl", "context": "de", "input": "financien", "expect": "financiën"}
+{"kind": "spelling-switch", "lang": "nl", "context": "een", "input": "reunie", "expect": "reünie"}
+{"kind": "spelling-switch", "lang": "nl", "context": "naar het", "input": "cafe", "expect": "café"}
+{"kind": "spelling-switch", "lang": "nl", "context": "de", "input": "zeeen", "expect": "zeeën"}
+{"kind": "spelling-switch", "lang": "nl", "context": "mijn", "input": "knieen", "expect": "knieën"}
+{"kind": "spelling-switch", "lang": "nl", "context": "dat kan je", "input": "beinvloeden", "expect": "beïnvloeden"}
+{"kind": "spelling-switch", "lang": "nl", "context": "ik ben", "input": "geinteresseerd", "expect": "geïnteresseerd"}
+{"kind": "spelling-switch", "lang": "nl", "context": "heel", "input": "egoistisch", "expect": "egoïstisch"}
+{"kind": "spelling-switch", "lang": "nl", "context": "we gaan", "input": "skien", "expect": "skiën"}
+{"kind": "spelling-switch", "lang": "nl", "context": "de", "input": "patienten", "expect": "patiënten"}
+{"kind": "spelling-switch", "lang": "nl", "context": "een", "input": "ruine", "expect": "ruïne"}
+{"kind": "spelling-switch", "lang": "nl", "context": "hij is", "input": "zn", "expect": "z'n"}
+{"kind": "spelling-switch", "lang": "nl", "context": "waar is", "input": "mn", "expect": "m'n"}

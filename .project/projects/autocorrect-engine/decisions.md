@@ -3,12 +3,19 @@ name: Autocorrect engine rebuild
 slug: autocorrect-engine
 owner: ownkey-keyboard-team
 created: 2026-09-24T11:09:21Z
-updated: 2026-09-25T14:55:18Z
+updated: 2026-11-08T18:59:38Z
 ---
 
 # Decisions: Autocorrect engine rebuild
 
 ## Active decisions
+
+- 2026-11-08 (Bart): Ship the n-gram models built from OpenSubtitles v2018 (OPUS) and FineWeb/FineWeb-2 as they are. This replaces the 2026-09-24 decision not to ship OpenSubtitles bigrams for this engine. OPUS states no licence for the corpus; the shipped FrequencyWords lists already derive from it. Sources and attribution are in `tools/lm/SOURCES.md`, `ime/dict/ngram/ATTRIBUTION.md` and the licences screen.
+- 2026-11-08 (Bart): Release the n-gram engine to the production track. On the phone benchmark (`tools/kbbench/RESULTS.md`) it reaches 1.33x Gboard keystroke savings and 0.43x Gboard word error rate after typos, against 1.09x and 1.98x for 0.11.0.
+- 2026-11-08: The n-gram scorer (`lib/prediction`, `NgramLatinScorer`) is the default scorer and next-word predictor when every language of the subtype has an n-gram model (en, nl). Other languages, or models still loading, use the noisy-channel scorer. Legacy and noisy channel stay selectable in devtools.
+- 2026-11-08: AC-011 is applied as written: a typed word from a confusion pair is never replaced by its partner, on space or by previous-word revision. Other correctly spelled words compete as candidates, as in the noisy-channel scorer. A stricter reading (never replace any dictionary word) doubled the dev word error rate.
+- 2026-11-08: `ChatShorthand` words get a 2-nat keep bonus with the n-gram scorer instead of absolute protection, so "jk" and "ok" can still become "ik" in context. Chosen on the dev pipeline replay; "wss", "idd", "egt", "mss" and "ofz" stay as typed.
+- 2026-11-08: The n-gram scorer misses three #17 benchmark gates: single-word precision without context (92-94% against 97%), typed word not first (28-36% against 2%, completions come first by design) and lowercase names after context. They stay open; the gates were set for a context-free scorer.
 
 - 2026-09-25 (PR #17 review): "Block possibly offensive words" (on by default) now applies to the Latin engine. The subtitle-based dictionaries rank profanity and slurs high, so a working autocorrect could turn a typo into one. Reviewed lists in `ime/dict/offensive/` keep those words out of suggestions, next-word predictions, spell-check results and auto-commit; a word the user typed is never changed for being on a list. Every list applies to every Latin keyboard, because the dictionaries borrow each other's words (the Dutch one has English slurs), and a candidate of several words is checked word by word. Clinical words and words with a common harmless meaning (penis, rape, queer, kanker, nicht, eikel) stay off the lists.
 - 2026-09-25 (PR #17 review): `overnieuw` is an accepted informal variant (Taaladvies), like `kado`, and is a word again. `verassingen` is removed like `verassing`: the cremation meaning is rare and the spelling is typed far more often for verrassing(en). `loosing` and `payed` stay removed for the same reason.

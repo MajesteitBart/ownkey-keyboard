@@ -700,6 +700,59 @@ abstract class AbstractEditorInstance(context: Context) {
     }
 
     /** [styledText] is what the editor receives: [text] itself, or the same characters with spans. */
+    /**
+     * Replaces the text in the absolute range [start] until [end], which must lie before the cursor within the known
+     * text before it, with [text], and puts the cursor back after the same following text (it moves by the length
+     * difference). Used to revise or restore an earlier word without moving the user's cursor. One batch edit; the
+     * replaced range is not left composing. Returns false, changing nothing, for a selection, a raw editor, a range
+     * outside the text before the cursor, or when the editor's own text from [start] to the cursor is not the text
+     * the keyboard expects there (the app changed it, for example with an input filter, and has not reported it yet).
+     * Returns true once the text is replaced.
+     */
+    fun replaceTextBeforeCursor(start: Int, end: Int, text: String): Boolean {
+        if (activeInfo.isRawInputEditor) return false
+        val ic = currentInputConnection() ?: return false
+        val content = activeContent
+        val selection = content.selection
+        if (!selection.isValid || !selection.isCursorMode) return false
+        val before = content.textBeforeSelection
+        val windowStart = selection.start - before.length
+        if (start < windowStart || start > end || end > selection.start) return false
+        // The positions come from the keyboard's own record of the text; check them against the editor first.
+        val expectedTail = before.substring(start - windowStart)
+        val actualTail = ic.getTextBeforeCursor(expectedTail.length, 0)?.toString() ?: return false
+        if (!EditorTextMatch.sameText(actualTail, expectedTail)) return false
+        val newCursor = selection.start + text.length - (end - start)
+        ic.beginBatchEdit()
+        return try {
+            runBlocking {
+                val newContent = content.generateCopy(
+                    selection = EditorRange.cursor(newCursor),
+                    textBeforeSelection = buildString {
+                        append(before, 0, start - windowStart)
+                        append(text)
+                        append(before, end - windowStart, before.length)
+                    },
+                    selectedText = "",
+                )
+                ic.finishComposingText()
+                if (!ic.setComposingRegion(start, end)) return@runBlocking false
+                if (!ic.setComposingText(text, 1)) {
+                    ic.finishComposingText()
+                    return@runBlocking false
+                }
+                ic.finishComposingText()
+                ic.setSelection(newCursor, newCursor)
+                expectedContentQueue.push(newContent)
+                ic.setComposingRegion(newContent.composing)
+                _lastCommitPosition.handleCommit(newContent.selection)
+                true
+            }
+        } finally {
+            ic.endBatchEdit()
+        }
+    }
+
     open fun finalizeComposingText(text: String, cursorAdvanceAfterText: Int = 0, styledText: CharSequence = text): Boolean {
         val ic = currentInputConnection() ?: return false
         val content = activeContent

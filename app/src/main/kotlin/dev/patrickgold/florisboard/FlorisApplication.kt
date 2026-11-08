@@ -236,6 +236,7 @@ class FlorisApplication : Application(), androidx.work.Configuration.Provider {
             Log.i("PREFS", result.toString())
             migrateLegacyVoxtralApiKeyIfNeeded()
             migrateAutocorrectStrengthIfNeeded()
+            migrateAutocorrectScorerIfNeeded()
             preferenceStoreLoaded.value = true
         }
         extensionManager.value.init()
@@ -255,6 +256,16 @@ class FlorisApplication : Application(), androidx.work.Configuration.Provider {
             dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectStrength.fromLegacyMinConfidencePercent(legacyPercent)
         )
         prefs.correction.autocorrectStrengthMigrated.set(true)
+    }
+
+    /**
+     * The devtools switch for the legacy scorer became a choice of three scorers; a switch left on picks the legacy
+     * scorer once and is then reset.
+     */
+    private suspend fun migrateAutocorrectScorerIfNeeded() {
+        if (!prefs.devtools.autocorrectLegacyEngine.get()) return
+        prefs.devtools.autocorrectScorer.set(dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScorerChoice.LEGACY)
+        prefs.devtools.autocorrectLegacyEngine.set(false)
     }
 
     private suspend fun migrateLegacyVoxtralApiKeyIfNeeded() {

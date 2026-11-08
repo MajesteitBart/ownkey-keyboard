@@ -123,7 +123,12 @@ enum class AutocorrectStrength(val threshold: Double, val literalBias: Double) {
     /** More typos, at the cost of an occasional wrong correction: at least 95% precision. */
     STRONG(threshold = 0.80, literalBias = -1.0);
 
-    fun toSettings(enabled: Boolean) = AutocorrectSettings(enabled = enabled, threshold = threshold, literalBias = literalBias)
+    fun toSettings(enabled: Boolean) = AutocorrectSettings(
+        enabled = enabled,
+        threshold = threshold,
+        literalBias = literalBias,
+        strength = this,
+    )
 
     companion object {
         /** Maps the pre-rebuild minimum-confidence pref (hidden, default 88%) to the nearest level. */
@@ -144,13 +149,24 @@ data class AutocorrectSettings(
     val threshold: Double = DefaultThreshold,
     val minInputLength: Int = 3,
     val literalBias: Double = 0.0,
+    /**
+     * The strength level these settings came from, and the app profile's aggressiveness on top of it. The noisy-channel
+     * scorer only reads [threshold] and [literalBias]; the n-gram scorer maps both onto its own thresholds
+     * (`EngineAutocorrectProfile`).
+     */
+    val strength: AutocorrectStrength = AutocorrectStrength.NORMAL,
+    val aggressivenessPercent: Int = 100,
 ) {
     /**
      * Shifts the threshold for an app profile. [percent] above 100 corrects more eagerly, below 100 more carefully.
      */
     fun withAggressiveness(percent: Int): AutocorrectSettings {
-        val factor = percent.coerceIn(70, 130) / 100.0
-        return copy(threshold = (1.0 - (1.0 - threshold) * factor).coerceIn(0.5, 0.995))
+        val clamped = percent.coerceIn(70, 130)
+        val factor = clamped / 100.0
+        return copy(
+            threshold = (1.0 - (1.0 - threshold) * factor).coerceIn(0.5, 0.995),
+            aggressivenessPercent = clamped,
+        )
     }
 
     companion object {

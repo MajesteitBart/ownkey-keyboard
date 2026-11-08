@@ -36,6 +36,8 @@ import dev.patrickgold.florisboard.ime.media.emoji.EmojiSkinTone
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectStrength
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScorerChoice
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.RealWordRule
 import dev.patrickgold.florisboard.ime.smartbar.CandidatesDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
@@ -366,6 +368,50 @@ private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable ()
                 key = IncognitoMode.FORCE_ON,
                 label = stringRes(R.string.settings__privacy__incognito_always),
                 description = stringRes(R.string.settings__privacy__incognito_always_summary),
+            )
+        }
+    },
+    RealWordRule::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = RealWordRule.CONFUSION_PAIRS,
+                label = stringRes(R.string.enum__real_word_rule__confusion_pairs),
+                description = stringRes(R.string.enum__real_word_rule__confusion_pairs__description),
+                showDescriptionOnlyIfSelected = true,
+            )
+            entry(
+                key = RealWordRule.DICTIONARY_WORDS,
+                label = stringRes(R.string.enum__real_word_rule__dictionary_words),
+                description = stringRes(R.string.enum__real_word_rule__dictionary_words__description),
+                showDescriptionOnlyIfSelected = true,
+            )
+            entry(
+                key = RealWordRule.NONE,
+                label = stringRes(R.string.enum__real_word_rule__none),
+                description = stringRes(R.string.enum__real_word_rule__none__description),
+                showDescriptionOnlyIfSelected = true,
+            )
+        }
+    },
+    LatinScorerChoice::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = LatinScorerChoice.NGRAM,
+                label = stringRes(R.string.enum__latin_scorer_choice__ngram),
+                description = stringRes(R.string.enum__latin_scorer_choice__ngram__description),
+                showDescriptionOnlyIfSelected = true,
+            )
+            entry(
+                key = LatinScorerChoice.NOISY_CHANNEL,
+                label = stringRes(R.string.enum__latin_scorer_choice__noisy_channel),
+                description = stringRes(R.string.enum__latin_scorer_choice__noisy_channel__description),
+                showDescriptionOnlyIfSelected = true,
+            )
+            entry(
+                key = LatinScorerChoice.LEGACY,
+                label = stringRes(R.string.enum__latin_scorer_choice__legacy),
+                description = stringRes(R.string.enum__latin_scorer_choice__legacy__description),
+                showDescriptionOnlyIfSelected = true,
             )
         }
     },

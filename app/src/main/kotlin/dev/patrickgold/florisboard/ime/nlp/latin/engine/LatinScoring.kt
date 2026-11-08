@@ -34,7 +34,7 @@ internal data class LatinScoringLanguage(
 /**
  * Where one typed character was tapped, in key widths from the top-left corner of the letter area.
  */
-internal data class LatinTap(val x: Double, val y: Double)
+data class LatinTap(val x: Double, val y: Double)
 
 /**
  * Everything a scorer needs to rank candidates for the word currently being typed.
@@ -52,6 +52,16 @@ internal data class LatinScoringRequest(
     val taps: List<LatinTap>? = null,
     val autocorrect: AutocorrectSettings = AutocorrectSettings(),
     val geometry: KeyGeometry? = null,
+    /**
+     * Whether [textBeforeSelection] starts at the start of the field. Otherwise it is a window into a longer text, and
+     * a word cut by the window start is no context. Read by the n-gram scorer.
+     */
+    val textStartsAtFieldStart: Boolean = true,
+    /**
+     * Possibly offensive words (`PossiblyOffensiveWords`) that must not be offered, when the user blocks them. The
+     * provider filters every scorer's output as well; the n-gram scorer also leaves them out while ranking.
+     */
+    val blockedWords: Set<String> = emptySet(),
 )
 
 /**

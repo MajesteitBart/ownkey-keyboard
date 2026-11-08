@@ -1,0 +1,83 @@
+# Authored Dutch sentences with 1-3 embedded English words or phrases.
+# Format: split<TAB>text<TAB>english terms separated by |   (the builder checks each term occurs in the sentence)
+# Never use these sentences to train or tune a language model or dictionary (see README.md).
+dev	Kun je de slides voor de pitch van morgen nog even checken?	slides|pitch
+dev	Ik zit de hele middag vol met calls, dus app maar even.	calls
+dev	We moeten de roadmap voor het volgende kwartaal nog afstemmen.	roadmap
+dev	Heb jij de feedback van de klant al verwerkt in het deck?	feedback|deck
+dev	Ik werk vandaag remote, dus de standup doe ik via Teams.	remote|standup
+dev	De deadline voor de launch is verschoven naar eind maart.	deadline|launch
+dev	Hou je me even posted over die deal?	posted|deal
+dev	Vanochtend een hele productieve brainstorm gehad met het team.	brainstorm
+dev	Zullen we na de sprint review nog een biertje doen?	sprint review
+dev	De onboarding van nieuwe users moet echt simpeler.	onboarding|users
+dev	Ik stuur je straks een invite voor de kickoff.	invite|kickoff
+dev	Wat is eigenlijk onze churn deze maand?	churn
+dev	Kun je die bug fixen voordat we live gaan?	bug|live
+dev	Ik ben even offline, ik zit bij de tandarts.	offline
+dev	Het dashboard laat rare cijfers zien sinds de laatste release.	dashboard|release
+dev	Laten we de scope van het project iets kleiner maken.	scope
+dev	Ik heb een lunch meeting in Amsterdam, ben rond drie uur terug.	lunch meeting
+dev	Kun je de contracten even in de shared drive zetten?	shared drive
+dev	We hebben echt een goede product owner nodig voor dit team.	product owner
+dev	De customer success manager van die klant is heel blij met ons.	customer success manager
+dev	Ik ga die feature eerst testen op mijn eigen telefoon.	feature
+dev	Ik moet nog even mijn inbox opschonen voordat ik naar huis ga.	inbox
+dev	Het was een lange dag, ik ben echt done.	done
+dev	Kun je mij de link naar de recording sturen?	link|recording
+dev	We doen de retro deze keer gewoon op kantoor.	retro
+dev	Die nieuwe designer heeft echt een goed oog voor details.	designer
+dev	Ik heb mijn laptop vergeten, kan iemand mijn charger meenemen?	laptop|charger
+dev	Zullen we die workshop over AI gewoon zelf geven?	workshop|AI
+dev	Mijn manager wil een update over de status van het project.	manager|update
+dev	De performance van de app is echt veel beter geworden.	performance
+dev	Ik heb Sanne gevraagd om de copy voor de website te schrijven.	copy|website
+dev	Ik heb deze week echt geen bandwidth meer voor extra werk.	bandwidth
+dev	Heb je de board meeting al ingepland?	board meeting
+dev	We gaan de pricing pagina helemaal opnieuw ontwerpen.	pricing
+dev	Die investor call ging eigenlijk best goed.	investor call
+dev	Kun je even een screenshot sturen van die foutmelding?	screenshot
+dev	Ik heb het ticket naar de backlog verplaatst.	ticket|backlog
+dev	Na de spinning class ga ik nog even boodschappen doen.	spinning class
+dev	We hebben volgende week een offsite met het hele team in de Ardennen.	offsite
+dev	Vandaag is echt zo'n crazy dag, alles is tegelijk dringend.	crazy
+test	Ik heb de agenda voor de meeting van donderdag rondgestuurd.	meeting
+test	Wil jij vanavond nog even naar onze pitch deck kijken?	pitch deck
+test	We moeten echt een betere workflow vinden voor de support tickets.	workflow|support tickets
+test	Ik ben vandaag de hele dag bezig met de business case.	business case
+test	Hebben we al een go voor de nieuwe campagne?	go
+test	Ik zit nog even in een call, ik bel je zo terug.	call
+test	De conversie op de landing page is flink gestegen.	landing page
+test	Laten we na de lunch even een quick sync doen over de planning.	quick sync
+test	Goede insight, maar we hebben meer data nodig om het te onderbouwen.	insight|data
+test	De stakeholders willen elke vrijdag een korte update.	stakeholders|update
+test	Ik denk dat we de demo beter een weekje kunnen uitstellen.	demo
+test	Ik heb vandaag een eindeloze to do list, help!	to do list
+test	Die nieuwe tool voor notities is echt een game changer.	tool|game changer
+test	Kun je de follow up mail naar de klant sturen?	follow up
+test	We hebben een nieuwe lead binnen via LinkedIn.	lead
+test	Het marketing budget is nog niet approved door de CFO.	marketing budget|approved
+test	Ik zit even in deep work mode, dus geen berichten graag.	deep work
+test	Zullen we vrijdag een team lunch doen om de release te vieren?	team lunch|release
+test	Kun je de user stories voor de volgende sprint al uitschrijven?	user stories|sprint
+test	De klant vroeg of we ook een mobile app kunnen bouwen.	mobile app
+test	Ik heb een hele goede vibe bij die nieuwe kandidaat.	vibe
+test	Hij is echt de beste developer die we ooit hebben gehad.	developer
+test	Mijn slides voor het event zijn nog lang niet af.	slides|event
+test	Kun je die file even met mij sharen?	file|sharen
+test	We zitten nog in de discovery fase met die klant.	discovery
+test	De API van die leverancier is echt slecht gedocumenteerd.	API
+test	Ik heb mijn weekly met Joost verzet naar dinsdag.	weekly
+test	Die startup uit Delft heeft net een mooie funding ronde opgehaald.	startup|funding
+test	Laten we het simpel houden en eerst een MVP bouwen.	MVP
+test	Mijn hele timeline staat op zijn kop door die verhuizing.	timeline
+test	Is het oké als ik de kickoff vanuit huis doe?	kickoff
+test	Volgens mij hebben we een probleem met de data privacy van die app.	data privacy
+test	Ik heb vandaag een enorme brain fog, sorry voor de typfouten.	brain fog
+test	Wil jij de notes van de meeting even delen in Slack?	notes|meeting
+test	De nieuwe hire begint maandag, kun jij haar laptop regelen?	hire|laptop
+test	Die customer journey klopt echt niet meer met hoe mensen het gebruiken.	customer journey
+test	Na de wedstrijd hebben we nog een afterparty bij Daan.	afterparty
+test	Ik heb het gevoel dat we als bedrijf te weinig focus en ownership hebben.	focus|ownership
+test	Geef je even een heads up als je onderweg bent?	heads up
+test	Ik ben helemaal klaar met al die back to back meetings vandaag.	back to back meetings

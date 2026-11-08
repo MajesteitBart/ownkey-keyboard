@@ -1,0 +1,18 @@
+{
+  "uniqueId": "opensubtitles-opus",
+  "name": "OpenSubtitles v2018 via OPUS (n-gram model statistics)",
+  "developers": [
+    {
+      "name": "OpenSubtitles.org",
+      "organisationUrl": "http://www.opensubtitles.org/"
+    },
+    {
+      "name": "OPUS (P. Lison and J. Tiedemann)",
+      "organisationUrl": "https://opus.nlpl.eu/OpenSubtitles/"
+    }
+  ],
+  "website": "https://opus.nlpl.eu/OpenSubtitles/",
+  "licenses": [
+    "opensubtitles-opus"
+  ]
+}
