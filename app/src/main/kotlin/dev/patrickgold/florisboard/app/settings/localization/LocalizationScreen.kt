@@ -68,6 +68,21 @@ internal val SubtypeSaver = Saver<MutableState<Subtype?>, String>(
 )
 
 /** A language's name in the form the user picked under "Display language names in". */
+/** [summary], followed by "Also English" when a language types [secondaryLocales] too. */
+@Composable
+internal fun withSecondaryLocales(
+    summary: String,
+    secondaryLocales: List<FlorisLocale>,
+    displayLanguageNamesIn: DisplayLanguageNamesIn,
+): String {
+    if (secondaryLocales.isEmpty()) return summary
+    val also = stringRes(
+        R.string.settings__localization__subtype_summary_secondary_locales,
+        "language_names" to secondaryLocales.joinToString(", ") { it.nameFor(displayLanguageNamesIn) },
+    )
+    return "$summary · $also"
+}
+
 internal fun FlorisLocale.nameFor(displayLanguageNamesIn: DisplayLanguageNamesIn): String {
     return when (displayLanguageNamesIn) {
         DisplayLanguageNamesIn.SYSTEM_LOCALE -> displayName()
@@ -101,10 +116,11 @@ fun LocalizationScreen() = FlorisScreen {
             ) {
                 subtypes.forEachIndexed { index, subtype ->
                     val layoutName = layouts[LayoutType.CHARACTERS]?.get(subtype.layoutMap.characters)?.label
+                        ?: subtype.layoutMap.characters.componentId
                     OwnkeyRow(
                         modifier = Modifier.testTag("language-$index"),
                         title = subtype.primaryLocale.nameFor(displayLanguageNamesIn),
-                        summary = layoutName ?: subtype.layoutMap.characters.componentId,
+                        summary = withSecondaryLocales(layoutName, subtype.secondaryLocales, displayLanguageNamesIn),
                         onClick = { navController.navigate(Routes.Settings.SubtypeEdit(subtype.id)) },
                         onLongClick = { chosenSubtypeToDelete = subtype },
                         chevron = true,

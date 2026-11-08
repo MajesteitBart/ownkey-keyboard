@@ -70,3 +70,6 @@ target/
 
 # Python bytecode from tools/ scripts
 __pycache__/
+
+# Kotlin compiler daemon data
+.kotlin/

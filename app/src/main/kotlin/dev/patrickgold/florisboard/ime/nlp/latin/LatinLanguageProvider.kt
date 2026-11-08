@@ -31,6 +31,8 @@ import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingResult
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
+import dev.patrickgold.florisboard.ime.nlp.WordRevisionProvider
+import dev.patrickgold.florisboard.ime.nlp.WordRevisionRequest
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectSettings
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
@@ -40,21 +42,32 @@ import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinCurrentWordScorer
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinDictionaryCleanup
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringHooks
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringLanguage
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScorerChoice
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.RealWordRule
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScoringRequest
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinTap
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinText
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinWordModel
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.LegacyLatinScorer
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.NgramLatinScorer
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.NoisyChannelLatinScorer
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.PossiblyOffensiveWords
 import dev.patrickgold.florisboard.speechDictionary
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.RankedCandidate
 import dev.patrickgold.florisboard.ime.nlp.personal.PersonalDataStore
 import dev.patrickgold.florisboard.ime.nlp.personal.PersonalNgramStore
+import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.lib.devtools.flogError
+import dev.patrickgold.florisboard.lib.devtools.flogInfo
+import dev.patrickgold.florisboard.lib.devtools.flogWarning
+import dev.patrickgold.florisboard.subtypeManager
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -64,10 +77,13 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import org.florisboard.lib.android.readText
 import org.florisboard.lib.kotlin.guardedByLock
+import org.florisboard.lib.prediction.PersonalOverlay
+import org.florisboard.lib.prediction.PredictionContext
+import org.florisboard.lib.prediction.WordLanguageModel
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
 
-class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider {
+class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider, WordRevisionProvider {
     companion object {
         // Default user ID used for all subtypes, unless otherwise specified.
         // See `ime/core/Subtype.kt` Line 210 and 211 for the default usage
@@ -85,6 +101,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         private const val UserDictionarySnapshotMaxAgeMs = 30_000L
         // User dictionary entries without a locale apply to every language.
         private const val AnyLocale = "*"
+
+        /** Inputs that make the n-gram engine's first requests run the decoder, completion and next-word code once. */
+        private val NgramWarmUpInputs = listOf("", "th", "helo", "straat")
 
         // Built by tools/dictionary-build/build.py. The raw FrequencyWords lists stay as a fallback for one release.
         private val FrequencyDictionaryAssets = mapOf(
@@ -113,7 +132,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val profile: AutocorrectAppProfile,
         val config: HighCertaintyAutocorrectConfig,
         val settings: AutocorrectSettings,
-        val isLegacyEngine: Boolean,
+        val scorer: LatinScorerChoice,
+        val realWordRule: RealWordRule = RealWordRule.CONFUSION_PAIRS,
     ) {
         val policy: HighCertaintyAutocorrectPolicy = HighCertaintyAutocorrectPolicy(config)
         val signature: String = listOf(
@@ -124,7 +144,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             config.minInputLength,
             config.maxAutoCorrectEditDistance,
             settings,
-            isLegacyEngine,
+            scorer,
+            realWordRule,
         ).joinToString(separator = "|")
     }
 
@@ -161,6 +182,27 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val emptyModel = LatinWordModel.Empty
     private val legacyScorer: LatinCurrentWordScorer = LegacyLatinScorer()
     private val noisyChannelScorer = NoisyChannelLatinScorer()
+    private val keyboardManager by context.keyboardManager()
+    private val subtypeManager by context.subtypeManager()
+    // The n-gram models are memory-mapped from the APK and sorted into lexicons in the background, one at a time.
+    private val engineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val ngramEngines = LatinPredictionEngines(engineScope) { language -> loadNgramModel(language) }
+    private val ngramScorer = NgramLatinScorer(
+        engineFor = { languages -> ngramEngines.engineIfReady(languages) },
+        fallback = noisyChannelScorer,
+        overlayFor = { languages -> userDictionaryOverlay(languages) },
+        realWordRule = { prefs.devtools.autocorrectRealWordRule.get() },
+    )
+    private val warmedUpNgramEngines = java.util.concurrent.ConcurrentHashMap.newKeySet<List<String>>()
+    private class UserOverlayCache(
+        val userWords: Map<String, Set<String>>,
+        val speechWords: Set<String>,
+        val languages: List<String>,
+        val overlay: PersonalOverlay?,
+    )
+
+    @Volatile
+    private var userOverlayCache: UserOverlayCache? = null
 
     @Volatile
     private var speechWordsCache: Pair<Any, Set<String>>? = null
@@ -198,6 +240,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun preload(subtype: Subtype) = withContext(Dispatchers.IO) {
+        if (scorerChoice() == LatinScorerChoice.NGRAM) {
+            // Never waits: the models load in the background while the word lists below load here.
+            ngramLanguagesOf(subtype)?.let { languages ->
+                ngramEngines.prepare(languages)
+                warmUpNgramEngineWhenReady(languages)
+            }
+        }
         subtype.locales().forEach { locale ->
             ensureLanguageModelLoaded(locale.language)
         }
@@ -232,7 +281,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         ) {
             return SpellingResult.validWord()
         }
-        if (!prefs.devtools.autocorrectLegacyEngine.get()) {
+        if (scorerChoice() != LatinScorerChoice.LEGACY) {
+            // The system spell checker keeps the noisy-channel scorer: it runs without the keyboard and must not
+            // map the n-gram models for a spell check.
             val policySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
             val scored = noisyChannelScorer.score(
                 request = LatinScoringRequest(
@@ -319,7 +370,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val primaryLocale = subtype.primaryLocale.base
         val rawInput = content.composingText.ifBlank { content.currentWordText }.trim()
         val languageContexts = getLanguageContextsForSubtype(subtype)
-        val emailCandidates = personalEmailCandidates(rawInput, content, isEmailField)
+        // Remembered addresses are personal data: not read in private sessions.
+        val emailCandidates = if (isPrivateSession) emptyList() else personalEmailCandidates(rawInput, content, isEmailField)
         val suggestions = if (rawInput.isBlank()) {
             suggestNextWordCandidates(
                 content = content,
@@ -327,6 +379,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 locale = primaryLocale,
                 languageContexts = languageContexts,
                 subtype = subtype,
+                scorer = autocorrectPolicySnapshot.scorer,
+                isPrivateSession = isPrivateSession,
+                blockedWords = blockedWords(allowPossiblyOffensive),
             )
         } else {
             val language = normalizeLanguageCode(subtype.primaryLocale.language)
@@ -341,8 +396,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     autocorrect = autocorrectPolicySnapshot.settings,
                     geometry = KeyboardGeometrySource.current(),
                     taps = cacheKey.taps,
+                    textStartsAtFieldStart = content.offset == 0,
+                    blockedWords = blockedWords(allowPossiblyOffensive),
                 ),
-                hooks = scoringHooks(subtype, language),
+                hooks = scoringHooks(subtype, language, isPrivateSession),
             )
             scored.map { candidate ->
                 WordSuggestionCandidate(
@@ -376,24 +433,25 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val languages = loadedScoringLanguages(subtype)
         if (languages.isEmpty()) return null
         val policySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
-        val scored = scorerFor(policySnapshot).score(
-            request = LatinScoringRequest(
-                rawInput = rawInput,
-                primaryLocale = subtype.primaryLocale.base,
-                languages = languages,
-                textBeforeSelection = content.textBeforeSelection,
-                maxCandidateCount = AutoCommitCandidateCount,
-                policy = policySnapshot.policy,
-                autocorrect = policySnapshot.settings,
-                geometry = KeyboardGeometrySource.current(),
-                taps = TapTrail.tapsFor(rawInput),
-            ),
+        val request = LatinAutocorrectPipeline.autoCommitRequest(
+            rawInput = rawInput,
+            languages = languages,
+            textBeforeSelection = content.textBeforeSelection,
+            textStartsAtFieldStart = content.offset == 0,
+            settings = policySnapshot.settings,
+            policy = policySnapshot.policy,
+            geometry = KeyboardGeometrySource.current(),
+            taps = TapTrail.tapsFor(rawInput),
+            blockedWords = blockedWords(allowPossiblyOffensive),
+        ).copy(primaryLocale = subtype.primaryLocale.base)
+        val chosen = LatinAutocorrectPipeline.decideAutoCommit(
+            scorer = scorerFor(policySnapshot),
+            request = request,
             hooks = inMemoryScoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language)),
         )
         // Tap count and mean distance from the typed keys only; never the word itself.
         flogDebug { "Autocorrect taps: ${describeTaps(rawInput)}" }
-        val chosen = PossiblyOffensiveWords.filter(scored, blockedWords(allowPossiblyOffensive), rawInput) { it.text }
-            .firstOrNull { it.isAutoCommit } ?: return null
+        chosen ?: return null
         return WordSuggestionCandidate(
             text = chosen.text,
             confidence = chosen.confidence,
@@ -468,6 +526,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
+        // Promoting a word writes it to the user dictionary: that is learning, so not in private sessions or with
+        // personalized learning off (the same rule as the word-pair learning in NlpManager.notifyTextBoundary).
+        if (keyboardManager.activeState.isIncognitoMode || !prefs.suggestion.personalizedLearningEnabled.get()) return
         val resolvedLocale = resolveBestLocaleForWord(
             subtype = subtype,
             candidateWord = candidate.text.toString(),
@@ -710,6 +771,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         locale: Locale,
         languageContexts: List<SubtypeLanguageContext>,
         subtype: Subtype,
+        scorer: LatinScorerChoice,
+        isPrivateSession: Boolean,
+        blockedWords: Set<String>,
     ): List<SuggestionCandidate> {
         val textBeforeSelection = content.textBeforeSelection
         if (textBeforeSelection.isBlank() || !isNextWordBoundary(textBeforeSelection)) {
@@ -724,6 +788,38 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val contextTokens = extractRecentContextTokens(textBeforeSelection)
         val nonEmptyLanguageContexts = languageContexts.filter { context -> context.model.words.isNotEmpty() }
         if (nonEmptyLanguageContexts.isEmpty()) return emptyList()
+        val primaryLanguage = normalizeLanguageCode(subtype.primaryLocale.language)
+
+        if (scorer == LatinScorerChoice.NGRAM) {
+            // The trigram models, mixed with the user's own word sequences (PersonalNextWordBlend); the frequency-list
+            // path below is the fallback while the models load.
+            val engineSlots = ngramScorer.predictNextWords(
+                languages = nonEmptyLanguageContexts.map { it.toScoringLanguage() },
+                textBeforeSelection = textBeforeSelection,
+                textStartsAtFieldStart = content.offset == 0,
+                maxCount = maxCandidateCount,
+                blockedWords = blockedWords,
+            )
+            if (engineSlots != null) {
+                val personal = if (isPrivateSession) {
+                    emptyList()
+                } else {
+                    personalNgramStore.predictNext(primaryLanguage, previousPreviousWord, previousWord, maxCandidateCount)
+                        .filter { it.word != previousWord }
+                }
+                val predictions = PersonalNextWordBlend.blend(engineSlots, personal, maxCandidateCount) { word ->
+                    ngramDisplayFormOf(word, nonEmptyLanguageContexts.map { it.language })
+                }
+                return predictions.map { prediction ->
+                    WordSuggestionCandidate(
+                        text = prediction.displayForm.ifEmpty { prediction.word },
+                        confidence = prediction.prob.coerceIn(0.0, 1.0),
+                        isEligibleForAutoCommit = false,
+                        sourceProvider = this@LatinLanguageProvider,
+                    )
+                }
+            }
+        }
 
         val languageConfidenceWeights = computeLanguageConfidenceWeights(
             languageContexts = nonEmptyLanguageContexts,
@@ -758,14 +854,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
 
         // Blend in the persistent personal n-gram model, which remembers the user's own word sequences
-        // across sessions and apps (unlike the in-field mining above, which only sees the current text).
-        val primaryLanguage = normalizeLanguageCode(subtype.primaryLocale.language)
-        val personalPredictions = personalNgramStore.predictNext(
-            language = primaryLanguage,
-            prev2 = previousPreviousWord,
-            prev1 = previousWord,
-            limit = maxCandidateCount,
-        )
+        // across sessions and apps (unlike the in-field mining above, which only sees the current text). Personal data
+        // is not read in private sessions.
+        val personalPredictions = if (isPrivateSession) {
+            emptyList()
+        } else {
+            personalNgramStore.predictNext(
+                language = primaryLanguage,
+                prev2 = previousPreviousWord,
+                prev1 = previousWord,
+                limit = maxCandidateCount,
+            )
+        }
         if (personalPredictions.isNotEmpty()) {
             val maxPersonalScore = personalPredictions.first().score.coerceAtLeast(1)
             for (prediction in personalPredictions) {
@@ -780,7 +880,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
 
         // What usually follows the previous word, from the bigram models. Ranks below the user's own sequences.
-        if (!prefs.devtools.autocorrectLegacyEngine.get()) {
+        if (scorer != LatinScorerChoice.LEGACY) {
             val pairPredictions = noisyChannelScorer.predictNextWords(
                 languages = nonEmptyLanguageContexts.map { it.toScoringLanguage() },
                 primaryLocale = locale,
@@ -980,7 +1080,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             profile = profile,
             config = effectiveConfig,
             settings = settings,
-            isLegacyEngine = prefs.devtools.autocorrectLegacyEngine.get(),
+            scorer = scorerChoice(),
+            realWordRule = prefs.devtools.autocorrectRealWordRule.get(),
         )
     }
 
@@ -996,7 +1097,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return letterCount == 0
     }
 
-    private fun scoringHooks(subtype: Subtype, language: String): LatinScoringHooks {
+    private fun scoringHooks(subtype: Subtype, language: String, isPrivateSession: Boolean = false): LatinScoringHooks {
         return object : LatinScoringHooks {
             override fun isUserDictionaryWord(normalizedWord: String): Boolean {
                 return isUserDictionaryWord(subtype, normalizedWord) || normalizedWord in speechDictionaryWords()
@@ -1007,6 +1108,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
 
             override suspend fun personalContinuationScore(previousWord: String, candidateWord: String): Double {
+                // The user's word sequences are personal data, not read in private sessions.
+                if (isPrivateSession) return 0.0
                 return personalNgramStore.continuationScore(language, previousWord, candidateWord)
             }
 
@@ -1109,8 +1212,147 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return "${policy.signature}|${protectedWordsState()}"
     }
 
+    /**
+     * The scorer the devtools switch picks. The n-gram scorer serves a subtype whose languages all have a loaded model
+     * and passes everything else to the noisy-channel scorer.
+     */
     private fun scorerFor(snapshot: AutocorrectPolicySnapshot): LatinCurrentWordScorer {
-        return if (snapshot.isLegacyEngine) legacyScorer else noisyChannelScorer
+        return when (snapshot.scorer) {
+            LatinScorerChoice.LEGACY -> legacyScorer
+            LatinScorerChoice.NOISY_CHANNEL -> noisyChannelScorer
+            LatinScorerChoice.NGRAM -> ngramScorer
+        }
+    }
+
+    private fun scorerChoice(): LatinScorerChoice = prefs.devtools.autocorrectScorer.get()
+
+    // ------------------------------------------------------------------------------------------- n-gram engine
+
+    private fun ngramLanguagesOf(subtype: Subtype): List<String>? =
+        LatinDictionaryAssets.ngramLanguages(subtype.locales().map { it.language })
+
+    /** Maps the model in place from the uncompressed APK asset; a heap copy only if mapping fails (within budget). */
+    private fun loadNgramModel(language: String): WordLanguageModel {
+        val path = requireNotNull(LatinDictionaryAssets.NgramModels[language]) { "no n-gram model for '$language'" }
+        val start = SystemClock.uptimeMillis()
+        return try {
+            LatinPredictionEngines.loadNgramModel(
+                language,
+                map = { LatinPredictionEngines.mapAsset(appContext.assets, path) },
+                open = { appContext.assets.open(path) },
+                onMapFailed = { e -> flogWarning { "Cannot map n-gram model '$path' ($e); reading it into the heap" } },
+            ).also {
+                val ngram = it.ngram
+                flogInfo {
+                    "Loaded n-gram model '$language' (${it.vocabularySize} words, ${ngram.fileBytes / 1024} KiB " +
+                        "${if (ngram.isDirect) "mapped" else "on the heap"}, index ${ngram.heapBytes / 1024} KiB) in " +
+                        "${SystemClock.uptimeMillis() - start} ms"
+                }
+            }
+        } catch (e: Throwable) {
+            flogError { "Failed loading n-gram model for '$language' from '$path': $e" }
+            throw e
+        }
+    }
+
+    /**
+     * Once the engine for [languages] is built: one warm-up request per code path (class loading, first page faults of
+     * the mapped models), then a fresh suggestion request, so an empty field gets its next-word row without waiting
+     * for the next key.
+     */
+    private fun warmUpNgramEngineWhenReady(languages: List<String>) {
+        if (!warmedUpNgramEngines.add(languages)) return
+        engineScope.launch {
+            val engine = ngramEngines.awaitEngine(languages) ?: return@launch
+            try {
+                NgramWarmUpInputs.forEach { input -> engine.suggest(PredictionContext.FieldStart, input) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                flogError { "Prediction engine warm-up failed: $e" }
+            }
+            suggestionCache.withLock { it.clear() }
+            withContext(Dispatchers.Main) {
+                if (ngramLanguagesOf(subtypeManager.activeSubtype) == languages) {
+                    keyboardManager.resetSuggestions(editorInstance.activeContent)
+                }
+            }
+        }
+    }
+
+    /**
+     * The user and speech dictionary words for the n-gram engine (completed, suggested, known), from the in-memory
+     * snapshot; rebuilt only when the snapshot or the languages change.
+     */
+    private fun userDictionaryOverlay(languages: List<String>): PersonalOverlay? {
+        val userWords = userDictionarySnapshot
+        val speechWords = speechDictionaryWords()
+        userOverlayCache?.let { cached ->
+            if (cached.userWords === userWords && cached.speechWords === speechWords && cached.languages == languages) {
+                return cached.overlay
+            }
+        }
+        val words = LinkedHashSet<String>()
+        for ((word, localeTags) in userWords) {
+            val applies = localeTags.any { tag ->
+                tag == AnyLocale || LatinDictionaryAssets.normalizeLanguage(tag.substringBefore('-').substringBefore('_')) in languages
+            }
+            if (applies) words.add(word)
+        }
+        words.addAll(speechWords)
+        val overlay = words.takeIf { it.isNotEmpty() }?.let { PersonalOverlay.of(it).takeIf { o -> o.size > 0 } }
+        userOverlayCache = UserOverlayCache(userWords, speechWords, languages, overlay)
+        return overlay
+    }
+
+    /** Written form of a word in the first n-gram model that writes it with capitals, else the word. */
+    private fun ngramDisplayFormOf(word: String, languages: List<String>): String {
+        for (language in languages) {
+            val model = ngramEngines.modelIfReady(language) ?: continue
+            val id = model.wordId(word)
+            if (id >= 0 && model.isCapitalized(id)) return model.displayForm(id)
+        }
+        return word
+    }
+
+    /**
+     * Right-context revision of the previous word with the n-gram scorer: only words that were not valid as typed
+     * (typos left as typed) or that autocorrect itself produced can change; a valid word the user typed is kept
+     * (AC-011). Null with another scorer, while the models load, where autocorrect may not run, or for protected
+     * words. Reads in-memory data only; nothing is learned or stored.
+     */
+    override suspend fun revisePreviousWord(
+        subtype: Subtype,
+        request: WordRevisionRequest,
+        allowPossiblyOffensive: Boolean,
+    ): SuggestionCandidate? {
+        val policySnapshot = currentHighCertaintyAutocorrectPolicySnapshot(currentAutocorrectAppContext())
+        if (policySnapshot.scorer != LatinScorerChoice.NGRAM || !policySnapshot.settings.enabled) return null
+        val info = editorInstance.activeInfo
+        if (!AutocorrectTriggerPolicy.allowsField(
+                variation = info.inputAttributes.variation,
+                flagTextNoSuggestions = info.inputAttributes.flagTextNoSuggestions,
+                isRichInputEditor = info.isRichInputEditor,
+            )
+        ) {
+            return null
+        }
+        val hooks = inMemoryScoringHooks(subtype, normalizeLanguageCode(subtype.primaryLocale.language))
+        val allowed = LatinAutocorrectPipeline.revise(
+            scorer = ngramScorer,
+            request = request,
+            languages = loadedScoringLanguages(subtype),
+            settings = policySnapshot.settings,
+            isProtected = { word -> hooks.isUserDictionaryWord(word) || hooks.isBlockedByUserPreference(word) },
+            blockedWords = blockedWords(allowPossiblyOffensive),
+            timesTyped = { word -> hooks.timesTyped(word) },
+        ) ?: return null
+        return WordSuggestionCandidate(
+            text = allowed.text,
+            confidence = allowed.confidence,
+            isEligibleForAutoCommit = true,
+            sourceProvider = this@LatinLanguageProvider,
+        )
     }
 
     /**

@@ -27,7 +27,9 @@ import androidx.compose.ui.platform.testTag
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
 import dev.patrickgold.florisboard.app.ui.DialogSliderPreference
+import dev.patrickgold.florisboard.app.ui.ListPreference
 import dev.patrickgold.florisboard.app.ui.OwnkeyRow
 import dev.patrickgold.florisboard.app.ui.Preference
 import dev.patrickgold.florisboard.app.ui.PreferenceGroup
@@ -35,6 +37,8 @@ import dev.patrickgold.florisboard.app.ui.SwitchPreference
 import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.FlorisUserDictionaryDatabase
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScorerChoice
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.RealWordRule
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionArrangement
 import dev.patrickgold.florisboard.lib.compose.FlorisConfirmDeleteDialog
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
@@ -95,11 +99,22 @@ fun DevtoolsScreen() = FlorisScreen {
                 summary = stringRes(R.string.devtools__show_spelling_overlay__summary),
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
             )
-            SwitchPreference(
-                prefs.devtools.autocorrectLegacyEngine,
-                title = stringRes(R.string.devtools__autocorrect_legacy_engine__label),
-                summary = stringRes(R.string.devtools__autocorrect_legacy_engine__summary),
+            ListPreference(
+                prefs.devtools.autocorrectScorer,
+                title = stringRes(R.string.devtools__autocorrect_scorer__label),
+                summary = stringRes(R.string.devtools__autocorrect_scorer__summary),
+                entries = enumDisplayEntriesOf(LatinScorerChoice::class),
                 enabledIf = { prefs.devtools.enabled isEqualTo true },
+            )
+            ListPreference(
+                prefs.devtools.autocorrectRealWordRule,
+                title = stringRes(R.string.devtools__autocorrect_real_word_rule__label),
+                summary = stringRes(R.string.devtools__autocorrect_real_word_rule__summary),
+                entries = enumDisplayEntriesOf(RealWordRule::class),
+                enabledIf = {
+                    prefs.devtools.enabled isEqualTo true &&
+                        prefs.devtools.autocorrectScorer isEqualTo LatinScorerChoice.NGRAM
+                },
             )
             // Autocorrect calibration: per-profile threshold shifts relative to the chosen strength.
             DialogSliderPreference(

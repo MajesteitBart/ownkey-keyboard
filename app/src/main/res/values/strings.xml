@@ -177,6 +177,12 @@
     <string name="settings__localization__language_pack_title" comment="Title of the language pack manager screen for managing installed and custom language packs">Manage installed language packs</string>
     <string name="settings__localization__language_pack_summary" comment="Summary of preference item for adding a new language pack">Experimental: manage extensions that add support for specific languages (shape-based Chinese input for now)</string>
     <string name="settings__localization__subtype_edit_title" comment="Title of subtype dialog when editing an existing subtype">Edit subtype</string>
+    <string name="settings__localization__subtype_secondary_locales" comment="Label for the list of additional languages in the subtype editor (multilingual typing)">Additional languages</string>
+    <string name="settings__localization__subtype_secondary_locales_summary" comment="Help text below the additional languages label in the subtype editor">Type in these languages too, without switching keyboards. Suggestions and autocorrect use all of them. Only languages with a built-in dictionary can be added.</string>
+    <string name="settings__localization__subtype_secondary_locales_none" comment="Shown in the subtype editor when no additional language is set">None</string>
+    <string name="settings__localization__subtype_secondary_locales_add" comment="First entry of the list that adds an additional language in the subtype editor">Add a language</string>
+    <string name="settings__localization__subtype_secondary_locales_remove" comment="Accessibility label of the button that removes an additional language, {language_name} is the language">Remove {language_name}</string>
+    <string name="settings__localization__subtype_summary_secondary_locales" comment="Shown after the layout name of a language that also types other languages, {language_names} is a comma separated list">Also {language_names}</string>
     <string name="settings__localization__subtype_locale" comment="Label for locale dropdown in subtype dialog">Primary language</string>
     <string name="settings__localization__subtype_popup_mapping" comment="Label for popup mapping dropdown in subtype screen">Popup mapping</string>
     <string name="settings__localization__subtype_characters_layout" comment="Label for layout dropdown in subtype dialog">Characters layout</string>
@@ -1474,6 +1480,22 @@
     <string name="devtools__show_input_state_overlay__summary" comment="Summary of Show input cache overlay in Devtools">Overlays the current input state for debugging</string>
     <string name="devtools__autocorrect_legacy_engine__label">Use legacy autocorrect engine</string>
     <string name="devtools__autocorrect_legacy_engine__summary">Score suggestions with the engine from before the autocorrect rebuild, for comparison</string>
+    <string name="devtools__autocorrect_scorer__label">Autocorrect and prediction scorer</string>
+    <string name="devtools__autocorrect_scorer__summary">Which engine scores suggestions, autocorrect and next-word predictions, for comparison</string>
+    <string name="devtools__autocorrect_real_word_rule__label">N-gram engine: correctly spelled words</string>
+    <string name="devtools__autocorrect_real_word_rule__summary">Which correctly spelled words autocorrect may replace on space or change once the next word is typed</string>
+    <string name="enum__real_word_rule__confusion_pairs" comment="Enum value label">Keep confusion pairs</string>
+    <string name="enum__real_word_rule__confusion_pairs__description" comment="Enum value description">A word that is often written for another one ("then" and "than", "word" and "wordt") is never swapped for it. Other words follow the engine. The default.</string>
+    <string name="enum__real_word_rule__dictionary_words" comment="Enum value label">Keep every dictionary word</string>
+    <string name="enum__real_word_rule__dictionary_words__description" comment="Enum value description">No word of the built-in word lists is replaced, and a correctly spelled word is never changed afterwards.</string>
+    <string name="enum__real_word_rule__none" comment="Enum value label">Engine only</string>
+    <string name="enum__real_word_rule__none__description" comment="Enum value description">The engine as tuned, also for confusion pairs. For comparison only.</string>
+    <string name="enum__latin_scorer_choice__ngram" comment="Enum value label">N-gram engine</string>
+    <string name="enum__latin_scorer_choice__ngram__description" comment="Enum value description">Trigram models for English and Dutch with a touch model. Other languages, and the first seconds while the models load, use the noisy-channel scorer.</string>
+    <string name="enum__latin_scorer_choice__noisy_channel" comment="Enum value label">Noisy channel</string>
+    <string name="enum__latin_scorer_choice__noisy_channel__description" comment="Enum value description">The scorer of the autocorrect rebuild, with word-pair models.</string>
+    <string name="enum__latin_scorer_choice__legacy" comment="Enum value label">Legacy</string>
+    <string name="enum__latin_scorer_choice__legacy__description" comment="Enum value description">The scorer from before the autocorrect rebuild.</string>
     <string name="devtools__show_spelling_overlay__label" comment="Label of Show spelling overlay in Devtools">Show spelling overlay</string>
     <string name="devtools__show_spelling_overlay__summary" comment="Summary of Show spelling overlay in Devtools">Overlays the current spelling results for debugging</string>
     <string name="devtools__show_inline_autofill_overlay__label">Show inline autofill overlay</string>

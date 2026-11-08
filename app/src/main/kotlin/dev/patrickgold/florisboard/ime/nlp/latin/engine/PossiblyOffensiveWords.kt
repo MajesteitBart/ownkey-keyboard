@@ -24,7 +24,24 @@ package dev.patrickgold.florisboard.ime.nlp.latin.engine
 internal object PossiblyOffensiveWords {
     const val AssetDir = "ime/dict/offensive"
 
+    /** Marks a stem: "fuck*" blocks every word that starts with "fuck". */
+    private const val StemMarker = '*'
+
+    /** One entry per line, lowercase; '#' starts a comment line; an entry ending in [StemMarker] is a stem. */
     fun parse(lines: Sequence<String>): Set<String> = LatinDictionaryCleanup.parseRemovalList(lines)
+
+    /**
+     * Whether the single word [normalizedWord] is on [blocked]: listed itself, or starting with a listed stem
+     * ("fuck*").
+     */
+    fun isBlocked(normalizedWord: String, blocked: Set<String>): Boolean {
+        if (blocked.isEmpty() || normalizedWord.isEmpty()) return false
+        if (normalizedWord in blocked) return true
+        for (end in 1..normalizedWord.length) {
+            if (normalizedWord.substring(0, end) + StemMarker in blocked) return true
+        }
+        return false
+    }
 
     /**
      * [candidates] without the ones that contain a word in [blocked], except a candidate that is the [typed] word
@@ -35,7 +52,7 @@ internal object PossiblyOffensiveWords {
         val typedWord = LatinText.normalizeDictionaryWord(typed)
         return candidates.filter { candidate ->
             val text = LatinText.normalizeDictionaryWord(textOf(candidate).toString())
-            text == typedWord || text.split(' ').none { it in blocked }
+            text == typedWord || text.split(' ').none { isBlocked(it, blocked) }
         }
     }
 }

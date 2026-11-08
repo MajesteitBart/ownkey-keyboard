@@ -207,6 +207,71 @@ class AutocorrectUndoTrackerTest : FunSpec({
         tracker.originalTokenForCandidate(WordSuggestionCandidate(text = "tea", isEligibleForAutoCommit = true)).shouldBeNull()
     }
 
+    test("a revision of the previous word is undone first, keeping the cursor at the end") {
+        val tracker = AutocorrectUndoTracker()
+        // "ok gaa": "gaa" was autocorrected to "ga", then "ok" was revised to "ik".
+        val autocorrected = WordSuggestionCandidate(text = "ga", isEligibleForAutoCommit = true)
+        tracker.trackAutoCorrect(originalToken = "gaa", correctedCandidate = autocorrected)
+        val revised = WordSuggestionCandidate(text = "ik", isEligibleForAutoCommit = true)
+        tracker.trackRevision(originalToken = "ok", revisedCandidate = revised, suffix = " ga ", cursor = 10)
+
+        val replacement = tracker.findBackspaceRestoreReplacement(contentAtCursor("Dus ik ga ")).shouldNotBeNull()
+        replacement shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 4, end = 6),
+            originalToken = "ok",
+            candidate = revised,
+            cursorAfter = 10,
+        )
+        replacement.isRevision shouldBe true
+        tracker.findUndoReplacement(contentAtCursor("Dus ik ga ")) shouldBe replacement
+
+        // Once the revision is undone, the next backspace restores the autocorrection.
+        tracker.clearRevision()
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("Dus ok ga ")) shouldBe AutocorrectUndoReplacement(
+            range = EditorRange(start = 7, end = 9),
+            originalToken = "gaa",
+            candidate = autocorrected,
+        )
+    }
+
+    test("a revision is only undone while the text still ends with it") {
+        val tracker = AutocorrectUndoTracker()
+        val revised = WordSuggestionCandidate(text = "ik", isEligibleForAutoCommit = true)
+        tracker.trackRevision(originalToken = "ok", revisedCandidate = revised, suffix = " ga ", cursor = 6)
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("ik ga n")).shouldBeNull()
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("dik ga ")).shouldBeNull()
+        tracker.findBackspaceRestoreReplacement(
+            EditorContent(
+                text = "ik ga ",
+                offset = 0,
+                localSelection = EditorRange(0, 2),
+                localComposing = EditorRange.Unspecified,
+                localCurrentWord = EditorRange.Unspecified,
+            ),
+        ).shouldBeNull()
+        // A longer original moves the cursor back by the difference.
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("ik ga ")).shouldNotBeNull().cursorAfter shouldBe 6
+        tracker.trackRevision(originalToken = "okee", revisedCandidate = revised, suffix = " ga ", cursor = 6)
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("ik ga ")).shouldNotBeNull().cursorAfter shouldBe 8
+        // Clearing everything forgets the revision too.
+        tracker.clearPending()
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("ik ga ")).shouldBeNull()
+        // Identical or blank tokens are not tracked.
+        tracker.trackRevision(originalToken = "ik", revisedCandidate = revised, suffix = " ga ", cursor = 6)
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("ik ga ")).shouldBeNull()
+    }
+
+    test("a revision is only undone with the cursor where the revision left it") {
+        val tracker = AutocorrectUndoTracker()
+        val revised = WordSuggestionCandidate(text = "ik", isEligibleForAutoCommit = true)
+        tracker.trackRevision(originalToken = "ok", revisedCandidate = revised, suffix = " ga ", cursor = 6)
+        // The same text before the cursor, but the cursor is elsewhere: text was inserted before it, or the user
+        // moved the cursor to an identical phrase. Backspace deletes there.
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("xx ik ga ")).shouldBeNull()
+        tracker.findUndoReplacement(contentAtCursor("xx ik ga ")).shouldBeNull()
+        tracker.findBackspaceRestoreReplacement(contentAtCursor("ik ga ")).shouldNotBeNull()
+    }
+
     test("ignores invalid autocorrect history with blank or identical tokens") {
         val tracker = AutocorrectUndoTracker()
         tracker.trackAutoCorrect(

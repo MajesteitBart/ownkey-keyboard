@@ -1,0 +1,5 @@
+# Large downloads, prepared text, counts and scratch models
+work/
+.venv/
+__pycache__/
+*.pyc

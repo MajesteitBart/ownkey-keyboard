@@ -230,6 +230,8 @@ data class SubtypeNlpProviderMap(
  * Data class which represents a predefined set of language and preferred layout.
  *
  * @property locale The locale of this subtype. Beware its different name in json: 'languageTag'.
+ * @property secondaryLocales Additional languages typed together with [locale] without switching subtypes
+ *  (multilingual typing). Optional in json, defaults to an empty list so existing presets stay valid.
  * @property currencySet The currency set name of this subtype.
  * @property preferred The preferred layout map for this subtype's locale.
  */
@@ -238,6 +240,7 @@ data class SubtypePreset(
     @Serializable(with = FlorisLocale.Serializer::class)
     @SerialName("languageTag")
     val locale: FlorisLocale,
+    val secondaryLocales: List<FlorisLocale> = emptyList(),
     val nlpProviders: SubtypeNlpProviderMap = SubtypeNlpProviderMap(),
     val composer: ExtensionComponentName,
     val currencySet: ExtensionComponentName,
@@ -249,7 +252,7 @@ data class SubtypePreset(
         return Subtype(
             id = -1,
             primaryLocale = locale,
-            secondaryLocales = emptyList(),
+            secondaryLocales = SubtypeSecondaryLocales.normalize(locale, secondaryLocales),
             nlpProviders = nlpProviders,
             composer = composer,
             currencySet = currencySet,

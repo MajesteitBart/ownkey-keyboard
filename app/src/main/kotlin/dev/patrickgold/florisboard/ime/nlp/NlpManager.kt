@@ -37,8 +37,10 @@ import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.florisboard.subtypeManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +49,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.lib.kotlin.collectLatestIn
 import java.util.concurrent.atomic.AtomicBoolean
@@ -84,6 +88,8 @@ class NlpManager(context: Context) {
     private val suggestionSequence = AtomicLong(0L)
     // The word whose autocorrection the user just undid, while the provider is being told.
     private val revertedAutocorrect = AtomicReference<RevertedAutocorrect?>(null)
+    // The running right-context revision request, if any; a newer request or any edit cancels it.
+    private val pendingWordRevision = AtomicReference<Job?>(null)
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -403,6 +409,42 @@ class NlpManager(context: Context) {
         // Never log the typed word itself.
         flogDebug { "Autocorrect decision source=${selection.source} applies=${selection.candidate != null}" }
         return selection.candidate
+    }
+
+    /**
+     * Asks the subtype's suggestion provider ([WordRevisionProvider]) whether the previous word of [request] should
+     * change now that the next word is committed. Runs in the background; a result that takes longer than
+     * [WordRevisionTracker.ResultBudgetMillis] is dropped, and a newer request cancels an older one. [onRevised] runs on
+     * the main thread and must check that the editor still matches the request ([WordRevisionRequest.matches]) before
+     * applying it. Nothing is stored or logged.
+     */
+    fun requestWordRevision(subtype: Subtype, request: WordRevisionRequest, onRevised: (SuggestionCandidate) -> Unit) {
+        if (!prefs.suggestion.enabled.get()) {
+            cancelWordRevision()
+            return
+        }
+        val allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get()
+        val job = scope.launch {
+            val provider = getSuggestionProvider(subtype) as? WordRevisionProvider ?: return@launch
+            val revision = try {
+                withTimeoutOrNull(WordRevisionTracker.ResultBudgetMillis) {
+                    provider.revisePreviousWord(subtype, request, allowPossiblyOffensive)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Only the exception type: the request holds the user's words.
+                flogError { "Word revision failed: ${e::class.java.simpleName}" }
+                null
+            } ?: return@launch
+            withContext(Dispatchers.Main) { onRevised(revision) }
+        }
+        pendingWordRevision.getAndSet(job)?.cancel()
+    }
+
+    /** Cancels a running [requestWordRevision], for example when the user edits the text again. */
+    fun cancelWordRevision() {
+        pendingWordRevision.getAndSet(null)?.cancel()
     }
 
     fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {

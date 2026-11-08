@@ -26,10 +26,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,6 +73,7 @@ import dev.patrickgold.florisboard.ime.core.SubtypeJsonConfig
 import dev.patrickgold.florisboard.ime.core.SubtypeLayoutMap
 import dev.patrickgold.florisboard.ime.core.SubtypeNlpProviderMap
 import dev.patrickgold.florisboard.ime.core.SubtypePreset
+import dev.patrickgold.florisboard.ime.core.SubtypeSecondaryLocales
 import dev.patrickgold.florisboard.ime.keyboard.LayoutArrangementComponent
 import dev.patrickgold.florisboard.ime.keyboard.LayoutType
 import dev.patrickgold.florisboard.ime.keyboard.extCorePopupMapping
@@ -167,7 +170,13 @@ private class SubtypeEditorState(init: Subtype?) {
         check(layoutMap.value.numericRow != SelectComponentName)
         check(layoutMap.value.phone != SelectComponentName)
         check(layoutMap.value.phone2 != SelectComponentName)
-        snapshot()
+        // Additional languages only exist for the Latin provider; other providers ignore them.
+        val savedSecondaryLocales = if (SubtypeSecondaryLocales.appliesTo(nlpProviders.value.suggestion)) {
+            SubtypeSecondaryLocales.normalize(primaryLocale.value, secondaryLocales.value)
+        } else {
+            emptyList()
+        }
+        snapshot().copy(secondaryLocales = savedSecondaryLocales)
     }
 }
 
@@ -240,8 +249,12 @@ private fun AddLanguageScreen() = FlorisScreen {
                 OwnkeyRow(
                     modifier = Modifier.testTag("$tagPrefix-$index"),
                     title = name,
-                    summary = layouts[LayoutType.CHARACTERS]?.get(preset.preferred.characters)?.label
-                        ?: preset.preferred.characters.componentId,
+                    summary = withSecondaryLocales(
+                        layouts[LayoutType.CHARACTERS]?.get(preset.preferred.characters)?.label
+                            ?: preset.preferred.characters.componentId,
+                        preset.secondaryLocales,
+                        displayLanguageNamesIn,
+                    ),
                     value = if (isAdded) addedLabel else null,
                     onClick = if (isAdded) {
                         null
@@ -354,6 +367,7 @@ private fun LanguageEditorScreen(id: Long?) = FlorisScreen {
         SubtypeEditorState(id?.let { subtypeManager.getSubtypeById(it) })
     }
     var primaryLocale by subtypeEditor.primaryLocale
+    var secondaryLocales by subtypeEditor.secondaryLocales
     var composer by subtypeEditor.composer
     var currencySet by subtypeEditor.currencySet
     var popupMapping by subtypeEditor.popupMapping
@@ -380,6 +394,12 @@ private fun LanguageEditorScreen(id: Long?) = FlorisScreen {
                 unset = SelectComponentName,
             )
             subtypeEditor.applySubtype(filled)
+            // A new language starts with the preset's additional languages ("Dutch" also types English).
+            secondaryLocales = if (id == null && secondaryLocales.isEmpty() && preset != null) {
+                SubtypeSecondaryLocales.normalize(locale, preset.secondaryLocales)
+            } else {
+                SubtypeSecondaryLocales.normalize(locale, secondaryLocales)
+            }
         }
         selectLocaleScreenResult?.observe(lifecycleOwner, observer)
         onDispose { selectLocaleScreenResult?.removeObserver(observer) }
@@ -467,6 +487,17 @@ private fun LanguageEditorScreen(id: Long?) = FlorisScreen {
                 )
             }
             LayoutField(stringRes(R.string.settings__languages__layout), LayoutType.CHARACTERS)
+            if (primaryLocale != SelectLocale && SubtypeSecondaryLocales.appliesTo(nlpProviders.suggestion)) {
+                SubtypeProperty(stringRes(R.string.settings__localization__subtype_secondary_locales)) {
+                    SecondaryLocalesField(
+                        primaryLocale = primaryLocale,
+                        secondaryLocales = secondaryLocales,
+                        displayLanguageNamesIn = displayLanguageNamesIn,
+                        configuredLocales = subtypeManager.subtypes.map { it.primaryLocale },
+                        onChange = { secondaryLocales = it },
+                    )
+                }
+            }
         }
         Spacer(modifier = Modifier.size(OwnkeyTokens.GroupGap))
 
@@ -594,6 +625,80 @@ private fun LanguageEditorScreen(id: Long?) = FlorisScreen {
                 navController.popBackStack()
             },
         )
+    }
+}
+
+/**
+ * The additional languages of a Latin subtype: one row per language with a remove button, then a list to add one of
+ * the other languages with a dictionary. Shows what is saved: languages without a dictionary or that repeat the
+ * primary language are left out.
+ */
+@Composable
+private fun SecondaryLocalesField(
+    primaryLocale: FlorisLocale,
+    secondaryLocales: List<FlorisLocale>,
+    displayLanguageNamesIn: DisplayLanguageNamesIn,
+    configuredLocales: List<FlorisLocale>,
+    onChange: (List<FlorisLocale>) -> Unit,
+) {
+    val configuration = LocalConfiguration.current
+    val systemLocales = remember(configuration) {
+        val localeList = configuration.locales
+        List(localeList.size()) { FlorisLocale.from(localeList.get(it)) }
+    }
+    val shown = SubtypeSecondaryLocales.normalize(primaryLocale, secondaryLocales)
+    val suggestions = SubtypeSecondaryLocales.suggestions(
+        primary = primaryLocale,
+        current = shown,
+        systemLocales = systemLocales,
+        configuredLocales = configuredLocales,
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            text = stringRes(R.string.settings__localization__subtype_secondary_locales_summary),
+            style = MaterialTheme.typography.bodyMedium,
+            color = OwnkeyTokens.Secondary,
+        )
+        OwnkeyGroup {
+            if (shown.isEmpty()) {
+                OwnkeyRow(title = stringRes(R.string.settings__localization__subtype_secondary_locales_none))
+            }
+            shown.forEachIndexed { index, locale ->
+                val name = locale.nameFor(displayLanguageNamesIn)
+                OwnkeyRow(
+                    modifier = Modifier.testTag("subtype-secondary-$index"),
+                    title = name,
+                    trailing = {
+                        IconButton(onClick = { onChange(SubtypeSecondaryLocales.remove(shown, locale)) }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringRes(
+                                    R.string.settings__localization__subtype_secondary_locales_remove,
+                                    "language_name" to name,
+                                ),
+                                tint = OwnkeyTokens.Secondary,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+        if (suggestions.isNotEmpty()) {
+            val addLabel = stringRes(R.string.settings__localization__subtype_secondary_locales_add)
+            val options = listOf(addLabel) + suggestions.map { it.nameFor(displayLanguageNamesIn) }
+            val expanded = remember { mutableStateOf(false) }
+            JetPrefDropdown(
+                modifier = Modifier.testTag("subtype-secondary-add"),
+                options = options,
+                expanded = expanded,
+                selectedOptionIndex = 0,
+                onSelectOption = { index ->
+                    if (index > 0) onChange(SubtypeSecondaryLocales.add(primaryLocale, shown, suggestions[index - 1]))
+                },
+                appearance = OwnkeyTextFieldDefaults.jetPrefAppearance(),
+            )
+        }
     }
 }
 

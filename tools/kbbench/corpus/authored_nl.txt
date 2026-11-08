@@ -1,0 +1,202 @@
+# Authored Dutch (Netherlands) sentences for the kbbench corpus. Format: split<TAB>text
+# Never use these sentences to train or tune a language model or dictionary (see README.md).
+dev	Hoi! Ben je vanavond thuis?
+dev	Ik sta in de file, ben er over een kwartiertje.
+dev	Kun je even brood halen bij de bakker?
+dev	Zullen we zaterdag gaan fietsen als het droog blijft?
+dev	Ik heb het contract doorgelezen, ziet er goed uit.
+dev	Wat eten we vanavond? Ik heb echt geen zin om te koken.
+dev	Mama vraagt of jullie zondag komen lunchen.
+dev	Vergeet je niet om de kliko buiten te zetten?
+dev	Lekker gesport vanochtend, voel me helemaal fit.
+dev	Sorry, ik had mijn telefoon op stil staan.
+dev	Kunnen we de afspraak verzetten naar volgende week?
+dev	De trein naar Utrecht rijdt weer niet, ik neem de bus.
+dev	Gefeliciteerd met je verjaardag! Maak er een mooie dag van.
+dev	Heb jij de sleutels van de schuur gezien?
+dev	Ik ben er morgen niet, de kinderen hebben studiedag.
+dev	Wil je mij de offerte nog even mailen?
+dev	Het was echt super gezellig gisteravond, dank je wel!
+dev	Ik voel me niet zo lekker, ik blijf vandaag thuis.
+dev	Daan heeft zijn zwemdiploma gehaald!
+dev	Kun jij de kinderen om drie uur ophalen van school?
+dev	We moeten nog boodschappen doen voor het weekend.
+dev	Wanneer heb jij tijd om de planning door te nemen?
+dev	Ik heb net een nieuwe laptop besteld bij Coolblue, eindelijk.
+dev	Is de vergadering nou om tien of om elf uur?
+dev	Neem jij de wijn mee? Dan zorg ik voor het toetje.
+dev	Ik ben zo moe, ik ga wss vroeg naar bed.
+dev	Heeft iemand zin om vrijdag een biertje te doen in de Jordaan?
+dev	De wasmachine is weer kapot, ik word er gek van.
+dev	Kun je me laten weten of je meegaat naar het verjaardagsfeestje?
+dev	We hebben een huisje geboekt in Zeeland voor de zomer.
+dev	Hoe laat begint de wedstrijd van Ajax?
+dev	Ik zit in de trein, bel je straks terug.
+dev	Mag ik je oplader even lenen? Die van mij doet het niet.
+dev	De klant is akkoord, we kunnen volgende week beginnen.
+dev	Wat een rotweer vandaag, ik blijf gwn lekker binnen.
+dev	Haal jij ff melk en eieren bij de Appie?
+dev	Ik heb de foto's van de vakantie in de gedeelde map gezet.
+dev	Zullen we volgende maand een keer uit eten gaan?
+dev	Opa ligt in het ziekenhuis, maar het gaat gelukkig redelijk.
+dev	Graag ontvang ik de factuur voor het einde van de maand.
+dev	Kun je me dit weekend helpen met verhuizen?
+dev	Ik snap echt niet waarom de app steeds crasht.
+dev	Heb je zin om mee te gaan naar de markt?
+dev	De tandarts heeft gebeld, de afspraak gaat niet door.
+dev	Ik ben er bijna, nog even een parkeerplek zoeken.
+dev	Lief van je dat je aan me dacht.
+dev	Wie moet er vanavond koken?
+dev	Femke en ik gaan zondag naar het strand in Zandvoort.
+dev	Ik heb de presentatie aangepast op basis van jouw opmerkingen.
+dev	Doe je voorzichtig op de weg? Het is spiegelglad.
+dev	Ik heb geen idee waar ik mijn pasje heb gelaten.
+dev	Kom je nog langs voordat je op vakantie gaat?
+dev	De kinderen willen vanavond weer frietjes, wat denk jij?
+dev	Bedankt voor je snelle reactie, dan zie ik je dinsdag.
+dev	Kun je de kat eten geven als wij weg zijn?
+dev	Ik moet nog een cadeautje kopen voor juf Ilse.
+dev	Hebben we nog genoeg koffie in huis?
+dev	Volgens mij heb ik griep, ik heb overal pijn.
+dev	Heb jij nog ideeën voor het uitje met het team?
+dev	We komen iets later, de kleine is net in slaap gevallen.
+dev	Ik heb Joost gevraagd of hij ons kan helpen met de website.
+dev	Lukt het jou om het verslag voor morgen af te ronden?
+dev	Zet je de verwarming iets hoger? Ik heb het koud.
+dev	Dat is echt goed nieuws joh, ik ben blij voor je!
+dev	Waar zullen we afspreken, bij het station of in de stad?
+dev	Ik heb vandaag drie uur achter elkaar vergaderd.
+dev	Het restaurant was prima, maar wel erg duur.
+dev	Kun jij de vaatwasser uitruimen?
+dev	Mijn vlucht vanaf Schiphol heeft twee uur vertraging.
+dev	Je hebt helemaal gelijk, ik had dat beter moeten checken.
+dev	Zullen we de kerstboom dit weekend kopen?
+dev	Ik ga even boodschappen doen, moet ik nog iets meenemen?
+dev	Wat lief dat je bloemen hebt gestuurd!
+dev	Mijn broertje is eindelijk geslaagd voor zijn rijexamen.
+dev	We moeten echt eens nadenken over een nieuwe auto.
+dev	Wil jij morgen de hond uitlaten? Ik moet vroeg weg.
+dev	Ik heb betaald, ik stuur jullie zo een tikkie.
+dev	Het concert in Ahoy was echt geweldig, wat een sfeer.
+dev	Denk je eraan dat oma morgen jarig is?
+dev	Ik werk morgen thuis, dus bel me gerust op mijn privénummer.
+dev	De nieuwe collega lijkt me heel aardig.
+dev	Wanneer gaan we weer eens samen hardlopen?
+dev	Ik heb de afwas al gedaan, jij mag de was opvouwen.
+dev	Hoe ging je sollicitatiegesprek vanochtend?
+dev	Er staat een pakketje voor je bij de buren.
+dev	Kun je de deur op slot doen als je weggaat?
+dev	Ik vind het zo jammer dat je er niet bij kunt zijn.
+dev	We gaan in mei met de hele familie naar Ameland.
+dev	Vind je het goed als ik vandaag iets eerder wegga?
+dev	Mijn telefoon is bijna leeg, ik app je later.
+dev	Heb je het nieuws al gehoord over Sanne?
+dev	Ik heb een tafel gereserveerd om half acht.
+dev	Doe maar rustig aan hoor, we hebben geen haast.
+dev	De server lag er vannacht uit, maar alles draait weer.
+dev	Gaan jullie nog naar de bruiloft van Lotte?
+dev	Ik heb zo'n honger, wat zullen we bestellen?
+dev	Morgen moet ik echt vroeg op, dus ik hou het kort.
+dev	Kan iemand mij uitleggen hoe dit formulier werkt?
+dev	Ik ben trots op je, je hebt het echt goed gedaan.
+dev	Welterusten lieverd, slaap lekker en tot morgen!
+test	Hé, hoe is het met je? Lang niks gehoord!
+test	Ik kom wat later, de vergadering loopt uit.
+test	Kun jij morgen de kinderen naar school brengen?
+test	Zullen we zondag bij mijn ouders gaan eten?
+test	De offerte is verstuurd, nu maar hopen dat ze akkoord gaan.
+test	Ik heb echt zin in het weekend.
+test	Waar heb je die leuke jas gekocht?
+test	Kun je even kijken of de achterdeur dicht is?
+test	Ik heb vandaag tien kilometer hardgelopen, nieuw record!
+test	Het spijt me, ik was het helemaal vergeten.
+test	Heeft iemand een goede loodgieter in de buurt?
+test	We hebben besloten om in de zomer naar Italië te gaan.
+test	De dokter zegt dat ik een paar dagen rust moet nemen.
+test	Wil je mij het adres van het restaurant sturen?
+test	Ik sta bij de ingang, waar zijn jullie?
+test	Kun je vragen of de huisbaas de lekkage komt bekijken?
+test	Morgen hebben we een belangrijke presentatie bij de klant in Eindhoven.
+test	Neem een jas mee, het gaat vanmiddag regenen.
+test	Heb je nog iets nodig van de Jumbo?
+test	De kleine heeft koorts, ik blijf vandaag bij hem thuis.
+test	Ik vond het een hele fijne avond, dank jullie wel.
+test	Wat zullen we oma geven voor haar verjaardag?
+test	Mijn fiets is gestolen bij het station, balen!
+test	Kunnen we het gesprek een uurtje opschuiven?
+test	De nieuwe versie van de app staat online.
+test	Doe de groeten aan je moeder!
+test	Ik heb kaartjes gekocht voor de film in Pathé op vrijdagavond.
+test	Wie wil er mee naar de verjaardag van tante Ria?
+test	Ik zoek nog iemand die mijn plantjes water kan geven.
+test	Gaan we met één auto of nemen we er twee?
+test	Het eten was heerlijk, de kok verdient een compliment.
+test	Ik vind dat we die beslissing samen moeten nemen.
+test	Bel me even als je klaar bent met je afspraak.
+test	Ik heb de factuur van vorige maand nog niet ontvangen.
+test	Bram heeft zijn arm gebroken tijdens het voetballen.
+test	Hoe laat moet ik morgen bij jullie zijn?
+test	Het wordt morgen dertig graden, lekker naar het strand!
+test	Wat een ellende weer met de NS vandaag.
+test	Ik ben om zes uur klaar, zullen we daarna iets drinken in het café?
+test	Heeft de aannemer al iets van zich laten horen?
+test	Kun je me de gegevens van je accountant sturen?
+test	We moeten de bank nog bellen over de hypotheek.
+test	Ik heb een nieuwe baan bij Philips! Ik begin in januari.
+test	Zou je het fijn vinden als ik even langskom?
+test	De kinderen spelen buiten, het is eindelijk mooi weer.
+test	Ik heb het rapport doorgestuurd naar de directie.
+test	Zullen we een keer gaan wandelen op de Veluwe?
+test	Wat ben je laat, is er iets gebeurd?
+test	Ik moet mijn paspoort nog verlengen voor de reis.
+test	Kun jij de vergadering van vanmiddag voorzitten?
+test	Ik heb zo'n spierpijn van de training gisteren.
+test	Mag ik vrijdag een dagje vrij nemen?
+test	Ze hebben de wegwerkzaamheden weer verlengd, echt belachelijk.
+test	Joris komt morgen langs om de kast op te hangen.
+test	Ik weet niet zo goed wat ik moet doen.
+test	Kunnen jullie zaterdag op de kinderen passen?
+test	Het pakketje komt pas volgende week, helaas.
+test	Wat doen we met de oude bank? Weggooien of verkopen?
+test	Ik ben net terug van de huisarts, niks ernstigs.
+test	Laten we het even rustig aan doen deze week.
+test	Kan iemand mij zaterdag ophalen van station Amersfoort?
+test	Ik heb de eerste versie van het plan af, wil je meelezen?
+test	Gezellig dat jullie er waren, tot snel!
+test	De jongens moeten om acht uur bij het voetbalveld zijn.
+test	Heb je de mail van de school gelezen?
+test	Ik heb last van mijn rug, ik sla de training over.
+test	Volgens mij hebben we nog pasta en tomatensaus.
+test	We zijn net aangekomen in Gent, wat een mooie stad!
+test	Idd, dat dacht ik ook al toen ik het las.
+test	Ik heb het druk vandaag, kan ik je morgen bellen?
+test	Het spijt me dat ik zo kortaf was gisteren.
+test	Zal ik vast een tafel reserveren voor zaterdag?
+test	Hoe gaat het met je nieuwe huis?
+test	De bus ging net voor mijn neus weg.
+test	We hebben onze eerste betalende klant binnen!
+test	Ik ben benieuwd wat je van het voorstel vindt.
+test	Wil je de foto's van de bruiloft naar me doorsturen?
+test	Mijn moeder heeft een nieuwe telefoon en snapt er niks van haha.
+test	Even een herinnering: morgen is de ouderavond.
+test	Ik ga zo hardlopen in het Vondelpark, ga je mee?
+test	Wat een mooi cadeau, dank je wel!
+test	De verwarming doet het niet, kun je de monteur bellen?
+test	Ik ben bang dat we het niet op tijd af krijgen.
+test	Heb jij nog contact met Maarten van de middelbare school?
+test	Vanavond eten we bij mijn schoonouders in Haarlem.
+test	Kun je de lampen in de woonkamer uitdoen?
+test	Ik vind het heel spannend, morgen is mijn eerste werkdag.
+test	Zullen we de rekening delen of trakteer jij?
+test	Het staat muurvast op de ring, ik ben er pas om negen uur.
+test	Ik heb de lunch geregeld voor de teamdag.
+test	Kom je nog naar de borrel na het werk?
+test	Ik heb een afspraak bij de kapper om vier uur.
+test	Wil jij de verzekering bellen over de schade aan de auto?
+test	Wat fijn dat het weer beter met je gaat.
+test	Ik heb geen bereik hier, ik app je zodra ik thuis ben.
+test	De boodschappen staan in de gang, wil jij ze opruimen?
+test	Ik heb nieuwe hardloopschoenen gekocht, ze lopen echt heerlijk.
+test	Pas op met die hond, hij bijt soms.
+test	Zullen we de vergadering naar de ochtend verplaatsen?
+test	Slaap lekker, ik hou van je.

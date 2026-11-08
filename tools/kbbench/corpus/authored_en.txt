@@ -1,0 +1,202 @@
+# Authored English sentences for the kbbench corpus. Format: split<TAB>text
+# Never use these sentences to train or tune a language model or dictionary (see README.md).
+dev	Hey, are you still up for dinner tonight?
+dev	Running about ten minutes late, sorry! Traffic is terrible.
+dev	Can you send me the slides before the call tomorrow?
+dev	I just landed in Berlin, heading to the hotel now.
+dev	Thanks for the quick reply, that works for me.
+dev	Don't forget to bring your charger, mine is broken.
+dev	We should grab coffee with Daniel next week if you have time.
+dev	Just a heads up, the meeting moved to Thursday afternoon.
+dev	I'm so tired today, the baby kept us up all night.
+dev	Did you see the game last night? Unbelievable ending.
+dev	Could you take a look at the contract and let me know what you think?
+dev	Buy milk, eggs, bread and something for lunch.
+dev	Happy birthday Sarah! Hope you have an amazing day.
+dev	The client loved the demo, they want a proposal by Friday.
+dev	Is it okay if I join the call a bit later?
+dev	My flight got cancelled so I'm stuck in London for another night.
+dev	Let me know when you're home and I'll come by.
+dev	I think we need to rethink the pricing for the enterprise plan.
+dev	Can't make it to the gym today, my back is killing me.
+dev	That restaurant was incredible, we have to go back.
+dev	Please confirm the invoice details so we can process the payment.
+dev	Where did you park the car?
+dev	I'll pick up the kids from school today.
+dev	Have you tried restarting the router? The internet keeps dropping here.
+dev	Great work on the launch everyone, really proud of this team.
+dev	Do we need anything from the supermarket?
+dev	Sorry I missed your call, I was in a workshop all morning.
+dev	The new update broke the login flow on Android.
+dev	Shall we book the tickets for Lisbon this weekend?
+dev	I feel much better today, the fever is finally gone.
+dev	Who is picking up Emma from her swimming lesson?
+dev	Just pushed the fix, can you test it on your phone?
+dev	It was really nice meeting you at the conference in Paris yesterday.
+dev	Remind me to call the dentist on Monday.
+dev	We're almost there, just looking for a parking spot.
+dev	I honestly don't know what to do about this anymore.
+dev	Could we move our one on one to later in the week?
+dev	The weather here is amazing, wish you were here.
+dev	My phone is almost dead, I'll text you later.
+dev	Thanks again for dinner, the kids had a great time.
+dev	Let's keep it simple and ship the first version next month.
+dev	Is the office open on Saturday or should I work from home?
+dev	Can you recommend a good accountant for a small startup?
+dev	I booked a table for four at eight thirty.
+dev	Please don't share this document outside the team yet.
+dev	I'm thinking about selling my old bike, are you interested?
+dev	The train is delayed again, I'll be home around seven.
+dev	How was your first day at the new job?
+dev	We need to hire another developer before the summer.
+dev	Can you water the plants while we're away?
+dev	I'm really sorry about your grandmother, thinking of you.
+dev	Ordered the new headphones, they should arrive tomorrow.
+dev	Quick question, do you still have the password for the shared account?
+dev	Mark says the budget for the project has been approved.
+dev	Let me check my calendar and get back to you.
+dev	The kids want pancakes for breakfast again.
+dev	Do you know a good place for brunch near Central Station?
+dev	I finally finished the report, sending it over now.
+dev	We lost the match but everyone played really well.
+dev	Haha can you please stop sending me memes during meetings?
+dev	I need a holiday, seriously.
+dev	What time does the Coldplay concert start on Friday?
+dev	Our investor update is going out at the end of the month.
+dev	Hope you feel better soon, let me know if you need anything.
+dev	I left my keys at your place, can I come get them?
+dev	The doctor said it's nothing serious, just a bad cold.
+dev	Could you forward me the email from the lawyer?
+dev	We're out of coffee, can you grab some on the way home?
+dev	Traffic on the highway is crazy, take the other route.
+dev	I can't believe how fast this year went by.
+dev	Our servers were down for an hour this morning, all good now.
+dev	Do you want to split a taxi to Schiphol?
+dev	Tom is joining us for dinner, is that alright?
+dev	Please add your availability to the shared calendar.
+dev	I really enjoyed our conversation, let's stay in touch.
+dev	My sister is visiting from Canada next week.
+dev	Just finished a long run along the river, feeling great.
+dev	Can we talk tonight? It's kind of important.
+dev	The battery on my laptop barely lasts two hours now.
+dev	I'll be offline for the rest of the day.
+dev	Did anyone order the cake for the party?
+dev	That's a great idea, let's try it next sprint.
+dev	Can you check whether the package was delivered?
+dev	Good morning! Did you sleep well?
+dev	I'm stuck in a meeting, will call you right after.
+dev	Let's meet at the entrance of the Rijksmuseum at noon.
+dev	The new designer starts on Monday, please make her feel welcome.
+dev	Is there any chance we can get a discount for a yearly plan?
+dev	I'm making pasta tonight, want to join?
+dev	We should really clean out the garage this weekend.
+dev	Lisa asked if we could babysit on Saturday night.
+dev	I don't think this approach will scale, to be honest.
+dev	Thanks for your patience, we're working on a fix.
+dev	Can you send me your address again? I lost it.
+dev	Omg congrats on the new house, it looks amazing!
+dev	I'll try to finish the draft tonight, no promises though.
+dev	Our dog ate my sandwich while I was on the phone.
+dev	Please review the pull request when you get a chance.
+dev	It's raining so hard, I'm completely soaked.
+dev	Should I bring a bottle of wine or dessert?
+test	Hi! Are we still on for lunch tomorrow?
+test	Stuck in traffic, start without me please.
+test	I just sent you the updated proposal, let me know if anything is missing.
+test	Can you pick me up from the station around six?
+test	The kids are finally asleep, time for a glass of wine.
+test	Our demo with Rabobank went really well today.
+test	Would you mind sharing the recording of the workshop?
+test	I can't find my passport anywhere, have you seen it?
+test	Let's postpone the board meeting until the numbers are final.
+test	Please call me when you get this message.
+test	I'm heading to the gym, see you in an hour.
+test	Thanks so much for the flowers, they're beautiful.
+test	We need to decide on the venue by the end of the week.
+test	The app crashes every time I open the camera.
+test	Did you remember to cancel the gym membership?
+test	I'm in Amsterdam next Tuesday, are you around?
+test	What do you want for your birthday this year?
+test	Could you please resend the invoice with our new address?
+test	The coffee machine in the office is broken again.
+test	I'm not feeling well, I'll stay home today.
+test	That movie was way too long but the ending was worth it.
+test	Can we do a quick call before you leave?
+test	My parents are coming over for dinner on Sunday.
+test	I've attached the signed agreement for your records.
+test	Who's driving to the Ajax match on Saturday?
+test	We should invite James and his wife next time.
+test	I love this song, it reminds me of our road trip.
+test	Remember to take your vitamins before breakfast.
+test	The hotel upgraded us to a room with an ocean view.
+test	Just checking in to see how you're doing.
+test	I'm so proud of you, you totally deserve this.
+test	Can you ask the landlord about the broken heater?
+test	Our new hire from Madrid is doing a great job.
+test	The pharmacy closes at six so I need to hurry.
+test	Gonna be honest, I didn't understand half of that meeting lol.
+test	We're planning a barbecue in the garden, you should come.
+test	Do you have a spare umbrella I could borrow?
+test	Your package is at the neighbors, they signed for it.
+test	I really need to stop drinking coffee after lunch.
+test	Can you explain how the new billing system works?
+test	The school called, Noah has a fever and needs to be picked up.
+test	Sorry for the late reply, it's been a crazy week.
+test	Btw I'm thinking of switching phones, any suggestions?
+test	Just tell me if there is anything else you need from us.
+test	We missed the last train so we're taking a taxi.
+test	Is the meeting room on the second floor free this afternoon?
+test	Grandma wants to know if you're coming for Christmas.
+test	The salmon was a bit dry but the dessert was perfect.
+test	I'll review your notes tonight and send feedback tomorrow.
+test	Please keep the noise down, the baby is sleeping.
+test	We're hiring! Know anyone who would be a good fit?
+test	I just realized I left the oven on, can you check?
+test	Thank you for the warm welcome, everyone.
+test	My knee still hurts after the football game on Sunday.
+test	Shall I order pizza or do you want to cook?
+test	They finally fixed the bug that kept logging people out.
+test	Can you believe it's already November?
+test	I'm going to bed early tonight, completely exhausted.
+test	Do you want me to book the restaurant or will you?
+test	The support team is getting a lot of tickets about the new layout.
+test	Happy anniversary, my love!
+test	Your presentation was really clear, nice job.
+test	Could we get a quote for the full installation?
+test	The ferry to Texel leaves every hour.
+test	I've been trying to reach you all day, is everything okay?
+test	We need more chairs for the party, can you bring some?
+test	Don't worry about it, these things happen.
+test	Anna just had her baby, a healthy little girl!
+test	I'm at the front desk, which floor are you on?
+test	Let's split the bill, it's easier.
+test	Can you turn off the lights in the hallway?
+test	The client wants weekly updates instead of monthly reports.
+test	My bike has a flat tire, I'll take the bus.
+test	Did you get my voice message?
+test	I think I left my sunglasses in your car.
+test	We're launching the beta to a small group of users first.
+test	I'm so sorry, I completely forgot about our call.
+test	Have a safe flight and text me when you land.
+test	Please make sure the door is locked when you leave.
+test	The view from the top of the mountain was breathtaking.
+test	Could you print two copies of the contract for tomorrow?
+test	Peter thinks we should raise money now rather than later.
+test	I just started reading the book you recommended.
+test	Can we reschedule the dentist appointment for next week?
+test	It's freezing outside, wear a warm coat.
+test	The kids are fighting again, I need backup.
+test	Is anyone else having trouble connecting to the wifi?
+test	Do you know if the store is open on Sunday?
+test	I'll handle the onboarding for the new clients.
+test	Thanks for the tip, the place was amazing.
+test	We won! What a game!
+test	I'm worried about the deadline, can we talk about scope?
+test	Sophie is staying at a friend's house tonight.
+test	My mom just learned how to send voice messages.
+test	Let's go for a walk after dinner.
+test	The flight to Dublin is delayed by two hours.
+test	I'm glad you made it home safely.
+test	Can you check if we still have batteries in the drawer?
+test	Please let the team know that the release is postponed.
+test	I miss you guys, we should plan a weekend away.

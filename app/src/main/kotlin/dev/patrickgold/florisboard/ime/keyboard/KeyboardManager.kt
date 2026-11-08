@@ -56,7 +56,13 @@ import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.TypingSpeedMetrics
+import dev.patrickgold.florisboard.ime.nlp.WordRevisionRequest
+import dev.patrickgold.florisboard.ime.nlp.WordRevisionTracker
+import dev.patrickgold.florisboard.ime.nlp.WordSuggestionRequest
+import dev.patrickgold.florisboard.ime.nlp.latin.KeyboardGeometrySource
 import dev.patrickgold.florisboard.ime.nlp.latin.TapTrail
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.KeyGeometry
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinTap
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectTriggerPolicy
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
 import dev.patrickgold.florisboard.ime.text.composing.Composer
@@ -115,6 +121,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     val layoutManager = LayoutManager(context)
     private val keyboardCache = TextKeyboardCache()
     private val autocorrectUndoTracker = AutocorrectUndoTracker()
+    private val wordRevisionTracker = WordRevisionTracker()
 
     val resources = KeyboardManagerResources()
     val activeState = ObservableKeyboardState.new()
@@ -362,6 +369,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             autocorrectedFrom = originalToken
         } else {
             autocorrectUndoTracker.clearPending()
+            // A tapped suggestion is not typed letter by letter: it is never revised and ends the revision chain.
+            forgetWordRevision()
         }
         scope.launch {
             candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
@@ -485,7 +494,82 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     fun commitGesture(word: String) {
         // A glide word classified after emoji search opened must not land in the app
         if (emojiSearch.isActive) return
+        forgetWordRevision()
         editorInstance.commitGesture(fixCase(word))
+    }
+
+    /**
+     * Ends the right-context revision chain: the last typed word is forgotten, a running revision request is dropped
+     * and backspace no longer undoes the last revision. Called on every edit other than typing letters and space.
+     */
+    private fun forgetWordRevision() {
+        wordRevisionTracker.clear()
+        autocorrectUndoTracker.clearRevision()
+        nlpManager.cancelWordRevision()
+    }
+
+    /** A word typed before space: its letters, taps (null unless typed letter by letter) and key geometry. */
+    private class TypedWord(val typed: String, val taps: List<LatinTap>?, val geometry: KeyGeometry?)
+
+    /** The word before the cursor as the user typed it, with its taps if it was typed letter by letter. */
+    private fun typedWordBeforeCursor(): TypedWord? {
+        val typed = WordSuggestionRequest.inputOf(editorInstance.activeContent)
+        if (typed.isEmpty()) return null
+        return TypedWord(typed, TapTrail.tapsFor(typed), KeyboardGeometrySource.current())
+    }
+
+    /**
+     * After the space key ended [word] (typed letters and taps, captured before autocorrect) and committed it as
+     * [autocorrected] or as typed: records it and, when the word before it qualifies ([WordRevisionTracker]), asks the
+     * provider to revise that word in the background. Autocorrect must be on and the field must compose; the provider
+     * applies the field rules and the n-gram scorer's restriction to words that are not valid or were autocorrected.
+     */
+    private fun onWordEndedWithSpace(word: TypedWord?, autocorrected: SuggestionCandidate?) {
+        if (word == null || !activeState.isComposingEnabled || !prefs.correction.highCertaintyAutocorrectEnabled.get()) {
+            wordRevisionTracker.clear()
+            return
+        }
+        val committed = autocorrected?.text?.toString() ?: word.typed
+        val request = wordRevisionTracker.onWordEndedWithSpace(
+            sessionId = editorInstance.activeInputSessionId,
+            typed = word.typed,
+            committed = committed,
+            taps = word.taps,
+            geometry = word.geometry,
+            content = editorInstance.activeContent,
+        ) ?: return
+        if (!(activeState.isComposingEnabled || nlpManager.isSuggestionOn())) return
+        val subtype = subtypeManager.activeSubtype
+        nlpManager.requestWordRevision(subtype, request) { revision ->
+            applyWordRevision(request, revision, subtype)
+        }
+    }
+
+    /**
+     * Replaces the previous word of [request] with [revision] if the editor is still exactly as the request saw it
+     * (same session, cursor and text; see [WordRevisionRequest.matches]). The cursor stays at the end; backspace or
+     * undo right afterwards restores the previous word ([AutocorrectUndoTracker]).
+     */
+    private fun applyWordRevision(request: WordRevisionRequest, revision: SuggestionCandidate, subtype: Subtype) {
+        if (editorInstance.activeInputSessionId != request.sessionId) return
+        if (!request.matches(editorInstance.activeContent)) return
+        val text = revision.text.toString()
+        if (text.isEmpty() || text == request.committed) return
+        val end = request.wordStart + request.committed.length
+        if (!editorInstance.replaceTextBeforeCursor(request.wordStart, end, text)) return
+        val delta = text.length - request.committed.length
+        wordRevisionTracker.onRevisionApplied(request, text)
+        autocorrectUndoTracker.shiftPendingAutocorrect(delta)
+        autocorrectUndoTracker.trackRevision(
+            originalToken = request.committed,
+            revisedCandidate = revision,
+            suffix = request.suffix,
+            cursor = request.cursor + delta,
+            subtype = subtype,
+        )
+        // The next-word row was computed with the old word as context. A replacement of the same length does not move
+        // the cursor, so the editor reports no update that would refresh it.
+        resetSuggestions(editorInstance.activeContent)
     }
 
     /**
@@ -510,6 +594,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles [KeyCode] arrow and move events, behaves differently depending on text selection.
      */
     fun handleArrow(code: Int, count: Int = 1) = editorInstance.apply {
+        forgetWordRevision()
         val isShiftPressed = activeState.isManualSelectionMode || inputEventDispatcher.isPressed(KeyCode.SHIFT)
         val content = activeContent
         val selection = content.selection
@@ -657,6 +742,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * space and put the cursor back where it was.
      */
     private fun restoreTrackedAutocorrect(replacement: AutocorrectUndoReplacement, keepSeparator: Boolean): Boolean {
+        if (replacement.isRevision) return restoreRevisedWord(replacement)
         val content = editorInstance.activeContent
         val cursor = content.selection.end
         // The tracker only allows undo within one separator of the word, so this is the space (or nothing).
@@ -680,7 +766,27 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     /**
-     * Handles a [KeyCode.DELETE] event.
+     * Puts the previous word back as it was before a right-context revision, keeping the cursor at the end. Reported
+     * like a reverted autocorrection: the restored word is kept as typed from now on (never-correct list).
+     */
+    private fun restoreRevisedWord(replacement: AutocorrectUndoReplacement): Boolean {
+        val range = replacement.range
+        if (!editorInstance.replaceTextBeforeCursor(range.start, range.end, replacement.originalToken)) return false
+        val delta = replacement.originalToken.length - (range.end - range.start)
+        autocorrectUndoTracker.clearRevision()
+        autocorrectUndoTracker.shiftPendingAutocorrect(delta)
+        wordRevisionTracker.clear()
+        replacement.candidate.sourceProvider?.let { sourceProvider ->
+            val subtype = replacement.subtype ?: subtypeManager.activeSubtype
+            notifyReverted(sourceProvider, replacement.candidate, replacement.originalToken, subtype)
+        }
+        resetSuggestions(editorInstance.activeContent)
+        return true
+    }
+
+    /**
+     * Handles a [KeyCode.DELETE] event. Right after an autocorrection or a right-context revision, the first backspace
+     * restores what was there before (see [AutocorrectUndoTracker]); otherwise it deletes.
      */
     private fun handleBackwardDelete(unit: OperationUnit) {
         if (inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
@@ -691,9 +797,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             it.isManualSelectionModeStart = false
             it.isManualSelectionModeEnd = false
         }
+        nlpManager.cancelWordRevision()
         if (handleBackspaceAutocorrectRestore(unit)) {
             return
         }
+        forgetWordRevision()
         revertPreviouslyAcceptedCandidate()
         editorInstance.deleteBackwards(unit)
         if (unit == OperationUnit.CHARACTERS) TapTrail.removeLast() else TapTrail.clear()
@@ -703,6 +811,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles a [KeyCode.FORWARD_DELETE] event.
      */
     private fun handleForwardDelete(unit: OperationUnit) {
+        forgetWordRevision()
         activeState.batchEdit {
             it.isManualSelectionMode = false
             it.isManualSelectionModeStart = false
@@ -717,6 +826,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     private fun handleEnter() {
         TapTrail.clear()
+        forgetWordRevision()
         val info = editorInstance.activeInfo
         val isShiftPressed = inputEventDispatcher.isPressed(KeyCode.SHIFT)
         if (editorInstance.tryPerformEnterCommitRaw()) {
@@ -808,6 +918,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * but skips handling changing to characters keyboard and double space periods.
      */
     fun handleHardwareKeyboardSpace() {
+        forgetWordRevision()
         val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
         TapTrail.clear()
@@ -825,6 +936,10 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * enabled by the user.
      */
     private fun handleSpace(data: KeyData) {
+        // The undo window of the last revision ends with the next word; capture the word before autocorrect clears
+        // its taps.
+        autocorrectUndoTracker.clearRevision()
+        val typedWord = typedWordBeforeCursor()
         val candidate = nlpManager.autoCommitCandidateFor(editorInstance.activeContent)
         candidate?.let { commitCandidate(it, origin = CandidateCommitOrigin.AUTO_COMMIT) }
         TapTrail.clear()
@@ -843,6 +958,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             if (inputEventDispatcher.isConsecutiveUp(data)) {
                 val text = editorInstance.run { activeContent.getTextBeforeCursor(2) }
                 if (text.length == 2 && DoubleSpacePeriodMatcher.matches(text)) {
+                    forgetWordRevision()
                     editorInstance.deleteBackwards(OperationUnit.CHARACTERS)
                     editorInstance.commitText(". ")
                     return
@@ -854,6 +970,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate != null) { /* Do nothing */ } else {
             editorInstance.commitText(KeyCode.SPACE.toChar().toString())
         }
+        onWordEndedWithSpace(typedWord, candidate)
     }
 
     /**
@@ -1011,9 +1128,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.CHAR_WIDTH_SWITCHER -> handleCharWidthSwitch()
             KeyCode.CHAR_WIDTH_FULL -> handleCharWidthFull()
             KeyCode.CHAR_WIDTH_HALF -> handleCharWidthHalf()
-            KeyCode.CLIPBOARD_CUT -> editorInstance.performClipboardCut()
+            KeyCode.CLIPBOARD_CUT -> {
+                forgetWordRevision()
+                editorInstance.performClipboardCut()
+            }
             KeyCode.CLIPBOARD_COPY -> editorInstance.performClipboardCopy()
-            KeyCode.CLIPBOARD_PASTE -> editorInstance.performClipboardPaste()
+            KeyCode.CLIPBOARD_PASTE -> {
+                forgetWordRevision()
+                editorInstance.performClipboardPaste()
+            }
             KeyCode.CLIPBOARD_SELECT -> handleClipboardSelect()
             KeyCode.CLIPBOARD_SELECT_ALL -> editorInstance.performClipboardSelectAll()
             KeyCode.CLIPBOARD_CLEAR_HISTORY -> clipboardManager.clearHistory()
@@ -1065,7 +1188,10 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.KANA_KATA -> handleKanaKata()
             KeyCode.KANA_HALF_KATA -> handleKanaHalfKata()
             KeyCode.LANGUAGE_SWITCH -> handleLanguageSwitch()
-            KeyCode.REDO -> editorInstance.performRedo()
+            KeyCode.REDO -> {
+                forgetWordRevision()
+                editorInstance.performRedo()
+            }
             KeyCode.SETTINGS -> {
                 dictationFixController.interrupt()
                 FlorisImeService.launchSettings()
@@ -1109,7 +1235,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 scope.launch { handleToggleIncognitoMode() }
             }
             KeyCode.TOGGLE_AUTOCORRECT -> scope.launch { handleToggleAutocorrect() }
-            KeyCode.UNDO -> if (!handleUndoLastAutocorrect()) editorInstance.performUndo()
+            KeyCode.UNDO -> {
+                nlpManager.cancelWordRevision()
+                if (!handleUndoLastAutocorrect()) {
+                    forgetWordRevision()
+                    editorInstance.performUndo()
+                }
+            }
             KeyCode.VIEW_CHARACTERS -> activeState.keyboardMode = KeyboardMode.CHARACTERS
             KeyCode.VIEW_NUMERIC -> activeState.keyboardMode = KeyboardMode.NUMERIC
             KeyCode.VIEW_NUMERIC_ADVANCED -> activeState.keyboardMode = KeyboardMode.NUMERIC_ADVANCED

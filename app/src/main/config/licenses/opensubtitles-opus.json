@@ -1,0 +1,6 @@
+{
+  "hash": "opensubtitles-opus",
+  "name": "OpenSubtitles v2018 (OPUS): no stated licence, attribution requested",
+  "url": "https://opus.nlpl.eu/OpenSubtitles/",
+  "content": "The trigram models in ime/dict/ngram/en.bin and nl.bin contain aggregated word statistics (no running text) counted from the OpenSubtitles v2018 corpus as collected by OPUS, from subtitles of http://www.opensubtitles.org/. OPUS states no separate licence for this corpus and asks for a link to http://www.opensubtitles.org/ and this citation: P. Lison and J. Tiedemann, 2016, OpenSubtitles2016: Extracting Large Parallel Corpora from Movie and TV Subtitles. In Proceedings of LREC 2016. Sources and sizes: ime/dict/ngram/ATTRIBUTION.md and tools/lm/SOURCES.md."
+}

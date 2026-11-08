@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.ownkey.kbagent">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application android:label="KB Bench" android:debuggable="true">
+        <activity
+            android:name=".TypeActivity"
+            android:exported="true"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+    </application>
+
+    <instrumentation
+        android:name=".Agent"
+        android:targetPackage="dev.ownkey.kbagent"
+        android:label="KB Bench agent" />
+</manifest>

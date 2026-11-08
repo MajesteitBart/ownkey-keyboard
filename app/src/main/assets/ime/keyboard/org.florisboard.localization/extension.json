@@ -159,6 +159,7 @@
     },
     {
       "languageTag": "nl-NL",
+      "secondaryLocales": [ "en-US" ],
       "composer": "org.florisboard.composers:appender",
       "currencySet": "org.florisboard.currencysets:euro",
       "popupMapping": "org.florisboard.localization:en",

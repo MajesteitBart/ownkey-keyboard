@@ -25,7 +25,8 @@ import kotlin.math.roundToInt
  */
 class KeyGeometry(
     private val centers: Map<Char, Pair<Double, Double>>,
-    private val rowHeight: Double = PhoneRowHeight,
+    /** Distance between two rows, in key widths. */
+    val rowHeight: Double = PhoneRowHeight,
 ) {
     /**
      * Distance between two keys in key units: horizontal steps count in key widths and vertical steps in rows, so

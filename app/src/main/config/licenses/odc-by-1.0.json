@@ -1,0 +1,6 @@
+{
+  "hash": "odc-by-1.0",
+  "name": "Open Data Commons Attribution License (ODC-By) v1.0",
+  "url": "https://opendatacommons.org/licenses/by/1-0/",
+  "content": "The trigram models in ime/dict/ngram/en.bin and nl.bin contain aggregated word statistics counted from FineWeb (English, sample-10BT) and FineWeb-2 (Dutch, nld_Latn) by Hugging Face, which are licensed under the Open Data Commons Attribution License (ODC-By) v1.0. Use is also subject to the Common Crawl terms of use, https://commoncrawl.org/terms-of-use. Datasets: https://huggingface.co/datasets/HuggingFaceFW/fineweb and https://huggingface.co/datasets/HuggingFaceFW/fineweb-2.\n\nFull license text: https://opendatacommons.org/licenses/by/1-0/"
+}

@@ -43,6 +43,8 @@ import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.SpellingLanguageMode
 import dev.patrickgold.florisboard.ime.nlp.latin.NeverCorrectWords
 import dev.patrickgold.florisboard.ime.nlp.latin.engine.AutocorrectStrength
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.LatinScorerChoice
+import dev.patrickgold.florisboard.ime.nlp.latin.engine.RealWordRule
 import dev.patrickgold.florisboard.ime.smartbar.CandidatesDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
@@ -241,9 +243,19 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "devtools__show_spelling_overlay",
             default = false,
         )
+        /** Superseded by [autocorrectScorer]; read once by the migration in FlorisApplication. */
         val autocorrectLegacyEngine = boolean(
             key = "devtools__autocorrect_legacy_engine",
             default = false,
+        )
+        val autocorrectScorer = enum(
+            key = "devtools__autocorrect_scorer",
+            default = LatinScorerChoice.NGRAM,
+        )
+        /** N-gram scorer only: which correctly spelled words autocorrect may replace or revise (spec AC-011). */
+        val autocorrectRealWordRule = enum(
+            key = "devtools__autocorrect_real_word_rule",
+            default = RealWordRule.CONFUSION_PAIRS,
         )
         val showInlineAutofillOverlay = boolean(
             key = "devtools__show_inline_autofill_overlay",

@@ -63,6 +63,24 @@ class PossiblyOffensiveWordsTest : FunSpec({
         PossiblyOffensiveWords.filter(listOf("Fuck", "Duck"), blocked, "Fuxk") { it } shouldBe listOf("Duck")
     }
 
+    test("a trailing star blocks every word with that stem") {
+        val blocked = PossiblyOffensiveWords.parse(sequenceOf("# comment", "fuck*", "kut", "slet*"))
+        PossiblyOffensiveWords.isBlocked("fucking", blocked) shouldBe true
+        PossiblyOffensiveWords.isBlocked("fuck", blocked) shouldBe true
+        PossiblyOffensiveWords.isBlocked("kut", blocked) shouldBe true
+        PossiblyOffensiveWords.isBlocked("kutje", blocked) shouldBe false
+        PossiblyOffensiveWords.isBlocked("duck", blocked) shouldBe false
+        PossiblyOffensiveWords.filter(listOf("fuckers", "sletten", "slee"), blocked, "slet") { it } shouldBe listOf("slee")
+    }
+
+    test("the list added with the n-gram engine parses and keeps tyfus off") {
+        val file = java.io.File(BenchmarkData.dictionaryDir.parentFile, "offensive/ngram.txt")
+        val entries = file.bufferedReader().useLines { PossiblyOffensiveWords.parse(it) }
+        entries.shouldNotBeEmpty()
+        PossiblyOffensiveWords.isBlocked("motherfuckers", entries) shouldBe true
+        PossiblyOffensiveWords.isBlocked("tyfus", entries) shouldBe false
+    }
+
     test("a missed-space split is checked word by word") {
         val blocked = setOf("fuck")
         PossiblyOffensiveWords.filter(listOf("fuck you", "thank you", "fuckyou"), blocked, "fuckyou") { it } shouldBe
