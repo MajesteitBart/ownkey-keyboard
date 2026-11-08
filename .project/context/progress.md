@@ -1,6 +1,7 @@
 # Progress
 
 ## What Changed
+- 2026-11-08: 0.12.0 ships the n-gram prediction and autocorrect engine for English, Dutch and Dutch with English (#27). Phone benchmark: 1.33x Gboard keystroke savings and 0.43x Gboard word error rate after typos. [Decisions](../projects/autocorrect-engine/decisions.md).
 - 2026-10-29: 0.11.0 ships the minimal redesign of settings and keyboard (#24), the English-only UI, voice-bar rewrite and language buttons, and reorganized AI settings (#23). Wear OS support is removed. [Minimal redesign delivery](../projects/minimal-redesign/).
 - 2026-10-03: 0.10.0 lets public arm64 installs with a 64-bit process download and activate Orukeet. The owner chose to ship before the physical phone gates were measured. [Decision](../projects/orukeet-offline-dictation/decisions.md).
 - 2026-09-17: The recovered internal build reopens the existing onboarding flow once after updating, preserving other preferences. [Setup verification](../projects/ownkey-brand-system-refresh/updates/2026-09-17-reopen-setup.md).

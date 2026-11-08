@@ -2,6 +2,20 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
+## 0.12.0 (2026-11-08)
+
+Version code 127.
+
+### Added
+- A new prediction and autocorrect engine for English, Dutch, and Dutch with English ([#27](https://github.com/MajesteitBart/ownkey-keyboard/pull/27)). It runs on the device with word statistics for both languages and uses the previous two words, the keys you tapped and where you tapped them. On a test against Gboard on a Galaxy S24, it saved 55% of keystrokes with suggestions (Gboard 42%) and left 0.9% of words wrong after typos (Gboard 2.0%).
+- Autocorrect can fix the previous word once the next word makes the mistake clear, such as "ok heb" becoming "ik heb" ([#27](https://github.com/MajesteitBart/ownkey-keyboard/pull/27)). Undo restores the word you typed, and words you keep three times are left alone.
+- **Additional languages** in the language editor ([#27](https://github.com/MajesteitBart/ownkey-keyboard/pull/27)). The Dutch preset adds English, so Dutch and English words are both suggested and corrected on one keyboard.
+
+### Changed
+- Chat abbreviations such as "wss", "idd" and "mss" still stay as typed, but "jk" and "ok" can now become "ik" when the sentence clearly means it ([#27](https://github.com/MajesteitBart/ownkey-keyboard/pull/27)).
+- The app is larger, about 106 MB on arm64 phones, because it now includes the word statistics for English and Dutch ([#27](https://github.com/MajesteitBart/ownkey-keyboard/pull/27)). They are read from the app file and use little memory.
+- Developer tools can switch between the new engine and the previous ones ([#27](https://github.com/MajesteitBart/ownkey-keyboard/pull/27)).
+
 ## 0.11.0 (2026-10-29)
 
 Version code 126.

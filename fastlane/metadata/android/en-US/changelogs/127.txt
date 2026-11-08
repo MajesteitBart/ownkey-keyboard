@@ -1,0 +1,5 @@
+• New on-device prediction and autocorrect for English and Dutch
+• Better next-word suggestions that use the previous two words
+• Autocorrect uses where you tapped and can fix the previous word
+• Type Dutch and English on one keyboard: the Dutch preset adds English
+• Additional languages in the language editor
