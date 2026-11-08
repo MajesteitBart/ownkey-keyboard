@@ -1345,6 +1345,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             settings = policySnapshot.settings,
             isProtected = { word -> hooks.isUserDictionaryWord(word) || hooks.isBlockedByUserPreference(word) },
             blockedWords = blockedWords(allowPossiblyOffensive),
+            timesTyped = { word -> hooks.timesTyped(word) },
         ) ?: return null
         return WordSuggestionCandidate(
             text = allowed.text,

@@ -318,7 +318,9 @@ class NgramModel private constructor(
     /**
      * The [limit] most likely next words after (`prev2Id`, `prev1Id`), sorted by log probability (descending, ties by
      * id). Combines the trigram list, the bigram list scaled by the trigram backoff and the global unigram list scaled
-     * by both backoffs, so the result is exact for the stored model.
+     * by both backoffs, so the result is exact for the stored model: a word of the unigram list only gets its backoff
+     * probability when neither the trigram nor the bigram list of the context holds it (a frequent word that is an
+     * explicit, unlikely successor must not come back with its higher backoff score).
      */
     fun topNext(prev1Id: Int, prev2Id: Int = UNKNOWN_ID, limit: Int = 3): List<NgramCandidate> {
         if (limit <= 0) return emptyList()
@@ -337,14 +339,30 @@ class NgramModel private constructor(
             bow3 = trigramBackoff(ctx)
         }
         var bow2 = 0f
+        // Bigram ids past the first [limit] new ones: they cannot enter the top (the list is sorted by probability),
+        // but they must not get a unigram-backoff score either.
+        var skipped: IdSet? = null
         if (prev1Id in 0 until vocabularySize) {
             var n = 0
+            var lastScore = Float.NaN
             var p = bigramEntriesBase + bigramStart[prev1Id] * entryBytes
-            for (i in bigramStart[prev1Id] until bigramStart[prev1Id + 1]) {
-                if (n >= limit) break
+            val start = bigramStart[prev1Id]
+            val end = bigramStart[prev1Id + 1]
+            for (i in start until end) {
                 val e = entryAt(p)
                 p += entryBytes
-                if (acc.addIfAbsent(e and idMask, bow3 + bigramCodebook[e ushr idBits])) n++
+                val score = bow3 + bigramCodebook[e ushr idBits]
+                // Entries tied with the last one taken can still win on a lower id.
+                if (n < limit || score == lastScore) {
+                    if (acc.addIfAbsent(e and idMask, score)) {
+                        n++
+                        lastScore = score
+                    }
+                } else {
+                    val set = skipped ?: idSets.get().also { it.reset(end - i) }
+                    skipped = set
+                    set.add(e and idMask)
+                }
             }
             bow2 = bigramBackoff(prev1Id)
         }
@@ -352,6 +370,7 @@ class NgramModel private constructor(
         var n = 0
         for (id in unigramTop) {
             if (n >= limit) break
+            if (skipped != null && skipped.contains(id)) continue
             if (acc.addIfAbsent(id, off + unigram(id))) n++
         }
         return acc.top(limit)
@@ -631,6 +650,53 @@ class NgramModel private constructor(
         val bytes = ByteArray(to - from)
         for (i in bytes.indices) bytes[i] = buf.get(from + i)
         return String(bytes, Charsets.UTF_8)
+    }
+
+    private val idSets = ThreadLocal.withInitial { IdSet() }
+
+    /** A reusable open-addressing set of word ids (one per thread), cleared in O(1) by a generation stamp. */
+    private class IdSet {
+        private var keys = IntArray(1024)
+        private var stamps = IntArray(1024)
+        private var stamp = 0
+
+        fun reset(expected: Int) {
+            var cap = keys.size
+            while (cap < expected * 2) cap *= 2
+            if (cap != keys.size) {
+                keys = IntArray(cap)
+                stamps = IntArray(cap)
+                stamp = 0
+            }
+            stamp++
+            if (stamp == Int.MAX_VALUE) {
+                stamps.fill(0)
+                stamp = 1
+            }
+        }
+
+        fun add(id: Int) {
+            val mask = keys.size - 1
+            var i = mix(id) and mask
+            while (stamps[i] == stamp) {
+                if (keys[i] == id) return
+                i = (i + 1) and mask
+            }
+            stamps[i] = stamp
+            keys[i] = id
+        }
+
+        fun contains(id: Int): Boolean {
+            val mask = keys.size - 1
+            var i = mix(id) and mask
+            while (stamps[i] == stamp) {
+                if (keys[i] == id) return true
+                i = (i + 1) and mask
+            }
+            return false
+        }
+
+        private fun mix(id: Int): Int = (id * -0x61c88647) ushr 7
     }
 
     /** Candidate accumulator with an open-addressing id set, so membership checks stay O(1). */

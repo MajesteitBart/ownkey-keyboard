@@ -65,6 +65,31 @@ class SimulatorSmokeTest : FunSpec({
         (checks["switch_n"] as Int) shouldBeGreaterThan 10
     }
 
+    test("a grid baseline equals an ordinary run with the same keep-words and confusion-set options") {
+        val root = TestModels.repoRoot.path
+        val keep = File.createTempFile("keep-words", ".txt").apply {
+            // Words some literal checks type; protecting them changes the keep rate, so a grid that drops the option differs.
+            writeText("# test\nik\nde\nthe\nok\ngboard\nkzou\nnie\ngwoon\nkvind\nkdenk\nvlogger\n")
+            deleteOnExit()
+        }
+        val shared = arrayOf(
+            "--keep-words", keep.path, "--keep-words-scope", "current",
+            "--confusion-sets", "$root/tools/kbbench/sim/confusion_sets.txt", "--touches", "off",
+        )
+        val plain = SimulatorCli.execute(opts(*shared))
+        val grid = SimulatorCli.execute(opts(*shared, "--grid", "unknownWordLogProb=-19", "--threads", "1"))
+        @Suppress("UNCHECKED_CAST")
+        val base = (grid["baseline"] as Map<String, Any?>)["touches_off"] as Map<String, Any?>
+        @Suppress("UNCHECKED_CAST")
+        val run = (plain["runs"] as Map<String, Any?>)["touches_off"] as Map<String, Any?>
+        fun overall(r: Map<String, Any?>, mode: String) = (r[mode] as Map<*, *>)["overall"] as Map<*, *>
+        for (key in listOf("wer", "false_corrections", "typos_fixed", "revisions")) {
+            overall(base, "noisy")[key] shouldBe overall(run, "noisy")[key]
+        }
+        overall(base, "clean")["ksr"] shouldBe overall(run, "clean")["ksr"]
+        (base["literal_checks"] as Map<*, *>)["keep_rate"] shouldBe (run["literal_checks"] as Map<*, *>)["keep_rate"]
+    }
+
     test("noisy metrics pool several tap seeds and report their spread") {
         val root = TestModels.repoRoot.path
         // opts() already passes the s1 plan.

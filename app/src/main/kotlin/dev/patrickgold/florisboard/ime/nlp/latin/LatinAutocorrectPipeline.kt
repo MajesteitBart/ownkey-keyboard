@@ -89,6 +89,7 @@ internal object LatinAutocorrectPipeline {
         settings: AutocorrectSettings,
         isProtected: (String) -> Boolean,
         blockedWords: Set<String>,
+        timesTyped: (String) -> Int = { 0 },
     ): LatinScoredCandidate? {
         if (!settings.enabled || languages.isEmpty() || !revisionTokensAllowed(request)) return null
         val revised = scorer.revise(
@@ -103,6 +104,7 @@ internal object LatinAutocorrectPipeline {
             settings = settings,
             isProtected = isProtected,
             blockedWords = blockedWords,
+            timesTyped = timesTyped,
         ) ?: return null
         return PossiblyOffensiveWords.filter(listOf(revised), blockedWords, request.typed) { it.text }.firstOrNull()
     }

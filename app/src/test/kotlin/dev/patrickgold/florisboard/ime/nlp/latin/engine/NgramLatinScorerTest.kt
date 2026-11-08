@@ -158,6 +158,21 @@ class NgramLatinScorerTest : FunSpec({
         autoCorrection(BenchmarkData.nlEn(), "dw", "ik zie ", with = withLengthLimit).shouldBeNull()
     }
 
+    test("revision keeps a word the user typed and kept three times, like the space decision does") {
+        val geometry = KeyGeometry.QwertyPhone
+        val o = geometry.center('o')!!
+        val i = geometry.center('i')!!
+        val k = geometry.center('k')!!
+        // "Ok" with the O tap leaning towards the I key, at the start of a Dutch sentence, followed by "heb".
+        val taps = listOf(LatinTap(o.first - 0.45 * (o.first - i.first), o.second), LatinTap(k.first, k.second))
+        fun revise(times: Int) = scorer.revise(
+            BenchmarkData.nlEn(), "", true, "Ok", "Ok", "heb", taps, geometry, AutocorrectSettings(), { false }, emptySet(),
+            timesTyped = { word -> if (word == "ok") times else 0 },
+        )
+        revise(0)?.text shouldBe "Ik"
+        revise(3).shouldBeNull()
+    }
+
     test("never-correct and user dictionary words stay as typed") {
         val protected = object : LatinScoringHooks by LatinScoringHooks.None {
             override fun isBlockedByUserPreference(normalizedWord: String) = normalizedWord == "becuase"

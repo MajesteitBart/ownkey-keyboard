@@ -40,7 +40,7 @@ large models cost the simulator's heap only their offset indexes. The earlier 7 
 | `--literal-checks PATH\|none` | Held-out keep/switch checks (default `literal_checks.jsonl`) |
 | `--blocklist PATH` | Words never offered, repeatable (the phone blocks `app/src/main/assets/ime/dict/offensive/*.txt` by default) |
 | `--confusion-sets PATH` | Confusion groups, one per line, plus the built-in Dutch d/dt/t endings: a typed word is never autocorrected, or revised while it stands as typed, to a word of its own group (the app's AC-011 rule) |
-| `--keep-words PATH` | Words never autocorrected when typed exactly and never revised while they stand as typed (the app's word lists minus its removal lists, AC-011); repeatable. `--keep-words-scope current` applies them to the typed word only. Not applied in `--grid` runs |
+| `--keep-words PATH` | Words never autocorrected when typed exactly and never revised while they stand as typed (the app's word lists minus its removal lists, AC-011); repeatable. `--keep-words-scope current` applies them to the typed word only |
 | `--grid KEY=V1,V2` | Grid search (cartesian product); `KEY` may also be `touches` |
 | `--keep-floor X` | Grid rows whose literal-check keep rate is below X rank last (default 0.95) |
 | `--threads N`, `--objective combined\|ksr\|wer` | Grid workers and ranking (combined = KSR - WER) |

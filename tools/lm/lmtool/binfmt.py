@@ -475,16 +475,22 @@ class NgramModel:
             if i not in cand:
                 cand[i] = lp
         n = 0
+        last = None
         for i, lp in zip(bi_ids.tolist(), bi_lp.tolist()):
+            score = float(np.float32(bow3 + np.float32(lp)))
+            if n >= limit and score != last:
+                break  # sorted by probability: entries tied with the last one taken can still win on a lower id
             if i not in cand:
-                cand[i] = float(np.float32(bow3 + np.float32(lp)))
+                cand[i] = score
                 n += 1
-                if n >= limit:
-                    break
+                last = score
+        # Every explicit successor has its own probability: a frequent word further down the bigram list must not
+        # come back below with its (higher) unigram-backoff score.
+        explicit = set(bi_ids.tolist())
         off = np.float32(bow3 + bow2)
         n = 0
         for i in self.utop.tolist():
-            if i not in cand:
+            if i not in cand and i not in explicit:
                 cand[i] = float(np.float32(off + self.uni[i]))
                 n += 1
                 if n >= limit:

@@ -230,6 +230,8 @@ object SimulatorCli {
                 .map { TextFolding.normalizeWord(it.split(Regex("\\s+"))[0]) }.toList()
         }
         val confusion = o.confusionSets?.let { ConfusionPairs.load(File(it)) }
+        val confusionPair: ((String, String) -> Boolean)? =
+            confusion?.let { c -> { typed: String, replacement: String -> c.arePartners(typed, replacement) } }
         val spatial = if (o.calib == "qwerty") SpatialModel.qwerty() else BenchData.loadCalibration(File(o.calib)).spatialModel()
 
         val modelInfo = ArrayList<MutableMap<String, Any?>>()
@@ -261,7 +263,9 @@ object SimulatorCli {
             for (q in o.explain) explain(base, q, blocked)
             return header
         }
-        if (o.grid.isNotEmpty()) return header + runGrid(o, base, baseConfig, sentences, plans, checks, blocked)
+        if (o.grid.isNotEmpty()) {
+            return header + runGrid(o, base, baseConfig, sentences, plans, checks, blocked, keep, confusionPair)
+        }
 
         val runs = linkedMapOf<String, Any?>()
         for (touch in touchModes(o.touches)) {
@@ -269,7 +273,7 @@ object SimulatorCli {
             val r = evaluate(
                 base, touch, sentences, plans, o.mode, measureLatency = true, details = o.details, checks = checks,
                 isBlocked = blocked, keepWords = keep, keepWordsInRevision = o.keepWordsInRevision,
-                confusionPair = confusion?.let { c -> { typed: String, replacement: String -> c.arePartners(typed, replacement) } },
+                confusionPair = confusionPair,
             )
             runs[if (touch) "touches_on" else "touches_off"] = r
             printRun(if (touch) "touches=on" else "touches=off", r)
@@ -484,6 +488,8 @@ object SimulatorCli {
         plans: List<TapPlan>,
         checks: List<LiteralCheck>?,
         isBlocked: ((String) -> Boolean)?,
+        keepWords: Set<String>? = null,
+        confusionPair: ((String, String) -> Boolean)? = null,
     ): Map<String, Any?> {
         var combos: List<Map<String, String>> = listOf(emptyMap())
         for ((k, values) in o.grid) combos = combos.flatMap { c -> values.map { v -> c + (k to v) } }
@@ -494,7 +500,8 @@ object SimulatorCli {
             fun submit(touches: Boolean, cfg: EngineConfig) = pool.submit(Callable {
                 evaluate(
                     base.withConfig(cfg), touches, sentences, plans, o.mode, measureLatency = false, details = false,
-                    checks = checks, isBlocked = isBlocked,
+                    checks = checks, isBlocked = isBlocked, keepWords = keepWords,
+                    keepWordsInRevision = o.keepWordsInRevision, confusionPair = confusionPair,
                 )
             })
             // The current configuration per touch mode: rows are judged by their paired gain over it on every seed.

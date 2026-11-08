@@ -169,7 +169,7 @@ internal class NgramLatinScorer(
         }
         val isBlocked = blockedPredicate(request.blockedWords)
         val timesTyped = hooks.timesTyped(mainInput)
-        val literalBonus = (if (timesTyped >= LearnedWordMinCount) LearnedWordBonus * ln(1.0 + timesTyped) else 0.0) +
+        val literalBonus = learnedWordBonus(timesTyped) +
             nameBonus(rawInput, request.textBeforeSelection) +
             (if (!protectsShorthand && ChatShorthand.contains(mainInput)) shorthandKeepBonus else 0.0)
 
@@ -271,6 +271,7 @@ internal class NgramLatinScorer(
         settings: AutocorrectSettings,
         isProtected: (String) -> Boolean,
         blockedWords: Set<String>,
+        timesTyped: (String) -> Int = { 0 },
     ): LatinScoredCandidate? {
         if (!settings.enabled) return null
         val codes = engineLanguagesOf(languages) ?: return null
@@ -289,6 +290,8 @@ internal class NgramLatinScorer(
             context, typed, committed, next, touches,
             isProtected = { word -> (protectsShorthand && ChatShorthand.contains(word)) || isProtected(word) },
             isBlocked = blockedPredicate(blockedWords),
+            // A word the user typed and kept several times is kept here too, as on space (LearnedWordBonus).
+            keepBonus = if (standsAsTyped) learnedWordBonus(timesTyped(typedWord)) else 0.0,
         ) ?: return null
         val request = LatinScoringRequest(
             rawInput = typed,
@@ -317,6 +320,9 @@ internal class NgramLatinScorer(
         val isSentenceStart = before.isEmpty() || before.last() in ".!?\n"
         return if (isSentenceStart) 0.0 else CapitalizedLiteralBonus
     }
+
+    private fun learnedWordBonus(timesTyped: Int): Double =
+        if (timesTyped >= LearnedWordMinCount) LearnedWordBonus * ln(1.0 + timesTyped) else 0.0
 
     /** Whether [typed] and [replacement] are two words of one [ConfusionSets] group of one of [languages]. */
     private fun isConfusionPartner(languages: List<LatinScoringLanguage>, typed: String, replacement: String): Boolean {

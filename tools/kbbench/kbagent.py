@@ -2,6 +2,7 @@
 import base64
 import json
 import os
+import secrets
 import socket
 import subprocess
 import time
@@ -33,6 +34,8 @@ class Agent:
         self.proc = None
         self.sock = None
         self.rf = None
+        # The agent injects input and reads the screen: every run gets its own token, sent first on each connection.
+        self.token = secrets.token_hex(16)
 
     def adb(self, *args, check=True):
         return subprocess.run([ADB, "-s", self.serial, *args], capture_output=True, text=True, check=check).stdout
@@ -42,6 +45,7 @@ class Agent:
         self.adb("forward", f"tcp:{self.port}", f"tcp:{self.port}")
         self.proc = subprocess.Popen(
             [ADB, "-s", self.serial, "shell", "am", "instrument", "-w", "-e", "port", str(self.port),
+             "-e", "token", self.token,
              "-e", "nolearn", "true" if self.nolearn else "false", f"{PKG}/.Agent"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         deadline = time.time() + 20
@@ -50,6 +54,7 @@ class Agent:
             try:
                 self.sock = socket.create_connection(("127.0.0.1", self.port), timeout=2)
                 self.sock.settimeout(60)
+                self.sock.sendall((self.token + "\n").encode("utf-8"))
                 self.rf = self.sock.makefile("r", encoding="utf-8")
                 self.call("ping")
                 return self

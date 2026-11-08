@@ -27,18 +27,22 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 
 /**
  * Benchmark agent. Start with:
- *   adb shell am instrument -w -e port 7788 dev.ownkey.kbagent/.Agent
- * then `adb forward tcp:7788 tcp:7788` and send one JSON command per line.
+ *   adb shell am instrument -w -e port 7788 -e token <random hex> dev.ownkey.kbagent/.Agent
+ * then `adb forward tcp:7788 tcp:7788`, send the token as the first line of each connection and then one JSON command
+ * per line. The agent injects input and reads the screen, so it refuses to start without a token and closes every
+ * connection whose first line is not that token (kbagent.py generates a new one per run).
  */
 public class Agent extends Instrumentation {
     private int port = 7788;
     private boolean noLearn = true;
     private UiAutomation ua;
     private volatile boolean running = true;
+    private byte[] token;
 
     @Override
     public void onCreate(Bundle arguments) {
@@ -48,6 +52,14 @@ public class Agent extends Instrumentation {
             if (p != null) port = Integer.parseInt(p);
             String nl = arguments.getString("nolearn");
             if (nl != null) noLearn = Boolean.parseBoolean(nl);
+            String t = arguments.getString("token");
+            if (t != null && t.length() >= 16) token = t.getBytes(StandardCharsets.UTF_8);
+        }
+        if (token == null) {
+            Bundle result = new Bundle();
+            result.putString("error", "refusing to start without -e token <at least 16 characters>");
+            finish(1, result);
+            return;
         }
         start();
     }
@@ -90,6 +102,11 @@ public class Agent extends Instrumentation {
                     s.setTcpNoDelay(true);
                     BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
                     PrintWriter out = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8), true);
+                    // The first line must be this run's token; anything else closes the connection unanswered.
+                    String first = in.readLine();
+                    if (first == null || !MessageDigest.isEqual(token, first.getBytes(StandardCharsets.UTF_8))) {
+                        continue;
+                    }
                     String line;
                     while (running && (line = in.readLine()) != null) {
                         JSONObject resp;
