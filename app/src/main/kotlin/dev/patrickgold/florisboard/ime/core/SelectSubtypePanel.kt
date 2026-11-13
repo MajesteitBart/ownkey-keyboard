@@ -17,8 +17,9 @@
 package dev.patrickgold.florisboard.ime.core
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.ime.window.imeSafeDrawing
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.subtypeManager
 import org.florisboard.lib.compose.stringRes
@@ -53,7 +55,10 @@ fun SelectSubtypePanel(modifier: Modifier = Modifier) {
 
     val currentlySelected = subtypeManager.activeSubtype.id
 
-    SnyggColumn(FlorisImeUi.SubtypePanel.elementName, modifier = modifier.safeDrawingPadding()) {
+    SnyggColumn(
+        FlorisImeUi.SubtypePanel.elementName,
+        modifier = modifier.windowInsetsPadding(WindowInsets.imeSafeDrawing),
+    ) {
         SnyggRow(
             elementName = FlorisImeUi.SubtypePanelHeader.elementName,
             modifier = Modifier.fillMaxWidth(),

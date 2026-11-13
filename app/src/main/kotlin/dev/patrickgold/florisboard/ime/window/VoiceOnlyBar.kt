@@ -25,12 +25,13 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -239,7 +240,7 @@ fun BoxScope.VoiceOnlyWindow() {
     BoxWithConstraints(
         modifier = Modifier
             .matchParentSize()
-            .safeDrawingPadding(),
+            .windowInsetsPadding(WindowInsets.imeSafeDrawing),
     ) {
         val area = IntSize(constraints.maxWidth, constraints.maxHeight)
         val edgePx = with(density) { BarEdgeMargin.toPx() }
