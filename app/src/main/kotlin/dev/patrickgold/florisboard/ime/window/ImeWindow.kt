@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,8 +31,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
@@ -117,6 +118,7 @@ fun ImeRootWindow() {
     // it can sit above the keyboard without a popup window and without stealing host-app touches.
     val voiceActionHint = remember { VoiceActionHintState() }
     val isVoiceOnly by windowController.isVoiceOnlyActive.collectAsState()
+    val navigationBarFrameInsets = rememberImeNavigationBarFrameInsets()
 
     Box(
         modifier = Modifier
@@ -136,7 +138,10 @@ fun ImeRootWindow() {
                 windowController.updateRootInsets(newInsets)
             },
     ) {
-        CompositionLocalProvider(LocalVoiceActionHintState provides voiceActionHint) {
+        CompositionLocalProvider(
+            LocalVoiceActionHintState provides voiceActionHint,
+            LocalImeNavigationBarFrameInsets provides navigationBarFrameInsets,
+        ) {
             DevtoolsOverlay()
             if (isVoiceOnly) {
                 VoiceOnlyWindow()
@@ -222,6 +227,7 @@ private fun ImeInnerWindow() {
 
     val state by keyboardManager.activeState.collectAsState()
     val windowSpec by windowController.activeWindowSpec.collectAsState()
+    val safeInsets = WindowInsets.imeSafeDrawing
 
     ProvideActualLayoutDirection {
         val layoutDirection = LocalLayoutDirection.current
@@ -238,7 +244,7 @@ private fun ImeInnerWindow() {
             .wrapContentHeight()
             .ifIsInstance<ImeWindowProps.Fixed>(windowSpec.props) { props ->
                 Modifier
-                    .safeDrawingPadding()
+                    .windowInsetsPadding(safeInsets)
                     .systemGestureExclusion()
                     .padding(
                         start = props.paddingLeft.coerceAtLeast(0.dp),
@@ -343,6 +349,7 @@ private fun BoxScope.OneHandedPanel(spec: ImeWindowSpec.Fixed) {
     val windowController = LocalWindowController.current
     val editorState by windowController.editor.state.collectAsState()
     val windowConfig by windowController.activeWindowConfig.collectAsState()
+    val safeInsets = WindowInsets.imeSafeDrawing
 
     val attributes = remember(windowConfig.mode) {
         mapOf(
@@ -355,7 +362,7 @@ private fun BoxScope.OneHandedPanel(spec: ImeWindowSpec.Fixed) {
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .safeDrawingPadding()
+                    .windowInsetsPadding(safeInsets)
                     .padding(bottom = spec.props.paddingBottom.coerceAtLeast(0.dp))
                     .fold(
                         condition = spec.props.paddingLeft >= spec.props.paddingRight,

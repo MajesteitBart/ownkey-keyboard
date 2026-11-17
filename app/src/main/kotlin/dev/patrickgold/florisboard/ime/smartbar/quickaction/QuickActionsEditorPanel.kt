@@ -19,12 +19,13 @@ package dev.patrickgold.florisboard.ime.smartbar.quickaction
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemInfo
@@ -56,6 +57,7 @@ import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.ime.window.imeSafeDrawing
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.toIntOffset
 import org.florisboard.lib.compose.stringRes
@@ -243,7 +245,10 @@ fun QuickActionsEditorPanel() {
         }
     }
 
-    SnyggColumn(FlorisImeUi.SmartbarActionsEditor.elementName, modifier = Modifier.safeDrawingPadding()) {
+    SnyggColumn(
+        FlorisImeUi.SmartbarActionsEditor.elementName,
+        modifier = Modifier.windowInsetsPadding(WindowInsets.imeSafeDrawing),
+    ) {
         SnyggRow(
             elementName = FlorisImeUi.SmartbarActionsEditorHeader.elementName,
             modifier = Modifier.fillMaxWidth(),
