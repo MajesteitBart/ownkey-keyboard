@@ -2,10 +2,12 @@
 
 This file lists notable changes to Ownkey Keyboard. Version numbers match the [GitHub releases](https://github.com/MajesteitBart/ownkey-keyboard/releases). Ownkey is a fork of FlorisBoard 0.6.0-alpha02. For changes before the fork, see [FlorisBoard's releases](https://github.com/florisboard/florisboard/releases).
 
-## Unreleased
+## 0.12.1 (2026-11-17)
+
+Version code 128.
 
 ### Fixed
-- The hide-keyboard arrow and the keyboard switcher that Android shows below the keyboard with gesture navigation no longer cover the bottom key row on phones that report too little space for them, such as some Motorola phones with Android 15 ([#28](https://github.com/MajesteitBart/ownkey-keyboard/issues/28)). Taps at the bottom of keys such as `?123` used to reach the system button instead. The voice-only bar, toasts and the language and toolbar panels keep clear of the buttons too.
+- The hide-keyboard arrow and the keyboard switcher that Android shows below the keyboard with gesture navigation no longer cover the bottom key row on phones that report too little space for them, such as some Motorola phones with Android 15 ([#29](https://github.com/MajesteitBart/ownkey-keyboard/pull/29)). Taps at the bottom of keys such as `?123` used to reach the system button instead. The voice-only bar, toasts and the language and toolbar panels keep clear of the buttons too.
 
 ## 0.12.0 (2026-11-08)
 

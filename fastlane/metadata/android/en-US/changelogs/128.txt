@@ -1,0 +1,1 @@
+• Android's hide-keyboard arrow and keyboard switcher no longer cover the bottom key row on phones that report too little space for them, such as some Motorola phones with Android 15
